@@ -8,38 +8,38 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Inter:wght@400;500;600&display=swap');
-        
+       
         body {
             font-family: 'Inter', system_ui, sans-serif;
         }
-        
+       
         .neon-text {
             text-shadow: 0 0 15px #67e8f9, 0 0 30px #67e8f9;
         }
-        
+       
         .product-card {
             transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
-        
+       
         .product-card:hover {
             transform: translateY(-12px) scale(1.04);
             box-shadow: 0 25px 50px -12px rgb(103 232 249);
         }
-        
+       
         .tab-active {
             border-bottom: 4px solid #67e8f9;
             color: #67e8f9;
             font-weight: 600;
         }
-        
+       
         .wave-bg {
             background: linear-gradient(135deg, #0a0a0a, #1e1233, #0a0a0a);
         }
-        
+       
         .qty-btn {
             transition: all 0.2s ease;
         }
-        
+       
         .qty-btn:hover {
             background-color: #22d3ee;
             color: black;
@@ -68,10 +68,10 @@
             }
         }
 
-        /* Notification Toast – jetzt perfekt positioniert */
+        /* Notification Toast – genau wie gewünscht */
         #notification-toast {
             position: fixed;
-            bottom: 110px;               /* PC & Tablet */
+            bottom: 50px;               /* PC: +1 cm tiefer als vorher */
             left: 50%;
             transform: translateX(-50%);
             background: rgba(0, 0, 0, 0.78);
@@ -87,16 +87,16 @@
             text-align: center;
             box-shadow: 0 10px 30px rgba(103, 232, 249, 0.2);
         }
-        
+       
         #notification-toast.visible {
             opacity: 1;
             transform: translateX(-50%) translateY(-8px);
         }
 
-        /* Auf Handy noch weiter runter (über dem Floating Cart Button) */
+        /* Auf Handy noch ein bisschen tiefer (über dem Floating Cart Button) */
         @media (max-width: 640px) {
             #notification-toast {
-                bottom: 28px !important;
+                bottom: 30px !important;   /* +17px tiefer als vorher */
                 font-size: 12px;
                 padding: 9px 18px;
                 max-width: 94%;
@@ -123,19 +123,19 @@
                     <p class="text-[9px] sm:text-[10px] text-cyan-300 tracking-[3px] -mt-1">2026 SORTIMENT</p>
                 </div>
             </div>
-            
+           
             <div class="flex items-center gap-3 sm:gap-8">
-                <button onclick="showNameModal()" 
+                <button onclick="showNameModal()"
                         class="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 border border-cyan-400/30 px-4 sm:px-6 py-2 sm:py-3 rounded-3xl text-xs sm:text-sm font-medium transition-all">
                     <i class="fa-solid fa-user text-cyan-300"></i>
                     <span id="current-user-name" class="font-medium">Name</span>
                 </button>
-                
-                <button onclick="toggleCart()" 
+               
+                <button onclick="toggleCart()"
                         class="relative flex items-center gap-2 bg-gradient-to-r from-cyan-400 to-purple-500 hover:from-cyan-300 hover:to-purple-400 text-black font-semibold px-5 sm:px-7 py-2 sm:py-3 rounded-3xl transition-all text-sm">
                     <i class="fa-solid fa-cart-shopping text-lg"></i>
                     <span class="hidden sm:inline">Warenkorb</span>
-                    <div id="cart-count-badge" 
+                    <div id="cart-count-badge"
                          class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow-md">
                         0
                     </div>
@@ -173,7 +173,7 @@
 
         <div class="relative mb-8">
             <i class="fa-solid fa-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-cyan-400"></i>
-            <input id="search-input" type="text" placeholder="Flavor suchen..." onkeyup="filterProducts()" 
+            <input id="search-input" type="text" placeholder="Flavor suchen..." onkeyup="filterProducts()"
                    class="w-full bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl pl-12 pr-6 py-4 text-base outline-none transition">
         </div>
 
@@ -183,7 +183,7 @@
     </div>
 
     <!-- FLOATING CART BUTTON -->
-    <button onclick="toggleCart()" 
+    <button onclick="toggleCart()"
             class="fixed bottom-6 right-6 lg:hidden bg-gradient-to-r from-cyan-400 to-purple-500 text-black w-14 h-14 rounded-3xl shadow-2xl flex items-center justify-center z-50">
         <i class="fa-solid fa-cart-shopping text-3xl"></i>
     </button>
@@ -234,9 +234,7 @@
         // ====================== KONFIGURATION ======================
         const PRICE = 8;
         const FORMSPREE_ENDPOINT = "https://formspree.io/f/mqedvnkb";
-
         const fakeNames = ["Tim","Anna","Max","Sophie","Luca","Mia","Felix","Emma","Noah","Lena","Leon","Julia","Paul","Laura","Ben","Sarah","David","Hannah","Jonas","Lea"];
-
         let allProducts = [
             { id: 1, name: "Apple Peach", category: "Fruchtig & Süß", isNew: false, available: true },
             { id: 2, name: "Blueberry", category: "Fruchtig & Süß", isNew: false, available: true },
@@ -270,14 +268,13 @@
             { id: 30, name: "Kiwi Passion Fruit Guava", category: "Fruchtig & Süß", isNew: false, available: false },
             { id: 31, name: "Blackcurrant Aniseed", category: "Frisch & Minzig", isNew: false, available: false }
         ];
-
         let cart = [];
         let currentUserName = localStorage.getItem("wavevapes_username") || "";
         let currentCategoryFilter = "Alle";
 
-        // Notification-System (jetzt mit längerer Anzeige + natürlicherer Sprache)
+        // Notification-System
         let notificationList = [];
-        const NOTIFICATION_DURATION = 6500;   // 6,5 Sekunden
+        const NOTIFICATION_DURATION = 6500;
         const HOUR_MS = 3600000;
         let currentNotificationIndex = 0;
 
@@ -322,7 +319,7 @@
             setInterval(checkAndGenerateNotifications, 60000);
         }
 
-        // ====================== REST DER FUNKTIONEN (unverändert) ======================
+        // ====================== REST DER FUNKTIONEN ======================
         function initialize() {
             updateUserDisplay();
             renderCategoryTabs();
@@ -381,17 +378,14 @@
             const container = document.getElementById("products-grid");
             let html = "";
             const searchTerm = document.getElementById("search-input").value.toLowerCase();
-
             const filtered = allProducts.filter(product => {
                 const matchesCategory = currentCategoryFilter === "Alle" || product.category === currentCategoryFilter;
                 const matchesSearch = !searchTerm || product.name.toLowerCase().includes(searchTerm);
                 return matchesCategory && matchesSearch;
             });
-
             filtered.forEach(product => {
                 const cartItem = cart.find(item => item.id === product.id);
                 const qty = cartItem ? cartItem.qty : 0;
-
                 html += `
                 <div class="product-card bg-zinc-900 border ${product.available ? 'border-white/10' : 'border-red-500/40'} rounded-3xl overflow-hidden">
                     <div class="h-1.5 bg-gradient-to-r from-cyan-400 to-purple-500"></div>
@@ -413,7 +407,6 @@
                     </div>
                 </div>`;
             });
-
             container.innerHTML = html || `<p class="col-span-full text-center py-16 text-gray-400">Keine Produkte gefunden.</p>`;
         }
 
@@ -432,18 +425,14 @@
             const countEl = document.getElementById("cart-count-badge");
             const totalEl = document.getElementById("cart-total-price");
             const listEl = document.getElementById("cart-items-list");
-
             const totalItems = cart.reduce((sum, item) => sum + item.qty, 0);
             countEl.textContent = totalItems;
-
             const totalPrice = cart.reduce((sum, item) => sum + item.qty * PRICE, 0);
             totalEl.textContent = `${totalPrice},00 €`;
-
             if (cart.length === 0) {
                 listEl.innerHTML = `<p class="text-center py-16 text-gray-400">Dein Warenkorb ist leer</p>`;
                 return;
             }
-
             let itemsHTML = "";
             cart.forEach(item => {
                 itemsHTML += `
@@ -489,19 +478,16 @@
         async function placeOrder() {
             if (!currentUserName) { alert("Bitte zuerst deinen Namen eingeben!"); showNameModal(); return; }
             if (cart.length === 0) return alert("Dein Warenkorb ist leer.");
-
             const orderNumber = generateOrderNumber();
             const totalPrice = cart.reduce((sum, item) => sum + item.qty * PRICE, 0);
             let orderText = `Name: ${currentUserName}\nBestellnummer: ${orderNumber}\nGesamt: ${totalPrice},00 €\n\nBestellte Produkte:\n`;
             cart.forEach(item => orderText += `• ${item.name} × ${item.qty} = ${item.qty * PRICE} €\n`);
-
             const formData = new FormData();
             formData.append("name", currentUserName);
             formData.append("bestellnummer", orderNumber);
             formData.append("produkte", orderText);
             formData.append("gesamt", `${totalPrice},00 €`);
             formData.append("_subject", `WaveVapes Bestellung ${orderNumber}`);
-
             try {
                 const response = await fetch(FORMSPREE_ENDPOINT, { method: "POST", body: formData, headers: { "Accept": "application/json" } });
                 if (response.ok) {

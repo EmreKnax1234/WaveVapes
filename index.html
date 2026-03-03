@@ -68,16 +68,16 @@
             }
         }
 
-        /* Notification Toast */
+        /* Notification Toast – jetzt perfekt positioniert */
         #notification-toast {
             position: fixed;
-            bottom: 80px;
+            bottom: 110px;               /* PC & Tablet */
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.75);
+            background: rgba(0, 0, 0, 0.78);
             backdrop-filter: blur(12px);
             color: #67e8f9;
-            padding: 10px 20px;
+            padding: 10px 22px;
             border-radius: 9999px;
             font-size: 13px;
             opacity: 0;
@@ -85,12 +85,22 @@
             z-index: 1000;
             max-width: 92%;
             text-align: center;
-            box-shadow: 0 10px 30px rgba(103, 232, 249, 0.15);
+            box-shadow: 0 10px 30px rgba(103, 232, 249, 0.2);
         }
         
         #notification-toast.visible {
             opacity: 1;
-            transform: translateX(-50%) translateY(-10px);
+            transform: translateX(-50%) translateY(-8px);
+        }
+
+        /* Auf Handy noch weiter runter (über dem Floating Cart Button) */
+        @media (max-width: 640px) {
+            #notification-toast {
+                bottom: 28px !important;
+                font-size: 12px;
+                padding: 9px 18px;
+                max-width: 94%;
+            }
         }
 
         /* Scrollbare Tabs auf Handy */
@@ -103,7 +113,7 @@
     </style>
 </head>
 <body class="wave-bg text-white min-h-screen">
-    <!-- NAVBAR – stark kompakter auf Mobile -->
+    <!-- NAVBAR (unverändert) -->
     <nav class="bg-black/90 backdrop-blur-xl border-b border-cyan-400/30 sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex justify-between items-center">
             <div class="flex items-center gap-3">
@@ -135,7 +145,7 @@
     </nav>
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-8 pb-20">
-        <!-- HERO – jetzt richtig gut auf Handy -->
+        <!-- HERO, NAME BANNER, TABS, SEARCH, PRODUCTS (alles unverändert) -->
         <div class="text-center mb-12">
             <div class="inline-flex items-center gap-2 bg-white/10 px-5 py-1.5 rounded-3xl text-xs mb-6 backdrop-blur-md">
                 <div class="w-2.5 h-2.5 bg-emerald-400 rounded-full animate-ping"></div>
@@ -146,10 +156,7 @@
             <p class="text-base sm:text-lg text-gray-300 mt-4">Alle Liquids von ELFLIQ</p>
         </div>
 
-        <!-- NAME BANNER – kompakter auf Mobile -->
-        <div onclick="showNameModal()" 
-             id="user-banner"
-             class="name-banner mb-10 bg-gradient-to-r from-zinc-900 to-purple-950 border border-cyan-300/30 hover:border-cyan-300 rounded-3xl p-5 flex items-center justify-between cursor-pointer transition-all group">
+        <div onclick="showNameModal()" id="user-banner" class="name-banner mb-10 bg-gradient-to-r from-zinc-900 to-purple-950 border border-cyan-300/30 hover:border-cyan-300 rounded-3xl p-5 flex items-center justify-between cursor-pointer transition-all group">
             <div class="flex items-center gap-4">
                 <i class="fa-solid fa-circle-user name-banner-icon text-4xl text-cyan-300"></i>
                 <div>
@@ -160,24 +167,18 @@
             <div class="text-cyan-400 group-hover:text-white transition text-base">ändern →</div>
         </div>
 
-        <!-- CATEGORY TABS – jetzt horizontal scrollbar auf Handy -->
         <div id="category-tabs" class="category-tabs flex overflow-x-auto gap-x-6 pb-4 border-b border-white/10 mb-8 text-base whitespace-nowrap">
-            <!-- Wird per JS gefüllt -->
+            <!-- JS -->
         </div>
 
-        <!-- SEARCH -->
         <div class="relative mb-8">
             <i class="fa-solid fa-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-cyan-400"></i>
-            <input id="search-input" 
-                   type="text" 
-                   placeholder="Flavor suchen..." 
-                   onkeyup="filterProducts()"
+            <input id="search-input" type="text" placeholder="Flavor suchen..." onkeyup="filterProducts()" 
                    class="w-full bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl pl-12 pr-6 py-4 text-base outline-none transition">
         </div>
 
-        <!-- PRODUCTS GRID -->
         <div id="products-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
-            <!-- Wird per JS gefüllt -->
+            <!-- JS -->
         </div>
     </div>
 
@@ -187,19 +188,14 @@
         <i class="fa-solid fa-cart-shopping text-3xl"></i>
     </button>
 
-    <!-- CART SIDEBAR (full-screen auf Handy) -->
-    <div id="cart-sidebar" 
-         class="fixed top-0 right-0 h-full w-full md:w-96 bg-zinc-950 border-l border-cyan-400/30 shadow-2xl translate-x-full transition-all duration-300 z-[999] overflow-y-auto">
+    <!-- CART SIDEBAR, MODALS (unverändert) -->
+    <div id="cart-sidebar" class="fixed top-0 right-0 h-full w-full md:w-96 bg-zinc-950 border-l border-cyan-400/30 shadow-2xl translate-x-full transition-all duration-300 z-[999] overflow-y-auto">
         <div class="p-6">
             <div class="flex justify-between items-center mb-8">
                 <h3 class="text-3xl font-bold">Dein Warenkorb</h3>
                 <button onclick="toggleCart()" class="text-4xl text-gray-400 hover:text-white">✕</button>
             </div>
-
-            <div id="cart-items-list" class="space-y-6 min-h-[300px]">
-                <!-- JS gefüllt -->
-            </div>
-
+            <div id="cart-items-list" class="space-y-6 min-h-[300px]"></div>
             <div class="mt-10 pt-8 border-t border-white/10">
                 <div class="flex justify-between text-2xl font-semibold mb-2">
                     <span>Gesamt</span>
@@ -207,18 +203,11 @@
                 </div>
                 <p class="text-xs text-gray-400">8 € pro Flasche • Zahlung bei Abholung</p>
             </div>
-
-            <button onclick="placeOrder()" 
-                    class="mt-8 w-full py-6 bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 text-black font-bold text-xl rounded-3xl transition-all">
-                BESTELLUNG ABSCHICKEN
-            </button>
-            
+            <button onclick="placeOrder()" class="mt-8 w-full py-6 bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 text-black font-bold text-xl rounded-3xl transition-all">BESTELLUNG ABSCHICKEN</button>
             <button onclick="clearCart()" class="mt-4 text-red-400 text-sm w-full py-3">Warenkorb leeren</button>
         </div>
     </div>
 
-    <!-- SUCCESS MODAL, NAME MODAL und Toast bleiben gleich -->
-    <!-- ORDER SUCCESS MODAL -->
     <div id="success-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-[9999]">
         <div class="bg-zinc-900 max-w-lg w-full mx-4 rounded-3xl p-8 text-center">
             <div class="mx-auto w-20 h-20 bg-emerald-400/10 text-emerald-400 rounded-3xl flex items-center justify-center text-6xl mb-8">✓</div>
@@ -230,17 +219,15 @@
         </div>
     </div>
 
-    <!-- NAME MODAL -->
     <div id="name-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]">
         <div class="bg-zinc-900 rounded-3xl p-8 max-w-sm w-full mx-4">
             <h3 class="text-2xl font-semibold mb-6">Wie heißt du?</h3>
-            <input id="name-input-field" type="text" placeholder="Vorname Nachname" 
-                   class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-5 text-lg mb-8 outline-none">
+            <input id="name-input-field" type="text" placeholder="Vorname Nachname" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-5 text-lg mb-8 outline-none">
             <button onclick="saveUserName()" class="w-full bg-cyan-400 hover:bg-cyan-300 text-black py-5 rounded-3xl font-bold text-xl">Speichern</button>
         </div>
     </div>
 
-    <!-- NEUE NOTIFICATION TOAST -->
+    <!-- NOTIFICATION TOAST -->
     <div id="notification-toast"></div>
 
     <script>
@@ -250,7 +237,7 @@
 
         const fakeNames = ["Tim","Anna","Max","Sophie","Luca","Mia","Felix","Emma","Noah","Lena","Leon","Julia","Paul","Laura","Ben","Sarah","David","Hannah","Jonas","Lea"];
 
-        let allProducts = [ /* unverändert */ 
+        let allProducts = [
             { id: 1, name: "Apple Peach", category: "Fruchtig & Süß", isNew: false, available: true },
             { id: 2, name: "Blueberry", category: "Fruchtig & Süß", isNew: false, available: true },
             { id: 3, name: "Blueberry Sour Raspberry", category: "Fruchtig & Süß", isNew: false, available: true },
@@ -288,20 +275,22 @@
         let currentUserName = localStorage.getItem("wavevapes_username") || "";
         let currentCategoryFilter = "Alle";
 
-        // Notification-System (unverändert, nur besser positioniert)
+        // Notification-System (jetzt mit längerer Anzeige + natürlicherer Sprache)
         let notificationList = [];
-        const NOTIFICATION_DURATION = 5000;
+        const NOTIFICATION_DURATION = 6500;   // 6,5 Sekunden
         const HOUR_MS = 3600000;
         let currentNotificationIndex = 0;
 
         function generateNotificationList() {
             notificationList = [];
             const availableProducts = allProducts.filter(p => p.available);
+            const phrases = ["hat gerade", "hat vor", "bestellte vor", "hat vor kurzem", "holte sich vor"];
             for (let i = 0; i < 10; i++) {
                 const randomName = fakeNames[Math.floor(Math.random() * fakeNames.length)];
                 const randomProduct = availableProducts[Math.floor(Math.random() * availableProducts.length)].name;
                 const randomMinutes = Math.floor(Math.random() * 59) + 1;
-                notificationList.push(`${randomName} hat vor ${randomMinutes} Minuten ${randomProduct} bestellt`);
+                const randomPhrase = phrases[Math.floor(Math.random() * phrases.length)];
+                notificationList.push(`${randomName} ${randomPhrase} ${randomMinutes} Minuten ${randomProduct} bestellt`);
             }
             localStorage.setItem('wavevapes_notifications', JSON.stringify(notificationList));
             localStorage.setItem('wavevapes_last_generate', Date.now());
@@ -322,7 +311,7 @@
             const toast = document.getElementById('notification-toast');
             toast.textContent = notificationList[currentNotificationIndex];
             toast.classList.add('visible');
-            setTimeout(() => toast.classList.remove('visible'), NOTIFICATION_DURATION - 600);
+            setTimeout(() => toast.classList.remove('visible'), NOTIFICATION_DURATION - 700);
             currentNotificationIndex = (currentNotificationIndex + 1) % notificationList.length;
         }
 
@@ -333,7 +322,7 @@
             setInterval(checkAndGenerateNotifications, 60000);
         }
 
-        // ====================== INIT + Rest der Funktionen (unverändert) ======================
+        // ====================== REST DER FUNKTIONEN (unverändert) ======================
         function initialize() {
             updateUserDisplay();
             renderCategoryTabs();
@@ -542,7 +531,6 @@
             renderProducts();
         }
 
-        // ====================== START ======================
         window.onload = initialize;
     </script>
 </body>

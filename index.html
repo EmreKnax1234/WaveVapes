@@ -44,6 +44,29 @@
             background-color: #22d3ee;
             color: black;
         }
+
+        /* Neue Notification Styles */
+        #notification-toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            color: #67e8f9;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            z-index: 1000;
+            max-width: 90%;
+            text-align: center;
+        }
+
+        #notification-toast.visible {
+            opacity: 1;
+        }
     </style>
 </head>
 <body class="wave-bg text-white min-h-screen">
@@ -51,7 +74,6 @@
     <nav class="bg-black/90 backdrop-blur-xl border-b border-cyan-400/30 sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-6 py-5 flex justify-between items-center">
             <div class="flex items-center gap-4">
-                <!-- Logo einfügen: lade dein shopbild.jpeg als "logo.png" in denselben Ordner hoch -->
                 <img src="logo.png" alt="WaveVapes Logo" class="h-11 w-auto drop-shadow-xl">
                 <div>
                     <h1 class="text-4xl font-bold tracking-tighter neon-text">WAVEVAPES</h1>
@@ -196,12 +218,21 @@
         </div>
     </div>
 
+    <!-- NEUE NOTIFICATION TOAST -->
+    <div id="notification-toast"></div>
+
     <script>
         // ====================== KONFIGURATION ======================
         const PRICE = 8;
         const FORMSPREE_ENDPOINT = "https://formspree.io/f/mqedvnkb";
 
-        // ====================== PRODUKTE (aus deinem Bild extrahiert) ======================
+        // Fake Namen für Notifications
+        const fakeNames = [
+            "Tim", "Anna", "Max", "Sophie", "Luca", "Mia", "Felix", "Emma", "Noah", "Lena",
+            "Leon", "Julia", "Paul", "Laura", "Ben", "Sarah", "David", "Hannah", "Jonas", "Lea"
+        ];
+
+        // ====================== PRODUKTE ======================
         let allProducts = [
             { id: 1, name: "Apple Peach", category: "Fruchtig & Süß", isNew: false, available: true },
             { id: 2, name: "Blueberry", category: "Fruchtig & Süß", isNew: false, available: true },
@@ -237,7 +268,6 @@
             { id: 28, name: "Pineapple Coconut", category: "Neue Sorten", isNew: false, available: true },
             { id: 29, name: "Lemon Mint", category: "Neue Sorten", isNew: true, available: true },
             
-            // NICHT VERFÜGBAR (wie in deinem Bild)
             { id: 30, name: "Kiwi Passion Fruit Guava", category: "Fruchtig & Süß", isNew: false, available: false },
             { id: 31, name: "Blackcurrant Aniseed", category: "Frisch & Minzig", isNew: false, available: false }
         ];
@@ -246,12 +276,66 @@
         let currentUserName = localStorage.getItem("wavevapes_username") || "";
         let currentCategoryFilter = "Alle";
 
-        // ====================== TAILWIND + INIT ======================
+        // Neue Notifications
+        let notificationList = [];
+        const NOTIFICATION_DURATION = 5000; // 5 Sekunden pro Notification
+        const HOUR_MS = 3600000; // 1 Stunde in ms
+        let currentNotificationIndex = 0;
+
+        function generateNotificationList() {
+            notificationList = [];
+            for (let i = 0; i < 10; i++) {
+                const randomName = fakeNames[Math.floor(Math.random() * fakeNames.length)];
+                const randomProduct = allProducts.filter(p => p.available)[Math.floor(Math.random() * allProducts.filter(p => p.available).length)].name;
+                const randomMinutes = Math.floor(Math.random() * 59) + 1;
+                notificationList.push(`${randomName} hat vor ${randomMinutes} Minuten ${randomProduct} bestellt`);
+            }
+            localStorage.setItem('wavevapes_notifications', JSON.stringify(notificationList));
+            localStorage.setItem('wavevapes_last_generate', Date.now());
+        }
+
+        function checkAndGenerateNotifications() {
+            const lastGenerate = localStorage.getItem('wavevapes_last_generate');
+            if (!lastGenerate || (Date.now() - lastGenerate > HOUR_MS)) {
+                generateNotificationList();
+            } else {
+                const storedList = localStorage.getItem('wavevapes_notifications');
+                if (storedList) {
+                    notificationList = JSON.parse(storedList);
+                } else {
+                    generateNotificationList();
+                }
+            }
+        }
+
+        function showNextNotification() {
+            const toast = document.getElementById('notification-toast');
+            toast.textContent = notificationList[currentNotificationIndex];
+            toast.classList.add('visible');
+            
+            setTimeout(() => {
+                toast.classList.remove('visible');
+            }, NOTIFICATION_DURATION - 500); // Fade out 500ms früher
+
+            currentNotificationIndex = (currentNotificationIndex + 1) % notificationList.length;
+        }
+
+        function startNotificationCycle() {
+            checkAndGenerateNotifications();
+            showNextNotification();
+            setInterval(showNextNotification, NOTIFICATION_DURATION);
+            
+            // Check jede Minute ob Stunde um ist
+            setInterval(checkAndGenerateNotifications, 60000);
+        }
+
+        // ====================== INIT ======================
         function initialize() {
             updateUserDisplay();
             renderCategoryTabs();
             renderProducts();
             updateCartDisplay();
+            startNotificationCycle();
         }
 
         // ====================== USER NAME ======================
@@ -289,7 +373,7 @@
         // ====================== KATEGORIE TABS ======================
         function renderCategoryTabs() {
             const tabsHTML = `
-                <button onclick="setCategoryFilter('Alle')" class="tab-active px-6 py-2 transition ${currentCategoryFilter === 'Alle' ? 'tab-active' : ''}">Alle</button>
+                <button onclick="setCategoryFilter('Alle')" class="px-6 py-2 transition ${currentCategoryFilter === 'Alle' ? 'tab-active' : ''}">Alle</button>
                 <button onclick="setCategoryFilter('Fruchtig & Süß')" class="px-6 py-2 transition ${currentCategoryFilter === 'Fruchtig & Süß' ? 'tab-active' : ''}">Fruchtig & Süß</button>
                 <button onclick="setCategoryFilter('Ice / Frisch')" class="px-6 py-2 transition ${currentCategoryFilter === 'Ice / Frisch' ? 'tab-active' : ''}">Ice / Frisch</button>
                 <button onclick="setCategoryFilter('Getränke & Specials')" class="px-6 py-2 transition ${currentCategoryFilter === 'Getränke & Specials' ? 'tab-active' : ''}">Getränke</button>

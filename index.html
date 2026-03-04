@@ -8,38 +8,38 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Inter:wght@400;500;600&display=swap');
-  
+ 
         body { font-family: 'Inter', system_ui, sans-serif; }
-  
+ 
         .neon-text { text-shadow: 0 0 15px #67e8f9, 0 0 30px #67e8f9; }
-  
+ 
         .product-card {
             transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
             touch-action: manipulation;
             -webkit-tap-highlight-color: transparent;
         }
-  
+ 
         .product-card:hover {
             transform: translateY(-12px) scale(1.04);
             box-shadow: 0 25px 50px -12px rgb(103 232 249);
         }
-  
+ 
         .tab-active {
             border-bottom: 4px solid #67e8f9;
             color: #67e8f9;
             font-weight: 600;
         }
-  
+ 
         .wave-bg { background: linear-gradient(135deg, #0a0a0a, #1e1233, #0a0a0a); }
-  
+ 
         .qty-btn {
             transition: all 0.2s ease;
             touch-action: manipulation;
             -webkit-tap-highlight-color: transparent;
         }
-  
+ 
         .qty-btn:hover { background-color: #22d3ee; color: black; }
-       
+      
         @keyframes boltPulse {
             0%, 100% { transform: scale(1) rotate(0deg); color: #fde047; }
             50% { transform: scale(1.35) rotate(20deg); color: #facc15; }
@@ -49,15 +49,37 @@
             display: inline-block;
             text-shadow: 0 0 15px #facc15;
         }
-       
+      
         #notification-toast {
-            position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%);
-            background: rgba(0,0,0,0.78); backdrop-filter: blur(12px);
-            color: #67e8f9; padding: 10px 22px; border-radius: 9999px;
-            font-size: 13px; opacity: 0; transition: all 0.6s ease;
-            z-index: 1000; max-width: 92%; text-align: center;
+            position: fixed; 
+            bottom: 50px; 
+            left: 50%; 
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.78); 
+            backdrop-filter: blur(12px);
+            color: #67e8f9; 
+            padding: 10px 22px; 
+            border-radius: 9999px;
+            font-size: 13px; 
+            opacity: 0; 
+            transition: all 0.6s ease;
+            z-index: 1000; 
+            max-width: 92%; 
+            text-align: center;
         }
-        #notification-toast.visible { opacity: 1; transform: translateX(-50%) translateY(-8px); }
+
+        /* ==================== HANDY-ANPASSUNG ==================== */
+        /* Auf allen mobilen Geräten (bis 1023px) sitzt der Toast jetzt exakt über dem Floating Cart-Button */
+        @media (max-width: 1023px) {
+            #notification-toast {
+                bottom: 92px !important;   /* passt perfekt über dem Button (bottom-6 + 56px Höhe + Abstand) */
+            }
+        }
+
+        #notification-toast.visible { 
+            opacity: 1; 
+            transform: translateX(-50%) translateY(-8px); 
+        }
         #notification-toast.deal {
             background: linear-gradient(90deg, #eab308, #f59e0b) !important;
             color: #111827 !important;
@@ -80,7 +102,7 @@
         .discount-price { font-size: 1.35rem; text-decoration: line-through; color: #9ca3af; }
         .sale-price { font-size: 1.85rem; font-weight: 700; color: #ef4444; }
         .euro { font-size: 1.1rem; margin-left: 2px; }
-       
+      
         .mystery-item {
             background: linear-gradient(90deg, #10b981, #34d399) !important;
             border: 2px solid #a7f3d0 !important;
@@ -121,14 +143,12 @@
             </div>
             <h2 class="hero-title text-5xl sm:text-6xl font-bold tracking-tighter neon-text mb-3">Bestelle deine Liquids und Vapes</h2>
             <p class="hero-subtitle text-xl sm:text-2xl text-cyan-200 max-w-md mx-auto">8 € pro Flasche • 10 ml • Einfach auswählen, abschicken, bei mir abholen</p>
-           
-            <!-- === DEIN GEWÜNSCHTER HINWEIS HIER === -->
+          
             <p class="text-base sm:text-lg text-gray-300 mt-4">Alle Liquids von ELFLIQ</p>
             <div class="mt-4 inline-flex items-center gap-3 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-400/30 hover:border-emerald-400 px-7 py-3 rounded-3xl text-emerald-300 text-base font-semibold transition-all">
                 <i class="fa-solid fa-gift text-2xl"></i>
                 <span>Ab 100€ Bestellwert gibt's eine <span class="text-white font-bold underline">Mystery Vape gratis</span> dazu! 🎁</span>
             </div>
-            <!-- ====================================== -->
         </div>
         <!-- NAME BANNER -->
         <div onclick="showNameModal()" id="user-banner" class="mb-10 bg-gradient-to-r from-zinc-900 to-purple-950 border border-cyan-300/30 hover:border-cyan-300 rounded-3xl p-5 flex items-center justify-between cursor-pointer transition-all group">
@@ -197,7 +217,7 @@
         const FORMSPREE_ENDPOINT = "https://formspree.io/f/mqedvnkb";
         const MYSTERY_ID = 999;
         const fakeNames = ["Tim","Anna","Max","Sophie","Luca","Mia","Felix","Emma","Noah","Lena","Leon","Julia","Paul","Laura","Ben","Sarah","David","Hannah","Jonas","Lea"];
-      
+     
         let allProducts = [
             { id: 1, name: "Apple Peach", category: "Normale Sorten", isNew: false, available: true, price: 8 },
             { id: 2, name: "Blueberry", category: "Normale Sorten", isNew: false, available: true, price: 8 },
@@ -278,14 +298,14 @@
         function generateNotificationList() {
             notificationList = [];
             const availableProducts = allProducts.filter(p => p.available);
-          
+         
             for (let i = 0; i < 10; i++) {
                 const randomName = fakeNames[Math.floor(Math.random() * fakeNames.length)];
                 const randomProduct = availableProducts[Math.floor(Math.random() * availableProducts.length)].name;
                 const randomMinutes = Math.floor(Math.random() * 59) + 1;
-              
+             
                 const minuteText = randomMinutes === 1 ? "Minute" : "Minuten";
-              
+             
                 notificationList.push(`${randomName} bestellte vor ${randomMinutes} ${minuteText} ${randomProduct}.`);
             }
             localStorage.setItem('wavevapes_notifications', JSON.stringify(notificationList));
@@ -318,14 +338,14 @@
         function initialize() {
             localStorage.removeItem('wavevapes_notifications');
             localStorage.removeItem('wavevapes_last_generate');
-          
+         
             updateUserDisplay();
             renderCategoryTabs();
             renderProducts();
             updateCartDisplay();
             startNotificationCycle();
         }
-        // Rest der Funktionen (angepasst für Mystery Vape)
+        // Rest der Funktionen (unverändert)
         function showNameModal() {
             document.getElementById("name-modal").classList.remove("hidden");
             document.getElementById("name-modal").classList.add("flex");
@@ -518,7 +538,7 @@
             listEl.innerHTML = itemsHTML;
         }
         function removeCartItem(id) {
-            if (id === MYSTERY_ID) return; // Mystery Vape kann nicht manuell entfernt werden
+            if (id === MYSTERY_ID) return;
             cart = cart.filter(item => item.id !== id);
             manageMysteryVape();
             updateCartDisplay();

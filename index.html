@@ -77,7 +77,7 @@
             border-radius: 16px; margin-bottom: 12px; background: #1f2937;
         }
 
-        /* Neuer Rabatt-Stil – Preise nebeneinander + € auf gleicher Höhe */
+        /* Rabatt-Stil – Preise nebeneinander + € auf gleicher Höhe */
         .price-row {
             display: flex;
             justify-content: center;
@@ -154,8 +154,9 @@
             <div class="text-cyan-400 group-hover:text-white transition text-base">ändern →</div>
         </div>
 
-        <!-- TABS + SEARCH -->
+        <!-- CATEGORY TABS – TORNADO JETZT AN ERSTER STELLE -->
         <div id="category-tabs" class="category-tabs flex overflow-x-auto gap-x-6 pb-4 border-b border-white/10 mb-8 text-base whitespace-nowrap"></div>
+
         <div class="relative mb-8">
             <i class="fa-solid fa-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-cyan-400"></i>
             <input id="search-input" type="text" placeholder="Flavor suchen..." onkeyup="filterProducts()" class="w-full bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl pl-12 pr-6 py-4 text-base outline-none transition">
@@ -170,7 +171,7 @@
         <i class="fa-solid fa-cart-shopping text-3xl"></i>
     </button>
 
-    <!-- CART + MODALS (unverändert) -->
+    <!-- CART + MODALS -->
     <div id="cart-sidebar" class="fixed top-0 right-0 h-full w-full md:w-96 bg-zinc-950 border-l border-cyan-400/30 shadow-2xl translate-x-full transition-all duration-300 z-[999] overflow-y-auto">
         <div class="p-6">
             <div class="flex justify-between items-center mb-8">
@@ -190,7 +191,6 @@
         </div>
     </div>
 
-    <!-- SUCCESS + NAME MODAL -->
     <div id="success-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-[9999]">
         <div class="bg-zinc-900 max-w-lg w-full mx-4 rounded-3xl p-8 text-center">
             <div class="mx-auto w-20 h-20 bg-emerald-400/10 text-emerald-400 rounded-3xl flex items-center justify-center text-6xl mb-8">✓</div>
@@ -339,15 +339,16 @@
             }
         }
 
+        // ====================== TABS – TORNADO JETZT AN ERSTER STELLE ======================
         function renderCategoryTabs() {
             const tabsHTML = `
                 <button onclick="setCategoryFilter('Alle')" class="tab-active px-5 py-2 transition ${currentCategoryFilter === 'Alle' ? 'tab-active' : ''}">Alle</button>
+                <button onclick="setCategoryFilter('WaveVapes Tornado 30000')" class="px-5 py-2 transition ${currentCategoryFilter === 'WaveVapes Tornado 30000' ? 'tab-active' : ''}">Tornado 30000</button>
                 <button onclick="setCategoryFilter('Fruchtig & Süß')" class="px-5 py-2 transition ${currentCategoryFilter === 'Fruchtig & Süß' ? 'tab-active' : ''}">Fruchtig & Süß</button>
                 <button onclick="setCategoryFilter('Ice / Frisch')" class="px-5 py-2 transition ${currentCategoryFilter === 'Ice / Frisch' ? 'tab-active' : ''}">Ice / Frisch</button>
                 <button onclick="setCategoryFilter('Getränke & Specials')" class="px-5 py-2 transition ${currentCategoryFilter === 'Getränke & Specials' ? 'tab-active' : ''}">Getränke</button>
                 <button onclick="setCategoryFilter('Frisch & Minzig')" class="px-5 py-2 transition ${currentCategoryFilter === 'Frisch & Minzig' ? 'tab-active' : ''}">Minzig</button>
                 <button onclick="setCategoryFilter('Neue Sorten')" class="px-5 py-2 transition ${currentCategoryFilter === 'Neue Sorten' ? 'tab-active' : ''}">Neue Sorten</button>
-                <button onclick="setCategoryFilter('WaveVapes Tornado 30000')" class="px-5 py-2 transition ${currentCategoryFilter === 'WaveVapes Tornado 30000' ? 'tab-active' : ''}">Tornado 30000</button>
             `;
             document.getElementById("category-tabs").innerHTML = tabsHTML;
         }
@@ -374,7 +375,6 @@
                 const qty = cartItem ? cartItem.qty : 0;
                 const imageHTML = product.image ? `<img src="${product.image}" class="tornado-image" alt="${product.name}">` : '';
 
-                // Preis-Layout: nebeneinander + € auf gleicher Höhe
                 let priceHTML = '';
                 if (product.category === "WaveVapes Tornado 30000") {
                     priceHTML = `
@@ -413,7 +413,6 @@
                         </div>
                         ${!product.available ? `<div class="bg-red-900/30 text-red-400 text-xs px-4 py-2 rounded-2xl mb-4 flex items-center gap-2"><i class="fa-solid fa-circle-exclamation"></i><span>Aktuell NICHT verfügbar</span></div>` : ''}
                         
-                        <!-- Preis + Menge -->
                         <div class="flex flex-col items-center">
                             ${priceHTML}
                             ${product.available ? `

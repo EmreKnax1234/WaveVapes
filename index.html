@@ -39,7 +39,7 @@
         }
    
         .qty-btn:hover { background-color: #22d3ee; color: black; }
-        /* BLITZ-ANIMATION */
+        
         @keyframes boltPulse {
             0%, 100% { transform: scale(1) rotate(0deg); color: #fde047; }
             50% { transform: scale(1.35) rotate(20deg); color: #facc15; }
@@ -49,7 +49,7 @@
             display: inline-block;
             text-shadow: 0 0 15px #facc15;
         }
-        /* Toast */
+        
         #notification-toast {
             position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%);
             background: rgba(0,0,0,0.78); backdrop-filter: blur(12px);
@@ -64,7 +64,13 @@
             font-weight: 700;
             border: 2px solid #fcd34d;
         }
-        @media (max-width: 640px) { #notification-toast { bottom: 15px !important; } }
+        #notification-toast.mystery {
+            background: linear-gradient(90deg, #10b981, #34d399) !important;
+            color: #111827 !important;
+            font-weight: 700;
+            border: 2px solid #6ee7b7;
+        }
+
         .tornado-image {
             width: 100%; height: 160px; object-fit: cover;
             border-radius: 16px; margin-bottom: 12px; background: #1f2937;
@@ -75,6 +81,12 @@
         .discount-price { font-size: 1.35rem; text-decoration: line-through; color: #9ca3af; }
         .sale-price { font-size: 1.85rem; font-weight: 700; color: #ef4444; }
         .euro { font-size: 1.1rem; margin-left: 2px; }
+        
+        .mystery-item {
+            background: linear-gradient(90deg, #10b981, #34d399) !important;
+            border: 2px solid #a7f3d0 !important;
+            color: black;
+        }
     </style>
 </head>
 <body class="wave-bg text-white min-h-screen">
@@ -118,7 +130,6 @@
                 <span>Ab 100€ Bestellwert gibt's eine <span class="text-white font-bold underline">Mystery Vape gratis</span> dazu! 🎁</span>
             </div>
             <!-- ====================================== -->
-
         </div>
         <!-- NAME BANNER -->
         <div onclick="showNameModal()" id="user-banner" class="mb-10 bg-gradient-to-r from-zinc-900 to-purple-950 border border-cyan-300/30 hover:border-cyan-300 rounded-3xl p-5 flex items-center justify-between cursor-pointer transition-all group">
@@ -185,10 +196,10 @@
     <div id="notification-toast"></div>
     <script>
         const FORMSPREE_ENDPOINT = "https://formspree.io/f/mqedvnkb";
+        const MYSTERY_ID = 999;
         const fakeNames = ["Tim","Anna","Max","Sophie","Luca","Mia","Felix","Emma","Noah","Lena","Leon","Julia","Paul","Laura","Ben","Sarah","David","Hannah","Jonas","Lea"];
        
         let allProducts = [
-            // ✅ Normale Sorten
             { id: 1, name: "Apple Peach", category: "Normale Sorten", isNew: false, available: true, price: 8 },
             { id: 2, name: "Blueberry", category: "Normale Sorten", isNew: false, available: true, price: 8 },
             { id: 3, name: "Blueberry Sour Raspberry", category: "Normale Sorten", isNew: false, available: true, price: 8 },
@@ -204,7 +215,6 @@
             { id: 13, name: "Blue Razz Lemonade", category: "Normale Sorten", isNew: false, available: true, price: 8 },
             { id: 14, name: "Spearmint", category: "Normale Sorten", isNew: false, available: true, price: 8 },
             { id: 15, name: "Mango", category: "Normale Sorten", isNew: false, available: true, price: 8 },
-            // 🆕 Neue Sorten
             { id: 16, name: "Blackberry Lemon", category: "Neue Sorten", isNew: true, available: true, price: 8 },
             { id: 17, name: "Pineapple Mango Orange", category: "Neue Sorten", isNew: true, available: true, price: 8 },
             { id: 18, name: "Sour Apple", category: "Neue Sorten", isNew: true, available: true, price: 8 },
@@ -219,10 +229,8 @@
             { id: 27, name: "Blackberry Cherry", category: "Neue Sorten", isNew: true, available: true, price: 8 },
             { id: 28, name: "Pineapple Coconut", category: "Neue Sorten", isNew: true, available: true, price: 8 },
             { id: 29, name: "Lemon Mint", category: "Neue Sorten", isNew: true, available: true, price: 8 },
-            // ❌ Nicht verfügbar
             { id: 30, name: "Kiwi Passion Fruit Guava", category: "Normale Sorten", isNew: false, available: false, price: 8 },
             { id: 31, name: "Blackcurrant Aniseed", category: "Normale Sorten", isNew: false, available: false, price: 8 },
-            // Tornado 30000
             { id: 32, name: "WaveVapes 30000 Cherry Cola", category: "WaveVapes Tornado 30000", isNew: true, available: true, price: 19.99, image: "tornado-1.jpg" },
             { id: 33, name: "WaveVapes 30000 Cherry Ice", category: "WaveVapes Tornado 30000", isNew: true, available: true, price: 19.99, image: "tornado-2.jpg" },
             { id: 34, name: "WaveVapes 30000 Peach Berry", category: "WaveVapes Tornado 30000", isNew: true, available: true, price: 19.99, image: "tornado-3.jpg" }
@@ -235,6 +243,43 @@
         const HOUR_MS = 3600000;
         let currentNotificationIndex = 0;
         let notificationCyclePaused = false;
+
+        // ====================== MYSTERY VAPE AUTOMATIK ======================
+        function getSubtotal() {
+            return cart.reduce((sum, item) => {
+                if (item.id === MYSTERY_ID) return sum;
+                return sum + item.qty * (item.price || 8);
+            }, 0);
+        }
+
+        function manageMysteryVape() {
+            const subtotal = getSubtotal();
+            const hasMystery = cart.some(item => item.id === MYSTERY_ID);
+
+            if (subtotal >= 100 && !hasMystery) {
+                cart.push({ id: MYSTERY_ID, name: "Mystery Vape", qty: 1, price: 0 });
+                showMysteryToast();
+            } else if (subtotal < 100 && hasMystery) {
+                cart = cart.filter(item => item.id !== MYSTERY_ID);
+            }
+        }
+
+        function showMysteryToast() {
+            const toast = document.getElementById('notification-toast');
+            notificationCyclePaused = true;
+            toast.classList.add('mystery');
+            toast.innerHTML = `🎉 <strong>Mystery Vape gratis hinzugefügt!</strong><br><span class="text-xs">Ab 100€ Bestellwert aktiviert</span>`;
+            toast.classList.add('visible');
+            setTimeout(() => {
+                toast.classList.remove('visible');
+                setTimeout(() => {
+                    toast.classList.remove('mystery');
+                    notificationCyclePaused = false;
+                    showNextNotification();
+                }, 600);
+            }, 4800);
+        }
+
         // ====================== NUR NOCH DAS GEWÜNSCHTE FORMAT ======================
         function generateNotificationList() {
             notificationList = [];
@@ -276,8 +321,8 @@
             setInterval(showNextNotification, NOTIFICATION_DURATION);
             setInterval(checkAndGenerateNotifications, 60000);
         }
+
         function initialize() {
-            // 🔥 SOFORT ALTE BENACHRICHTIGUNGEN LÖSCHEN (damit du nicht mehr "Laura hat gerade..." siehst)
             localStorage.removeItem('wavevapes_notifications');
             localStorage.removeItem('wavevapes_last_generate');
            
@@ -287,7 +332,8 @@
             updateCartDisplay();
             startNotificationCycle();
         }
-        // Rest der Funktionen (unverändert)
+
+        // Rest der Funktionen (angepasst für Mystery Vape)
         function showNameModal() {
             document.getElementById("name-modal").classList.remove("hidden");
             document.getElementById("name-modal").classList.add("flex");
@@ -338,9 +384,7 @@
             }, 0);
         }
         function calculateCartTotal() {
-            let subtotal = cart.reduce((sum, item) => {
-                return sum + item.qty * (item.price || 8);
-            }, 0);
+            let subtotal = getSubtotal();
             const tornadoQty = getTornadoQuantity();
             const freeBottles = Math.floor(tornadoQty / 4);
             const savings = freeBottles * 19.99;
@@ -419,8 +463,11 @@
             if (!existing) { existing = { id, name: product.name, qty: 0, price: product.price }; cart.push(existing); }
             existing.qty = Math.max(0, existing.qty + delta);
             if (existing.qty === 0) cart = cart.filter(item => item.id !== id);
+
+            manageMysteryVape();
             const newTornadoQty = getTornadoQuantity();
             if (newTornadoQty >= 4 && newTornadoQty % 4 === 0) showDealToast();
+
             updateCartDisplay();
             renderProducts();
         }
@@ -432,6 +479,7 @@
             countEl.textContent = totalItems;
             const totalPrice = calculateCartTotal();
             totalEl.textContent = `${totalPrice.toFixed(2).replace('.', ',')} €`;
+
             if (cart.length === 0) {
                 listEl.innerHTML = `<p class="text-center py-16 text-gray-400">Dein Warenkorb ist leer</p>`;
                 return;
@@ -450,22 +498,40 @@
             }
             cart.forEach(item => {
                 const p = item.price || 8;
-                itemsHTML += `
-                <div class="flex justify-between items-center bg-zinc-900 border border-white/10 rounded-3xl p-5">
-                    <div>
-                        <div class="font-medium">${item.name}</div>
-                        <div class="text-xs text-gray-400">${item.qty} × ${p.toFixed(2).replace('.', ',')} €</div>
-                    </div>
-                    <div class="flex items-center gap-6">
-                        <div class="font-bold text-xl">${(item.qty * p).toFixed(2).replace('.', ',')} €</div>
-                        <button onclick="removeCartItem(${item.id}); event.stopImmediatePropagation()" class="text-red-400"><i class="fa-solid fa-trash"></i></button>
-                    </div>
-                </div>`;
+                if (item.id === MYSTERY_ID) {
+                    itemsHTML += `
+                    <div class="mystery-item flex justify-between items-center rounded-3xl p-5">
+                        <div class="flex items-center gap-3">
+                            <i class="fa-solid fa-gift text-3xl"></i>
+                            <div>
+                                <div class="font-medium">${item.name}</div>
+                                <div class="text-xs bg-white/30 px-3 py-0.5 rounded-full inline-block">GRATIS AB 100€</div>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="font-bold text-xl text-emerald-900">0,00 €</div>
+                        </div>
+                    </div>`;
+                } else {
+                    itemsHTML += `
+                    <div class="flex justify-between items-center bg-zinc-900 border border-white/10 rounded-3xl p-5">
+                        <div>
+                            <div class="font-medium">${item.name}</div>
+                            <div class="text-xs text-gray-400">${item.qty} × ${p.toFixed(2).replace('.', ',')} €</div>
+                        </div>
+                        <div class="flex items-center gap-6">
+                            <div class="font-bold text-xl">${(item.qty * p).toFixed(2).replace('.', ',')} €</div>
+                            <button onclick="removeCartItem(${item.id}); event.stopImmediatePropagation()" class="text-red-400"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>`;
+                }
             });
             listEl.innerHTML = itemsHTML;
         }
         function removeCartItem(id) {
+            if (id === MYSTERY_ID) return; // Mystery Vape kann nicht manuell entfernt werden
             cart = cart.filter(item => item.id !== id);
+            manageMysteryVape();
             updateCartDisplay();
             renderProducts();
         }
@@ -492,7 +558,7 @@
             const totalPrice = calculateCartTotal();
             let orderText = `Name: ${currentUserName}\nBestellnummer: ${orderNumber}\nGesamt: ${totalPrice.toFixed(2).replace('.', ',')} €\n\nBestellte Produkte:\n`;
             cart.forEach(item => {
-                const p = item.price || 8;
+                const p = item.price || 0;
                 orderText += `• ${item.name} × ${item.qty} = ${(item.qty * p).toFixed(2).replace('.', ',')} €\n`;
             });
             const formData = new FormData();

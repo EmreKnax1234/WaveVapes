@@ -9,13 +9,13 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Inter:wght@400;500;600&display=swap');
-        
+       
         html, body {
-            touch-action: manipulation; /* verhindert Double-Tap-Zoom + 300ms Delay */
+            touch-action: manipulation;
         }
-        
-        body { 
-            font-family: 'Inter', system_ui, sans-serif; 
+       
+        body {
+            font-family: 'Inter', system_ui, sans-serif;
         }
         .neon-text { text-shadow: 0 0 15px #67e8f9, 0 0 30px #67e8f9; }
         .product-card {
@@ -39,7 +39,7 @@
             -webkit-tap-highlight-color: transparent;
         }
         .qty-btn:hover { background-color: #22d3ee; color: black; }
-       
+      
         @keyframes boltPulse {
             0%, 100% { transform: scale(1) rotate(0deg); color: #fde047; }
             50% { transform: scale(1.35) rotate(20deg); color: #facc15; }
@@ -49,19 +49,39 @@
             display: inline-block;
             text-shadow: 0 0 15px #facc15;
         }
-       
+      
         #notification-toast {
-            position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%);
-            background: rgba(0,0,0,0.78); backdrop-filter: blur(12px);
-            color: #67e8f9; padding: 10px 22px; border-radius: 9999px;
-            font-size: 13px; opacity: 0; transition: all 0.6s ease;
-            z-index: 1000; max-width: 92%; text-align: center;
+            position: fixed; 
+            bottom: 50px; 
+            left: 50%; 
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.78); 
+            backdrop-filter: blur(12px);
+            color: #67e8f9; 
+            padding: 10px 22px; 
+            border-radius: 9999px;
+            font-size: 13px; 
+            opacity: 0; 
+            transition: all 0.6s ease;
+            z-index: 1000; 
+            max-width: 92%; 
+            text-align: center;
         }
+        
+        /* NEU: Auf Handy nur 15px vom unteren Rand (wie gewünscht) */
         @media (max-width: 1023px) {
-            #notification-toast { bottom: 92px !important; }
+            #notification-toast { 
+                bottom: 15px !important; 
+            }
         }
-        #notification-toast.visible { opacity: 1; transform: translateX(-50%) translateY(-8px); }
-        #notification-toast.deal, #notification-toast.mystery, #notification-toast.discount {
+        
+        #notification-toast.visible { 
+            opacity: 1; 
+            transform: translateX(-50%) translateY(-8px); 
+        }
+        #notification-toast.deal, 
+        #notification-toast.mystery, 
+        #notification-toast.discount {
             font-weight: 700;
         }
         .tornado-image {
@@ -220,8 +240,8 @@
         const FORMSPREE_ENDPOINT = "https://formspree.io/f/mqedvnkb";
         const MYSTERY_ID = 999;
         const fakeNames = ["Tim","Anna","Max","Sophie","Luca","Mia","Felix","Emma","Noah","Lena","Leon","Julia","Paul","Laura","Ben","Sarah","David","Hannah","Jonas","Lea"];
-        
-        let allProducts = [ /* unverändert */ 
+       
+        let allProducts = [
             { id: 1, name: "Apple Peach", category: "Normale Sorten", isNew: false, available: true, price: 8 },
             { id: 2, name: "Blueberry", category: "Normale Sorten", isNew: false, available: true, price: 8 },
             { id: 3, name: "Blueberry Sour Raspberry", category: "Normale Sorten", isNew: false, available: true, price: 8 },
@@ -257,7 +277,7 @@
             { id: 33, name: "WaveVapes 30000 Cherry Ice", category: "WaveVapes Tornado 30000", isNew: true, available: true, price: 19.99, image: "tornado-2.jpg" },
             { id: 34, name: "WaveVapes 30000 Peach Berry", category: "WaveVapes Tornado 30000", isNew: true, available: true, price: 19.99, image: "tornado-3.jpg" }
         ];
-        
+       
         let cart = [];
         let currentUserName = localStorage.getItem("wavevapes_username") || "";
         let currentCategoryFilter = "Alle";
@@ -266,7 +286,7 @@
         const HOUR_MS = 3600000;
         let currentNotificationIndex = 0;
         let notificationCyclePaused = false;
-        
+       
         let appliedDiscountCode = null;
         let discountPercent = 0;
 

@@ -8,46 +8,47 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Inter:wght@400;500;600&display=swap');
-       
+     
         body { font-family: 'Inter', system_ui, sans-serif; }
-       
+     
         .neon-text { text-shadow: 0 0 15px #67e8f9, 0 0 30px #67e8f9; }
-       
+     
         .product-card {
             transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
             touch-action: manipulation;
             -webkit-tap-highlight-color: transparent;
         }
-       
+     
         .product-card:hover {
             transform: translateY(-12px) scale(1.04);
             box-shadow: 0 25px 50px -12px rgb(103 232 249);
         }
-       
+     
         .tab-active {
             border-bottom: 4px solid #67e8f9;
             color: #67e8f9;
             font-weight: 600;
         }
-       
+     
         .wave-bg { background: linear-gradient(135deg, #0a0a0a, #1e1233, #0a0a0a); }
-       
+     
         .qty-btn {
             transition: all 0.2s ease;
             touch-action: manipulation;
             -webkit-tap-highlight-color: transparent;
         }
-       
+     
         .qty-btn:hover { background-color: #22d3ee; color: black; }
-
-        /* Mobile */
-        @media (max-width: 640px) {
-            .hero-title { font-size: 2.25rem !important; line-height: 1.1; }
-            .hero-subtitle { font-size: 1.125rem !important; }
-            .nav-logo { height: 32px !important; }
-            .name-banner { padding: 16px !important; }
+        /* BLITZ-ANIMATION (die ganze Zeit daneben) */
+        @keyframes boltPulse {
+            0%, 100% { transform: scale(1) rotate(0deg); color: #fde047; }
+            50% { transform: scale(1.35) rotate(20deg); color: #facc15; }
         }
-
+        .animate-bolt {
+            animation: boltPulse 650ms infinite alternate ease-in-out;
+            display: inline-block;
+            text-shadow: 0 0 15px #facc15;
+        }
         /* Toast */
         #notification-toast {
             position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%);
@@ -57,13 +58,17 @@
             z-index: 1000; max-width: 92%; text-align: center;
         }
         #notification-toast.visible { opacity: 1; transform: translateX(-50%) translateY(-8px); }
+        #notification-toast.deal {
+            background: linear-gradient(90deg, #eab308, #f59e0b) !important;
+            color: #111827 !important;
+            font-weight: 700;
+            border: 2px solid #fcd34d;
+        }
         @media (max-width: 640px) { #notification-toast { bottom: 15px !important; } }
-
         .tornado-image {
             width: 100%; height: 160px; object-fit: cover;
             border-radius: 16px; margin-bottom: 12px; background: #1f2937;
         }
-
         .price-row {
             display: flex; justify-content: center; align-items: baseline; gap: 16px; margin-bottom: 12px;
         }
@@ -73,7 +78,6 @@
     </style>
 </head>
 <body class="wave-bg text-white min-h-screen">
-
     <!-- NAVBAR -->
     <nav class="bg-black/90 backdrop-blur-xl border-b border-cyan-400/30 sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex justify-between items-center">
@@ -97,7 +101,6 @@
             </div>
         </div>
     </nav>
-
     <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-8 pb-20">
         <!-- HERO -->
         <div class="text-center mb-12">
@@ -109,7 +112,6 @@
             <p class="hero-subtitle text-xl sm:text-2xl text-cyan-200 max-w-md mx-auto">8 € pro Flasche • 10 ml • Einfach auswählen, abschicken, bei mir abholen</p>
             <p class="text-base sm:text-lg text-gray-300 mt-4">Alle Liquids von ELFLIQ</p>
         </div>
-
         <!-- NAME BANNER -->
         <div onclick="showNameModal()" id="user-banner" class="mb-10 bg-gradient-to-r from-zinc-900 to-purple-950 border border-cyan-300/30 hover:border-cyan-300 rounded-3xl p-5 flex items-center justify-between cursor-pointer transition-all group">
             <div class="flex items-center gap-4">
@@ -121,24 +123,19 @@
             </div>
             <div class="text-cyan-400 group-hover:text-white transition text-base">ändern →</div>
         </div>
-
-        <!-- TABS – Tornado an 1. Stelle nach "Alle" + neue Gruppierung -->
+        <!-- TABS -->
         <div id="category-tabs" class="category-tabs flex overflow-x-auto gap-x-6 pb-4 border-b border-white/10 mb-8 text-base whitespace-nowrap"></div>
-
         <div class="relative mb-8">
             <i class="fa-solid fa-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-cyan-400"></i>
             <input id="search-input" type="text" placeholder="Flavor suchen..." onkeyup="filterProducts()" class="w-full bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl pl-12 pr-6 py-4 text-base outline-none transition">
         </div>
-
         <!-- PRODUCTS GRID -->
         <div id="products-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6"></div>
     </div>
-
     <!-- FLOATING CART -->
     <button onclick="toggleCart()" class="fixed bottom-6 right-6 lg:hidden bg-gradient-to-r from-cyan-400 to-purple-500 text-black w-14 h-14 rounded-3xl shadow-2xl flex items-center justify-center z-50">
         <i class="fa-solid fa-cart-shopping text-3xl"></i>
     </button>
-
     <!-- CART SIDEBAR -->
     <div id="cart-sidebar" class="fixed top-0 right-0 h-full w-full md:w-96 bg-zinc-950 border-l border-cyan-400/30 shadow-2xl translate-x-full transition-all duration-300 z-[999] overflow-y-auto">
         <div class="p-6">
@@ -158,7 +155,6 @@
             <button onclick="clearCart()" class="mt-4 text-red-400 text-sm w-full py-3">Warenkorb leeren</button>
         </div>
     </div>
-
     <!-- SUCCESS MODAL -->
     <div id="success-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-[9999]">
         <div class="bg-zinc-900 max-w-lg w-full mx-4 rounded-3xl p-8 text-center">
@@ -170,7 +166,6 @@
             <p class="text-[10px] text-gray-500 mt-8">Ich erhalte deine Bestellung per E-Mail und bereite sie vor.</p>
         </div>
     </div>
-
     <!-- NAME MODAL -->
     <div id="name-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]">
         <div class="bg-zinc-900 rounded-3xl p-8 max-w-sm w-full mx-4">
@@ -179,13 +174,10 @@
             <button onclick="saveUserName()" class="w-full bg-cyan-400 hover:bg-cyan-300 text-black py-5 rounded-3xl font-bold text-xl">Speichern</button>
         </div>
     </div>
-
     <div id="notification-toast"></div>
-
     <script>
         const FORMSPREE_ENDPOINT = "https://formspree.io/f/mqedvnkb";
         const fakeNames = ["Tim","Anna","Max","Sophie","Luca","Mia","Felix","Emma","Noah","Lena","Leon","Julia","Paul","Laura","Ben","Sarah","David","Hannah","Jonas","Lea"];
-
         // ====================== AKTUALISIERTE LIQUID LISTE ======================
         let allProducts = [
             // ✅ Normale Sorten
@@ -204,7 +196,6 @@
             { id: 13, name: "Blue Razz Lemonade", category: "Normale Sorten", isNew: false, available: true, price: 8 },
             { id: 14, name: "Spearmint", category: "Normale Sorten", isNew: false, available: true, price: 8 },
             { id: 15, name: "Mango", category: "Normale Sorten", isNew: false, available: true, price: 8 },
-
             // 🆕 Neue Sorten
             { id: 16, name: "Blackberry Lemon", category: "Neue Sorten", isNew: true, available: true, price: 8 },
             { id: 17, name: "Pineapple Mango Orange", category: "Neue Sorten", isNew: true, available: true, price: 8 },
@@ -220,25 +211,22 @@
             { id: 27, name: "Blackberry Cherry", category: "Neue Sorten", isNew: true, available: true, price: 8 },
             { id: 28, name: "Pineapple Coconut", category: "Neue Sorten", isNew: true, available: true, price: 8 },
             { id: 29, name: "Lemon Mint", category: "Neue Sorten", isNew: true, available: true, price: 8 },
-
             // ❌ Nicht verfügbar
             { id: 30, name: "Kiwi Passion Fruit Guava", category: "Normale Sorten", isNew: false, available: false, price: 8 },
             { id: 31, name: "Blackcurrant Aniseed", category: "Normale Sorten", isNew: false, available: false, price: 8 },
-
             // Tornado 30000
             { id: 32, name: "WaveVapes 30000 Cherry Cola", category: "WaveVapes Tornado 30000", isNew: true, available: true, price: 19.99, image: "tornado-1.jpg" },
             { id: 33, name: "WaveVapes 30000 Cherry Ice", category: "WaveVapes Tornado 30000", isNew: true, available: true, price: 19.99, image: "tornado-2.jpg" },
             { id: 34, name: "WaveVapes 30000 Peach Berry", category: "WaveVapes Tornado 30000", isNew: true, available: true, price: 19.99, image: "tornado-3.jpg" }
         ];
-
         let cart = [];
         let currentUserName = localStorage.getItem("wavevapes_username") || "";
         let currentCategoryFilter = "Alle";
-
         let notificationList = [];
         const NOTIFICATION_DURATION = 6500;
         const HOUR_MS = 3600000;
         let currentNotificationIndex = 0;
+        let notificationCyclePaused = false;   // ← NEU: Pause für normale Benachrichtigungen
 
         function generateNotificationList() {
             notificationList = [];
@@ -254,7 +242,6 @@
             localStorage.setItem('wavevapes_notifications', JSON.stringify(notificationList));
             localStorage.setItem('wavevapes_last_generate', Date.now());
         }
-
         function checkAndGenerateNotifications() {
             const lastGenerate = localStorage.getItem('wavevapes_last_generate');
             if (!lastGenerate || (Date.now() - lastGenerate > HOUR_MS)) generateNotificationList();
@@ -264,22 +251,21 @@
                 else generateNotificationList();
             }
         }
-
         function showNextNotification() {
+            if (notificationCyclePaused) return;   // ← NEU: während Deal-Toast pausieren
+
             const toast = document.getElementById('notification-toast');
             toast.textContent = notificationList[currentNotificationIndex];
             toast.classList.add('visible');
             setTimeout(() => toast.classList.remove('visible'), NOTIFICATION_DURATION - 700);
             currentNotificationIndex = (currentNotificationIndex + 1) % notificationList.length;
         }
-
         function startNotificationCycle() {
             checkAndGenerateNotifications();
             showNextNotification();
             setInterval(showNextNotification, NOTIFICATION_DURATION);
             setInterval(checkAndGenerateNotifications, 60000);
         }
-
         function initialize() {
             updateUserDisplay();
             renderCategoryTabs();
@@ -287,13 +273,11 @@
             updateCartDisplay();
             startNotificationCycle();
         }
-
         function showNameModal() {
             document.getElementById("name-modal").classList.remove("hidden");
             document.getElementById("name-modal").classList.add("flex");
             setTimeout(() => document.getElementById("name-input-field").focus(), 300);
         }
-
         function saveUserName() {
             const input = document.getElementById("name-input-field").value.trim();
             if (input.length < 3) return alert("Bitte gib deinen richtigen Namen ein (mind. 3 Zeichen)");
@@ -303,7 +287,6 @@
             document.getElementById("name-modal").classList.remove("flex");
             updateUserDisplay();
         }
-
         function updateUserDisplay() {
             const displayEl = document.getElementById("user-name-display");
             const navEl = document.getElementById("current-user-name");
@@ -315,40 +298,71 @@
                 navEl.textContent = "Name";
             }
         }
-
-        // ====================== TABS (Tornado an 2. Stelle) ======================
+        // ====================== TABS mit 4-für-3 + Blitz ======================
         function renderCategoryTabs() {
             const tabsHTML = `
-                <button onclick="setCategoryFilter('Alle')" class="tab-active px-5 py-2 transition ${currentCategoryFilter === 'Alle' ? 'tab-active' : ''}">Alle</button>
-                <button onclick="setCategoryFilter('WaveVapes Tornado 30000')" class="px-5 py-2 transition ${currentCategoryFilter === 'WaveVapes Tornado 30000' ? 'tab-active' : ''}">Tornado 30000</button>
+                <button onclick="setCategoryFilter('Alle')" class="px-5 py-2 transition ${currentCategoryFilter === 'Alle' ? 'tab-active' : ''}">Alle</button>
+                <button onclick="setCategoryFilter('WaveVapes Tornado 30000')" class="px-5 py-2 transition flex items-center gap-x-3 ${currentCategoryFilter === 'WaveVapes Tornado 30000' ? 'tab-active' : ''}">
+                    Tornado 30000
+                    <span class="bg-amber-400 text-black text-xs font-black px-4 py-1 rounded-2xl tracking-wider">4 FÜR 3</span>
+                    <i class="fa-solid fa-bolt animate-bolt text-2xl"></i>
+                </button>
                 <button onclick="setCategoryFilter('Normale Sorten')" class="px-5 py-2 transition ${currentCategoryFilter === 'Normale Sorten' ? 'tab-active' : ''}">Normale Sorten</button>
                 <button onclick="setCategoryFilter('Neue Sorten')" class="px-5 py-2 transition ${currentCategoryFilter === 'Neue Sorten' ? 'tab-active' : ''}">Neue Sorten</button>
             `;
             document.getElementById("category-tabs").innerHTML = tabsHTML;
         }
-
         function setCategoryFilter(cat) {
             currentCategoryFilter = cat;
             renderCategoryTabs();
             renderProducts();
         }
+        // ====================== TORNADO-LOGIK (4 für 3) ======================
+        function getTornadoQuantity() {
+            return cart.reduce((sum, item) => {
+                const prod = allProducts.find(p => p.id === item.id);
+                return (prod && prod.category === "WaveVapes Tornado 30000") ? sum + item.qty : sum;
+            }, 0);
+        }
+        function calculateCartTotal() {
+            let subtotal = cart.reduce((sum, item) => {
+                return sum + item.qty * (item.price || 8);
+            }, 0);
+            const tornadoQty = getTornadoQuantity();
+            const freeBottles = Math.floor(tornadoQty / 4);
+            const savings = freeBottles * 19.99;
+            return Math.max(0, subtotal - savings);
+        }
+        function showDealToast() {
+            const toast = document.getElementById('notification-toast');
+            
+            notificationCyclePaused = true;                    // ← Pause normale Benachrichtigungen
+            toast.classList.add('deal');
+            toast.innerHTML = `⚡ <strong>4 FÜR 3 AKTION EINGELÖST!</strong><br><span class="text-xs">Du bekommst jede 4. Tornado-Vape gratis!</span>`;
+            toast.classList.add('visible');
 
+            setTimeout(() => {
+                toast.classList.remove('visible');
+                setTimeout(() => {
+                    toast.classList.remove('deal');
+                    notificationCyclePaused = false;           // ← Pause aufheben
+                    showNextNotification();                    // sofort nächste normale Nachricht zeigen
+                }, 800);
+            }, 5000);   // genau 5 Sekunden
+        }
         function renderProducts() {
             const container = document.getElementById("products-grid");
             let html = "";
             const searchTerm = document.getElementById("search-input").value.toLowerCase();
-
             const filtered = allProducts.filter(product => {
                 const matchesCategory = currentCategoryFilter === "Alle" || product.category === currentCategoryFilter;
                 const matchesSearch = !searchTerm || product.name.toLowerCase().includes(searchTerm);
                 return matchesCategory && matchesSearch;
             });
-
             filtered.forEach(product => {
                 const cartItem = cart.find(item => item.id === product.id);
                 const qty = cartItem ? cartItem.qty : 0;
                 const imageHTML = product.image ? `<img src="${product.image}" class="tornado-image" alt="${product.name}">` : '';
-
                 let priceHTML = '';
                 if (product.category === "WaveVapes Tornado 30000") {
                     priceHTML = `
@@ -363,7 +377,6 @@
                             <div class="flex items-baseline gap-0.5"><span class="sale-price">8,00</span><span class="euro">€</span></div>
                         </div>`;
                 }
-
                 html += `
                 <div class="product-card bg-zinc-900 border ${product.available ? 'border-white/10' : 'border-red-500/40'} rounded-3xl overflow-hidden">
                     <div class="h-1.5 bg-gradient-to-r from-cyan-400 to-purple-500"></div>
@@ -386,38 +399,47 @@
                     </div>
                 </div>`;
             });
-
             container.innerHTML = html || `<p class="col-span-full text-center py-16 text-gray-400">Keine Produkte gefunden.</p>`;
         }
-
         function changeQuantity(id, delta) {
             const product = allProducts.find(p => p.id === id);
             if (!product || !product.available) return;
+            const oldTornadoQty = getTornadoQuantity();
             let existing = cart.find(item => item.id === id);
             if (!existing) { existing = { id, name: product.name, qty: 0, price: product.price }; cart.push(existing); }
             existing.qty = Math.max(0, existing.qty + delta);
             if (existing.qty === 0) cart = cart.filter(item => item.id !== id);
+            const newTornadoQty = getTornadoQuantity();
+            if (newTornadoQty >= 4 && newTornadoQty % 4 === 0) {
+                showDealToast();
+            }
             updateCartDisplay();
             renderProducts();
         }
-
         function updateCartDisplay() {
             const countEl = document.getElementById("cart-count-badge");
             const totalEl = document.getElementById("cart-total-price");
             const listEl = document.getElementById("cart-items-list");
-
             const totalItems = cart.reduce((sum, item) => sum + item.qty, 0);
             countEl.textContent = totalItems;
-
-            const totalPrice = cart.reduce((sum, item) => sum + item.qty * (item.price || 8), 0);
+            const totalPrice = calculateCartTotal();
             totalEl.textContent = `${totalPrice.toFixed(2).replace('.', ',')} €`;
-
             if (cart.length === 0) {
                 listEl.innerHTML = `<p class="text-center py-16 text-gray-400">Dein Warenkorb ist leer</p>`;
                 return;
             }
-
             let itemsHTML = "";
+            const tornadoQty = getTornadoQuantity();
+            const free = Math.floor(tornadoQty / 4);
+            if (free > 0) {
+                itemsHTML += `
+                <div class="bg-gradient-to-r from-amber-400 to-yellow-400 text-black p-6 rounded-3xl mb-6 text-center shadow-inner">
+                    <div class="flex items-center justify-center gap-3 text-2xl font-black">
+                        ⚡ 4 FÜR 3 AKTION AKTIV!
+                    </div>
+                    <p class="font-semibold text-base mt-2">Du bekommst <span class="underline">${free} Vape${free > 1 ? 'n' : ''} gratis</span></p>
+                </div>`;
+            }
             cart.forEach(item => {
                 const p = item.price || 8;
                 itemsHTML += `
@@ -434,13 +456,11 @@
             });
             listEl.innerHTML = itemsHTML;
         }
-
         function removeCartItem(id) {
             cart = cart.filter(item => item.id !== id);
             updateCartDisplay();
             renderProducts();
         }
-
         function clearCart() {
             if (confirm("Wirklich ganzen Warenkorb leeren?")) {
                 cart = [];
@@ -449,36 +469,30 @@
                 toggleCart();
             }
         }
-
         function toggleCart() {
             document.getElementById("cart-sidebar").classList.toggle("translate-x-full");
         }
-
         function generateOrderNumber() {
             const now = new Date();
             const dateStr = now.getFullYear().toString().slice(2) + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0');
             return `WV-${dateStr}-${Math.floor(1000 + Math.random() * 9000)}`;
         }
-
         async function placeOrder() {
             if (!currentUserName) { alert("Bitte zuerst deinen Namen eingeben!"); showNameModal(); return; }
             if (cart.length === 0) return alert("Dein Warenkorb ist leer.");
-
             const orderNumber = generateOrderNumber();
-            const totalPrice = cart.reduce((sum, item) => sum + item.qty * (item.price || 8), 0);
+            const totalPrice = calculateCartTotal();
             let orderText = `Name: ${currentUserName}\nBestellnummer: ${orderNumber}\nGesamt: ${totalPrice.toFixed(2).replace('.', ',')} €\n\nBestellte Produkte:\n`;
             cart.forEach(item => {
                 const p = item.price || 8;
                 orderText += `• ${item.name} × ${item.qty} = ${(item.qty * p).toFixed(2).replace('.', ',')} €\n`;
             });
-
             const formData = new FormData();
             formData.append("name", currentUserName);
             formData.append("bestellnummer", orderNumber);
             formData.append("produkte", orderText);
             formData.append("gesamt", `${totalPrice.toFixed(2).replace('.', ',')} €`);
             formData.append("_subject", `WaveVapes Bestellung ${orderNumber}`);
-
             try {
                 const response = await fetch(FORMSPREE_ENDPOINT, { method: "POST", body: formData, headers: { "Accept": "application/json" } });
                 if (response.ok) {
@@ -490,7 +504,6 @@
                 } else alert("Fehler beim Senden.");
             } catch (e) { alert("Verbindungsfehler."); }
         }
-
         function showSuccessModal(orderNumber, details, total) {
             document.getElementById("success-order-id").textContent = orderNumber;
             const detailsDiv = document.getElementById("success-details");
@@ -498,16 +511,13 @@
             document.getElementById("success-modal").classList.remove("hidden");
             document.getElementById("success-modal").classList.add("flex");
         }
-
         function closeSuccessModal() {
             document.getElementById("success-modal").classList.add("hidden");
             document.getElementById("success-modal").classList.remove("flex");
         }
-
         function filterProducts() {
             renderProducts();
         }
-
         window.onload = initialize;
     </script>
 </body>

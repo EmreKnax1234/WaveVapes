@@ -9,11 +9,11 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Inter:wght@400;500;600&display=swap');
-       
+     
         html, body {
             touch-action: manipulation;
         }
-       
+     
         body {
             font-family: 'Inter', system_ui, sans-serif;
         }
@@ -39,7 +39,7 @@
             -webkit-tap-highlight-color: transparent;
         }
         .qty-btn:hover { background-color: #22d3ee; color: black; }
-      
+    
         @keyframes boltPulse {
             0%, 100% { transform: scale(1) rotate(0deg); color: #fde047; }
             50% { transform: scale(1.35) rotate(20deg); color: #facc15; }
@@ -49,38 +49,38 @@
             display: inline-block;
             text-shadow: 0 0 15px #facc15;
         }
-      
+    
         #notification-toast {
-            position: fixed; 
-            bottom: 50px; 
-            left: 50%; 
+            position: fixed;
+            bottom: 50px;
+            left: 50%;
             transform: translateX(-50%);
-            background: rgba(0,0,0,0.78); 
+            background: rgba(0,0,0,0.78);
             backdrop-filter: blur(12px);
-            color: #67e8f9; 
-            padding: 10px 22px; 
+            color: #67e8f9;
+            padding: 10px 22px;
             border-radius: 9999px;
-            font-size: 13px; 
-            opacity: 0; 
+            font-size: 13px;
+            opacity: 0;
             transition: all 0.6s ease;
-            z-index: 1000; 
-            max-width: 92%; 
+            z-index: 1000;
+            max-width: 92%;
             text-align: center;
         }
-        
-        /* NEU: Auf Handy nur 15px vom unteren Rand (wie gewünscht) */
+      
+        /* Handy: 15px vom Rand */
         @media (max-width: 1023px) {
-            #notification-toast { 
-                bottom: 15px !important; 
+            #notification-toast {
+                bottom: 15px !important;
             }
         }
-        
-        #notification-toast.visible { 
-            opacity: 1; 
-            transform: translateX(-50%) translateY(-8px); 
+      
+        #notification-toast.visible {
+            opacity: 1;
+            transform: translateX(-50%) translateY(-8px);
         }
-        #notification-toast.deal, 
-        #notification-toast.mystery, 
+        #notification-toast.deal,
+        #notification-toast.mystery,
         #notification-toast.discount {
             font-weight: 700;
         }
@@ -98,6 +98,10 @@
             background: linear-gradient(90deg, #10b981, #34d399) !important;
             border: 2px solid #a7f3d0 !important;
             color: black;
+        }
+        .history-item {
+            background: #18181b;
+            border: 1px solid #27272a;
         }
     </style>
 </head>
@@ -142,16 +146,28 @@
             </div>
         </div>
 
-        <!-- NAME BANNER -->
-        <div onclick="showNameModal()" id="user-banner" class="mb-10 bg-gradient-to-r from-zinc-900 to-purple-950 border border-cyan-300/30 hover:border-cyan-300 rounded-3xl p-5 flex items-center justify-between cursor-pointer transition-all group">
-            <div class="flex items-center gap-4">
+        <!-- NAME BANNER (mit Referral-Button) -->
+        <div id="user-banner" class="mb-10 bg-gradient-to-r from-zinc-900 to-purple-950 border border-cyan-300/30 hover:border-cyan-300 rounded-3xl p-5 flex items-center justify-between cursor-pointer transition-all group">
+            <div onclick="showNameModal()" class="flex items-center gap-4 flex-1">
                 <i class="fa-solid fa-circle-user text-4xl text-cyan-300"></i>
                 <div>
                     <p class="text-cyan-300 text-xs">Bestellt als</p>
                     <p id="user-name-display" class="text-2xl font-semibold group-hover:text-cyan-200 transition">Bitte Namen eingeben</p>
                 </div>
             </div>
-            <div class="text-cyan-400 group-hover:text-white transition text-base">ändern →</div>
+            <div class="flex items-center gap-4">
+                <button onclick="event.stopImmediatePropagation(); showOrderHistory()"
+                        class="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-cyan-300 hover:text-white px-5 py-2 rounded-2xl text-sm font-medium transition-all">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                    <span class="hidden sm:inline">Meine Bestellungen</span>
+                </button>
+                <button onclick="event.stopImmediatePropagation(); shareReferral()"
+                        class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2 rounded-2xl text-sm font-medium transition-all">
+                    <i class="fa-solid fa-share-nodes"></i>
+                    <span class="hidden sm:inline">Freunde einladen</span>
+                </button>
+                <div onclick="showNameModal()" class="text-cyan-400 group-hover:text-white transition text-base">ändern →</div>
+            </div>
         </div>
 
         <!-- TABS -->
@@ -183,9 +199,9 @@
 
             <!-- RABATT CODE EINGABE -->
             <div class="mt-8 pt-6 border-t border-white/10">
-                <p class="text-xs uppercase tracking-widest text-gray-400 mb-3">Rabattcode</p>
+                <p class="text-xs uppercase tracking-widest text-gray-400 mb-3">Rabattcode oder Referral</p>
                 <div class="flex flex-col gap-3">
-                    <input id="discount-input" type="text" placeholder="Code eingeben"
+                    <input id="discount-input" type="text" placeholder="Code eingeben (z.B. REF-ABC123)"
                            class="w-full bg-zinc-900 border border-white/20 focus:border-cyan-400 rounded-2xl px-5 py-3.5 text-sm outline-none">
                     <button onclick="applyDiscountCode()"
                             class="w-full bg-white hover:bg-cyan-300 text-black font-semibold py-3.5 rounded-2xl transition">
@@ -229,18 +245,35 @@
         </div>
     </div>
 
+    <!-- HISTORY MODAL -->
+    <div id="history-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-[9999]">
+        <div class="bg-zinc-900 max-w-2xl w-full mx-4 rounded-3xl p-8 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-3xl font-bold">Meine Bestellungen</h3>
+                <button onclick="closeHistoryModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
+            </div>
+            <div id="history-list" class="space-y-4"></div>
+            <p id="no-history" class="hidden text-center text-gray-400 py-12">Noch keine Bestellungen gespeichert.</p>
+        </div>
+    </div>
+
     <div id="notification-toast"></div>
 
     <script>
         // ====================== RABATT CODE KONFIGURATION ======================
         const VALID_DISCOUNTS = {
             "WAVE5": 5,
+            "Freund10": 10
         };
         // =====================================================================
+
+        // === DEIN GOOGLE APPS SCRIPT SERVER (echt & einmalig) ===
+        const REFERRAL_SERVER = "https://script.google.com/macros/s/AKfycbwP-wixriaZC3dgBNG8B-EVa7hUv-4EC8A4qWOu1k3gYvXIQ_05N6Tai4kuD8JvDKbTLA/exec";
+
         const FORMSPREE_ENDPOINT = "https://formspree.io/f/mqedvnkb";
         const MYSTERY_ID = 999;
         const fakeNames = ["Tim","Anna","Max","Sophie","Luca","Mia","Felix","Emma","Noah","Lena","Leon","Julia","Paul","Laura","Ben","Sarah","David","Hannah","Jonas","Lea"];
-       
+
         let allProducts = [
             { id: 1, name: "Apple Peach", category: "Normale Sorten", isNew: false, available: true, price: 8 },
             { id: 2, name: "Blueberry", category: "Normale Sorten", isNew: false, available: true, price: 8 },
@@ -277,7 +310,7 @@
             { id: 33, name: "WaveVapes 30000 Cherry Ice", category: "WaveVapes Tornado 30000", isNew: true, available: true, price: 19.99, image: "tornado-2.jpg" },
             { id: 34, name: "WaveVapes 30000 Peach Berry", category: "WaveVapes Tornado 30000", isNew: true, available: true, price: 19.99, image: "tornado-3.jpg" }
         ];
-       
+
         let cart = [];
         let currentUserName = localStorage.getItem("wavevapes_username") || "";
         let currentCategoryFilter = "Alle";
@@ -286,42 +319,123 @@
         const HOUR_MS = 3600000;
         let currentNotificationIndex = 0;
         let notificationCyclePaused = false;
-       
+
         let appliedDiscountCode = null;
         let discountPercent = 0;
 
-        // ====================== RESTLICHER CODE (unverändert) ======================
-        function getSubtotal() {
-            return cart.reduce((sum, item) => {
-                if (item.id === MYSTERY_ID) return sum;
-                return sum + item.qty * (item.price || 8);
-            }, 0);
+        // ====================== BESTELLVERLAUF (localStorage) ======================
+        let orderHistory = [];
+        function loadOrderHistory() {
+            const saved = localStorage.getItem("wavevapes_orderhistory");
+            if (saved) orderHistory = JSON.parse(saved);
         }
-        function manageMysteryVape() {
-            const subtotal = getSubtotal();
-            const hasMystery = cart.some(item => item.id === MYSTERY_ID);
-            if (subtotal >= 100 && !hasMystery) {
-                cart.push({ id: MYSTERY_ID, name: "Mystery Vape", qty: 1, price: 0 });
-                showMysteryToast();
-            } else if (subtotal < 100 && hasMystery) {
-                cart = cart.filter(item => item.id !== MYSTERY_ID);
+        function saveToHistory(orderNumber, totalPrice, orderText) {
+            const order = {
+                id: orderNumber,
+                date: new Date().toLocaleString('de-DE'),
+                total: totalPrice.toFixed(2).replace('.', ',') + " €",
+                summary: orderText.split('\n').slice(3, 6).join(' • ')
+            };
+            orderHistory.unshift(order);
+            if (orderHistory.length > 15) orderHistory.pop();
+            localStorage.setItem("wavevapes_orderhistory", JSON.stringify(orderHistory));
+        }
+        function showOrderHistory() {
+            if (!currentUserName) {
+                alert("Bitte zuerst deinen Namen eingeben!");
+                showNameModal();
+                return;
+            }
+            renderHistoryModal();
+            const modal = document.getElementById("history-modal");
+            modal.classList.remove("hidden");
+            modal.classList.add("flex");
+        }
+        function closeHistoryModal() {
+            const modal = document.getElementById("history-modal");
+            modal.classList.add("hidden");
+            modal.classList.remove("flex");
+        }
+        function renderHistoryModal() {
+            const container = document.getElementById("history-list");
+            const noEl = document.getElementById("no-history");
+            container.innerHTML = "";
+            if (orderHistory.length === 0) {
+                noEl.classList.remove("hidden");
+                return;
+            }
+            noEl.classList.add("hidden");
+            orderHistory.forEach(order => {
+                const div = document.createElement("div");
+                div.className = "history-item rounded-3xl p-6";
+                div.innerHTML = `
+                    <div class="flex justify-between mb-3">
+                        <div class="font-mono text-cyan-300">${order.id}</div>
+                        <div class="text-sm text-gray-400">${order.date}</div>
+                    </div>
+                    <div class="font-bold text-xl mb-2">${order.total}</div>
+                    <div class="text-sm text-gray-300 line-clamp-2">${order.summary}</div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // ====================== REFERRAL-SYSTEM (echter Server – einmalig!) ======================
+        async function shareReferral() {
+            if (!currentUserName) {
+                alert("Bitte zuerst deinen Namen eingeben!");
+                showNameModal();
+                return;
+            }
+            try {
+                const res = await fetch(REFERRAL_SERVER + "?action=generate");
+                const data = await res.json();
+                const link = window.location.origin + window.location.pathname + "?ref=" + data.code;
+                await navigator.clipboard.writeText(link);
+                const toast = document.getElementById('notification-toast');
+                toast.innerHTML = `📤 <strong>Referral-Link kopiert!</strong><br><span class="font-mono text-xs">${link}</span>`;
+                toast.classList.add('visible');
+                setTimeout(() => toast.classList.remove('visible'), 5000);
+            } catch (e) {
+                alert("Fehler beim Generieren des Links.");
             }
         }
-        function showMysteryToast() {
+
+        async function checkReferralCode() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const refCode = urlParams.get("ref");
+            if (!refCode) return;
+            try {
+                const res = await fetch(REFERRAL_SERVER + `?action=check&code=${refCode}&name=${encodeURIComponent(currentUserName || "Gast")}`);
+                const data = await res.json();
+                if (data.valid) {
+                    discountPercent = 10;   // ← NUR 10% wie gewünscht
+                    appliedDiscountCode = refCode;
+                    const statusEl = document.getElementById("discount-status");
+                    statusEl.innerHTML = `<span class="text-emerald-400">🎉 Referral-Rabatt 10% aktiviert!</span>`;
+                    updateCartDisplay();
+                    showReferralToast();
+                }
+            } catch (e) {}
+        }
+
+        function showReferralToast() {
             const toast = document.getElementById('notification-toast');
             notificationCyclePaused = true;
-            toast.classList.add('mystery');
-            toast.innerHTML = `🎉 <strong>Mystery Vape gratis hinzugefügt!</strong><br><span class="text-xs">Ab 100€ Bestellwert aktiviert</span>`;
+            toast.classList.add('discount');
+            toast.innerHTML = `🎁 <strong>Referral-Rabatt 10%!</strong><br><span class="text-xs">Einmalig für dich</span>`;
             toast.classList.add('visible');
             setTimeout(() => {
                 toast.classList.remove('visible');
                 setTimeout(() => {
-                    toast.classList.remove('mystery');
+                    toast.classList.remove('discount');
                     notificationCyclePaused = false;
                     showNextNotification();
                 }, 600);
-            }, 4800);
+            }, 3200);
         }
+
+        // ====================== RABATT + REFERRAL ======================
         function applyDiscountCode() {
             const input = document.getElementById("discount-input").value.trim().toUpperCase();
             const statusEl = document.getElementById("discount-status");
@@ -353,6 +467,39 @@
                     showNextNotification();
                 }, 600);
             }, 3200);
+        }
+
+        // ====================== RESTLICHER CODE ======================
+        function getSubtotal() {
+            return cart.reduce((sum, item) => {
+                if (item.id === MYSTERY_ID) return sum;
+                return sum + item.qty * (item.price || 8);
+            }, 0);
+        }
+        function manageMysteryVape() {
+            const subtotal = getSubtotal();
+            const hasMystery = cart.some(item => item.id === MYSTERY_ID);
+            if (subtotal >= 100 && !hasMystery) {
+                cart.push({ id: MYSTERY_ID, name: "Mystery Vape", qty: 1, price: 0 });
+                showMysteryToast();
+            } else if (subtotal < 100 && hasMystery) {
+                cart = cart.filter(item => item.id !== MYSTERY_ID);
+            }
+        }
+        function showMysteryToast() {
+            const toast = document.getElementById('notification-toast');
+            notificationCyclePaused = true;
+            toast.classList.add('mystery');
+            toast.innerHTML = `🎉 <strong>Mystery Vape gratis hinzugefügt!</strong><br><span class="text-xs">Ab 100€ Bestellwert aktiviert</span>`;
+            toast.classList.add('visible');
+            setTimeout(() => {
+                toast.classList.remove('visible');
+                setTimeout(() => {
+                    toast.classList.remove('mystery');
+                    notificationCyclePaused = false;
+                    showNextNotification();
+                }, 600);
+            }, 4800);
         }
         function generateNotificationList() {
             notificationList = [];
@@ -394,11 +541,13 @@
         function initialize() {
             localStorage.removeItem('wavevapes_notifications');
             localStorage.removeItem('wavevapes_last_generate');
+            loadOrderHistory();
             updateUserDisplay();
             renderCategoryTabs();
             renderProducts();
             updateCartDisplay();
             startNotificationCycle();
+            checkReferralCode(); // ← Server-Check für ?ref=...
         }
         function showNameModal() {
             document.getElementById("name-modal").classList.remove("hidden");
@@ -602,6 +751,7 @@
             if (discountPercent > 0) {
                 orderText += `• Rabattcode ${appliedDiscountCode} (${discountPercent}%) angewendet\n`;
             }
+            saveToHistory(orderNumber, totalPrice, orderText);
             const formData = new FormData();
             formData.append("name", currentUserName);
             formData.append("bestellnummer", orderNumber);
@@ -635,6 +785,27 @@
         }
         function filterProducts() {
             renderProducts();
+        }
+        function showDealToast() {
+            const toast = document.getElementById('notification-toast');
+            notificationCyclePaused = true;
+            toast.classList.add('deal');
+            toast.innerHTML = `⚡ <strong>4 FÜR 3 AKTION EINGELÖST!</strong><br><span class="text-xs">Du bekommst jede 4. Tornado-Vape gratis!</span>`;
+            toast.classList.add('visible');
+            setTimeout(() => {
+                toast.classList.remove('visible');
+                setTimeout(() => {
+                    toast.classList.remove('deal');
+                    notificationCyclePaused = false;
+                    showNextNotification();
+                }, 800);
+            }, 5000);
+        }
+        function getTornadoQuantity() {
+            return cart.reduce((sum, item) => {
+                const prod = allProducts.find(p => p.id === item.id);
+                return (prod && prod.category === "WaveVapes Tornado 30000") ? sum + item.qty : sum;
+            }, 0);
         }
         window.onload = initialize;
     </script>

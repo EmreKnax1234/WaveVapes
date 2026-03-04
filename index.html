@@ -2,13 +2,21 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- ANTI-ZOOM FIX: Kein Double-Tap-Zoom mehr auf Handy (auch nicht im Warenkorb/Checkout) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>WaveVapes • Liquid Bestellung</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Inter:wght@400;500;600&display=swap');
-        body { font-family: 'Inter', system_ui, sans-serif; }
+        
+        html, body {
+            touch-action: manipulation; /* verhindert Double-Tap-Zoom + 300ms Delay */
+        }
+        
+        body { 
+            font-family: 'Inter', system_ui, sans-serif; 
+        }
         .neon-text { text-shadow: 0 0 15px #67e8f9, 0 0 30px #67e8f9; }
         .product-card {
             transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -31,7 +39,7 @@
             -webkit-tap-highlight-color: transparent;
         }
         .qty-btn:hover { background-color: #22d3ee; color: black; }
-        
+       
         @keyframes boltPulse {
             0%, 100% { transform: scale(1) rotate(0deg); color: #fde047; }
             50% { transform: scale(1.35) rotate(20deg); color: #facc15; }
@@ -41,7 +49,7 @@
             display: inline-block;
             text-shadow: 0 0 15px #facc15;
         }
-        
+       
         #notification-toast {
             position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%);
             background: rgba(0,0,0,0.78); backdrop-filter: blur(12px);
@@ -151,13 +159,11 @@
                 <h3 class="text-3xl font-bold">Dein Warenkorb</h3>
                 <button onclick="toggleCart()" class="text-4xl text-gray-400 hover:text-white">✕</button>
             </div>
-
             <div id="cart-items-list" class="space-y-6 min-h-[300px]"></div>
 
-            <!-- ==================== RABATT CODE EINGABE ==================== -->
+            <!-- RABATT CODE EINGABE -->
             <div class="mt-8 pt-6 border-t border-white/10">
                 <p class="text-xs uppercase tracking-widest text-gray-400 mb-3">Rabattcode</p>
-                <!-- NEU: Button UNTER dem Eingabefeld -->
                 <div class="flex flex-col gap-3">
                     <input id="discount-input" type="text" placeholder="Code eingeben"
                            class="w-full bg-zinc-900 border border-white/20 focus:border-cyan-400 rounded-2xl px-5 py-3.5 text-sm outline-none">
@@ -168,7 +174,6 @@
                 </div>
                 <div id="discount-status" class="mt-3 text-sm min-h-[24px]"></div>
             </div>
-            <!-- ======================================================== -->
 
             <div class="mt-10 pt-8 border-t border-white/10">
                 <div class="flex justify-between text-2xl font-semibold mb-2">
@@ -212,12 +217,11 @@
             "WAVE5": 5,
         };
         // =====================================================================
-
         const FORMSPREE_ENDPOINT = "https://formspree.io/f/mqedvnkb";
         const MYSTERY_ID = 999;
         const fakeNames = ["Tim","Anna","Max","Sophie","Luca","Mia","Felix","Emma","Noah","Lena","Leon","Julia","Paul","Laura","Ben","Sarah","David","Hannah","Jonas","Lea"];
-
-        let allProducts = [
+        
+        let allProducts = [ /* unverändert */ 
             { id: 1, name: "Apple Peach", category: "Normale Sorten", isNew: false, available: true, price: 8 },
             { id: 2, name: "Blueberry", category: "Normale Sorten", isNew: false, available: true, price: 8 },
             { id: 3, name: "Blueberry Sour Raspberry", category: "Normale Sorten", isNew: false, available: true, price: 8 },
@@ -253,7 +257,7 @@
             { id: 33, name: "WaveVapes 30000 Cherry Ice", category: "WaveVapes Tornado 30000", isNew: true, available: true, price: 19.99, image: "tornado-2.jpg" },
             { id: 34, name: "WaveVapes 30000 Peach Berry", category: "WaveVapes Tornado 30000", isNew: true, available: true, price: 19.99, image: "tornado-3.jpg" }
         ];
-
+        
         let cart = [];
         let currentUserName = localStorage.getItem("wavevapes_username") || "";
         let currentCategoryFilter = "Alle";
@@ -262,19 +266,17 @@
         const HOUR_MS = 3600000;
         let currentNotificationIndex = 0;
         let notificationCyclePaused = false;
-
-        // Rabatt-Variablen
+        
         let appliedDiscountCode = null;
         let discountPercent = 0;
 
-        // ====================== MYSTERY VAPE AUTOMATIK ======================
+        // ====================== RESTLICHER CODE (unverändert) ======================
         function getSubtotal() {
             return cart.reduce((sum, item) => {
                 if (item.id === MYSTERY_ID) return sum;
                 return sum + item.qty * (item.price || 8);
             }, 0);
         }
-
         function manageMysteryVape() {
             const subtotal = getSubtotal();
             const hasMystery = cart.some(item => item.id === MYSTERY_ID);
@@ -285,7 +287,6 @@
                 cart = cart.filter(item => item.id !== MYSTERY_ID);
             }
         }
-
         function showMysteryToast() {
             const toast = document.getElementById('notification-toast');
             notificationCyclePaused = true;
@@ -301,8 +302,6 @@
                 }, 600);
             }, 4800);
         }
-
-        // ====================== RABATT CODE FUNKTION ======================
         function applyDiscountCode() {
             const input = document.getElementById("discount-input").value.trim().toUpperCase();
             const statusEl = document.getElementById("discount-status");
@@ -320,7 +319,6 @@
                 statusEl.innerHTML = `<span class="text-red-400">Ungültiger Code</span>`;
             }
         }
-
         function showDiscountToast() {
             const toast = document.getElementById('notification-toast');
             notificationCyclePaused = true;
@@ -336,8 +334,6 @@
                 }, 600);
             }, 3200);
         }
-
-        // ====================== NOTIFICATIONS ======================
         function generateNotificationList() {
             notificationList = [];
             const availableProducts = allProducts.filter(p => p.available);
@@ -351,7 +347,6 @@
             localStorage.setItem('wavevapes_notifications', JSON.stringify(notificationList));
             localStorage.setItem('wavevapes_last_generate', Date.now());
         }
-
         function checkAndGenerateNotifications() {
             const lastGenerate = localStorage.getItem('wavevapes_last_generate');
             if (!lastGenerate || (Date.now() - lastGenerate > HOUR_MS)) {
@@ -362,7 +357,6 @@
                 else generateNotificationList();
             }
         }
-
         function showNextNotification() {
             if (notificationCyclePaused) return;
             const toast = document.getElementById('notification-toast');
@@ -371,15 +365,12 @@
             setTimeout(() => toast.classList.remove('visible'), NOTIFICATION_DURATION - 700);
             currentNotificationIndex = (currentNotificationIndex + 1) % notificationList.length;
         }
-
         function startNotificationCycle() {
             checkAndGenerateNotifications();
             showNextNotification();
             setInterval(showNextNotification, NOTIFICATION_DURATION);
             setInterval(checkAndGenerateNotifications, 60000);
         }
-
-        // ====================== INIT & HELPER ======================
         function initialize() {
             localStorage.removeItem('wavevapes_notifications');
             localStorage.removeItem('wavevapes_last_generate');
@@ -389,13 +380,11 @@
             updateCartDisplay();
             startNotificationCycle();
         }
-
         function showNameModal() {
             document.getElementById("name-modal").classList.remove("hidden");
             document.getElementById("name-modal").classList.add("flex");
             setTimeout(() => document.getElementById("name-input-field").focus(), 300);
         }
-
         function saveUserName() {
             const input = document.getElementById("name-input-field").value.trim();
             if (input.length < 3) return alert("Bitte gib deinen richtigen Namen ein (mind. 3 Zeichen)");
@@ -405,7 +394,6 @@
             document.getElementById("name-modal").classList.remove("flex");
             updateUserDisplay();
         }
-
         function updateUserDisplay() {
             const displayEl = document.getElementById("user-name-display");
             const navEl = document.getElementById("current-user-name");
@@ -417,7 +405,6 @@
                 navEl.textContent = "Name";
             }
         }
-
         function renderCategoryTabs() {
             const tabsHTML = `
                 <button onclick="setCategoryFilter('Alle')" class="px-5 py-2 transition ${currentCategoryFilter === 'Alle' ? 'tab-active' : ''}">Alle</button>
@@ -431,20 +418,17 @@
             `;
             document.getElementById("category-tabs").innerHTML = tabsHTML;
         }
-
         function setCategoryFilter(cat) {
             currentCategoryFilter = cat;
             renderCategoryTabs();
             renderProducts();
         }
-
         function getTornadoQuantity() {
             return cart.reduce((sum, item) => {
                 const prod = allProducts.find(p => p.id === item.id);
                 return (prod && prod.category === "WaveVapes Tornado 30000") ? sum + item.qty : sum;
             }, 0);
         }
-
         function calculateCartTotal() {
             let subtotal = getSubtotal();
             const tornadoQty = getTornadoQuantity();
@@ -457,7 +441,6 @@
             }
             return total;
         }
-
         function showDealToast() {
             const toast = document.getElementById('notification-toast');
             notificationCyclePaused = true;
@@ -473,7 +456,6 @@
                 }, 800);
             }, 5000);
         }
-
         function renderProducts() {
             const container = document.getElementById("products-grid");
             let html = "";
@@ -483,7 +465,6 @@
                 const matchesSearch = !searchTerm || product.name.toLowerCase().includes(searchTerm);
                 return matchesCategory && matchesSearch;
             });
-
             filtered.forEach(product => {
                 const cartItem = cart.find(item => item.id === product.id);
                 const qty = cartItem ? cartItem.qty : 0;
@@ -518,7 +499,6 @@
             });
             container.innerHTML = html || `<p class="col-span-full text-center py-16 text-gray-400">Keine Produkte gefunden.</p>`;
         }
-
         function changeQuantity(id, delta) {
             const product = allProducts.find(p => p.id === id);
             if (!product || !product.available) return;
@@ -535,7 +515,6 @@
             updateCartDisplay();
             renderProducts();
         }
-
         function updateCartDisplay() {
             const countEl = document.getElementById("cart-count-badge");
             const totalEl = document.getElementById("cart-total-price");
@@ -544,19 +523,16 @@
             countEl.textContent = totalItems;
             const totalPrice = calculateCartTotal();
             totalEl.textContent = `${totalPrice.toFixed(2).replace('.', ',')} €`;
-
             if (cart.length === 0) {
                 listEl.innerHTML = `<p class="text-center py-16 text-gray-400">Dein Warenkorb ist leer</p>`;
                 return;
             }
-
             let itemsHTML = "";
             const tornadoQty = getTornadoQuantity();
             const free = Math.floor(tornadoQty / 4);
             if (free > 0) {
                 itemsHTML += `<div class="bg-gradient-to-r from-amber-400 to-yellow-400 text-black p-6 rounded-3xl mb-6 text-center shadow-inner"><div class="flex items-center justify-center gap-3 text-2xl font-black">⚡ 4 FÜR 3 AKTION AKTIV!</div><p class="font-semibold text-base mt-2">Du bekommst <span class="underline">${free} Vape${free > 1 ? 's' : ''} gratis</span></p></div>`;
             }
-
             cart.forEach(item => {
                 const p = item.price || 8;
                 if (item.id === MYSTERY_ID) {
@@ -567,7 +543,6 @@
             });
             listEl.innerHTML = itemsHTML;
         }
-
         function removeCartItem(id) {
             if (id === MYSTERY_ID) return;
             cart = cart.filter(item => item.id !== id);
@@ -575,7 +550,6 @@
             updateCartDisplay();
             renderProducts();
         }
-
         function clearCart() {
             if (confirm("Wirklich ganzen Warenkorb leeren?")) {
                 cart = [];
@@ -587,17 +561,14 @@
                 toggleCart();
             }
         }
-
         function toggleCart() {
             document.getElementById("cart-sidebar").classList.toggle("translate-x-full");
         }
-
         function generateOrderNumber() {
             const now = new Date();
             const dateStr = now.getFullYear().toString().slice(2) + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0');
             return `WV-${dateStr}-${Math.floor(1000 + Math.random() * 9000)}`;
         }
-
         async function placeOrder() {
             if (!currentUserName) { alert("Bitte zuerst deinen Namen eingeben!"); showNameModal(); return; }
             if (cart.length === 0) return alert("Dein Warenkorb ist leer.");
@@ -611,14 +582,12 @@
             if (discountPercent > 0) {
                 orderText += `• Rabattcode ${appliedDiscountCode} (${discountPercent}%) angewendet\n`;
             }
-
             const formData = new FormData();
             formData.append("name", currentUserName);
             formData.append("bestellnummer", orderNumber);
             formData.append("produkte", orderText);
             formData.append("gesamt", `${totalPrice.toFixed(2).replace('.', ',')} €`);
             formData.append("_subject", `WaveVapes Bestellung ${orderNumber}`);
-
             try {
                 const response = await fetch(FORMSPREE_ENDPOINT, { method: "POST", body: formData, headers: { "Accept": "application/json" } });
                 if (response.ok) {
@@ -633,7 +602,6 @@
                 } else alert("Fehler beim Senden.");
             } catch (e) { alert("Verbindungsfehler."); }
         }
-
         function showSuccessModal(orderNumber, details, total) {
             document.getElementById("success-order-id").textContent = orderNumber;
             const detailsDiv = document.getElementById("success-details");
@@ -641,16 +609,13 @@
             document.getElementById("success-modal").classList.remove("hidden");
             document.getElementById("success-modal").classList.add("flex");
         }
-
         function closeSuccessModal() {
             document.getElementById("success-modal").classList.add("hidden");
             document.getElementById("success-modal").classList.remove("flex");
         }
-
         function filterProducts() {
             renderProducts();
         }
-
         window.onload = initialize;
     </script>
 </body>

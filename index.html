@@ -135,7 +135,7 @@
         <div id="products-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6"></div>
     </div>
 
-    <!-- FLOATING CART BUTTON (mobile) -->
+    <!-- FLOATING CART (mobile) -->
     <button onclick="toggleCart()" class="fixed bottom-6 right-6 lg:hidden bg-gradient-to-r from-cyan-400 to-purple-500 text-black w-14 h-14 rounded-3xl shadow-2xl flex items-center justify-center z-50">
         <i class="fa-solid fa-cart-shopping text-3xl"></i>
     </button>
@@ -149,7 +149,6 @@
             </div>
             <div id="cart-items-list" class="space-y-6 min-h-[300px]"></div>
 
-            <!-- RABATT / REFERRAL EINGABE -->
             <div class="mt-8 pt-6 border-t border-white/10">
                 <p class="text-xs uppercase tracking-widest text-gray-400 mb-3">Rabattcode oder Referral</p>
                 <div class="flex flex-col gap-3">
@@ -328,7 +327,7 @@
             });
         }
 
-        // ====================== REFERRAL-SYSTEM (2-seitig, server-seitig) ======================
+        // ====================== REFERRAL-SYSTEM ======================
         async function shareReferral() {
             if (!currentUserName) {
                 alert("Bitte zuerst deinen Namen eingeben!");
@@ -337,8 +336,9 @@
             }
             try {
                 const res = await fetch(REFERRAL_SERVER + "?action=generate&name=" + encodeURIComponent(currentUserName));
-                if (!res.ok) throw new Error("Server-Fehler");
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
+                if (!data.code) throw new Error("Kein Code erhalten");
                 const link = window.location.origin + window.location.pathname + "?ref=" + data.code;
                 await navigator.clipboard.writeText(link);
                 const toast = document.getElementById('notification-toast');
@@ -346,6 +346,7 @@
                 toast.classList.add('visible');
                 setTimeout(() => toast.classList.remove('visible'), 7000);
             } catch (e) {
+                console.error("Share Referral Fehler:", e);
                 alert("Fehler beim Generieren des Links. Versuche es später erneut.");
             }
         }
@@ -355,30 +356,40 @@
             const refCode = urlParams.get("ref");
             if (!refCode) return;
 
+            const statusEl = document.getElementById("discount-status");
+            statusEl.innerHTML = `<span class="text-gray-400">Prüfe Referral-Code...</span>`;
+
             try {
-                const res = await fetch(REFERRAL_SERVER + `?action=redeem&code=${refCode}&name=${encodeURIComponent(currentUserName || "Gast")}`);
-                if (!res.ok) throw new Error("Server-Fehler");
+                const url = REFERRAL_SERVER + `?action=redeem&code=${encodeURIComponent(refCode)}&name=${encodeURIComponent(currentUserName || "Gast")}`;
+                console.log("Referral-Request an:", url);
+
+                const res = await fetch(url);
+                if (!res.ok) {
+                    throw new Error(`Server antwortet mit HTTP ${res.status}`);
+                }
+
                 const data = await res.json();
+                console.log("Server-Antwort (Referral):", data);
 
-                const statusEl = document.getElementById("discount-status");
-
-                if (data.valid) {
+                if (data.valid === true) {
                     discountPercent = 10;
                     appliedDiscountCode = refCode;
                     statusEl.innerHTML = `<span class="text-emerald-400">🎉 Referral-Rabatt 10% aktiviert!</span>`;
                     updateCartDisplay();
                     showReferralToast();
                 } else {
-                    if (data.reason?.includes("Selbst-Referral")) {
-                        statusEl.innerHTML = `<span class="text-red-400">Selbst-Einladung nicht erlaubt 😅</span>`;
-                    } else if (data.reason?.includes("bereits verwendet")) {
-                        statusEl.innerHTML = `<span class="text-red-400">Dieser Code wurde bereits eingelöst</span>`;
-                    } else {
-                        statusEl.innerHTML = `<span class="text-red-400">Ungültiger oder abgelaufener Referral-Code</span>`;
+                    let msg = "Ungültiger oder abgelaufener Referral-Code";
+                    if (data.reason) {
+                        if (data.reason.includes("Selbst-Referral")) msg = "Selbst-Einladung nicht erlaubt 😅";
+                        else if (data.reason.includes("bereits verwendet") || data.reason.includes("nicht open")) msg = "Dieser Code wurde bereits eingelöst";
+                        else if (data.reason.includes("nicht gefunden")) msg = "Referral-Code nicht gefunden";
+                        else msg = data.reason;
                     }
+                    statusEl.innerHTML = `<span class="text-red-400">${msg}</span>`;
                 }
             } catch (e) {
-                console.error("Referral-Check fehlgeschlagen", e);
+                console.error("Referral-Check Fehler:", e);
+                statusEl.innerHTML = `<span class="text-red-400">Verbindungsfehler zum Server – versuche Seite neu zu laden</span>`;
             }
         }
 
@@ -433,7 +444,7 @@
             }, 3200);
         }
 
-        // ====================== MYSTERY VAPE & NOTIFICATIONS ======================
+        // ====================== MYSTERY VAPE ======================
         function getSubtotal() {
             return cart.reduce((sum, item) => {
                 if (item.id === MYSTERY_ID) return sum;
@@ -468,6 +479,7 @@
             }, 4800);
         }
 
+        // ====================== NOTIFICATIONS ======================
         function generateNotificationList() {
             notificationList = [];
             const availableProducts = allProducts.filter(p => p.available);

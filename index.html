@@ -8,38 +8,38 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Inter:wght@400;500;600&display=swap');
-     
+    
         body { font-family: 'Inter', system_ui, sans-serif; }
-     
+    
         .neon-text { text-shadow: 0 0 15px #67e8f9, 0 0 30px #67e8f9; }
-     
+    
         .product-card {
             transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
             touch-action: manipulation;
             -webkit-tap-highlight-color: transparent;
         }
-     
+    
         .product-card:hover {
             transform: translateY(-12px) scale(1.04);
             box-shadow: 0 25px 50px -12px rgb(103 232 249);
         }
-     
+    
         .tab-active {
             border-bottom: 4px solid #67e8f9;
             color: #67e8f9;
             font-weight: 600;
         }
-     
+    
         .wave-bg { background: linear-gradient(135deg, #0a0a0a, #1e1233, #0a0a0a); }
-     
+    
         .qty-btn {
             transition: all 0.2s ease;
             touch-action: manipulation;
             -webkit-tap-highlight-color: transparent;
         }
-     
+    
         .qty-btn:hover { background-color: #22d3ee; color: black; }
-        /* BLITZ-ANIMATION (die ganze Zeit daneben) */
+        /* BLITZ-ANIMATION */
         @keyframes boltPulse {
             0%, 100% { transform: scale(1) rotate(0deg); color: #fde047; }
             50% { transform: scale(1.35) rotate(20deg); color: #facc15; }
@@ -178,7 +178,7 @@
     <script>
         const FORMSPREE_ENDPOINT = "https://formspree.io/f/mqedvnkb";
         const fakeNames = ["Tim","Anna","Max","Sophie","Luca","Mia","Felix","Emma","Noah","Lena","Leon","Julia","Paul","Laura","Ben","Sarah","David","Hannah","Jonas","Lea"];
-        // ====================== AKTUALISIERTE LIQUID LISTE ======================
+        
         let allProducts = [
             // ✅ Normale Sorten
             { id: 1, name: "Apple Peach", category: "Normale Sorten", isNew: false, available: true, price: 8 },
@@ -226,53 +226,66 @@
         const NOTIFICATION_DURATION = 6500;
         const HOUR_MS = 3600000;
         let currentNotificationIndex = 0;
-        let notificationCyclePaused = false;   // ← NEU: Pause für normale Benachrichtigungen
+        let notificationCyclePaused = false;
 
+        // ====================== NUR NOCH DAS GEWÜNSCHTE FORMAT ======================
         function generateNotificationList() {
             notificationList = [];
             const availableProducts = allProducts.filter(p => p.available);
-            const phrases = ["hat gerade", "hat vor", "bestellte vor", "hat vor kurzem", "holte sich vor"];
+            
             for (let i = 0; i < 10; i++) {
                 const randomName = fakeNames[Math.floor(Math.random() * fakeNames.length)];
                 const randomProduct = availableProducts[Math.floor(Math.random() * availableProducts.length)].name;
                 const randomMinutes = Math.floor(Math.random() * 59) + 1;
-                const randomPhrase = phrases[Math.floor(Math.random() * phrases.length)];
-                notificationList.push(`${randomName} ${randomPhrase} ${randomMinutes} Minuten ${randomProduct} bestellt`);
+                
+                const minuteText = randomMinutes === 1 ? "Minute" : "Minuten";
+                
+                notificationList.push(`${randomName} bestellte vor ${randomMinutes} ${minuteText} ${randomProduct}.`);
             }
             localStorage.setItem('wavevapes_notifications', JSON.stringify(notificationList));
             localStorage.setItem('wavevapes_last_generate', Date.now());
         }
+
         function checkAndGenerateNotifications() {
             const lastGenerate = localStorage.getItem('wavevapes_last_generate');
-            if (!lastGenerate || (Date.now() - lastGenerate > HOUR_MS)) generateNotificationList();
-            else {
+            if (!lastGenerate || (Date.now() - lastGenerate > HOUR_MS)) {
+                generateNotificationList();
+            } else {
                 const stored = localStorage.getItem('wavevapes_notifications');
                 if (stored) notificationList = JSON.parse(stored);
                 else generateNotificationList();
             }
         }
-        function showNextNotification() {
-            if (notificationCyclePaused) return;   // ← NEU: während Deal-Toast pausieren
 
+        function showNextNotification() {
+            if (notificationCyclePaused) return;
             const toast = document.getElementById('notification-toast');
             toast.textContent = notificationList[currentNotificationIndex];
             toast.classList.add('visible');
             setTimeout(() => toast.classList.remove('visible'), NOTIFICATION_DURATION - 700);
             currentNotificationIndex = (currentNotificationIndex + 1) % notificationList.length;
         }
+
         function startNotificationCycle() {
             checkAndGenerateNotifications();
             showNextNotification();
             setInterval(showNextNotification, NOTIFICATION_DURATION);
             setInterval(checkAndGenerateNotifications, 60000);
         }
+
         function initialize() {
+            // 🔥 SOFORT ALTE BENACHRICHTIGUNGEN LÖSCHEN (damit du nicht mehr "Laura hat gerade..." siehst)
+            localStorage.removeItem('wavevapes_notifications');
+            localStorage.removeItem('wavevapes_last_generate');
+            
             updateUserDisplay();
             renderCategoryTabs();
             renderProducts();
             updateCartDisplay();
             startNotificationCycle();
         }
+
+        // Rest der Funktionen (unverändert)
         function showNameModal() {
             document.getElementById("name-modal").classList.remove("hidden");
             document.getElementById("name-modal").classList.add("flex");
@@ -298,7 +311,6 @@
                 navEl.textContent = "Name";
             }
         }
-        // ====================== TABS mit 4-für-3 + Blitz ======================
         function renderCategoryTabs() {
             const tabsHTML = `
                 <button onclick="setCategoryFilter('Alle')" class="px-5 py-2 transition ${currentCategoryFilter === 'Alle' ? 'tab-active' : ''}">Alle</button>
@@ -317,7 +329,6 @@
             renderCategoryTabs();
             renderProducts();
         }
-        // ====================== TORNADO-LOGIK (4 für 3) ======================
         function getTornadoQuantity() {
             return cart.reduce((sum, item) => {
                 const prod = allProducts.find(p => p.id === item.id);
@@ -335,20 +346,18 @@
         }
         function showDealToast() {
             const toast = document.getElementById('notification-toast');
-            
-            notificationCyclePaused = true;                    // ← Pause normale Benachrichtigungen
+            notificationCyclePaused = true;
             toast.classList.add('deal');
             toast.innerHTML = `⚡ <strong>4 FÜR 3 AKTION EINGELÖST!</strong><br><span class="text-xs">Du bekommst jede 4. Tornado-Vape gratis!</span>`;
             toast.classList.add('visible');
-
             setTimeout(() => {
                 toast.classList.remove('visible');
                 setTimeout(() => {
                     toast.classList.remove('deal');
-                    notificationCyclePaused = false;           // ← Pause aufheben
-                    showNextNotification();                    // sofort nächste normale Nachricht zeigen
+                    notificationCyclePaused = false;
+                    showNextNotification();
                 }, 800);
-            }, 5000);   // genau 5 Sekunden
+            }, 5000);
         }
         function renderProducts() {
             const container = document.getElementById("products-grid");
@@ -404,15 +413,12 @@
         function changeQuantity(id, delta) {
             const product = allProducts.find(p => p.id === id);
             if (!product || !product.available) return;
-            const oldTornadoQty = getTornadoQuantity();
             let existing = cart.find(item => item.id === id);
             if (!existing) { existing = { id, name: product.name, qty: 0, price: product.price }; cart.push(existing); }
             existing.qty = Math.max(0, existing.qty + delta);
             if (existing.qty === 0) cart = cart.filter(item => item.id !== id);
             const newTornadoQty = getTornadoQuantity();
-            if (newTornadoQty >= 4 && newTornadoQty % 4 === 0) {
-                showDealToast();
-            }
+            if (newTornadoQty >= 4 && newTornadoQty % 4 === 0) showDealToast();
             updateCartDisplay();
             renderProducts();
         }

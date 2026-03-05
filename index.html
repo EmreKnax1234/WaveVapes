@@ -96,6 +96,7 @@
     </nav>
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-8 pb-20">
+
         <!-- HERO -->
         <div class="text-center mb-12">
             <div class="inline-flex items-center gap-2 bg-white/10 px-5 py-1.5 rounded-3xl text-xs mb-6 backdrop-blur-md">
@@ -111,15 +112,26 @@
             </div>
         </div>
 
-        <!-- NAME BANNER -->
-        <div id="user-banner" class="mb-10 bg-gradient-to-r from-zinc-900 to-purple-950 border border-cyan-300/30 hover:border-cyan-300 rounded-3xl p-5 flex items-center justify-between cursor-pointer transition-all group">
-            <div onclick="showNameModal()" class="flex items-center gap-4 flex-1">
+        <!-- NAME BANNER + REFERRAL WARNING -->
+        <div id="user-banner" class="mb-10 bg-gradient-to-r from-zinc-900 to-purple-950 border border-cyan-300/30 hover:border-cyan-300 rounded-3xl p-5 cursor-pointer transition-all group">
+            <div onclick="showNameModal()" class="flex items-center gap-4 mb-5">
                 <i class="fa-solid fa-circle-user text-4xl text-cyan-300"></i>
                 <div>
                     <p class="text-cyan-300 text-xs">Bestellt als</p>
                     <p id="user-name-display" class="text-2xl font-semibold group-hover:text-cyan-200 transition">Bitte Namen eingeben</p>
                 </div>
             </div>
+
+            <!-- HIER IST DER NEUE WARN-HINWEIS -->
+            <div class="mb-5 p-4 bg-red-950/70 border border-red-600/60 rounded-2xl text-red-200 text-sm leading-relaxed">
+                <div class="flex items-center gap-2 mb-1.5 font-bold text-red-300">
+                    <i class="fa-solid fa-triangle-exclamation text-lg"></i>
+                    Referral-System noch in Entwicklung!
+                </div>
+                <p>Derzeit können Fehler auftreten (Link nicht erstellbar, Referrals nicht sichtbar, Bonus nicht verfügbar etc.).</p>
+                <p class="mt-1">Wir arbeiten intensiv daran – danke für dein Verständnis! 🚧</p>
+            </div>
+
             <div class="flex items-center gap-4 flex-wrap justify-end">
                 <button onclick="event.stopImmediatePropagation(); showOrderHistory()"
                         class="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-cyan-300 hover:text-white px-4 py-2 rounded-2xl text-sm font-medium transition-all">
@@ -166,6 +178,7 @@
                 <button onclick="toggleCart()" class="text-4xl text-gray-400 hover:text-white">✕</button>
             </div>
             <div id="cart-items-list" class="space-y-6 min-h-[300px]"></div>
+
             <!-- RABATT / REFERRAL EINGABE -->
             <div class="mt-8 pt-6 border-t border-white/10">
                 <p class="text-xs uppercase tracking-widest text-gray-400 mb-3">Rabattcode oder Referral</p>
@@ -179,6 +192,7 @@
                 </div>
                 <div id="discount-status" class="mt-3 text-sm min-h-[24px]"></div>
             </div>
+
             <div class="mt-10 pt-8 border-t border-white/10">
                 <div class="flex justify-between text-2xl font-semibold mb-2">
                     <span>Gesamt</span>
@@ -220,25 +234,25 @@
                 Um deinen persönlichen Einladungs-Link zu erstellen und zu kopieren, muss der Browser das erlauben.<br><br>
                 <strong>Das ist nur einmal nötig.</strong> Danach funktioniert alles automatisch.
             </p>
-            <button onclick="confirmReferralConsent()" 
+            <button onclick="confirmReferralConsent()"
                     class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-2xl text-lg mb-3 transition">
                 Ja, Referral aktivieren
             </button>
-            <button onclick="closeReferralConsent()" 
+            <button onclick="closeReferralConsent()"
                     class="text-gray-400 hover:text-white text-sm underline">
                 Später vielleicht
             </button>
         </div>
     </div>
 
-    <!-- NEU: MODAL MIT DEM FERTIGEN REFERRAL-LINK + KOPIER-BUTTON -->
+    <!-- REFERRAL LINK MODAL -->
     <div id="referral-link-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]">
         <div class="bg-zinc-900 rounded-3xl p-8 max-w-md w-full mx-4 text-center">
             <h3 class="text-2xl font-bold mb-4 neon-text">Dein Referral-Link</h3>
             <p class="text-gray-300 mb-4">Kopiere ihn und teile ihn mit Freunden!</p>
-            <input id="referral-link-input" type="text" readonly 
+            <input id="referral-link-input" type="text" readonly
                    class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-4 py-3 text-white text-center mb-6 break-all focus:outline-none">
-            <button onclick="copyReferralLink()" 
+            <button onclick="copyReferralLink()"
                     class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-2xl text-lg mb-4 transition">
                 In Zwischenablage kopieren
             </button>
@@ -268,6 +282,13 @@
                 <h3 class="text-3xl font-bold neon-text">Meine Referrals & Bonus</h3>
                 <button onclick="closeReferralsModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
             </div>
+
+            <!-- Optional: Warnhinweis auch hier im Modal -->
+            <div class="mb-6 p-4 bg-red-950/60 border border-red-600/50 rounded-2xl text-red-200 text-sm text-center">
+                <strong>Referral-Funktion noch in Entwicklung</strong><br>
+                Fehler möglich – wir fixen das schnellstmöglich!
+            </div>
+
             <div id="referrals-list" class="space-y-5"></div>
             <p id="no-referrals" class="hidden text-center text-gray-400 py-12">Noch keine Freunde haben deinen Code eingelöst.</p>
         </div>
@@ -338,6 +359,7 @@
             const saved = localStorage.getItem("wavevapes_orderhistory");
             if (saved) orderHistory = JSON.parse(saved);
         }
+
         function saveToHistory(orderNumber, totalPrice, orderText) {
             const order = {
                 id: orderNumber,
@@ -349,6 +371,7 @@
             if (orderHistory.length > 15) orderHistory.pop();
             localStorage.setItem("wavevapes_orderhistory", JSON.stringify(orderHistory));
         }
+
         function showOrderHistory() {
             if (!currentUserName) {
                 alert("Bitte zuerst deinen Namen eingeben!");
@@ -360,10 +383,12 @@
             modal.classList.remove("hidden");
             modal.classList.add("flex");
         }
+
         function closeHistoryModal() {
             document.getElementById("history-modal").classList.add("hidden");
             document.getElementById("history-modal").classList.remove("flex");
         }
+
         function renderHistoryModal() {
             const container = document.getElementById("history-list");
             const noEl = document.getElementById("no-history");
@@ -446,12 +471,10 @@
                 showNameModal();
                 return;
             }
-
             if (localStorage.getItem("referral_consent_given") === "true") {
                 generateReferralLink();
                 return;
             }
-
             showReferralConsentModal();
         }
 
@@ -460,16 +483,12 @@
             try {
                 console.log("=== REFERRAL GENERATE START ===");
                 console.log("Name:", currentUserName);
-
                 const url = REFERRAL_SERVER + "?action=generate&name=" + encodeURIComponent(currentUserName);
                 console.log("Request URL:", url);
-
                 const res = await fetch(url, { cache: "no-store" });
                 console.log("Response Status:", res.status, "OK:", res.ok);
-
                 const rawText = await res.text();
                 console.log("Raw Response Text:", rawText);
-
                 let data;
                 try {
                     data = JSON.parse(rawText);
@@ -477,28 +496,23 @@
                 } catch (parseErr) {
                     throw new Error("Kein JSON zurückgekommen!\nServer-Antwort:\n" + rawText.substring(0, 500));
                 }
-
                 if (!res.ok) {
                     throw new Error(`HTTP Fehler ${res.status}: ${data.error || rawText}`);
                 }
-
                 if (data.code) {
                     const link = window.location.origin + window.location.pathname + "?ref=" + data.code;
                     showReferralLinkModal(link);
-
                     toast.innerHTML = `📤 <strong>Dein Link ist fertig!</strong><br>Jetzt kopieren und teilen`;
                     toast.classList.add('visible');
                     setTimeout(() => toast.classList.remove('visible'), 7000);
                 } else {
                     throw new Error("Kein Code im Response: " + JSON.stringify(data));
                 }
-
             } catch (e) {
                 console.error("=== SHARE REFERRAL FEHLER ===", e);
                 toast.innerHTML = `❌ <strong>Fehler beim Generieren</strong><br><small>${e.message}<br>Versuche es nochmal oder in einem anderen Browser.</small>`;
                 toast.classList.add('visible');
                 setTimeout(() => toast.classList.remove('visible'), 10000);
-
                 alert("Fehler beim Generieren des Links:\n\n" + e.message + "\n\nBitte schicke mir EXAKT diesen Alert-Text + einen Screenshot der Console (F12 → Console).");
             }
         }

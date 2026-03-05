@@ -231,7 +231,7 @@
         </div>
     </div>
 
-    <!-- NEU: MODAL MIT DEM FERTIGEN REFERRAL-LINK + KOPIER-BUTTON -->
+    <!-- REFERRAL-LINK-ANZEIGE-MODAL -->
     <div id="referral-link-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]">
         <div class="bg-zinc-900 rounded-3xl p-8 max-w-md w-full mx-4 text-center">
             <h3 class="text-2xl font-bold mb-4 neon-text">Dein Referral-Link</h3>
@@ -338,6 +338,7 @@
             const saved = localStorage.getItem("wavevapes_orderhistory");
             if (saved) orderHistory = JSON.parse(saved);
         }
+
         function saveToHistory(orderNumber, totalPrice, orderText) {
             const order = {
                 id: orderNumber,
@@ -349,6 +350,7 @@
             if (orderHistory.length > 15) orderHistory.pop();
             localStorage.setItem("wavevapes_orderhistory", JSON.stringify(orderHistory));
         }
+
         function showOrderHistory() {
             if (!currentUserName) {
                 alert("Bitte zuerst deinen Namen eingeben!");
@@ -360,10 +362,12 @@
             modal.classList.remove("hidden");
             modal.classList.add("flex");
         }
+
         function closeHistoryModal() {
             document.getElementById("history-modal").classList.add("hidden");
             document.getElementById("history-modal").classList.remove("flex");
         }
+
         function renderHistoryModal() {
             const container = document.getElementById("history-list");
             const noEl = document.getElementById("no-history");
@@ -503,32 +507,62 @@
             }
         }
 
+        // ====================== VERBESSERTE REDEEM-PRÜFUNG (mit Wartezeit + Retry) ======================
         async function checkReferralCode() {
             const urlParams = new URLSearchParams(window.location.search);
             const refCode = urlParams.get("ref");
             if (!refCode) return;
+
             const statusEl = document.getElementById("discount-status");
-            statusEl.innerHTML = `<span class="text-gray-400">Prüfe Referral-Code...</span>`;
-            try {
-                const url = REFERRAL_SERVER + `?action=redeem&code=${encodeURIComponent(refCode)}&name=${encodeURIComponent(currentUserName || "Gast")}`;
-                console.log("Referral-Request an:", url);
-                const res = await fetch(url);
-                if (!res.ok) throw new Error(`HTTP ${res.status} - ${res.statusText}`);
-                const data = await res.json();
-                console.log("Server-Antwort (redeem):", data);
-                if (data.valid === true) {
-                    discountPercent = 10;
-                    appliedDiscountCode = refCode;
-                    statusEl.innerHTML = `<span class="text-emerald-400">🎉 Referral-Rabatt 10% aktiviert!</span>`;
-                    updateCartDisplay();
-                    showReferralToast();
-                } else {
-                    let msg = data.reason || "Ungültiger oder abgelaufener Referral-Code";
-                    statusEl.innerHTML = `<span class="text-red-400">${msg}</span>`;
+            statusEl.innerHTML = `<span class="text-cyan-300 animate-pulse">Referral-Code wird geprüft... (kann 2–3 Sekunden dauern)</span>`;
+
+            // Erste Wartezeit – Google Sheets braucht oft etwas, bis die neue Zeile lesbar ist
+            await new Promise(resolve => setTimeout(resolve, 2500));
+
+            let attempts = 0;
+            const maxAttempts = 3;
+
+            while (attempts < maxAttempts) {
+                try {
+                    const url = REFERRAL_SERVER + `?action=redeem&code=${encodeURIComponent(refCode)}&name=${encodeURIComponent(currentUserName || "Gast")}`;
+                    console.log("Referral-Request (Versuch " + (attempts + 1) + "):", url);
+
+                    const res = await fetch(url, { cache: "no-store" });
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+                    const data = await res.json();
+                    console.log("Server-Antwort (redeem):", data);
+
+                    if (data.valid === true) {
+                        discountPercent = 10;
+                        appliedDiscountCode = refCode;
+                        statusEl.innerHTML = `<span class="text-emerald-400">🎉 Referral-Rabatt 10% aktiviert!</span>`;
+                        updateCartDisplay();
+                        showReferralToast();
+                        return; // Erfolg → raus
+                    } else {
+                        // Wenn "nicht gefunden" → nochmal versuchen
+                        if (data.reason?.includes("nicht gefunden") && attempts < maxAttempts - 1) {
+                            statusEl.innerHTML = `<span class="text-yellow-400">Nochmal prüfen... Versuch ${attempts + 2}/${maxAttempts}</span>`;
+                            await new Promise(resolve => setTimeout(resolve, 1500));
+                            attempts++;
+                            continue;
+                        }
+                        // Andere Fehler oder nach max Versuchen
+                        statusEl.innerHTML = `<span class="text-red-400">${data.reason || "Ungültiger oder abgelaufener Referral-Code"}</span>`;
+                        return;
+                    }
+                } catch (e) {
+                    console.error("Referral Fehler (Versuch " + (attempts + 1) + "):", e);
+                    if (attempts < maxAttempts - 1) {
+                        attempts++;
+                        statusEl.innerHTML = `<span class="text-yellow-400">Verbindung... Versuch ${attempts + 1}/${maxAttempts}</span>`;
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        continue;
+                    }
+                    statusEl.innerHTML = `<span class="text-red-400">Verbindungsfehler – bitte Seite neu laden</span>`;
+                    return;
                 }
-            } catch (e) {
-                console.error("Referral Fehler:", e);
-                statusEl.innerHTML = `<span class="text-red-400">Verbindungsfehler – Seite neu laden</span>`;
             }
         }
 
@@ -547,6 +581,9 @@
                 }, 600);
             }, 4500);
         }
+
+        // ====================== REST DES CODES (unverändert) ======================
+        // (showMyReferrals, claimBonus, applyDiscountCode, Warenkorb-Logik, Initialize usw. bleiben genau wie in deiner letzten Version)
 
         async function showMyReferrals() {
             if (!currentUserName) {

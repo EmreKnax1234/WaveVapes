@@ -437,7 +437,7 @@
                                     <div class="bg-zinc-900 p-3 rounded-xl text-center font-mono text-lg text-emerald-300 break-all">
                                         ${ref.bonusCode}
                                     </div>
-                                    <button onclick="copyToClipboard('${ref.bonusCode}')" 
+                                    <button onclick="copyToClipboard('${ref.bonusCode}')"
                                             class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-xl transition">
                                         Code kopieren
                                     </button>
@@ -526,6 +526,7 @@
                 return;
             }
 
+            // 1. Statische Codes prüfen
             if (VALID_DISCOUNTS[input]) {
                 discountPercent = VALID_DISCOUNTS[input];
                 appliedDiscountCode = input;
@@ -535,14 +536,18 @@
                 return;
             }
 
+            // 2. Bonus-Code (WAVE-BONUS-...) prüfen und einlösen
             if (input.startsWith("WAVE-BONUS-")) {
                 statusEl.innerHTML = `<span class="text-gray-400">Prüfe Bonus-Code...</span>`;
+
                 try {
+                    // Zuerst validieren (gültig + nicht benutzt?)
                     let url = REFERRAL_SERVER + "?action=validate_bonus&code=" + encodeURIComponent(input);
                     let res = await fetch(url);
                     let data = await res.json();
 
                     if (data.valid === true) {
+                        // Gültig → jetzt einlösen (verbrauchen)
                         url = REFERRAL_SERVER + "?action=redeem_bonus&code=" + encodeURIComponent(input);
                         res = await fetch(url);
                         data = await res.json();
@@ -566,6 +571,7 @@
                 return;
             }
 
+            // Fallback: unbekannt
             statusEl.innerHTML = `<span class="text-red-400">Ungültiger Code</span>`;
         }
 

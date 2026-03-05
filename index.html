@@ -214,7 +214,7 @@
         </div>
     </div>
 
-    <!-- NEUES MODAL: MEINE REFERRALS & BONUS -->
+    <!-- MEINE REFERRALS & BONUS MODAL -->
     <div id="referrals-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-[9999]">
         <div class="bg-zinc-900 max-w-2xl w-full mx-4 rounded-3xl p-8 max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-6">
@@ -234,7 +234,10 @@
             "WAVE5": 5,
             "Freund10": 10
         };
-        const REFERRAL_SERVER = "https://script.google.com/macros/s/AKfycbxmnAzO99Mm16bYZMwEUCEYcjWwnr_fZblbecucLGgxMi46QCTSjoo-brooAf8zWMoG2A/exec";
+        // ──────────────────────────────────────────────────────────────
+        //  ← DEINE NEUESTE SERVER-URL ←
+        const REFERRAL_SERVER = "https://script.google.com/macros/s/AKfycbwvZRaqKdPCn7KO1Lwao--GfC-m6eMnp9Li16rEZ2yiwH2G8u-pYAixHc00V35Lf861dQ/exec";
+        // ──────────────────────────────────────────────────────────────
         const FORMSPREE_ENDPOINT = "https://formspree.io/f/mqedvnkb";
         const MYSTERY_ID = 999;
 
@@ -372,15 +375,22 @@
             const urlParams = new URLSearchParams(window.location.search);
             const refCode = urlParams.get("ref");
             if (!refCode) return;
+
             const statusEl = document.getElementById("discount-status");
             statusEl.innerHTML = `<span class="text-gray-400">Prüfe Referral-Code...</span>`;
+
             try {
                 const url = REFERRAL_SERVER + `?action=redeem&code=${encodeURIComponent(refCode)}&name=${encodeURIComponent(currentUserName || "Gast")}`;
                 console.log("Referral-Request an:", url);
+
                 const res = await fetch(url);
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status} - ${res.statusText}`);
+                }
+
                 const data = await res.json();
                 console.log("Server-Antwort:", data);
+
                 if (data.valid === true) {
                     discountPercent = 10;
                     appliedDiscountCode = refCode;
@@ -391,15 +401,17 @@
                     let msg = "Ungültiger oder abgelaufener Referral-Code";
                     if (data.reason) {
                         if (data.reason.includes("Selbst-Referral")) msg = "Selbst-Einladung nicht erlaubt 😅";
-                        else if (data.reason.includes("bereits verwendet") || data.reason.includes("nicht open")) msg = "Dieser Code wurde bereits eingelöst";
-                        else if (data.reason.includes("nicht gefunden")) msg = "Referral-Code nicht gefunden";
+                        else if (data.reason.includes("Bereits verwendet") || data.reason.includes("nicht open")) msg = "Dieser Code wurde bereits eingelöst";
+                        else if (data.reason.includes("Code nicht gefunden")) msg = "Referral-Code nicht gefunden";
                         else msg = data.reason;
                     }
                     statusEl.innerHTML = `<span class="text-red-400">${msg}</span>`;
                 }
             } catch (e) {
-                console.error("Referral-Check Fehler:", e);
-                statusEl.innerHTML = `<span class="text-red-400">Verbindungsfehler zum Server – versuche Seite neu zu laden</span>`;
+                console.error("Referral Fehler:", e);
+                let errorMsg = "Verbindungsfehler zum Referral-Server";
+                if (e.message.includes("fetch")) errorMsg += " (Netzwerk/CORS?)";
+                statusEl.innerHTML = `<span class="text-red-400">${errorMsg} – Seite neu laden oder später versuchen</span>`;
             }
         }
 
@@ -456,13 +468,14 @@
                     let statusHTML = "";
                     let actionButton = "";
 
-                    if (ref.status === "pending") {
+                    const statusLower = (ref.status || "").toLowerCase().trim();
+                    if (statusLower === "pending") {
                         statusHTML = `<span class="text-yellow-400 font-medium">Eingelöst – warte auf Bezahlung</span>`;
-                    } else if (ref.status === "paid") {
-                        statusHTML = `<span class="text-emerald-400 font-medium">Bezahlt! Bonus abholbereit</span>`;
+                    } else if (statusLower === "paid" || statusLower === "confirmed") {
+                        statusHTML = `<span class="text-emerald-400 font-medium">Bezahlt/Bestätigt! Bonus abholbereit</span>`;
                         actionButton = `<button onclick="claimBonus('${ref.referralCode}')" class="mt-4 w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-xl transition">Bonus-Code holen</button>`;
                     } else {
-                        statusHTML = `<span class="text-gray-400">Status: ${ref.status}</span>`;
+                        statusHTML = `<span class="text-gray-400">Status: ${ref.status || "unbekannt"}</span>`;
                     }
 
                     item.innerHTML = `
@@ -491,9 +504,11 @@
         async function claimBonus(referralCode) {
             try {
                 const url = REFERRAL_SERVER + "?action=claim_bonus&code=" + encodeURIComponent(referralCode);
+                console.log("Claim Bonus Request an:", url);
                 const res = await fetch(url);
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
+                console.log("Claim Bonus Antwort:", data);
 
                 if (data.valid && data.bonusCode) {
                     const toast = document.getElementById('notification-toast');
@@ -502,10 +517,11 @@
                     setTimeout(() => toast.classList.remove('visible'), 8000);
                     alert(`Dein Bonus-Code: ${data.bonusCode}\n\nGib ihn einfach im Warenkorb ein!`);
                 } else {
-                    alert(data.reason || "Bonus noch nicht verfügbar.");
+                    alert(data.reason || "Bonus noch nicht verfügbar oder Code nicht gefunden.");
                 }
             } catch (err) {
-                alert("Fehler beim Abholen: " + err.message);
+                console.error("Claim Fehler:", err);
+                alert("Fehler beim Abholen des Bonus: " + err.message);
             }
         }
 

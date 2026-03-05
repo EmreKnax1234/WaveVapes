@@ -348,33 +348,49 @@
             }
         }
 
+        // ====================== FIX: checkReferralCode mit Retry + Cache-Busting ======================
         async function checkReferralCode() {
             const urlParams = new URLSearchParams(window.location.search);
             const refCode = urlParams.get("ref");
             if (!refCode) return;
+
             const statusEl = document.getElementById("discount-status");
             statusEl.innerHTML = `<span class="text-gray-400">Prüfe Referral-Code...</span>`;
-            try {
-                const url = REFERRAL_SERVER + `?action=redeem&code=${encodeURIComponent(refCode)}&name=${encodeURIComponent(currentUserName || "Gast")}`;
-                console.log("Referral-Request an:", url);
-                const res = await fetch(url);
-                if (!res.ok) throw new Error(`HTTP ${res.status} - ${res.statusText}`);
-                const data = await res.json();
-                console.log("Server-Antwort (redeem):", data);
-                if (data.valid === true) {
-                    discountPercent = 10;
-                    appliedDiscountCode = refCode;
-                    statusEl.innerHTML = `<span class="text-emerald-400">🎉 Referral-Rabatt 10% aktiviert!</span>`;
-                    updateCartDisplay();
-                    showReferralToast();
-                } else {
-                    let msg = data.reason || "Ungültiger oder abgelaufener Referral-Code";
-                    statusEl.innerHTML = `<span class="text-red-400">${msg}</span>`;
+
+            // Retry-Logik: bis zu 3 Versuche mit Cache-Busting
+            for (let attempt = 1; attempt <= 3; attempt++) {
+                try {
+                    const timestamp = Date.now();
+                    const url = REFERRAL_SERVER + `?action=redeem&code=${encodeURIComponent(refCode)}&name=${encodeURIComponent(currentUserName || "Gast")}&t=${timestamp}`;
+                    console.log(`Referral-Request Versuch ${attempt} an:`, url);
+
+                    const res = await fetch(url);
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    const data = await res.json();
+                    console.log("Server-Antwort (redeem):", data);
+
+                    if (data.valid === true) {
+                        discountPercent = 10;
+                        appliedDiscountCode = refCode;
+                        statusEl.innerHTML = `<span class="text-emerald-400">🎉 Referral-Rabatt 10% aktiviert!</span>`;
+                        updateCartDisplay();
+                        showReferralToast();
+                        return; // Erfolg → fertig
+                    } else {
+                        let msg = data.reason || "Ungültiger oder abgelaufener Referral-Code";
+                        statusEl.innerHTML = `<span class="text-red-400">${msg}</span>`;
+                    }
+                } catch (e) {
+                    console.error(`Versuch ${attempt} fehlgeschlagen:`, e);
+                    statusEl.innerHTML = `<span class="text-red-400">Verbindungsfehler – versuche erneut...</span>`;
                 }
-            } catch (e) {
-                console.error("Referral Fehler:", e);
-                statusEl.innerHTML = `<span class="text-red-400">Verbindungsfehler – Seite neu laden</span>`;
+
+                // Warte kurz vor dem nächsten Versuch (außer beim letzten)
+                if (attempt < 3) await new Promise(r => setTimeout(r, 800));
             }
+
+            // Nach 3 Versuchen immer noch Fehler
+            statusEl.innerHTML = `<span class="text-red-400">Code konnte nicht gefunden werden. Versuche einen neuen Link.</span>`;
         }
 
         function showReferralToast() {
@@ -392,6 +408,9 @@
                 }, 600);
             }, 4500);
         }
+
+        // ====================== REST DER FUNKTIONEN (unverändert) ======================
+        // (alles von showMyReferrals bis window.onload bleibt exakt wie in deiner Version)
 
         // ====================== MEINE REFERRALS & BONUS ======================
         async function showMyReferrals() {
@@ -437,7 +456,7 @@
                                     <div class="bg-zinc-900 p-3 rounded-xl text-center font-mono text-lg text-emerald-300 break-all">
                                         ${ref.bonusCode}
                                     </div>
-                                    <button onclick="copyToClipboard('${ref.bonusCode}')"
+                                    <button onclick="copyToClipboard('${ref.bonusCode}')" 
                                             class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-xl transition">
                                         Code kopieren
                                     </button>
@@ -525,8 +544,6 @@
                 statusEl.innerHTML = `<span class="text-red-400">Bitte Code eingeben</span>`;
                 return;
             }
-
-            // 1. Statische Codes prüfen
             if (VALID_DISCOUNTS[input]) {
                 discountPercent = VALID_DISCOUNTS[input];
                 appliedDiscountCode = input;
@@ -535,23 +552,16 @@
                 showDiscountToast();
                 return;
             }
-
-            // 2. Bonus-Code (WAVE-BONUS-...) prüfen und einlösen
             if (input.startsWith("WAVE-BONUS-")) {
                 statusEl.innerHTML = `<span class="text-gray-400">Prüfe Bonus-Code...</span>`;
-
                 try {
-                    // Zuerst validieren (gültig + nicht benutzt?)
                     let url = REFERRAL_SERVER + "?action=validate_bonus&code=" + encodeURIComponent(input);
                     let res = await fetch(url);
                     let data = await res.json();
-
                     if (data.valid === true) {
-                        // Gültig → jetzt einlösen (verbrauchen)
                         url = REFERRAL_SERVER + "?action=redeem_bonus&code=" + encodeURIComponent(input);
                         res = await fetch(url);
                         data = await res.json();
-
                         if (data.success === true) {
                             discountPercent = 10;
                             appliedDiscountCode = input;
@@ -570,8 +580,6 @@
                 }
                 return;
             }
-
-            // Fallback: unbekannt
             statusEl.innerHTML = `<span class="text-red-400">Ungültiger Code</span>`;
         }
 
@@ -941,4 +949,3 @@
     </script>
 </body>
 </html>
-

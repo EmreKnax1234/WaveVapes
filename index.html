@@ -50,6 +50,7 @@
         .euro { font-size: 1.1rem; margin-left: 2px; }
         .mystery-item { background: linear-gradient(90deg, #10b981, #34d399) !important; border: 2px solid #a7f3d0 !important; color: black; }
         .history-item { background: #18181b; border: 1px solid #27272a; }
+
         /* Lade-Indikator */
         .loading-spinner {
             border: 4px solid rgba(103, 232, 249, 0.2);
@@ -223,6 +224,7 @@
         </div>
     </div>
     <div id="notification-toast"></div>
+
     <script>
         // ====================== KONFIGURATION ======================
         const VALID_DISCOUNTS = {
@@ -280,10 +282,12 @@
         let appliedDiscountCode = null;
         let discountPercent = 0;
         let orderHistory = [];
+
         function loadOrderHistory() {
             const saved = localStorage.getItem("wavevapes_orderhistory");
             if (saved) orderHistory = JSON.parse(saved);
         }
+
         function saveToHistory(orderNumber, totalPrice, orderText) {
             const order = {
                 id: orderNumber,
@@ -295,6 +299,7 @@
             if (orderHistory.length > 15) orderHistory.pop();
             localStorage.setItem("wavevapes_orderhistory", JSON.stringify(orderHistory));
         }
+
         function showOrderHistory() {
             if (!currentUserName) {
                 alert("Bitte zuerst deinen Namen eingeben!");
@@ -306,10 +311,12 @@
             modal.classList.remove("hidden");
             modal.classList.add("flex");
         }
+
         function closeHistoryModal() {
             document.getElementById("history-modal").classList.add("hidden");
             document.getElementById("history-modal").classList.remove("flex");
         }
+
         function renderHistoryModal() {
             const container = document.getElementById("history-list");
             const noEl = document.getElementById("no-history");
@@ -333,88 +340,118 @@
                 container.appendChild(div);
             });
         }
-        // ====================== VERBESSERTE REFERRAL-FUNKTIONEN ======================
+
+        // ====================== REFERRAL-SYSTEM ======================
         async function shareReferral() {
             if (!currentUserName) {
                 alert("Bitte zuerst deinen Namen eingeben!");
                 showNameModal();
                 return;
             }
-            let toast = document.getElementById('notification-toast');
+            const toast = document.getElementById('notification-toast');
             toast.innerHTML = `📤 Generiere Referral-Link...`;
             toast.classList.add('visible');
             try {
                 const ts = Date.now();
-                const res = await fetch(`${REFERRAL_SERVER}?action=generate&name=${encodeURIComponent(currentUserName)}&_=${ts}`, {
+                const res = await fetch(REFERRAL_SERVER + "?action=generate&name=" + encodeURIComponent(currentUserName) + "&_=" + ts, {
                     cache: 'no-store'
                 });
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
                 if (!data.code) throw new Error("Kein Code erhalten");
-                const link = `${window.location.origin}${window.location.pathname}?ref=${data.code}`;
+                const link = window.location.origin + window.location.pathname + "?ref=" + data.code;
+                let copied = false;
                 try {
                     await navigator.clipboard.writeText(link);
-                    toast.innerHTML = `📋 <strong>Referral-Link kopiert!</strong><br><span class="font-mono text-xs break-all">${link}</span><br><small>Teile ihn mit Freunden!</small>`;
+                    copied = true;
                 } catch (clipboardErr) {
                     console.warn("Clipboard fehlgeschlagen:", clipboardErr);
-                    toast.innerHTML = `⚠️ <strong>Link konnte nicht automatisch kopiert werden</strong><br>Markiere & kopiere manuell:<br><span class="font-mono text-xs break-all select-all bg-zinc-800 p-2 rounded inline-block">${link}</span>`;
+                }
+                if (copied) {
+                    toast.innerHTML = `📋 <strong>Referral-Link kopiert!</strong><br><span class="font-mono text-xs break-all">${link}</span><br><small>Teile ihn mit Freunden!</small>`;
+                } else {
+                    toast.innerHTML = `⚠️ <strong>Kopieren fehlgeschlagen</strong><br>Markiere & kopiere manuell:<br><span class="font-mono text-xs break-all select-all bg-zinc-800 p-2 rounded inline-block">${link}</span>`;
                 }
                 toast.classList.add('visible');
-                setTimeout(() => toast.classList.remove('visible'), 9000);
+                setTimeout(() => toast.classList.remove('visible'), 10000);
             } catch (e) {
                 console.error("Share Referral Fehler:", e);
                 toast.innerHTML = `❌ Fehler beim Generieren. Bitte versuche es erneut.`;
                 setTimeout(() => toast.classList.remove('visible'), 5000);
             }
         }
+
         async function checkReferralCode() {
             const urlParams = new URLSearchParams(window.location.search);
             const refCode = urlParams.get("ref");
             if (!refCode) return;
+
             const statusEl = document.getElementById("discount-status");
-            statusEl.innerHTML = `<span class="loading-spinner"></span> Prüfe Referral-Code... (kann etwas dauern)`;
-            const maxAttempts = 5;
-            const baseDelay = 1500;
+            statusEl.innerHTML = `<span class="loading-spinner"></span> Prüfe Referral-Code... (kann bis 45 Sekunden dauern)`;
+
+            const maxAttempts = 8;
+            const delays = [1500, 2000, 3000, 4000, 6000, 8000, 10000, 12000];
+
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += 2;
+                if (progress <= 100) statusEl.style.background = `linear-gradient(to right, #67e8f9 ${progress}%, transparent ${progress}%)`;
+            }, 900);
+
             for (let attempt = 1; attempt <= maxAttempts; attempt++) {
                 try {
                     const ts = Date.now();
-                    const url = `${REFERRAL_SERVER}?action=redeem&code=${encodeURIComponent(refCode)}&name=${encodeURIComponent(currentUserName || "Gast")}&_=${ts}`;
-                    console.log(`Referral-Prüfung Versuch ${attempt}/${maxAttempts}: ${url}`);
-                    const res = await fetch(url, { cache: 'no-store', redirect: 'follow' });
-                    if (!res.ok) {
-                        throw new Error(`HTTP ${res.status} - ${res.statusText}`);
-                    }
+                    const url = `${REFERRAL_SERVER}?action=redeem&code=${encodeURIComponent(refCode)}&name=${encodeURIComponent(currentUserName || "Gast")}&_=${ts}&attempt=${attempt}`;
+
+                    console.log(`[Referral] Versuch ${attempt}/${maxAttempts} → ${url}`);
+
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+                    const res = await fetch(url, {
+                        cache: 'no-store',
+                        signal: controller.signal
+                    });
+
+                    clearTimeout(timeoutId);
+
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
                     const data = await res.json();
-                    console.log(`Antwort Versuch ${attempt}:`, data);
+                    console.log(`[Referral] Antwort Versuch ${attempt}:`, data);
+
                     if (data.valid === true) {
+                        clearInterval(progressInterval);
                         discountPercent = 10;
                         appliedDiscountCode = refCode;
                         statusEl.innerHTML = `<span class="text-emerald-400">🎉 Referral-Rabatt 10% aktiviert!</span>`;
                         updateCartDisplay();
                         showReferralToast();
-                        // URL bereinigen (verhindert erneutes Prüfen beim Refresh)
-                        window.history.replaceState({}, document.title, window.location.pathname);
+                        window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
                         return;
                     } else {
                         let msg = data.reason || "Code nicht gefunden oder ungültig";
                         if (attempt === maxAttempts) {
+                            clearInterval(progressInterval);
                             statusEl.innerHTML = `<span class="text-red-400">${msg} – bitte neuen Link versuchen</span>`;
                         } else {
-                            statusEl.innerHTML = `<span class="text-yellow-400">Versuch ${attempt}/${maxAttempts} – warte kurz...</span>`;
-                            await new Promise(r => setTimeout(r, baseDelay * attempt));
+                            statusEl.innerHTML = `<span class="loading-spinner"></span> Versuch ${attempt}/${maxAttempts} – warte...`;
+                            await new Promise(r => setTimeout(r, delays[attempt-1]));
                         }
                     }
                 } catch (err) {
-                    console.error(`Versuch ${attempt} Fehler:`, err);
+                    console.error(`[Referral] Versuch ${attempt} Fehler:`, err.message);
                     if (attempt === maxAttempts) {
-                        statusEl.innerHTML = `<span class="text-red-400">Verbindungsproblem oder Code nicht gefunden. Bitte neuen Link versuchen.</span>`;
+                        clearInterval(progressInterval);
+                        statusEl.innerHTML = `<span class="text-red-400">Verbindung oder Server-Problem. Bitte neuen Link versuchen.</span>`;
                     } else {
-                        statusEl.innerHTML = `<span class="text-yellow-400">Verbindung schwierig – Versuch ${attempt+1}...</span>`;
-                        await new Promise(r => setTimeout(r, baseDelay * attempt));
+                        statusEl.innerHTML = `<span class="loading-spinner"></span> Versuch ${attempt+1}/${maxAttempts} – warte...`;
+                        await new Promise(r => setTimeout(r, delays[attempt-1]));
                     }
                 }
             }
         }
+
         function showReferralToast() {
             const toast = document.getElementById('notification-toast');
             notificationCyclePaused = true;
@@ -430,6 +467,7 @@
                 }, 600);
             }, 4500);
         }
+
         // ====================== MEINE REFERRALS & BONUS ======================
         async function showMyReferrals() {
             if (!currentUserName) {
@@ -509,6 +547,7 @@
                 listEl.innerHTML = `<p class="text-red-400 text-center py-8">Fehler beim Laden: ${err.message}</p>`;
             }
         }
+
         function copyToClipboard(text) {
             navigator.clipboard.writeText(text).then(() => {
                 const toast = document.getElementById('notification-toast');
@@ -520,10 +559,12 @@
                 alert("Kopieren fehlgeschlagen – bitte manuell kopieren: " + text);
             });
         }
+
         function closeReferralsModal() {
             document.getElementById("referrals-modal").classList.add("hidden");
             document.getElementById("referrals-modal").classList.remove("flex");
         }
+
         async function claimBonus(referralCode) {
             if (!referralCode || referralCode.trim() === '') {
                 alert("Kein gültiger Referral-Code gefunden. Bitte Seite neu laden oder Support kontaktieren.");
@@ -550,6 +591,7 @@
                 alert("Fehler beim Abholen des Bonus: " + err.message);
             }
         }
+
         // ====================== RABATT + MANUELLE + BONUS CODES ======================
         async function applyDiscountCode() {
             const input = document.getElementById("discount-input").value.trim().toUpperCase();
@@ -596,6 +638,7 @@
             }
             statusEl.innerHTML = `<span class="text-red-400">Ungültiger Code</span>`;
         }
+
         function showDiscountToast() {
             const toast = document.getElementById('notification-toast');
             notificationCyclePaused = true;
@@ -611,6 +654,7 @@
                 }, 600);
             }, 3200);
         }
+
         // ====================== MYSTERY VAPE ======================
         function getSubtotal() {
             return cart.reduce((sum, item) => {
@@ -618,6 +662,7 @@
                 return sum + item.qty * (item.price || 8);
             }, 0);
         }
+
         function manageMysteryVape() {
             const subtotal = getSubtotal();
             const hasMystery = cart.some(item => item.id === MYSTERY_ID);
@@ -628,6 +673,7 @@
                 cart = cart.filter(item => item.id !== MYSTERY_ID);
             }
         }
+
         function showMysteryToast() {
             const toast = document.getElementById('notification-toast');
             notificationCyclePaused = true;
@@ -643,6 +689,7 @@
                 }, 600);
             }, 4800);
         }
+
         // ====================== NOTIFICATIONS ======================
         function generateNotificationList() {
             notificationList = [];
@@ -657,6 +704,7 @@
             localStorage.setItem('wavevapes_notifications', JSON.stringify(notificationList));
             localStorage.setItem('wavevapes_last_generate', Date.now());
         }
+
         function checkAndGenerateNotifications() {
             const lastGenerate = localStorage.getItem('wavevapes_last_generate');
             if (!lastGenerate || (Date.now() - lastGenerate > HOUR_MS)) {
@@ -667,6 +715,7 @@
                 else generateNotificationList();
             }
         }
+
         function showNextNotification() {
             if (notificationCyclePaused) return;
             const toast = document.getElementById('notification-toast');
@@ -675,12 +724,14 @@
             setTimeout(() => toast.classList.remove('visible'), NOTIFICATION_DURATION - 700);
             currentNotificationIndex = (currentNotificationIndex + 1) % notificationList.length;
         }
+
         function startNotificationCycle() {
             checkAndGenerateNotifications();
             showNextNotification();
             setInterval(showNextNotification, NOTIFICATION_DURATION);
             setInterval(checkAndGenerateNotifications, 60000);
         }
+
         // ====================== INITIALIZE ======================
         function initialize() {
             localStorage.removeItem('wavevapes_notifications');
@@ -691,13 +742,15 @@
             renderProducts();
             updateCartDisplay();
             startNotificationCycle();
-            checkReferralCode(); // Prüft Referral beim Laden
+            checkReferralCode();
         }
+
         function showNameModal() {
             document.getElementById("name-modal").classList.remove("hidden");
             document.getElementById("name-modal").classList.add("flex");
             setTimeout(() => document.getElementById("name-input-field").focus(), 300);
         }
+
         function saveUserName() {
             const input = document.getElementById("name-input-field").value.trim();
             if (input.length < 3) return alert("Bitte gib deinen richtigen Namen ein (mind. 3 Zeichen)");
@@ -707,6 +760,7 @@
             document.getElementById("name-modal").classList.remove("flex");
             updateUserDisplay();
         }
+
         function updateUserDisplay() {
             const displayEl = document.getElementById("user-name-display");
             const navEl = document.getElementById("current-user-name");
@@ -718,6 +772,7 @@
                 navEl.textContent = "Name";
             }
         }
+
         function renderCategoryTabs() {
             const tabsHTML = `
                 <button onclick="setCategoryFilter('Alle')" class="px-5 py-2 transition ${currentCategoryFilter === 'Alle' ? 'tab-active' : ''}">Alle</button>
@@ -731,17 +786,20 @@
             `;
             document.getElementById("category-tabs").innerHTML = tabsHTML;
         }
+
         function setCategoryFilter(cat) {
             currentCategoryFilter = cat;
             renderCategoryTabs();
             renderProducts();
         }
+
         function getTornadoQuantity() {
             return cart.reduce((sum, item) => {
                 const prod = allProducts.find(p => p.id === item.id);
                 return (prod && prod.category === "WaveVapes Tornado 30000") ? sum + item.qty : sum;
             }, 0);
         }
+
         function calculateCartTotal() {
             let subtotal = getSubtotal();
             const tornadoQty = getTornadoQuantity();
@@ -754,6 +812,7 @@
             }
             return total;
         }
+
         function showDealToast() {
             const toast = document.getElementById('notification-toast');
             notificationCyclePaused = true;
@@ -769,6 +828,7 @@
                 }, 800);
             }, 5000);
         }
+
         function renderProducts() {
             const container = document.getElementById("products-grid");
             let html = "";
@@ -812,6 +872,7 @@
             });
             container.innerHTML = html || `<p class="col-span-full text-center py-16 text-gray-400">Keine Produkte gefunden.</p>`;
         }
+
         function changeQuantity(id, delta) {
             const product = allProducts.find(p => p.id === id);
             if (!product || !product.available) return;
@@ -828,6 +889,7 @@
             updateCartDisplay();
             renderProducts();
         }
+
         function updateCartDisplay() {
             const countEl = document.getElementById("cart-count-badge");
             const totalEl = document.getElementById("cart-total-price");
@@ -856,6 +918,7 @@
             });
             listEl.innerHTML = itemsHTML;
         }
+
         function removeCartItem(id) {
             if (id === MYSTERY_ID) return;
             cart = cart.filter(item => item.id !== id);
@@ -863,6 +926,7 @@
             updateCartDisplay();
             renderProducts();
         }
+
         function clearCart() {
             if (confirm("Wirklich ganzen Warenkorb leeren?")) {
                 cart = [];
@@ -874,14 +938,17 @@
                 toggleCart();
             }
         }
+
         function toggleCart() {
             document.getElementById("cart-sidebar").classList.toggle("translate-x-full");
         }
+
         function generateOrderNumber() {
             const now = new Date();
             const dateStr = now.getFullYear().toString().slice(2) + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0');
             return `WV-${dateStr}-${Math.floor(1000 + Math.random() * 9000)}`;
         }
+
         async function placeOrder() {
             if (!currentUserName) { alert("Bitte zuerst deinen Namen eingeben!"); showNameModal(); return; }
             if (cart.length === 0) return alert("Dein Warenkorb ist leer.");
@@ -916,6 +983,7 @@
                 } else alert("Fehler beim Senden.");
             } catch (e) { alert("Verbindungsfehler."); }
         }
+
         function showSuccessModal(orderNumber, details, total) {
             document.getElementById("success-order-id").textContent = orderNumber;
             const detailsDiv = document.getElementById("success-details");
@@ -923,13 +991,16 @@
             document.getElementById("success-modal").classList.remove("hidden");
             document.getElementById("success-modal").classList.add("flex");
         }
+
         function closeSuccessModal() {
             document.getElementById("success-modal").classList.add("hidden");
             document.getElementById("success-modal").classList.remove("flex");
         }
+
         function filterProducts() {
             renderProducts();
         }
+
         window.onload = initialize;
     </script>
 </body>

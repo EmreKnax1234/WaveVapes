@@ -51,6 +51,7 @@
         .mystery-item { background: linear-gradient(90deg, #10b981, #34d399) !important; border: 2px solid #a7f3d0 !important; color: black; }
         .history-item { background: #18181b; border: 1px solid #27272a; }
 
+        /* Nikotin-Auswahl Styling */
         .nicotine-select {
             background: #1f2937;
             color: white;
@@ -68,20 +69,6 @@
             border-color: #22d3ee;
             box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.3);
         }
-
-        .reorder-btn {
-            background: #22d3ee;
-            color: black;
-            font-weight: 600;
-            padding: 8px 16px;
-            border-radius: 9999px;
-            font-size: 0.9rem;
-            transition: all 0.2s;
-        }
-        .reorder-btn:hover {
-            background: #67e8f9;
-            transform: scale(1.05);
-        }
     </style>
 </head>
 <body class="wave-bg text-white min-h-screen">
@@ -96,32 +83,11 @@
                     <p class="text-[9px] sm:text-[10px] text-cyan-300 tracking-[3px] -mt-1">2026 SORTIMENT</p>
                 </div>
             </div>
-            <div class="flex items-center gap-3 sm:gap-8 flex-wrap justify-end">
+            <div class="flex items-center gap-3 sm:gap-8">
                 <button onclick="showNameModal()" class="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 border border-cyan-400/30 px-4 sm:px-6 py-2 sm:py-3 rounded-3xl text-xs sm:text-sm font-medium transition-all">
                     <i class="fa-solid fa-user text-cyan-300"></i>
                     <span id="current-user-name" class="font-medium">Name</span>
                 </button>
-
-                <button onclick="showOrderHistory()" class="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-cyan-300 hover:text-white px-4 py-2 rounded-2xl text-sm font-medium transition-all">
-                    <i class="fa-solid fa-clock-rotate-left"></i>
-                    <span class="hidden sm:inline">Meine Bestellungen</span>
-                </button>
-
-                <button onclick="shareReferral()" class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-2xl text-sm font-medium transition-all">
-                    <i class="fa-solid fa-share-nodes"></i>
-                    <span class="hidden sm:inline">Freunde einladen</span>
-                </button>
-
-                <button onclick="showMyReferrals()" class="flex items-center gap-2 bg-purple-600/80 hover:bg-purple-600 text-white px-4 py-2 rounded-2xl text-sm font-medium transition-all border border-purple-400/50">
-                    <i class="fa-solid fa-gift"></i>
-                    Meine Referrals
-                </button>
-
-                <button onclick="showMyAccount()" class="flex items-center gap-2 bg-cyan-600/80 hover:bg-cyan-600 text-white px-4 py-2 rounded-2xl text-sm font-medium transition-all border border-cyan-400/50">
-                    <i class="fa-solid fa-user-circle"></i>
-                    Mein Konto
-                </button>
-
                 <button onclick="toggleCart()" class="relative flex items-center gap-2 bg-gradient-to-r from-cyan-400 to-purple-500 hover:from-cyan-300 hover:to-purple-400 text-black font-semibold px-5 sm:px-7 py-2 sm:py-3 rounded-3xl transition-all text-sm">
                     <i class="fa-solid fa-cart-shopping text-lg"></i>
                     <span class="hidden sm:inline">Warenkorb</span>
@@ -157,6 +123,21 @@
                 </div>
             </div>
             <div class="flex items-center gap-4 flex-wrap justify-end">
+                <button onclick="event.stopImmediatePropagation(); showOrderHistory()"
+                        class="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-cyan-300 hover:text-white px-4 py-2 rounded-2xl text-sm font-medium transition-all">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                    <span class="hidden sm:inline">Meine Bestellungen</span>
+                </button>
+                <button onclick="event.stopImmediatePropagation(); shareReferral()"
+                        class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-2xl text-sm font-medium transition-all">
+                    <i class="fa-solid fa-share-nodes"></i>
+                    <span class="hidden sm:inline">Freunde einladen</span>
+                </button>
+                <button onclick="event.stopImmediatePropagation(); showMyReferrals()"
+                        class="flex items-center gap-2 bg-purple-600/80 hover:bg-purple-600 text-white px-4 py-2 rounded-2xl text-sm font-medium transition-all border border-purple-400/50">
+                    <i class="fa-solid fa-gift"></i>
+                    Meine Referrals
+                </button>
                 <div onclick="showNameModal()" class="text-cyan-400 group-hover:text-white transition text-base cursor-pointer">ändern →</div>
             </div>
         </div>
@@ -248,7 +229,7 @@
         </div>
     </div>
 
-    <!-- MEINE REFERRALS MODAL -->
+    <!-- MEINE REFERRALS & BONUS MODAL -->
     <div id="referrals-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-[9999]">
         <div class="bg-zinc-900 max-w-2xl w-full mx-4 rounded-3xl p-8 max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-6">
@@ -257,29 +238,6 @@
             </div>
             <div id="referrals-list" class="space-y-5"></div>
             <p id="no-referrals" class="hidden text-center text-gray-400 py-12">Noch keine Freunde haben deinen Code eingelöst.</p>
-        </div>
-    </div>
-
-    <!-- MEIN KONTO MODAL -->
-    <div id="account-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-[9999]">
-        <div class="bg-zinc-900 max-w-2xl w-full mx-4 rounded-3xl p-8 max-h-[90vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="text-3xl font-bold neon-text">Mein WaveVapes-Konto</h3>
-                <button onclick="closeAccountModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
-            </div>
-
-            <div class="mb-8">
-                <p class="text-lg mb-2">Hallo <strong id="account-username-display"></strong> 👋</p>
-                <p class="text-sm text-gray-400">Hier siehst du deine bisherigen Bestellungen. Klicke auf „Nochmal bestellen“, um den Warenkorb direkt wieder zu füllen.</p>
-            </div>
-
-            <div id="account-history-list" class="space-y-6"></div>
-
-            <p id="no-account-history" class="hidden text-center text-gray-400 py-12">Noch keine Bestellungen vorhanden.</p>
-
-            <div class="mt-8 text-center text-sm text-gray-500">
-                <p>Deine Daten bleiben nur lokal auf deinem Gerät gespeichert.</p>
-            </div>
         </div>
     </div>
 
@@ -296,6 +254,7 @@
         const MYSTERY_ID = 999;
         const fakeNames = ["Tim","Anna","Max","Sophie","Luca","Mia","Felix","Emma","Noah","Lena","Leon","Julia","Paul","Laura","Ben","Sarah","David","Hannah","Jonas","Lea"];
 
+        // Nur noch 10 mg und 20 mg – und 20 mg ist jetzt Standard
         const NICOTINE_OPTIONS = ["10 mg", "20 mg"];
 
         let allProducts = [
@@ -352,13 +311,12 @@
             if (saved) orderHistory = JSON.parse(saved);
         }
 
-        function saveToHistory(orderNumber, totalPrice, orderText, cartSnapshot) {
+        function saveToHistory(orderNumber, totalPrice, orderText) {
             const order = {
                 id: orderNumber,
                 date: new Date().toLocaleString('de-DE'),
                 total: totalPrice.toFixed(2).replace('.', ',') + " €",
-                summary: orderText.split('\n').slice(3, 6).join(' • '),
-                cartSnapshot: cartSnapshot // für schnelles Nachbestellen
+                summary: orderText.split('\n').slice(3, 6).join(' • ')
             };
             orderHistory.unshift(order);
             if (orderHistory.length > 15) orderHistory.pop();
@@ -372,8 +330,9 @@
                 return;
             }
             renderHistoryModal();
-            document.getElementById("history-modal").classList.remove("hidden");
-            document.getElementById("history-modal").classList.add("flex");
+            const modal = document.getElementById("history-modal");
+            modal.classList.remove("hidden");
+            modal.classList.add("flex");
         }
 
         function closeHistoryModal() {
@@ -403,72 +362,6 @@
                 `;
                 container.appendChild(div);
             });
-        }
-
-        // ====================== MEIN KONTO ======================
-        function showMyAccount() {
-            if (!currentUserName) {
-                alert("Bitte zuerst deinen Namen eingeben!");
-                showNameModal();
-                return;
-            }
-
-            document.getElementById("account-username-display").textContent = currentUserName;
-
-            const listEl = document.getElementById("account-history-list");
-            const noEl = document.getElementById("no-account-history");
-            listEl.innerHTML = "";
-
-            if (orderHistory.length === 0) {
-                noEl.classList.remove("hidden");
-            } else {
-                noEl.classList.add("hidden");
-                orderHistory.forEach(order => {
-                    const div = document.createElement("div");
-                    div.className = "bg-zinc-800 rounded-2xl p-6 border border-cyan-500/20";
-                    div.innerHTML = `
-                        <div class="flex justify-between items-center mb-4 flex-wrap gap-4">
-                            <div>
-                                <div class="font-mono text-cyan-300 text-lg">${order.id}</div>
-                                <div class="text-sm text-gray-400">${order.date} • ${order.total}</div>
-                            </div>
-                            <button onclick="reorderFromHistory('${order.id}')" class="reorder-btn">
-                                Nochmal bestellen
-                            </button>
-                        </div>
-                        <div class="text-sm text-gray-300">${order.summary}</div>
-                    `;
-                    listEl.appendChild(div);
-                });
-            }
-
-            document.getElementById("account-modal").classList.remove("hidden");
-            document.getElementById("account-modal").classList.add("flex");
-        }
-
-        function closeAccountModal() {
-            document.getElementById("account-modal").classList.add("hidden");
-            document.getElementById("account-modal").classList.remove("flex");
-        }
-
-        function reorderFromHistory(orderId) {
-            const order = orderHistory.find(o => o.id === orderId);
-            if (!order || !order.cartSnapshot) {
-                alert("Diese Bestellung kann nicht mehr nachbestellt werden (zu alt oder Daten fehlen).");
-                return;
-            }
-
-            // Alten Warenkorb wiederherstellen
-            cart = JSON.parse(JSON.stringify(order.cartSnapshot));
-
-            updateCartDisplay();
-            closeAccountModal();
-            toggleCart(); // Warenkorb sofort öffnen
-
-            const toast = document.getElementById('notification-toast');
-            toast.innerHTML = `🛒 Deine alte Bestellung wurde in den Warenkorb geladen!`;
-            toast.classList.add('visible');
-            setTimeout(() => toast.classList.remove('visible'), 4000);
         }
 
         // ====================== REFERRAL-SYSTEM ======================
@@ -503,9 +396,11 @@
             statusEl.innerHTML = `<span class="text-gray-400">Prüfe Referral-Code...</span>`;
             try {
                 const url = REFERRAL_SERVER + `?action=redeem&code=${encodeURIComponent(refCode)}&name=${encodeURIComponent(currentUserName || "Gast")}`;
+                console.log("Referral-Request an:", url);
                 const res = await fetch(url);
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                if (!res.ok) throw new Error(`HTTP ${res.status} - ${res.statusText}`);
                 const data = await res.json();
+                console.log("Server-Antwort (redeem):", data);
                 if (data.valid === true) {
                     discountPercent = 10;
                     appliedDiscountCode = refCode;
@@ -513,10 +408,12 @@
                     updateCartDisplay();
                     showReferralToast();
                 } else {
-                    statusEl.innerHTML = `<span class="text-red-400">${data.reason || "Ungültiger Code"}</span>`;
+                    let msg = data.reason || "Ungültiger oder abgelaufener Referral-Code";
+                    statusEl.innerHTML = `<span class="text-red-400">${msg}</span>`;
                 }
             } catch (e) {
-                statusEl.innerHTML = `<span class="text-red-400">Verbindungsfehler</span>`;
+                console.error("Referral Fehler:", e);
+                statusEl.innerHTML = `<span class="text-red-400">Verbindungsfehler – Seite neu laden</span>`;
             }
         }
 
@@ -524,12 +421,203 @@
             const toast = document.getElementById('notification-toast');
             notificationCyclePaused = true;
             toast.classList.add('discount');
-            toast.innerHTML = `🎁 <strong>Referral-Rabatt 10% aktiviert!</strong>`;
+            toast.innerHTML = `🎁 <strong>Referral-Rabatt 10% aktiviert!</strong><br><span class="text-xs">Für dich – dein Freund bekommt seinen Bonus, sobald er bezahlt hat</span>`;
             toast.classList.add('visible');
             setTimeout(() => {
-                toast.classList.remove('visible', 'discount');
-                notificationCyclePaused = false;
+                toast.classList.remove('visible');
+                setTimeout(() => {
+                    toast.classList.remove('discount');
+                    notificationCyclePaused = false;
+                    showNextNotification();
+                }, 600);
             }, 4500);
+        }
+
+        // ====================== MEINE REFERRALS & BONUS ======================
+        async function showMyReferrals() {
+            if (!currentUserName) {
+                alert("Bitte zuerst deinen Namen eingeben!");
+                showNameModal();
+                return;
+            }
+            const modal = document.getElementById("referrals-modal");
+            const listEl = document.getElementById("referrals-list");
+            const noEl = document.getElementById("no-referrals");
+            listEl.innerHTML = '<p class="text-center text-gray-400 py-8">Lade deine Einladungen...</p>';
+            modal.classList.remove("hidden");
+            modal.classList.add("flex");
+            try {
+                const url = REFERRAL_SERVER + "?action=get_my_referrals&name=" + encodeURIComponent(currentUserName);
+                console.log("get_my_referrals → Request an:", url);
+                const res = await fetch(url);
+                if (!res.ok) throw new Error(`HTTP ${res.status} – ${res.statusText}`);
+                const data = await res.json();
+                console.log("get_my_referrals → Antwort vom Server:", data);
+                listEl.innerHTML = "";
+                if (!data.referrals || data.referrals.length === 0) {
+                    noEl.classList.remove("hidden");
+                    console.log("Keine Referrals gefunden");
+                    return;
+                }
+                noEl.classList.add("hidden");
+                data.referrals.forEach((ref, index) => {
+                    console.log(`Referral #${index + 1}:`, ref);
+                    const item = document.createElement("div");
+                    item.className = "bg-zinc-800 rounded-2xl p-5 border border-cyan-500/20";
+                    let statusHTML = "";
+                    let actionHTML = "";
+                    const statusLower = (ref.status || "").toLowerCase().trim();
+                    if (statusLower === "pending") {
+                        statusHTML = `<span class="text-yellow-400 font-medium">Eingelöst – warte auf Bezahlung</span>`;
+                    } else if (statusLower === "paid" || statusLower === "confirmed") {
+                        statusHTML = `<span class="text-emerald-400 font-medium">Bezahlt/Bestätigt! Bonus bereit</span>`;
+                        if (ref.bonusCode && ref.bonusCode.trim() !== "") {
+                            actionHTML = `
+                                <div class="mt-4 flex flex-col gap-2">
+                                    <div class="bg-zinc-900 p-3 rounded-xl text-center font-mono text-lg text-emerald-300 break-all">
+                                        ${ref.bonusCode}
+                                    </div>
+                                    <button onclick="copyToClipboard('${ref.bonusCode}')"
+                                            class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-xl transition">
+                                        Code kopieren
+                                    </button>
+                                </div>`;
+                        } else {
+                            const refCode = (ref.referralCode || "").trim();
+                            if (refCode) {
+                                actionHTML = `<button onclick="claimBonus('${refCode}')" class="mt-4 w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-xl transition">
+                                                  Bonus-Code holen
+                                              </button>`;
+                            } else {
+                                actionHTML = `<div class="mt-4 text-red-400 text-sm text-center">Kein Referral-Code verfügbar (Server-Fehler?)</div>`;
+                            }
+                        }
+                    } else {
+                        statusHTML = `<span class="text-gray-400">Status: ${ref.status || "unbekannt"}</span>`;
+                    }
+                    item.innerHTML = `
+                        <div class="flex justify-between items-start mb-3">
+                            <div>
+                                <div class="font-semibold text-lg">${ref.friend || "Unbekannt"}</div>
+                                ${ref.redeemedAt ? `<div class="text-sm text-gray-400">am ${ref.redeemedAt}</div>` : ''}
+                            </div>
+                            <div class="text-right">${statusHTML}</div>
+                        </div>
+                        ${actionHTML}
+                    `;
+                    listEl.appendChild(item);
+                });
+            } catch (err) {
+                console.error("Fehler in showMyReferrals:", err);
+                listEl.innerHTML = `<p class="text-red-400 text-center py-8">Fehler beim Laden: ${err.message}</p>`;
+            }
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                const toast = document.getElementById('notification-toast');
+                toast.innerHTML = `📋 <strong>Bonus-Code kopiert!</strong><br><span class="font-mono">${text}</span>`;
+                toast.classList.add('visible');
+                setTimeout(() => toast.classList.remove('visible'), 4000);
+            }).catch(err => {
+                console.error('Kopieren fehlgeschlagen:', err);
+                alert("Kopieren fehlgeschlagen – bitte manuell kopieren: " + text);
+            });
+        }
+
+        function closeReferralsModal() {
+            document.getElementById("referrals-modal").classList.add("hidden");
+            document.getElementById("referrals-modal").classList.remove("flex");
+        }
+
+        async function claimBonus(referralCode) {
+            if (!referralCode || referralCode.trim() === '') {
+                alert("Kein gültiger Referral-Code gefunden. Bitte Seite neu laden oder Support kontaktieren.");
+                return;
+            }
+            try {
+                const url = REFERRAL_SERVER + "?action=claim_bonus&code=" + encodeURIComponent(referralCode);
+                console.log("Claim Bonus Request an:", url);
+                const res = await fetch(url);
+                if (!res.ok) throw new Error(`HTTP ${res.status} – ${res.statusText}`);
+                const data = await res.json();
+                console.log("Claim Bonus Antwort:", data);
+                if (data.valid && data.bonusCode) {
+                    const toast = document.getElementById('notification-toast');
+                    toast.innerHTML = `🎉 <strong>Dein Bonus-Code:</strong><br><span class="font-mono text-lg">${data.bonusCode}</span><br><small>10% Rabatt – einmalig einlösbar!</small>`;
+                    toast.classList.add('visible', 'discount');
+                    setTimeout(() => toast.classList.remove('visible'), 8000);
+                    alert(`Dein Bonus-Code: ${data.bonusCode}\n\nGib ihn einfach im Warenkorb ein!`);
+                } else {
+                    alert(data.reason || "Bonus noch nicht verfügbar oder Code nicht gefunden.");
+                }
+            } catch (err) {
+                console.error("Claim Fehler:", err);
+                alert("Fehler beim Abholen des Bonus: " + err.message);
+            }
+        }
+
+        // ====================== RABATT + MANUELLE + BONUS CODES ======================
+        async function applyDiscountCode() {
+            const input = document.getElementById("discount-input").value.trim().toUpperCase();
+            const statusEl = document.getElementById("discount-status");
+            if (!input) {
+                statusEl.innerHTML = `<span class="text-red-400">Bitte Code eingeben</span>`;
+                return;
+            }
+            if (VALID_DISCOUNTS[input]) {
+                discountPercent = VALID_DISCOUNTS[input];
+                appliedDiscountCode = input;
+                statusEl.innerHTML = `<span class="text-emerald-400">✓ ${input} angewendet (${discountPercent}% Rabatt)</span>`;
+                updateCartDisplay();
+                showDiscountToast();
+                return;
+            }
+            if (input.startsWith("WAVE-BONUS-")) {
+                statusEl.innerHTML = `<span class="text-gray-400">Prüfe Bonus-Code...</span>`;
+                try {
+                    let url = REFERRAL_SERVER + "?action=validate_bonus&code=" + encodeURIComponent(input);
+                    let res = await fetch(url);
+                    let data = await res.json();
+                    if (data.valid === true) {
+                        url = REFERRAL_SERVER + "?action=redeem_bonus&code=" + encodeURIComponent(input);
+                        res = await fetch(url);
+                        data = await res.json();
+                        if (data.success === true) {
+                            discountPercent = 10;
+                            appliedDiscountCode = input;
+                            statusEl.innerHTML = `<span class="text-emerald-400">✓ Bonus-Code eingelöst! 10% Rabatt</span>`;
+                            updateCartDisplay();
+                            showDiscountToast();
+                        } else {
+                            statusEl.innerHTML = `<span class="text-red-400">${data.reason || "Einlösen fehlgeschlagen"}</span>`;
+                        }
+                    } else {
+                        statusEl.innerHTML = `<span class="text-red-400">${data.reason || "Ungültiger Bonus-Code"}</span>`;
+                    }
+                } catch (err) {
+                    console.error("Bonus-Code Fehler:", err);
+                    statusEl.innerHTML = `<span class="text-red-400">Verbindungsfehler – versuche später erneut</span>`;
+                }
+                return;
+            }
+            statusEl.innerHTML = `<span class="text-red-400">Ungültiger Code</span>`;
+        }
+
+        function showDiscountToast() {
+            const toast = document.getElementById('notification-toast');
+            notificationCyclePaused = true;
+            toast.classList.add('discount');
+            toast.innerHTML = `🎟️ <strong>${appliedDiscountCode} aktiviert!</strong><br><span class="text-xs">${discountPercent}% Rabatt</span>`;
+            toast.classList.add('visible');
+            setTimeout(() => {
+                toast.classList.remove('visible');
+                setTimeout(() => {
+                    toast.classList.remove('discount');
+                    notificationCyclePaused = false;
+                    showNextNotification();
+                }, 600);
+            }, 3200);
         }
 
         // ====================== MYSTERY VAPE ======================
@@ -718,7 +806,7 @@
             filtered.forEach(product => {
                 const cartItem = cart.find(item => item.id === product.id);
                 const qty = cartItem ? cartItem.qty : 0;
-                const nicotine = cartItem && cartItem.nicotine ? cartItem.nicotine : "20 mg";
+                const nicotine = cartItem && cartItem.nicotine ? cartItem.nicotine : "20 mg"; // Default jetzt 20 mg
 
                 const imageHTML = product.image ? `<img src="${product.image}" class="tornado-image" alt="${product.name}">` : '';
                 let priceHTML = '';
@@ -784,7 +872,7 @@
                     name: product.name,
                     qty: 0,
                     price: product.price,
-                    nicotine: "20 mg"
+                    nicotine: "20 mg"   // ← Hier ist jetzt 20 mg der Default-Wert
                 };
                 cart.push(existing);
             }
@@ -798,7 +886,7 @@
             const newTornadoQty = getTornadoQuantity();
             if (newTornadoQty >= 4 && newTornadoQty % 4 === 0) showDealToast();
             updateCartDisplay();
-            renderProducts();
+            renderProducts(); // neu rendern, damit Dropdown aktualisiert bleibt
         }
 
         function updateCartDisplay() {
@@ -867,10 +955,8 @@
         async function placeOrder() {
             if (!currentUserName) { alert("Bitte zuerst deinen Namen eingeben!"); showNameModal(); return; }
             if (cart.length === 0) return alert("Dein Warenkorb ist leer.");
-
             const orderNumber = generateOrderNumber();
             const totalPrice = calculateCartTotal();
-
             let orderText = `Name: ${currentUserName}\nBestellnummer: ${orderNumber}\nGesamt: ${totalPrice.toFixed(2).replace('.', ',')} €\n\nBestellte Produkte:\n`;
             cart.forEach(item => {
                 const p = item.price || 0;
@@ -880,19 +966,13 @@
             if (discountPercent > 0) {
                 orderText += `• Rabattcode ${appliedDiscountCode} (${discountPercent}%) angewendet\n`;
             }
-
-            // Snapshot des aktuellen Warenkorbs für Nachbestellung
-            const cartSnapshot = JSON.parse(JSON.stringify(cart));
-
-            saveToHistory(orderNumber, totalPrice, orderText, cartSnapshot);
-
+            saveToHistory(orderNumber, totalPrice, orderText);
             const formData = new FormData();
             formData.append("name", currentUserName);
             formData.append("bestellnummer", orderNumber);
             formData.append("produkte", orderText);
             formData.append("gesamt", `${totalPrice.toFixed(2).replace('.', ',')} €`);
             formData.append("_subject", `WaveVapes Bestellung ${orderNumber}`);
-
             try {
                 const response = await fetch(FORMSPREE_ENDPOINT, { method: "POST", body: formData, headers: { "Accept": "application/json" } });
                 if (response.ok) {
@@ -904,12 +984,8 @@
                     updateCartDisplay();
                     renderProducts();
                     toggleCart();
-                } else {
-                    alert("Fehler beim Senden.");
-                }
-            } catch (e) {
-                alert("Verbindungsfehler.");
-            }
+                } else alert("Fehler beim Senden.");
+            } catch (e) { alert("Verbindungsfehler."); }
         }
 
         function showSuccessModal(orderNumber, details, total) {

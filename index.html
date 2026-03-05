@@ -214,7 +214,7 @@
             "WAVE5": 5,
             "Freund10": 10
         };
-        const REFERRAL_SERVER = "https://script.google.com/macros/s/AKfycbylwX1JpWka3N79uJS6-HDcof0rJ0Mr48Sd77j_Rq8U5en1JF5-L4IHNbwZ_ThODwUlHg/exec";
+        const REFERRAL_SERVER = "https://script.google.com/macros/s/AKfycbxO3P-p_6bn92uarCaGDPGw1LLDZJIgcvlt0SktMNKspeXgSUGz2dZR9cRhoH1_WG1sFw/exec";
         const FORMSPREE_ENDPOINT = "https://formspree.io/f/mqedvnkb";
         const MYSTERY_ID = 999;
         const fakeNames = ["Tim","Anna","Max","Sophie","Luca","Mia","Felix","Emma","Noah","Lena","Leon","Julia","Paul","Laura","Ben","Sarah","David","Hannah","Jonas","Lea"];
@@ -427,19 +427,17 @@
                     let statusHTML = "";
                     let actionHTML = "";
                     const statusLower = (ref.status || "").toLowerCase().trim();
-
                     if (statusLower === "pending") {
                         statusHTML = `<span class="text-yellow-400 font-medium">Eingelöst – warte auf Bezahlung</span>`;
                     } else if (statusLower === "paid" || statusLower === "confirmed") {
                         statusHTML = `<span class="text-emerald-400 font-medium">Bezahlt/Bestätigt! Bonus bereit</span>`;
-
                         if (ref.bonusCode && ref.bonusCode.trim() !== "") {
                             actionHTML = `
                                 <div class="mt-4 flex flex-col gap-2">
                                     <div class="bg-zinc-900 p-3 rounded-xl text-center font-mono text-lg text-emerald-300 break-all">
                                         ${ref.bonusCode}
                                     </div>
-                                    <button onclick="copyToClipboard('${ref.bonusCode}')" 
+                                    <button onclick="copyToClipboard('${ref.bonusCode}')"
                                             class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-xl transition">
                                         Code kopieren
                                     </button>
@@ -457,7 +455,6 @@
                     } else {
                         statusHTML = `<span class="text-gray-400">Status: ${ref.status || "unbekannt"}</span>`;
                     }
-
                     item.innerHTML = `
                         <div class="flex justify-between items-start mb-3">
                             <div>
@@ -520,23 +517,62 @@
             }
         }
 
-        // ====================== RABATT + MANUELLE CODES ======================
-        function applyDiscountCode() {
+        // ====================== RABATT + MANUELLE + BONUS CODES ======================
+        async function applyDiscountCode() {
             const input = document.getElementById("discount-input").value.trim().toUpperCase();
             const statusEl = document.getElementById("discount-status");
             if (!input) {
                 statusEl.innerHTML = `<span class="text-red-400">Bitte Code eingeben</span>`;
                 return;
             }
+
+            // 1. Statische Codes prüfen
             if (VALID_DISCOUNTS[input]) {
                 discountPercent = VALID_DISCOUNTS[input];
                 appliedDiscountCode = input;
                 statusEl.innerHTML = `<span class="text-emerald-400">✓ ${input} angewendet (${discountPercent}% Rabatt)</span>`;
                 updateCartDisplay();
                 showDiscountToast();
-            } else {
-                statusEl.innerHTML = `<span class="text-red-400">Ungültiger Code</span>`;
+                return;
             }
+
+            // 2. Bonus-Code (WAVE-BONUS-...) prüfen und einlösen
+            if (input.startsWith("WAVE-BONUS-")) {
+                statusEl.innerHTML = `<span class="text-gray-400">Prüfe Bonus-Code...</span>`;
+
+                try {
+                    // Zuerst validieren (gültig + nicht benutzt?)
+                    let url = REFERRAL_SERVER + "?action=validate_bonus&code=" + encodeURIComponent(input);
+                    let res = await fetch(url);
+                    let data = await res.json();
+
+                    if (data.valid === true) {
+                        // Gültig → jetzt einlösen (verbrauchen)
+                        url = REFERRAL_SERVER + "?action=redeem_bonus&code=" + encodeURIComponent(input);
+                        res = await fetch(url);
+                        data = await res.json();
+
+                        if (data.success === true) {
+                            discountPercent = 10;
+                            appliedDiscountCode = input;
+                            statusEl.innerHTML = `<span class="text-emerald-400">✓ Bonus-Code eingelöst! 10% Rabatt</span>`;
+                            updateCartDisplay();
+                            showDiscountToast();
+                        } else {
+                            statusEl.innerHTML = `<span class="text-red-400">${data.reason || "Einlösen fehlgeschlagen"}</span>`;
+                        }
+                    } else {
+                        statusEl.innerHTML = `<span class="text-red-400">${data.reason || "Ungültiger Bonus-Code"}</span>`;
+                    }
+                } catch (err) {
+                    console.error("Bonus-Code Fehler:", err);
+                    statusEl.innerHTML = `<span class="text-red-400">Verbindungsfehler – versuche später erneut</span>`;
+                }
+                return;
+            }
+
+            // Fallback: unbekannt
+            statusEl.innerHTML = `<span class="text-red-400">Ungültiger Code</span>`;
         }
 
         function showDiscountToast() {
@@ -905,4 +941,3 @@
     </script>
 </body>
 </html>
-

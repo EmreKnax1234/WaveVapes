@@ -79,6 +79,16 @@
             margin-left: 16px;
             vertical-align: middle;
         }
+        .whatsapp-link {
+            color: #25D366;
+            font-weight: 700;
+            text-decoration: underline;
+            margin-left: 8px;
+            transition: color 0.2s;
+        }
+        .whatsapp-link:hover {
+            color: #128C7E;
+        }
 
         @keyframes glowRed {
             0%   { text-shadow: 0 0 12px #ef4444, 0 0 24px #dc2626, 0 0 40px #b91c1c; }
@@ -144,10 +154,18 @@
 
     <!-- REFERRAL BAUM WARNUNG – ganz oben, sticky -->
     <div class="referral-warning-tree sticky top-0 z-40">
-        <div class="tree-container flex items-center justify-center flex-wrap gap-3 sm:gap-5 px-4">
+        <div class="tree-container flex flex-col sm:flex-row items-center justify-center flex-wrap gap-2 sm:gap-5 px-4 text-center sm:text-left">
             <div class="christmas-tree">🎄</div>
             <div class="warning-text text-base sm:text-lg">
-                Referral-System <strong>noch in Entwicklung</strong> – Fehler möglich! 🚧 Wir fixen das schnellstmöglich.
+                Referral-System <strong>noch in Entwicklung</strong> – Fehler möglich! 🚧 
+                Wir fixen das schnellstmöglich.
+                <br class="sm:hidden">
+                <a href="https://chat.whatsapp.com/LM0rL2VeEDQAnyw83LDLK9" 
+                   target="_blank" 
+                   rel="noopener noreferrer"
+                   class="whatsapp-link">
+                    → WhatsApp-Gruppe (Hilfe & Support)
+                </a>
             </div>
         </div>
     </div>
@@ -179,13 +197,14 @@
                 </div>
             </div>
 
+            <!-- HIER IST DER NEUE WARN-HINWEIS -->
             <div class="mb-5 p-4 bg-red-950/70 border border-red-600/60 rounded-2xl text-red-200 text-sm leading-relaxed">
                 <div class="flex items-center gap-2 mb-1.5 font-bold text-red-300">
                     <i class="fa-solid fa-triangle-exclamation text-lg"></i>
                     Referral-System noch in Entwicklung!
                 </div>
-                <p>Derzeit können Fehler auftreten (Link nicht erstellbar, Bonus nicht verfügbar etc.).</p>
-                <p class="mt-1">Wenn Hilfe benötigt, dann in die Whatsapp Gruppe kommen und wir helfen ihnen gerne weiter! Wir arbeiten intensiv daran danke für dein Verständnis! 🚧</p>
+                <p>Derzeit können Fehler auftreten (Link nicht erstellbar, Referrals nicht sichtbar, Bonus nicht verfügbar etc.).</p>
+                <p class="mt-1">Wenn Hilfe benötigt, dann in die Whatsapp Gruppe kommen und wir helfen ihnen gerne weiter! Wir arbeiten intensiv daran – danke für dein Verständnis! 🚧</p>
             </div>
 
             <div class="flex items-center gap-4 flex-wrap justify-end">
@@ -221,7 +240,7 @@
         <div id="products-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6"></div>
     </div>
 
-    <!-- FLOATING CART BUTTON (mobile) -->
+    <!-- FLOATING CART (mobile) -->
     <button onclick="toggleCart()" class="fixed bottom-6 right-6 lg:hidden bg-gradient-to-r from-cyan-400 to-purple-500 text-black w-14 h-14 rounded-3xl shadow-2xl flex items-center justify-center z-50">
         <i class="fa-solid fa-cart-shopping text-3xl"></i>
     </button>
@@ -235,6 +254,7 @@
             </div>
             <div id="cart-items-list" class="space-y-6 min-h-[300px]"></div>
 
+            <!-- RABATT / REFERRAL EINGABE -->
             <div class="mt-8 pt-6 border-t border-white/10">
                 <p class="text-xs uppercase tracking-widest text-gray-400 mb-3">Rabattcode oder Referral</p>
                 <div class="flex flex-col gap-3">
@@ -330,17 +350,20 @@
         </div>
     </div>
 
-    <!-- MEINE REFERRALS MODAL -->
+    <!-- MEINE REFERRALS & BONUS MODAL -->
     <div id="referrals-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-[9999]">
         <div class="bg-zinc-900 max-w-2xl w-full mx-4 rounded-3xl p-8 max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-6">
                 <h3 class="text-3xl font-bold neon-text">Meine Referrals & Bonus</h3>
                 <button onclick="closeReferralsModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
             </div>
+
+            <!-- Optional: Warnhinweis auch hier im Modal -->
             <div class="mb-6 p-4 bg-red-950/60 border border-red-600/50 rounded-2xl text-red-200 text-sm text-center">
                 <strong>Referral-Funktion noch in Entwicklung</strong><br>
                 Fehler möglich – wir fixen das schnellstmöglich!
             </div>
+
             <div id="referrals-list" class="space-y-5"></div>
             <p id="no-referrals" class="hidden text-center text-gray-400 py-12">Noch keine Freunde haben deinen Code eingelöst.</p>
         </div>
@@ -465,6 +488,7 @@
             });
         }
 
+        // ====================== REFERRAL CONSENT & LINK-MODAL ======================
         function showReferralConsentModal() {
             const modal = document.getElementById("referral-consent-modal");
             modal.classList.remove("hidden");
@@ -511,10 +535,11 @@
                     throw new Error("execCommand fehlgeschlagen");
                 }
             } catch (err) {
-                alert("Kopieren fehlgeschlagen.\n\nBitte langen Druck auf den Text machen und „Kopieren“ auswählen.");
+                alert("Kopieren fehlgeschlagen.\n\nBitte langen Druck auf dem Handy machen und „Kopieren“ auswählen.");
             }
         }
 
+        // ====================== REFERRAL-SYSTEM ======================
         async function shareReferral() {
             if (!currentUserName) {
                 alert("Bitte zuerst deinen Namen eingeben!");
@@ -1174,4 +1199,3 @@
     </script>
 </body>
 </html>
-

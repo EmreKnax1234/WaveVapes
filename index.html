@@ -50,9 +50,42 @@
         .euro { font-size: 1.1rem; margin-left: 2px; }
         .mystery-item { background: linear-gradient(90deg, #10b981, #34d399) !important; border: 2px solid #a7f3d0 !important; color: black; }
         .history-item { background: #18181b; border: 1px solid #27272a; }
+
+        .nicotine-select {
+            background: #1f2937;
+            color: white;
+            border: 1px solid #67e8f9/50;
+            border-radius: 9999px;
+            padding: 6px 12px;
+            font-size: 0.875rem;
+            margin-top: 8px;
+            width: 100%;
+            max-width: 180px;
+            appearance: none;
+        }
+        .nicotine-select:focus {
+            outline: none;
+            border-color: #22d3ee;
+            box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.3);
+        }
+
+        .reorder-btn {
+            background: #22d3ee;
+            color: black;
+            font-weight: 600;
+            padding: 8px 16px;
+            border-radius: 9999px;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        .reorder-btn:hover {
+            background: #67e8f9;
+            transform: scale(1.05);
+        }
     </style>
 </head>
 <body class="wave-bg text-white min-h-screen">
+
     <!-- NAVBAR -->
     <nav class="bg-black/90 backdrop-blur-xl border-b border-cyan-400/30 sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex justify-between items-center">
@@ -63,11 +96,32 @@
                     <p class="text-[9px] sm:text-[10px] text-cyan-300 tracking-[3px] -mt-1">2026 SORTIMENT</p>
                 </div>
             </div>
-            <div class="flex items-center gap-3 sm:gap-8">
+            <div class="flex items-center gap-3 sm:gap-8 flex-wrap justify-end">
                 <button onclick="showNameModal()" class="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 border border-cyan-400/30 px-4 sm:px-6 py-2 sm:py-3 rounded-3xl text-xs sm:text-sm font-medium transition-all">
                     <i class="fa-solid fa-user text-cyan-300"></i>
                     <span id="current-user-name" class="font-medium">Name</span>
                 </button>
+
+                <button onclick="showOrderHistory()" class="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-cyan-300 hover:text-white px-4 py-2 rounded-2xl text-sm font-medium transition-all">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                    <span class="hidden sm:inline">Meine Bestellungen</span>
+                </button>
+
+                <button onclick="shareReferral()" class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-2xl text-sm font-medium transition-all">
+                    <i class="fa-solid fa-share-nodes"></i>
+                    <span class="hidden sm:inline">Freunde einladen</span>
+                </button>
+
+                <button onclick="showMyReferrals()" class="flex items-center gap-2 bg-purple-600/80 hover:bg-purple-600 text-white px-4 py-2 rounded-2xl text-sm font-medium transition-all border border-purple-400/50">
+                    <i class="fa-solid fa-gift"></i>
+                    Meine Referrals
+                </button>
+
+                <button onclick="showMyAccount()" class="flex items-center gap-2 bg-cyan-600/80 hover:bg-cyan-600 text-white px-4 py-2 rounded-2xl text-sm font-medium transition-all border border-cyan-400/50">
+                    <i class="fa-solid fa-user-circle"></i>
+                    Mein Konto
+                </button>
+
                 <button onclick="toggleCart()" class="relative flex items-center gap-2 bg-gradient-to-r from-cyan-400 to-purple-500 hover:from-cyan-300 hover:to-purple-400 text-black font-semibold px-5 sm:px-7 py-2 sm:py-3 rounded-3xl transition-all text-sm">
                     <i class="fa-solid fa-cart-shopping text-lg"></i>
                     <span class="hidden sm:inline">Warenkorb</span>
@@ -85,7 +139,7 @@
                 Nur für Freunde • Persönliche Abholung
             </div>
             <h2 class="hero-title text-5xl sm:text-6xl font-bold tracking-tighter neon-text mb-3">Bestelle deine Liquids und Vapes</h2>
-            <p class="hero-subtitle text-xl sm:text-2xl text-cyan-200 max-w-md mx-auto">8 € pro Flasche • 10 ml • Einfach auswählen, abschicken, bei mir abholen</p>
+            <p class="hero-subtitle text-xl sm:text-2xl text-cyan-200 max-w-md mx-auto">8 € pro Flasche • 10 ml • Nikotin frei wählbar (10 oder 20 mg)</p>
             <p class="text-base sm:text-lg text-gray-300 mt-4">Alle Liquids von ELFLIQ</p>
             <div class="mt-4 inline-flex items-center gap-3 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-400/30 hover:border-emerald-400 px-7 py-3 rounded-3xl text-emerald-300 text-base font-semibold transition-all">
                 <i class="fa-solid fa-gift text-2xl"></i>
@@ -103,21 +157,6 @@
                 </div>
             </div>
             <div class="flex items-center gap-4 flex-wrap justify-end">
-                <button onclick="event.stopImmediatePropagation(); showOrderHistory()"
-                        class="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-cyan-300 hover:text-white px-4 py-2 rounded-2xl text-sm font-medium transition-all">
-                    <i class="fa-solid fa-clock-rotate-left"></i>
-                    <span class="hidden sm:inline">Meine Bestellungen</span>
-                </button>
-                <button onclick="event.stopImmediatePropagation(); shareReferral()"
-                        class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-2xl text-sm font-medium transition-all">
-                    <i class="fa-solid fa-share-nodes"></i>
-                    <span class="hidden sm:inline">Freunde einladen</span>
-                </button>
-                <button onclick="event.stopImmediatePropagation(); showMyReferrals()"
-                        class="flex items-center gap-2 bg-purple-600/80 hover:bg-purple-600 text-white px-4 py-2 rounded-2xl text-sm font-medium transition-all border border-purple-400/50">
-                    <i class="fa-solid fa-gift"></i>
-                    Meine Referrals
-                </button>
                 <div onclick="showNameModal()" class="text-cyan-400 group-hover:text-white transition text-base cursor-pointer">ändern →</div>
             </div>
         </div>
@@ -209,7 +248,7 @@
         </div>
     </div>
 
-    <!-- MEINE REFERRALS & BONUS MODAL -->
+    <!-- MEINE REFERRALS MODAL -->
     <div id="referrals-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-[9999]">
         <div class="bg-zinc-900 max-w-2xl w-full mx-4 rounded-3xl p-8 max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-6">
@@ -218,6 +257,29 @@
             </div>
             <div id="referrals-list" class="space-y-5"></div>
             <p id="no-referrals" class="hidden text-center text-gray-400 py-12">Noch keine Freunde haben deinen Code eingelöst.</p>
+        </div>
+    </div>
+
+    <!-- MEIN KONTO MODAL -->
+    <div id="account-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-[9999]">
+        <div class="bg-zinc-900 max-w-2xl w-full mx-4 rounded-3xl p-8 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-3xl font-bold neon-text">Mein WaveVapes-Konto</h3>
+                <button onclick="closeAccountModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
+            </div>
+
+            <div class="mb-8">
+                <p class="text-lg mb-2">Hallo <strong id="account-username-display"></strong> 👋</p>
+                <p class="text-sm text-gray-400">Hier siehst du deine bisherigen Bestellungen. Klicke auf „Nochmal bestellen“, um den Warenkorb direkt wieder zu füllen.</p>
+            </div>
+
+            <div id="account-history-list" class="space-y-6"></div>
+
+            <p id="no-account-history" class="hidden text-center text-gray-400 py-12">Noch keine Bestellungen vorhanden.</p>
+
+            <div class="mt-8 text-center text-sm text-gray-500">
+                <p>Deine Daten bleiben nur lokal auf deinem Gerät gespeichert.</p>
+            </div>
         </div>
     </div>
 
@@ -230,9 +292,12 @@
             "Freund10": 10
         };
         const REFERRAL_SERVER = "https://script.google.com/macros/s/AKfycbxYPfvqITZQxQC4QXbb_qVesdmLTSt6MEBaNWSEWL_20wqtbfJ0OlYNCtn7mkJJoImVSw/exec";
-        const FORMSPREE_ENDPOINT = "https://formspree.io/f/xeerjpqd";
+        const FORMSPREE_ENDPOINT = "https://formspree.io/f/mqedvnkb";
         const MYSTERY_ID = 999;
         const fakeNames = ["Tim","Anna","Max","Sophie","Luca","Mia","Felix","Emma","Noah","Lena","Leon","Julia","Paul","Laura","Ben","Sarah","David","Hannah","Jonas","Lea"];
+
+        const NICOTINE_OPTIONS = ["10 mg", "20 mg"];
+
         let allProducts = [
             { id: 1, name: "Apple Peach", category: "Normale Sorten", isNew: false, available: true, price: 8 },
             { id: 2, name: "Blueberry", category: "Normale Sorten", isNew: false, available: true, price: 8 },
@@ -269,6 +334,7 @@
             { id: 33, name: "WaveVapes 30000 Cherry Ice", category: "WaveVapes Tornado 30000", isNew: true, available: true, price: 20.00, image: "tornado-2.jpg" },
             { id: 34, name: "WaveVapes 30000 Peach Berry", category: "WaveVapes Tornado 30000", isNew: true, available: true, price: 20.00, image: "tornado-3.jpg" }
         ];
+
         let cart = [];
         let currentUserName = localStorage.getItem("wavevapes_username") || "";
         let currentCategoryFilter = "Alle";
@@ -286,12 +352,13 @@
             if (saved) orderHistory = JSON.parse(saved);
         }
 
-        function saveToHistory(orderNumber, totalPrice, orderText) {
+        function saveToHistory(orderNumber, totalPrice, orderText, cartSnapshot) {
             const order = {
                 id: orderNumber,
                 date: new Date().toLocaleString('de-DE'),
                 total: totalPrice.toFixed(2).replace('.', ',') + " €",
-                summary: orderText.split('\n').slice(3, 6).join(' • ')
+                summary: orderText.split('\n').slice(3, 6).join(' • '),
+                cartSnapshot: cartSnapshot // für schnelles Nachbestellen
             };
             orderHistory.unshift(order);
             if (orderHistory.length > 15) orderHistory.pop();
@@ -305,9 +372,8 @@
                 return;
             }
             renderHistoryModal();
-            const modal = document.getElementById("history-modal");
-            modal.classList.remove("hidden");
-            modal.classList.add("flex");
+            document.getElementById("history-modal").classList.remove("hidden");
+            document.getElementById("history-modal").classList.add("flex");
         }
 
         function closeHistoryModal() {
@@ -337,6 +403,72 @@
                 `;
                 container.appendChild(div);
             });
+        }
+
+        // ====================== MEIN KONTO ======================
+        function showMyAccount() {
+            if (!currentUserName) {
+                alert("Bitte zuerst deinen Namen eingeben!");
+                showNameModal();
+                return;
+            }
+
+            document.getElementById("account-username-display").textContent = currentUserName;
+
+            const listEl = document.getElementById("account-history-list");
+            const noEl = document.getElementById("no-account-history");
+            listEl.innerHTML = "";
+
+            if (orderHistory.length === 0) {
+                noEl.classList.remove("hidden");
+            } else {
+                noEl.classList.add("hidden");
+                orderHistory.forEach(order => {
+                    const div = document.createElement("div");
+                    div.className = "bg-zinc-800 rounded-2xl p-6 border border-cyan-500/20";
+                    div.innerHTML = `
+                        <div class="flex justify-between items-center mb-4 flex-wrap gap-4">
+                            <div>
+                                <div class="font-mono text-cyan-300 text-lg">${order.id}</div>
+                                <div class="text-sm text-gray-400">${order.date} • ${order.total}</div>
+                            </div>
+                            <button onclick="reorderFromHistory('${order.id}')" class="reorder-btn">
+                                Nochmal bestellen
+                            </button>
+                        </div>
+                        <div class="text-sm text-gray-300">${order.summary}</div>
+                    `;
+                    listEl.appendChild(div);
+                });
+            }
+
+            document.getElementById("account-modal").classList.remove("hidden");
+            document.getElementById("account-modal").classList.add("flex");
+        }
+
+        function closeAccountModal() {
+            document.getElementById("account-modal").classList.add("hidden");
+            document.getElementById("account-modal").classList.remove("flex");
+        }
+
+        function reorderFromHistory(orderId) {
+            const order = orderHistory.find(o => o.id === orderId);
+            if (!order || !order.cartSnapshot) {
+                alert("Diese Bestellung kann nicht mehr nachbestellt werden (zu alt oder Daten fehlen).");
+                return;
+            }
+
+            // Alten Warenkorb wiederherstellen
+            cart = JSON.parse(JSON.stringify(order.cartSnapshot));
+
+            updateCartDisplay();
+            closeAccountModal();
+            toggleCart(); // Warenkorb sofort öffnen
+
+            const toast = document.getElementById('notification-toast');
+            toast.innerHTML = `🛒 Deine alte Bestellung wurde in den Warenkorb geladen!`;
+            toast.classList.add('visible');
+            setTimeout(() => toast.classList.remove('visible'), 4000);
         }
 
         // ====================== REFERRAL-SYSTEM ======================
@@ -371,11 +503,9 @@
             statusEl.innerHTML = `<span class="text-gray-400">Prüfe Referral-Code...</span>`;
             try {
                 const url = REFERRAL_SERVER + `?action=redeem&code=${encodeURIComponent(refCode)}&name=${encodeURIComponent(currentUserName || "Gast")}`;
-                console.log("Referral-Request an:", url);
                 const res = await fetch(url);
-                if (!res.ok) throw new Error(`HTTP ${res.status} - ${res.statusText}`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
-                console.log("Server-Antwort (redeem):", data);
                 if (data.valid === true) {
                     discountPercent = 10;
                     appliedDiscountCode = refCode;
@@ -383,12 +513,10 @@
                     updateCartDisplay();
                     showReferralToast();
                 } else {
-                    let msg = data.reason || "Ungültiger oder abgelaufener Referral-Code";
-                    statusEl.innerHTML = `<span class="text-red-400">${msg}</span>`;
+                    statusEl.innerHTML = `<span class="text-red-400">${data.reason || "Ungültiger Code"}</span>`;
                 }
             } catch (e) {
-                console.error("Referral Fehler:", e);
-                statusEl.innerHTML = `<span class="text-red-400">Verbindungsfehler – Seite neu laden</span>`;
+                statusEl.innerHTML = `<span class="text-red-400">Verbindungsfehler</span>`;
             }
         }
 
@@ -396,203 +524,12 @@
             const toast = document.getElementById('notification-toast');
             notificationCyclePaused = true;
             toast.classList.add('discount');
-            toast.innerHTML = `🎁 <strong>Referral-Rabatt 10% aktiviert!</strong><br><span class="text-xs">Für dich – dein Freund bekommt seinen Bonus, sobald er bezahlt hat</span>`;
+            toast.innerHTML = `🎁 <strong>Referral-Rabatt 10% aktiviert!</strong>`;
             toast.classList.add('visible');
             setTimeout(() => {
-                toast.classList.remove('visible');
-                setTimeout(() => {
-                    toast.classList.remove('discount');
-                    notificationCyclePaused = false;
-                    showNextNotification();
-                }, 600);
+                toast.classList.remove('visible', 'discount');
+                notificationCyclePaused = false;
             }, 4500);
-        }
-
-        // ====================== MEINE REFERRALS & BONUS ======================
-        async function showMyReferrals() {
-            if (!currentUserName) {
-                alert("Bitte zuerst deinen Namen eingeben!");
-                showNameModal();
-                return;
-            }
-            const modal = document.getElementById("referrals-modal");
-            const listEl = document.getElementById("referrals-list");
-            const noEl = document.getElementById("no-referrals");
-            listEl.innerHTML = '<p class="text-center text-gray-400 py-8">Lade deine Einladungen...</p>';
-            modal.classList.remove("hidden");
-            modal.classList.add("flex");
-            try {
-                const url = REFERRAL_SERVER + "?action=get_my_referrals&name=" + encodeURIComponent(currentUserName);
-                console.log("get_my_referrals → Request an:", url);
-                const res = await fetch(url);
-                if (!res.ok) throw new Error(`HTTP ${res.status} – ${res.statusText}`);
-                const data = await res.json();
-                console.log("get_my_referrals → Antwort vom Server:", data);
-                listEl.innerHTML = "";
-                if (!data.referrals || data.referrals.length === 0) {
-                    noEl.classList.remove("hidden");
-                    console.log("Keine Referrals gefunden");
-                    return;
-                }
-                noEl.classList.add("hidden");
-                data.referrals.forEach((ref, index) => {
-                    console.log(`Referral #${index + 1}:`, ref);
-                    const item = document.createElement("div");
-                    item.className = "bg-zinc-800 rounded-2xl p-5 border border-cyan-500/20";
-                    let statusHTML = "";
-                    let actionHTML = "";
-                    const statusLower = (ref.status || "").toLowerCase().trim();
-                    if (statusLower === "pending") {
-                        statusHTML = `<span class="text-yellow-400 font-medium">Eingelöst – warte auf Bezahlung</span>`;
-                    } else if (statusLower === "paid" || statusLower === "confirmed") {
-                        statusHTML = `<span class="text-emerald-400 font-medium">Bezahlt/Bestätigt! Bonus bereit</span>`;
-                        if (ref.bonusCode && ref.bonusCode.trim() !== "") {
-                            actionHTML = `
-                                <div class="mt-4 flex flex-col gap-2">
-                                    <div class="bg-zinc-900 p-3 rounded-xl text-center font-mono text-lg text-emerald-300 break-all">
-                                        ${ref.bonusCode}
-                                    </div>
-                                    <button onclick="copyToClipboard('${ref.bonusCode}')"
-                                            class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-xl transition">
-                                        Code kopieren
-                                    </button>
-                                </div>`;
-                        } else {
-                            const refCode = (ref.referralCode || "").trim();
-                            if (refCode) {
-                                actionHTML = `<button onclick="claimBonus('${refCode}')" class="mt-4 w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-xl transition">
-                                                  Bonus-Code holen
-                                              </button>`;
-                            } else {
-                                actionHTML = `<div class="mt-4 text-red-400 text-sm text-center">Kein Referral-Code verfügbar (Server-Fehler?)</div>`;
-                            }
-                        }
-                    } else {
-                        statusHTML = `<span class="text-gray-400">Status: ${ref.status || "unbekannt"}</span>`;
-                    }
-                    item.innerHTML = `
-                        <div class="flex justify-between items-start mb-3">
-                            <div>
-                                <div class="font-semibold text-lg">${ref.friend || "Unbekannt"}</div>
-                                ${ref.redeemedAt ? `<div class="text-sm text-gray-400">am ${ref.redeemedAt}</div>` : ''}
-                            </div>
-                            <div class="text-right">${statusHTML}</div>
-                        </div>
-                        ${actionHTML}
-                    `;
-                    listEl.appendChild(item);
-                });
-            } catch (err) {
-                console.error("Fehler in showMyReferrals:", err);
-                listEl.innerHTML = `<p class="text-red-400 text-center py-8">Fehler beim Laden: ${err.message}</p>`;
-            }
-        }
-
-        function copyToClipboard(text) {
-            navigator.clipboard.writeText(text).then(() => {
-                const toast = document.getElementById('notification-toast');
-                toast.innerHTML = `📋 <strong>Bonus-Code kopiert!</strong><br><span class="font-mono">${text}</span>`;
-                toast.classList.add('visible');
-                setTimeout(() => toast.classList.remove('visible'), 4000);
-            }).catch(err => {
-                console.error('Kopieren fehlgeschlagen:', err);
-                alert("Kopieren fehlgeschlagen – bitte manuell kopieren: " + text);
-            });
-        }
-
-        function closeReferralsModal() {
-            document.getElementById("referrals-modal").classList.add("hidden");
-            document.getElementById("referrals-modal").classList.remove("flex");
-        }
-
-        async function claimBonus(referralCode) {
-            if (!referralCode || referralCode.trim() === '') {
-                alert("Kein gültiger Referral-Code gefunden. Bitte Seite neu laden oder Support kontaktieren.");
-                return;
-            }
-            try {
-                const url = REFERRAL_SERVER + "?action=claim_bonus&code=" + encodeURIComponent(referralCode);
-                console.log("Claim Bonus Request an:", url);
-                const res = await fetch(url);
-                if (!res.ok) throw new Error(`HTTP ${res.status} – ${res.statusText}`);
-                const data = await res.json();
-                console.log("Claim Bonus Antwort:", data);
-                if (data.valid && data.bonusCode) {
-                    const toast = document.getElementById('notification-toast');
-                    toast.innerHTML = `🎉 <strong>Dein Bonus-Code:</strong><br><span class="font-mono text-lg">${data.bonusCode}</span><br><small>10% Rabatt – einmalig einlösbar!</small>`;
-                    toast.classList.add('visible', 'discount');
-                    setTimeout(() => toast.classList.remove('visible'), 8000);
-                    alert(`Dein Bonus-Code: ${data.bonusCode}\n\nGib ihn einfach im Warenkorb ein!`);
-                } else {
-                    alert(data.reason || "Bonus noch nicht verfügbar oder Code nicht gefunden.");
-                }
-            } catch (err) {
-                console.error("Claim Fehler:", err);
-                alert("Fehler beim Abholen des Bonus: " + err.message);
-            }
-        }
-
-        // ====================== RABATT + MANUELLE + BONUS CODES ======================
-        async function applyDiscountCode() {
-            const input = document.getElementById("discount-input").value.trim().toUpperCase();
-            const statusEl = document.getElementById("discount-status");
-            if (!input) {
-                statusEl.innerHTML = `<span class="text-red-400">Bitte Code eingeben</span>`;
-                return;
-            }
-            if (VALID_DISCOUNTS[input]) {
-                discountPercent = VALID_DISCOUNTS[input];
-                appliedDiscountCode = input;
-                statusEl.innerHTML = `<span class="text-emerald-400">✓ ${input} angewendet (${discountPercent}% Rabatt)</span>`;
-                updateCartDisplay();
-                showDiscountToast();
-                return;
-            }
-            if (input.startsWith("WAVE-BONUS-")) {
-                statusEl.innerHTML = `<span class="text-gray-400">Prüfe Bonus-Code...</span>`;
-                try {
-                    let url = REFERRAL_SERVER + "?action=validate_bonus&code=" + encodeURIComponent(input);
-                    let res = await fetch(url);
-                    let data = await res.json();
-                    if (data.valid === true) {
-                        url = REFERRAL_SERVER + "?action=redeem_bonus&code=" + encodeURIComponent(input);
-                        res = await fetch(url);
-                        data = await res.json();
-                        if (data.success === true) {
-                            discountPercent = 10;
-                            appliedDiscountCode = input;
-                            statusEl.innerHTML = `<span class="text-emerald-400">✓ Bonus-Code eingelöst! 10% Rabatt</span>`;
-                            updateCartDisplay();
-                            showDiscountToast();
-                        } else {
-                            statusEl.innerHTML = `<span class="text-red-400">${data.reason || "Einlösen fehlgeschlagen"}</span>`;
-                        }
-                    } else {
-                        statusEl.innerHTML = `<span class="text-red-400">${data.reason || "Ungültiger Bonus-Code"}</span>`;
-                    }
-                } catch (err) {
-                    console.error("Bonus-Code Fehler:", err);
-                    statusEl.innerHTML = `<span class="text-red-400">Verbindungsfehler – versuche später erneut</span>`;
-                }
-                return;
-            }
-            statusEl.innerHTML = `<span class="text-red-400">Ungültiger Code</span>`;
-        }
-
-        function showDiscountToast() {
-            const toast = document.getElementById('notification-toast');
-            notificationCyclePaused = true;
-            toast.classList.add('discount');
-            toast.innerHTML = `🎟️ <strong>${appliedDiscountCode} aktiviert!</strong><br><span class="text-xs">${discountPercent}% Rabatt</span>`;
-            toast.classList.add('visible');
-            setTimeout(() => {
-                toast.classList.remove('visible');
-                setTimeout(() => {
-                    toast.classList.remove('discount');
-                    notificationCyclePaused = false;
-                    showNextNotification();
-                }, 600);
-            }, 3200);
         }
 
         // ====================== MYSTERY VAPE ======================
@@ -744,7 +681,7 @@
             let subtotal = getSubtotal();
             const tornadoQty = getTornadoQuantity();
             const freeBottles = Math.floor(tornadoQty / 4);
-            const savings = freeBottles * 20.00;  // angepasst an neuen Preis
+            const savings = freeBottles * 20.00;
             let total = Math.max(0, subtotal - savings);
             if (discountPercent > 0) {
                 const discountAmount = total * (discountPercent / 100);
@@ -781,6 +718,8 @@
             filtered.forEach(product => {
                 const cartItem = cart.find(item => item.id === product.id);
                 const qty = cartItem ? cartItem.qty : 0;
+                const nicotine = cartItem && cartItem.nicotine ? cartItem.nicotine : "20 mg";
+
                 const imageHTML = product.image ? `<img src="${product.image}" class="tornado-image" alt="${product.name}">` : '';
                 let priceHTML = '';
                 if (product.category === "WaveVapes Tornado 30000") {
@@ -788,6 +727,18 @@
                 } else {
                     priceHTML = `<div class="price-row"><div class="flex items-baseline gap-0.5"><span class="discount-price">9,99</span><span class="euro">€</span></div><div class="flex items-baseline gap-0.5"><span class="sale-price">8,00</span><span class="euro">€</span></div></div>`;
                 }
+
+                let nicotineHTML = '';
+                if (product.category !== "WaveVapes Tornado 30000" && product.available) {
+                    nicotineHTML = `
+                        <select class="nicotine-select" onchange="updateNicotine(${product.id}, this.value)">
+                            ${NICOTINE_OPTIONS.map(opt =>
+                                `<option value="${opt}" ${nicotine === opt ? 'selected' : ''}>${opt}</option>`
+                            ).join('')}
+                        </select>
+                    `;
+                }
+
                 html += `
                     <div class="product-card bg-zinc-900 border ${product.available ? 'border-white/10' : 'border-red-500/40'} rounded-3xl overflow-hidden">
                         <div class="h-1.5 bg-gradient-to-r from-cyan-400 to-purple-500"></div>
@@ -800,8 +751,9 @@
                             ${!product.available ? `<div class="bg-red-900/30 text-red-400 text-xs px-4 py-2 rounded-2xl mb-4 flex items-center gap-2"><i class="fa-solid fa-circle-exclamation"></i><span>Aktuell NICHT verfügbar</span></div>` : ''}
                             <div class="flex flex-col items-center">
                                 ${priceHTML}
+                                ${nicotineHTML}
                                 ${product.available ? `
-                                <div class="flex items-center bg-zinc-800 rounded-3xl">
+                                <div class="flex items-center bg-zinc-800 rounded-3xl mt-4">
                                     <button onclick="changeQuantity(${product.id}, -1)" class="qty-btn w-9 h-9 text-2xl text-cyan-300">-</button>
                                     <div class="w-10 text-center font-bold text-xl">${qty}</div>
                                     <button onclick="changeQuantity(${product.id}, 1)" class="qty-btn w-9 h-9 text-2xl text-cyan-300">+</button>
@@ -813,16 +765,35 @@
             container.innerHTML = html || `<p class="col-span-full text-center py-16 text-gray-400">Keine Produkte gefunden.</p>`;
         }
 
+        function updateNicotine(id, value) {
+            let item = cart.find(i => i.id === id);
+            if (item) {
+                item.nicotine = value;
+                updateCartDisplay();
+            }
+        }
+
         function changeQuantity(id, delta) {
             const product = allProducts.find(p => p.id === id);
             if (!product || !product.available) return;
+
             let existing = cart.find(item => item.id === id);
             if (!existing) {
-                existing = { id, name: product.name, qty: 0, price: product.price };
+                existing = {
+                    id,
+                    name: product.name,
+                    qty: 0,
+                    price: product.price,
+                    nicotine: "20 mg"
+                };
                 cart.push(existing);
             }
+
             existing.qty = Math.max(0, existing.qty + delta);
-            if (existing.qty === 0) cart = cart.filter(item => item.id !== id);
+            if (existing.qty === 0) {
+                cart = cart.filter(item => item.id !== id);
+            }
+
             manageMysteryVape();
             const newTornadoQty = getTornadoQuantity();
             if (newTornadoQty >= 4 && newTornadoQty % 4 === 0) showDealToast();
@@ -838,22 +809,26 @@
             countEl.textContent = totalItems;
             const totalPrice = calculateCartTotal();
             totalEl.textContent = `${totalPrice.toFixed(2).replace('.', ',')} €`;
+
             if (cart.length === 0) {
                 listEl.innerHTML = `<p class="text-center py-16 text-gray-400">Dein Warenkorb ist leer</p>`;
                 return;
             }
+
             let itemsHTML = "";
             const tornadoQty = getTornadoQuantity();
             const free = Math.floor(tornadoQty / 4);
             if (free > 0) {
                 itemsHTML += `<div class="bg-gradient-to-r from-amber-400 to-yellow-400 text-black p-6 rounded-3xl mb-6 text-center shadow-inner"><div class="flex items-center justify-center gap-3 text-2xl font-black">⚡ 4 FÜR 3 AKTION AKTIV!</div><p class="font-semibold text-base mt-2">Du bekommst <span class="underline">${free} Vape${free > 1 ? 's' : ''} gratis</span></p></div>`;
             }
+
             cart.forEach(item => {
                 const p = item.price || 8;
+                const nicDisplay = item.nicotine ? ` (${item.nicotine})` : '';
                 if (item.id === MYSTERY_ID) {
                     itemsHTML += `<div class="mystery-item flex justify-between items-center rounded-3xl p-5"><div class="flex items-center gap-3"><i class="fa-solid fa-gift text-3xl"></i><div><div class="font-medium">${item.name}</div><div class="text-xs bg-white/30 px-3 py-0.5 rounded-full inline-block">GRATIS AB 100€</div></div></div><div class="text-right"><div class="font-bold text-xl text-emerald-900">0,00 €</div></div></div>`;
                 } else {
-                    itemsHTML += `<div class="flex justify-between items-center bg-zinc-900 border border-white/10 rounded-3xl p-5"><div><div class="font-medium">${item.name}</div><div class="text-xs text-gray-400">${item.qty} × ${p.toFixed(2).replace('.', ',')} €</div></div><div class="flex items-center gap-6"><div class="font-bold text-xl">${(item.qty * p).toFixed(2).replace('.', ',')} €</div><button onclick="removeCartItem(${item.id}); event.stopImmediatePropagation()" class="text-red-400"><i class="fa-solid fa-trash"></i></button></div></div>`;
+                    itemsHTML += `<div class="flex justify-between items-center bg-zinc-900 border border-white/10 rounded-3xl p-5"><div><div class="font-medium">${item.name}${nicDisplay}</div><div class="text-xs text-gray-400">${item.qty} × ${p.toFixed(2).replace('.', ',')} €</div></div><div class="flex items-center gap-6"><div class="font-bold text-xl">${(item.qty * p).toFixed(2).replace('.', ',')} €</div><button onclick="removeCartItem(${item.id}); event.stopImmediatePropagation()" class="text-red-400"><i class="fa-solid fa-trash"></i></button></div></div>`;
                 }
             });
             listEl.innerHTML = itemsHTML;
@@ -892,23 +867,32 @@
         async function placeOrder() {
             if (!currentUserName) { alert("Bitte zuerst deinen Namen eingeben!"); showNameModal(); return; }
             if (cart.length === 0) return alert("Dein Warenkorb ist leer.");
+
             const orderNumber = generateOrderNumber();
             const totalPrice = calculateCartTotal();
+
             let orderText = `Name: ${currentUserName}\nBestellnummer: ${orderNumber}\nGesamt: ${totalPrice.toFixed(2).replace('.', ',')} €\n\nBestellte Produkte:\n`;
             cart.forEach(item => {
                 const p = item.price || 0;
-                orderText += `• ${item.name} × ${item.qty} = ${(item.qty * p).toFixed(2).replace('.', ',')} €\n`;
+                const nic = item.nicotine ? ` (${item.nicotine})` : '';
+                orderText += `• ${item.name}${nic} × ${item.qty} = ${(item.qty * p).toFixed(2).replace('.', ',')} €\n`;
             });
             if (discountPercent > 0) {
                 orderText += `• Rabattcode ${appliedDiscountCode} (${discountPercent}%) angewendet\n`;
             }
-            saveToHistory(orderNumber, totalPrice, orderText);
+
+            // Snapshot des aktuellen Warenkorbs für Nachbestellung
+            const cartSnapshot = JSON.parse(JSON.stringify(cart));
+
+            saveToHistory(orderNumber, totalPrice, orderText, cartSnapshot);
+
             const formData = new FormData();
             formData.append("name", currentUserName);
             formData.append("bestellnummer", orderNumber);
             formData.append("produkte", orderText);
             formData.append("gesamt", `${totalPrice.toFixed(2).replace('.', ',')} €`);
             formData.append("_subject", `WaveVapes Bestellung ${orderNumber}`);
+
             try {
                 const response = await fetch(FORMSPREE_ENDPOINT, { method: "POST", body: formData, headers: { "Accept": "application/json" } });
                 if (response.ok) {
@@ -920,8 +904,12 @@
                     updateCartDisplay();
                     renderProducts();
                     toggleCart();
-                } else alert("Fehler beim Senden.");
-            } catch (e) { alert("Verbindungsfehler."); }
+                } else {
+                    alert("Fehler beim Senden.");
+                }
+            } catch (e) {
+                alert("Verbindungsfehler.");
+            }
         }
 
         function showSuccessModal(orderNumber, details, total) {
@@ -945,4 +933,3 @@
     </script>
 </body>
 </html>
-

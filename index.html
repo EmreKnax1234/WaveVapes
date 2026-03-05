@@ -8,7 +8,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Inter:wght@400;500;600&display=swap');
- 
         html, body { touch-action: manipulation; }
         body { font-family: 'Inter', system_ui, sans-serif; }
         .neon-text { text-shadow: 0 0 15px #67e8f9, 0 0 30px #67e8f9; }
@@ -25,7 +24,6 @@
         .wave-bg { background: linear-gradient(135deg, #0a0a0a, #1e1233, #0a0a0a); }
         .qty-btn { transition: all 0.2s ease; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
         .qty-btn:hover { background-color: #22d3ee; color: black; }
- 
         @keyframes boltPulse {
             0%, 100% { transform: scale(1) rotate(0deg); color: #fde047; }
             50% { transform: scale(1.35) rotate(20deg); color: #facc15; }
@@ -35,7 +33,6 @@
             display: inline-block;
             text-shadow: 0 0 15px #facc15;
         }
- 
         #notification-toast {
             position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%);
             background: rgba(0,0,0,0.78); backdrop-filter: blur(12px);
@@ -46,7 +43,6 @@
         @media (max-width: 1023px) { #notification-toast { bottom: 15px !important; } }
         #notification-toast.visible { opacity: 1; transform: translateX(-50%) translateY(-8px); }
         #notification-toast.deal, #notification-toast.mystery, #notification-toast.discount { font-weight: 700; }
- 
         .tornado-image { width: 100%; height: 160px; object-fit: cover; border-radius: 16px; margin-bottom: 12px; background: #1f2937; }
         .price-row { display: flex; justify-content: center; align-items: baseline; gap: 16px; margin-bottom: 12px; }
         .discount-price { font-size: 1.35rem; text-decoration: line-through; color: #9ca3af; }
@@ -140,7 +136,7 @@
         <div id="products-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6"></div>
     </div>
 
-    <!-- FLOATING CART BUTTON (mobile) -->
+    <!-- FLOATING CART (mobile) -->
     <button onclick="toggleCart()" class="fixed bottom-6 right-6 lg:hidden bg-gradient-to-r from-cyan-400 to-purple-500 text-black w-14 h-14 rounded-3xl shadow-2xl flex items-center justify-center z-50">
         <i class="fa-solid fa-cart-shopping text-3xl"></i>
     </button>
@@ -234,10 +230,7 @@
             "WAVE5": 5,
             "Freund10": 10
         };
-        // ──────────────────────────────────────────────────────────────
-        // ← DEINE ALLERNEUESTE SERVER-URL (März 2026) ←
         const REFERRAL_SERVER = "https://script.google.com/macros/s/AKfycbyGKjZs4_z6hZXpA_L4SBLFvV4bPJ_QtuAZUmPbdVr3notDGEreg6PWrWdG7HdP4UPLjg/exec";
-        // ──────────────────────────────────────────────────────────────
         const FORMSPREE_ENDPOINT = "https://formspree.io/f/mqedvnkb";
         const MYSTERY_ID = 999;
 
@@ -291,7 +284,6 @@
         let appliedDiscountCode = null;
         let discountPercent = 0;
 
-        // ====================== BESTELLVERLAUF ======================
         let orderHistory = [];
         function loadOrderHistory() {
             const saved = localStorage.getItem("wavevapes_orderhistory");
@@ -383,7 +375,7 @@
                 const res = await fetch(url);
                 if (!res.ok) throw new Error(`HTTP ${res.status} - ${res.statusText}`);
                 const data = await res.json();
-                console.log("Server-Antwort:", data);
+                console.log("Server-Antwort (redeem):", data);
                 if (data.valid === true) {
                     discountPercent = 10;
                     appliedDiscountCode = refCode;
@@ -391,20 +383,12 @@
                     updateCartDisplay();
                     showReferralToast();
                 } else {
-                    let msg = "Ungültiger oder abgelaufener Referral-Code";
-                    if (data.reason) {
-                        if (data.reason.includes("Selbst-Referral")) msg = "Selbst-Einladung nicht erlaubt 😅";
-                        else if (data.reason.includes("Bereits verwendet") || data.reason.includes("nicht open")) msg = "Dieser Code wurde bereits eingelöst";
-                        else if (data.reason.includes("Code nicht gefunden")) msg = "Referral-Code nicht gefunden";
-                        else msg = data.reason;
-                    }
+                    let msg = data.reason || "Ungültiger oder abgelaufener Referral-Code";
                     statusEl.innerHTML = `<span class="text-red-400">${msg}</span>`;
                 }
             } catch (e) {
                 console.error("Referral Fehler:", e);
-                let errorMsg = "Verbindungsfehler zum Referral-Server";
-                if (e.message.includes("fetch")) errorMsg += " (Netzwerk/CORS?)";
-                statusEl.innerHTML = `<span class="text-red-400">${errorMsg} – Seite neu laden oder später versuchen</span>`;
+                statusEl.innerHTML = `<span class="text-red-400">Verbindungsfehler – Seite neu laden</span>`;
             }
         }
 
@@ -437,35 +421,53 @@
             listEl.innerHTML = '<p class="text-center text-gray-400 py-8">Lade deine Einladungen...</p>';
             modal.classList.remove("hidden");
             modal.classList.add("flex");
+
             try {
                 const url = REFERRAL_SERVER + "?action=get_my_referrals&name=" + encodeURIComponent(currentUserName);
+                console.log("get_my_referrals → Request an:", url);
                 const res = await fetch(url);
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                if (!res.ok) throw new Error(`HTTP ${res.status} – ${res.statusText}`);
                 const data = await res.json();
+                console.log("get_my_referrals → Antwort vom Server:", data);
+
                 listEl.innerHTML = "";
                 if (!data.referrals || data.referrals.length === 0) {
                     noEl.classList.remove("hidden");
+                    console.log("Keine Referrals gefunden");
                     return;
                 }
                 noEl.classList.add("hidden");
-                data.referrals.forEach(ref => {
+
+                data.referrals.forEach((ref, index) => {
+                    console.log(`Referral #${index + 1}:`, ref); // Debug-Ausgabe
+
                     const item = document.createElement("div");
                     item.className = "bg-zinc-800 rounded-2xl p-5 border border-cyan-500/20";
+
                     let statusHTML = "";
                     let actionButton = "";
                     const statusLower = (ref.status || "").toLowerCase().trim();
+
                     if (statusLower === "pending") {
                         statusHTML = `<span class="text-yellow-400 font-medium">Eingelöst – warte auf Bezahlung</span>`;
                     } else if (statusLower === "paid" || statusLower === "confirmed") {
                         statusHTML = `<span class="text-emerald-400 font-medium">Bezahlt/Bestätigt! Bonus abholbereit</span>`;
-                        actionButton = `<button onclick="claimBonus('${ref.referralCode}')" class="mt-4 w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-xl transition">Bonus-Code holen</button>`;
+
+                        const refCode = (ref.referralCode || "").trim();
+                        if (refCode) {
+                            actionButton = `<button onclick="claimBonus('${refCode}')" class="mt-4 w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-xl transition">Bonus-Code holen</button>`;
+                        } else {
+                            actionButton = `<div class="mt-4 text-red-400 text-sm text-center">Kein Referral-Code verfügbar (Server-Fehler?)</div>`;
+                            console.warn("Kein referralCode in diesem Eintrag:", ref);
+                        }
                     } else {
                         statusHTML = `<span class="text-gray-400">Status: ${ref.status || "unbekannt"}</span>`;
                     }
+
                     item.innerHTML = `
                         <div class="flex justify-between items-start mb-3">
                             <div>
-                                <div class="font-semibold text-lg">${ref.friend}</div>
+                                <div class="font-semibold text-lg">${ref.friend || "Unbekannt"}</div>
                                 ${ref.redeemedAt ? `<div class="text-sm text-gray-400">am ${ref.redeemedAt}</div>` : ''}
                             </div>
                             <div class="text-right">${statusHTML}</div>
@@ -475,7 +477,7 @@
                     listEl.appendChild(item);
                 });
             } catch (err) {
-                console.error("Referrals Fehler:", err);
+                console.error("Fehler in showMyReferrals:", err);
                 listEl.innerHTML = `<p class="text-red-400 text-center py-8">Fehler beim Laden: ${err.message}</p>`;
             }
         }
@@ -486,13 +488,19 @@
         }
 
         async function claimBonus(referralCode) {
+            if (!referralCode || referralCode.trim() === '') {
+                alert("Kein gültiger Referral-Code gefunden. Bitte Seite neu laden oder Support kontaktieren.");
+                return;
+            }
+
             try {
                 const url = REFERRAL_SERVER + "?action=claim_bonus&code=" + encodeURIComponent(referralCode);
                 console.log("Claim Bonus Request an:", url);
                 const res = await fetch(url);
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                if (!res.ok) throw new Error(`HTTP ${res.status} – ${res.statusText}`);
                 const data = await res.json();
                 console.log("Claim Bonus Antwort:", data);
+
                 if (data.valid && data.bonusCode) {
                     const toast = document.getElementById('notification-toast');
                     toast.innerHTML = `🎉 <strong>Dein Bonus-Code:</strong><br><span class="font-mono text-lg">${data.bonusCode}</span><br><small>10% Rabatt – einmalig einlösbar!</small>`;

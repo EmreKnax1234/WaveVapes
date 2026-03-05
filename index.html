@@ -96,6 +96,7 @@
     </nav>
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-8 pb-20">
+
         <!-- HERO -->
         <div class="text-center mb-12">
             <div class="inline-flex items-center gap-2 bg-white/10 px-5 py-1.5 rounded-3xl text-xs mb-6 backdrop-blur-md">
@@ -166,6 +167,7 @@
                 <button onclick="toggleCart()" class="text-4xl text-gray-400 hover:text-white">✕</button>
             </div>
             <div id="cart-items-list" class="space-y-6 min-h-[300px]"></div>
+
             <!-- RABATT / REFERRAL EINGABE -->
             <div class="mt-8 pt-6 border-t border-white/10">
                 <p class="text-xs uppercase tracking-widest text-gray-400 mb-3">Rabattcode oder Referral</p>
@@ -179,6 +181,7 @@
                 </div>
                 <div id="discount-status" class="mt-3 text-sm min-h-[24px]"></div>
             </div>
+
             <div class="mt-10 pt-8 border-t border-white/10">
                 <div class="flex justify-between text-2xl font-semibold mb-2">
                     <span>Gesamt</span>
@@ -186,6 +189,7 @@
                 </div>
                 <p class="text-xs text-gray-400">Zahlung bei Abholung</p>
             </div>
+
             <button onclick="placeOrder()" class="mt-8 w-full py-6 bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 text-black font-bold text-xl rounded-3xl transition-all">BESTELLUNG ABSCHICKEN</button>
             <button onclick="clearCart()" class="mt-4 text-red-400 text-sm w-full py-3">Warenkorb leeren</button>
         </div>
@@ -231,7 +235,7 @@
         </div>
     </div>
 
-    <!-- NEU: MODAL MIT DEM FERTIGEN REFERRAL-LINK + KOPIER-BUTTON -->
+    <!-- REFERRAL LINK MODAL -->
     <div id="referral-link-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]">
         <div class="bg-zinc-900 rounded-3xl p-8 max-w-md w-full mx-4 text-center">
             <h3 class="text-2xl font-bold mb-4 neon-text">Dein Referral-Link</h3>
@@ -338,6 +342,7 @@
             const saved = localStorage.getItem("wavevapes_orderhistory");
             if (saved) orderHistory = JSON.parse(saved);
         }
+
         function saveToHistory(orderNumber, totalPrice, orderText) {
             const order = {
                 id: orderNumber,
@@ -349,6 +354,7 @@
             if (orderHistory.length > 15) orderHistory.pop();
             localStorage.setItem("wavevapes_orderhistory", JSON.stringify(orderHistory));
         }
+
         function showOrderHistory() {
             if (!currentUserName) {
                 alert("Bitte zuerst deinen Namen eingeben!");
@@ -360,10 +366,12 @@
             modal.classList.remove("hidden");
             modal.classList.add("flex");
         }
+
         function closeHistoryModal() {
             document.getElementById("history-modal").classList.add("hidden");
             document.getElementById("history-modal").classList.remove("flex");
         }
+
         function renderHistoryModal() {
             const container = document.getElementById("history-list");
             const noEl = document.getElementById("no-history");
@@ -390,15 +398,13 @@
 
         // ====================== REFERRAL CONSENT & LINK-MODAL ======================
         function showReferralConsentModal() {
-            const modal = document.getElementById("referral-consent-modal");
-            modal.classList.remove("hidden");
-            modal.classList.add("flex");
+            document.getElementById("referral-consent-modal").classList.remove("hidden");
+            document.getElementById("referral-consent-modal").classList.add("flex");
         }
 
         function closeReferralConsent() {
-            const modal = document.getElementById("referral-consent-modal");
-            modal.classList.add("hidden");
-            modal.classList.remove("flex");
+            document.getElementById("referral-consent-modal").classList.add("hidden");
+            document.getElementById("referral-consent-modal").classList.remove("flex");
         }
 
         function confirmReferralConsent() {
@@ -409,15 +415,13 @@
 
         function showReferralLinkModal(link) {
             document.getElementById("referral-link-input").value = link;
-            const modal = document.getElementById("referral-link-modal");
-            modal.classList.remove("hidden");
-            modal.classList.add("flex");
+            document.getElementById("referral-link-modal").classList.remove("hidden");
+            document.getElementById("referral-link-modal").classList.add("flex");
         }
 
         function closeReferralLinkModal() {
-            const modal = document.getElementById("referral-link-modal");
-            modal.classList.add("hidden");
-            modal.classList.remove("flex");
+            document.getElementById("referral-link-modal").classList.add("hidden");
+            document.getElementById("referral-link-modal").classList.remove("flex");
         }
 
         function copyReferralLink() {
@@ -425,15 +429,11 @@
             input.select();
             input.setSelectionRange(0, 99999);
             try {
-                const successful = document.execCommand('copy');
-                if (successful) {
-                    const toast = document.getElementById('notification-toast');
-                    toast.innerHTML = `📋 <strong>Link kopiert!</strong>`;
-                    toast.classList.add('visible');
-                    setTimeout(() => toast.classList.remove('visible'), 4000);
-                } else {
-                    throw new Error("execCommand fehlgeschlagen");
-                }
+                document.execCommand('copy');
+                const toast = document.getElementById('notification-toast');
+                toast.innerHTML = `📋 <strong>Link kopiert!</strong>`;
+                toast.classList.add('visible');
+                setTimeout(() => toast.classList.remove('visible'), 4000);
             } catch (err) {
                 alert("Kopieren fehlgeschlagen.\n\nBitte langen Druck auf den Text machen und „Kopieren“ auswählen.");
             }
@@ -499,7 +499,7 @@
                 toast.classList.add('visible');
                 setTimeout(() => toast.classList.remove('visible'), 10000);
 
-                alert("Fehler beim Generieren des Links:\n\n" + e.message + "\n\nBitte schicke mir EXAKT diesen Alert-Text + einen Screenshot der Console (F12 → Console).");
+                alert("Fehler beim Generieren des Links:\n\n" + e.message + "\n\nBitte schicke mir diesen Text + ggf. Screenshot der Konsole (F12 → Console).");
             }
         }
 
@@ -548,18 +548,21 @@
             }, 4500);
         }
 
+        // ====================== MEINE REFERRALS & BONUS (angepasst) ======================
         async function showMyReferrals() {
             if (!currentUserName) {
                 alert("Bitte zuerst deinen Namen eingeben!");
                 showNameModal();
                 return;
             }
+
             const modal = document.getElementById("referrals-modal");
             const listEl = document.getElementById("referrals-list");
             const noEl = document.getElementById("no-referrals");
             listEl.innerHTML = '<p class="text-center text-gray-400 py-8">Lade deine Einladungen...</p>';
             modal.classList.remove("hidden");
             modal.classList.add("flex");
+
             try {
                 const url = REFERRAL_SERVER + "?action=get_my_referrals&name=" + encodeURIComponent(currentUserName);
                 console.log("get_my_referrals → Request an:", url);
@@ -567,6 +570,7 @@
                 if (!res.ok) throw new Error(`HTTP ${res.status} – ${res.statusText}`);
                 const data = await res.json();
                 console.log("get_my_referrals → Antwort vom Server:", data);
+
                 listEl.innerHTML = "";
                 if (!data.referrals || data.referrals.length === 0) {
                     noEl.classList.remove("hidden");
@@ -574,41 +578,42 @@
                     return;
                 }
                 noEl.classList.add("hidden");
+
                 data.referrals.forEach((ref, index) => {
                     console.log(`Referral #${index + 1}:`, ref);
                     const item = document.createElement("div");
                     item.className = "bg-zinc-800 rounded-2xl p-5 border border-cyan-500/20";
+
                     let statusHTML = "";
                     let actionHTML = "";
+
                     const statusLower = (ref.status || "").toLowerCase().trim();
+
                     if (statusLower === "pending") {
                         statusHTML = `<span class="text-yellow-400 font-medium">Eingelöst – warte auf Bezahlung</span>`;
                     } else if (statusLower === "paid" || statusLower === "confirmed") {
                         statusHTML = `<span class="text-emerald-400 font-medium">Bezahlt/Bestätigt! Bonus bereit</span>`;
-                        if (ref.bonusCode && ref.bonusCode.trim() !== "") {
+
+                        const bonusCode = (ref.bonusCode || "").trim();
+                        if (bonusCode) {
+                            // Automatische Anzeige + Kopier-Button
                             actionHTML = `
                                 <div class="mt-4 flex flex-col gap-2">
                                     <div class="bg-zinc-900 p-3 rounded-xl text-center font-mono text-lg text-emerald-300 break-all">
-                                        ${ref.bonusCode}
+                                        ${bonusCode}
                                     </div>
-                                    <button onclick="copyToClipboard('${ref.bonusCode}')"
+                                    <button onclick="copyToClipboard('${bonusCode}')"
                                             class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-xl transition">
                                         Code kopieren
                                     </button>
                                 </div>`;
                         } else {
-                            const refCode = (ref.referralCode || "").trim();
-                            if (refCode) {
-                                actionHTML = `<button onclick="claimBonus('${refCode}')" class="mt-4 w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-xl transition">
-                                                  Bonus-Code holen
-                                              </button>`;
-                            } else {
-                                actionHTML = `<div class="mt-4 text-red-400 text-sm text-center">Kein Referral-Code verfügbar (Server-Fehler?)</div>`;
-                            }
+                            actionHTML = `<div class="mt-4 text-yellow-400 text-sm text-center">Bonus-Code wird gerade generiert – bitte 5–10 Sekunden warten und Seite neu laden</div>`;
                         }
                     } else {
                         statusHTML = `<span class="text-gray-400">Status: ${ref.status || "unbekannt"}</span>`;
                     }
+
                     item.innerHTML = `
                         <div class="flex justify-between items-start mb-3">
                             <div>
@@ -630,7 +635,7 @@
         function copyToClipboard(text) {
             navigator.clipboard.writeText(text).then(() => {
                 const toast = document.getElementById('notification-toast');
-                toast.innerHTML = `📋 <strong>Bonus-Code kopiert!</strong><br><span class="font-mono">${text}</span>`;
+                toast.innerHTML = `📋 <strong>Code kopiert!</strong><br><span class="font-mono">${text}</span>`;
                 toast.classList.add('visible');
                 setTimeout(() => toast.classList.remove('visible'), 4000);
             }).catch(err => {

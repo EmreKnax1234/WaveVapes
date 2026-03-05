@@ -212,7 +212,7 @@
         </div>
     </div>
 
-    <!-- REFERRAL CONSENT MODAL (NEU) -->
+    <!-- REFERRAL CONSENT MODAL -->
     <div id="referral-consent-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]">
         <div class="bg-zinc-900 rounded-3xl p-8 max-w-md w-full mx-4 text-center">
             <h3 class="text-2xl font-bold mb-4 neon-text">Referral-Funktion aktivieren?</h3>
@@ -227,6 +227,24 @@
             <button onclick="closeReferralConsent()" 
                     class="text-gray-400 hover:text-white text-sm underline">
                 Später vielleicht
+            </button>
+        </div>
+    </div>
+
+    <!-- NEU: MODAL MIT DEM FERTIGEN REFERRAL-LINK + KOPIER-BUTTON -->
+    <div id="referral-link-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]">
+        <div class="bg-zinc-900 rounded-3xl p-8 max-w-md w-full mx-4 text-center">
+            <h3 class="text-2xl font-bold mb-4 neon-text">Dein Referral-Link</h3>
+            <p class="text-gray-300 mb-4">Kopiere ihn und teile ihn mit Freunden!</p>
+            <input id="referral-link-input" type="text" readonly 
+                   class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-4 py-3 text-white text-center mb-6 break-all focus:outline-none">
+            <button onclick="copyReferralLink()" 
+                    class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-2xl text-lg mb-4 transition">
+                In Zwischenablage kopieren
+            </button>
+            <p class="text-sm text-gray-400 mb-6">oder langen Druck auf dem Handy → „Kopieren“ auswählen</p>
+            <button onclick="closeReferralLinkModal()" class="text-gray-400 hover:text-white text-sm">
+                Schließen
             </button>
         </div>
     </div>
@@ -320,7 +338,6 @@
             const saved = localStorage.getItem("wavevapes_orderhistory");
             if (saved) orderHistory = JSON.parse(saved);
         }
-
         function saveToHistory(orderNumber, totalPrice, orderText) {
             const order = {
                 id: orderNumber,
@@ -332,7 +349,6 @@
             if (orderHistory.length > 15) orderHistory.pop();
             localStorage.setItem("wavevapes_orderhistory", JSON.stringify(orderHistory));
         }
-
         function showOrderHistory() {
             if (!currentUserName) {
                 alert("Bitte zuerst deinen Namen eingeben!");
@@ -344,12 +360,10 @@
             modal.classList.remove("hidden");
             modal.classList.add("flex");
         }
-
         function closeHistoryModal() {
             document.getElementById("history-modal").classList.add("hidden");
             document.getElementById("history-modal").classList.remove("flex");
         }
-
         function renderHistoryModal() {
             const container = document.getElementById("history-list");
             const noEl = document.getElementById("no-history");
@@ -374,7 +388,7 @@
             });
         }
 
-        // ====================== REFERRAL CONSENT LOGIC (NEU) ======================
+        // ====================== REFERRAL CONSENT & LINK-MODAL ======================
         function showReferralConsentModal() {
             const modal = document.getElementById("referral-consent-modal");
             modal.classList.remove("hidden");
@@ -390,7 +404,39 @@
         function confirmReferralConsent() {
             localStorage.setItem("referral_consent_given", "true");
             closeReferralConsent();
-            generateReferralLink(); // Jetzt den Link generieren
+            generateReferralLink();
+        }
+
+        function showReferralLinkModal(link) {
+            document.getElementById("referral-link-input").value = link;
+            const modal = document.getElementById("referral-link-modal");
+            modal.classList.remove("hidden");
+            modal.classList.add("flex");
+        }
+
+        function closeReferralLinkModal() {
+            const modal = document.getElementById("referral-link-modal");
+            modal.classList.add("hidden");
+            modal.classList.remove("flex");
+        }
+
+        function copyReferralLink() {
+            const input = document.getElementById("referral-link-input");
+            input.select();
+            input.setSelectionRange(0, 99999);
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    const toast = document.getElementById('notification-toast');
+                    toast.innerHTML = `📋 <strong>Link kopiert!</strong>`;
+                    toast.classList.add('visible');
+                    setTimeout(() => toast.classList.remove('visible'), 4000);
+                } else {
+                    throw new Error("execCommand fehlgeschlagen");
+                }
+            } catch (err) {
+                alert("Kopieren fehlgeschlagen.\n\nBitte langen Druck auf den Text machen und „Kopieren“ auswählen.");
+            }
         }
 
         // ====================== REFERRAL-SYSTEM ======================
@@ -401,13 +447,11 @@
                 return;
             }
 
-            // Consent schon gegeben?
             if (localStorage.getItem("referral_consent_given") === "true") {
                 generateReferralLink();
                 return;
             }
 
-            // Noch nicht → Consent-Modal zeigen
             showReferralConsentModal();
         }
 
@@ -440,9 +484,9 @@
 
                 if (data.code) {
                     const link = window.location.origin + window.location.pathname + "?ref=" + data.code;
-                    await navigator.clipboard.writeText(link);
+                    showReferralLinkModal(link);
 
-                    toast.innerHTML = `📤 <strong>Referral-Link kopiert!</strong><br>Teile ihn: <span class="font-mono text-xs break-all">${link}</span><br><small>Du bekommst 10% Rabatt, sobald dein Freund bezahlt hat!</small>`;
+                    toast.innerHTML = `📤 <strong>Dein Link ist fertig!</strong><br>Jetzt kopieren und teilen`;
                     toast.classList.add('visible');
                     setTimeout(() => toast.classList.remove('visible'), 7000);
                 } else {
@@ -455,11 +499,10 @@
                 toast.classList.add('visible');
                 setTimeout(() => toast.classList.remove('visible'), 10000);
 
-                alert("Fehler beim Generieren des Links:\n\n" + e.message + "\n\nBitte schicke mir diesen Text + ggf. einen Screenshot der Konsole (F12 → Console).");
+                alert("Fehler beim Generieren des Links:\n\n" + e.message + "\n\nBitte schicke mir EXAKT diesen Alert-Text + einen Screenshot der Console (F12 → Console).");
             }
         }
 
-        // ====================== REST DES SCRIPTS (unverändert) ======================
         async function checkReferralCode() {
             const urlParams = new URLSearchParams(window.location.search);
             const refCode = urlParams.get("ref");

@@ -426,7 +426,43 @@
             }
         }
 
-        // ====================== REFERRAL-SYSTEM ======================
+        // ====================== NEUE VERIFIZIERUNGS-FUNKTION (wie gewünscht) ======================
+        async function verifyGeneratedCode(code) {
+            const toast = document.getElementById('notification-toast');
+            toast.innerHTML = `🔄 <strong>Code wird synchronisiert...</strong><br><small>1–4 Sekunden – bitte warten</small>`;
+            toast.classList.add('visible');
+
+            await new Promise(r => setTimeout(r, 2200)); // erste Wartezeit nach Sheets-Schreiben
+
+            let attempts = 0;
+            const maxAttempts = 5;
+
+            while (attempts < maxAttempts) {
+                try {
+                    const url = REFERRAL_SERVER + `?action=redeem&code=${encodeURIComponent(code)}&name=VERIFICATION_TEST_${Date.now()}`;
+                    const res = await fetch(url, { cache: "no-store" });
+                    const data = await res.json();
+
+                    if (data.valid === true) {
+                        toast.innerHTML = `✅ <strong>Code erfolgreich geprüft!</strong>`;
+                        setTimeout(() => toast.classList.remove('visible'), 1200);
+                        return true;
+                    }
+                } catch (e) {
+                    console.log(`Verify Versuch ${attempts + 1} fehlgeschlagen`);
+                }
+
+                attempts++;
+                if (attempts < maxAttempts) {
+                    await new Promise(r => setTimeout(r, 1400));
+                }
+            }
+
+            toast.classList.remove('visible');
+            return false;
+        }
+
+        // ====================== REFERRAL-SYSTEM (JETZT MIT VERIFIZIERUNG) ======================
         async function shareReferral() {
             if (!currentUserName) {
                 alert("Bitte zuerst deinen Namen eingeben!");
@@ -443,8 +479,9 @@
         async function generateReferralLink() {
             const toast = document.getElementById('notification-toast');
             try {
-                console.log("=== REFERRAL GENERATE START ===");
+                console.log("=== REFERRAL GENERATE + VERIFY START ===");
                 console.log("Name:", currentUserName);
+
                 const url = REFERRAL_SERVER + "?action=generate&name=" + encodeURIComponent(currentUserName);
                 console.log("Request URL:", url);
                 const res = await fetch(url, { cache: "no-store" });
@@ -461,15 +498,29 @@
                 if (!res.ok) {
                     throw new Error(`HTTP Fehler ${res.status}: ${data.error || rawText}`);
                 }
-                if (data.code) {
-                    const link = window.location.origin + window.location.pathname + "?ref=" + data.code;
-                    showReferralLinkModal(link);
-                    toast.innerHTML = `📤 <strong>Dein Link ist fertig!</strong><br>Jetzt kopieren und teilen`;
-                    toast.classList.add('visible');
-                    setTimeout(() => toast.classList.remove('visible'), 7000);
-                } else {
+                if (!data.code) {
                     throw new Error("Kein Code im Response: " + JSON.stringify(data));
                 }
+
+                const code = data.code;
+                console.log("Generierter Code:", code);
+
+                // === VERIFIZIERUNG (wie gewünscht) ===
+                const isReady = await verifyGeneratedCode(code);
+
+                const link = window.location.origin + window.location.pathname + "?ref=" + code;
+
+                if (isReady) {
+                    showReferralLinkModal(link);
+                    toast.innerHTML = `✅ <strong>Referral-Link fertig & verifiziert!</strong><br>Jetzt kopieren und teilen`;
+                } else {
+                    showReferralLinkModal(link);
+                    toast.innerHTML = `⚠️ <strong>Link erstellt</strong><br>Es kann 3–5 Sekunden dauern bis er funktioniert`;
+                }
+
+                toast.classList.add('visible');
+                setTimeout(() => toast.classList.remove('visible'), 7000);
+
             } catch (e) {
                 console.error("=== SHARE REFERRAL FEHLER ===", e);
                 toast.innerHTML = `❌ <strong>Fehler beim Generieren</strong><br><small>${e.message}<br>Versuche es nochmal oder in einem anderen Browser.</small>`;

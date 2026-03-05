@@ -50,6 +50,23 @@
         .euro { font-size: 1.1rem; margin-left: 2px; }
         .mystery-item { background: linear-gradient(90deg, #10b981, #34d399) !important; border: 2px solid #a7f3d0 !important; color: black; }
         .history-item { background: #18181b; border: 1px solid #27272a; }
+
+        /* Lade-Indikator */
+        .loading-spinner {
+            border: 4px solid rgba(103, 232, 249, 0.2);
+            border-top: 4px solid #67e8f9;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body class="wave-bg text-white min-h-screen">
@@ -76,6 +93,7 @@
             </div>
         </div>
     </nav>
+
     <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-8 pb-20">
         <!-- HERO -->
         <div class="text-center mb-12">
@@ -91,6 +109,7 @@
                 <span>Ab 100€ Bestellwert gibt's eine <span class="text-white font-bold underline">Mystery Vape gratis</span> dazu! 🎁</span>
             </div>
         </div>
+
         <!-- NAME BANNER -->
         <div id="user-banner" class="mb-10 bg-gradient-to-r from-zinc-900 to-purple-950 border border-cyan-300/30 hover:border-cyan-300 rounded-3xl p-5 flex items-center justify-between cursor-pointer transition-all group">
             <div onclick="showNameModal()" class="flex items-center gap-4 flex-1">
@@ -119,20 +138,25 @@
                 <div onclick="showNameModal()" class="text-cyan-400 group-hover:text-white transition text-base cursor-pointer">ändern →</div>
             </div>
         </div>
+
         <!-- TABS -->
         <div id="category-tabs" class="category-tabs flex overflow-x-auto gap-x-6 pb-4 border-b border-white/10 mb-8 text-base whitespace-nowrap"></div>
+
         <!-- SEARCH -->
         <div class="relative mb-8">
             <i class="fa-solid fa-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-cyan-400"></i>
             <input id="search-input" type="text" placeholder="Flavor suchen..." onkeyup="filterProducts()" class="w-full bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl pl-12 pr-6 py-4 text-base outline-none transition">
         </div>
+
         <!-- PRODUCTS GRID -->
         <div id="products-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6"></div>
     </div>
+
     <!-- FLOATING CART (mobile) -->
     <button onclick="toggleCart()" class="fixed bottom-6 right-6 lg:hidden bg-gradient-to-r from-cyan-400 to-purple-500 text-black w-14 h-14 rounded-3xl shadow-2xl flex items-center justify-center z-50">
         <i class="fa-solid fa-cart-shopping text-3xl"></i>
     </button>
+
     <!-- CART SIDEBAR -->
     <div id="cart-sidebar" class="fixed top-0 right-0 h-full w-full md:w-96 bg-zinc-950 border-l border-cyan-400/30 shadow-2xl translate-x-full transition-all duration-300 z-[999] overflow-y-auto">
         <div class="p-6">
@@ -141,6 +165,7 @@
                 <button onclick="toggleCart()" class="text-4xl text-gray-400 hover:text-white">✕</button>
             </div>
             <div id="cart-items-list" class="space-y-6 min-h-[300px]"></div>
+
             <!-- RABATT / REFERRAL EINGABE -->
             <div class="mt-8 pt-6 border-t border-white/10">
                 <p class="text-xs uppercase tracking-widest text-gray-400 mb-3">Rabattcode oder Referral</p>
@@ -154,6 +179,7 @@
                 </div>
                 <div id="discount-status" class="mt-3 text-sm min-h-[24px]"></div>
             </div>
+
             <div class="mt-10 pt-8 border-t border-white/10">
                 <div class="flex justify-between text-2xl font-semibold mb-2">
                     <span>Gesamt</span>
@@ -161,10 +187,12 @@
                 </div>
                 <p class="text-xs text-gray-400">Zahlung bei Abholung</p>
             </div>
+
             <button onclick="placeOrder()" class="mt-8 w-full py-6 bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 text-black font-bold text-xl rounded-3xl transition-all">BESTELLUNG ABSCHICKEN</button>
             <button onclick="clearCart()" class="mt-4 text-red-400 text-sm w-full py-3">Warenkorb leeren</button>
         </div>
     </div>
+
     <!-- SUCCESS MODAL -->
     <div id="success-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-[9999]">
         <div class="bg-zinc-900 max-w-lg w-full mx-4 rounded-3xl p-8 text-center">
@@ -176,6 +204,7 @@
             <p class="text-[10px] text-gray-500 mt-8">Ich erhalte deine Bestellung per E-Mail und bereite sie vor.</p>
         </div>
     </div>
+
     <!-- NAME MODAL -->
     <div id="name-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]">
         <div class="bg-zinc-900 rounded-3xl p-8 max-w-sm w-full mx-4">
@@ -184,6 +213,7 @@
             <button onclick="saveUserName()" class="w-full bg-cyan-400 hover:bg-cyan-300 text-black py-5 rounded-3xl font-bold text-xl">Speichern</button>
         </div>
     </div>
+
     <!-- HISTORY MODAL -->
     <div id="history-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-[9999]">
         <div class="bg-zinc-900 max-w-2xl w-full mx-4 rounded-3xl p-8 max-h-[90vh] overflow-y-auto">
@@ -195,6 +225,7 @@
             <p id="no-history" class="hidden text-center text-gray-400 py-12">Noch keine Bestellungen gespeichert.</p>
         </div>
     </div>
+
     <!-- MEINE REFERRALS & BONUS MODAL -->
     <div id="referrals-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-[9999]">
         <div class="bg-zinc-900 max-w-2xl w-full mx-4 rounded-3xl p-8 max-h-[90vh] overflow-y-auto">
@@ -206,6 +237,7 @@
             <p id="no-referrals" class="hidden text-center text-gray-400 py-12">Noch keine Freunde haben deinen Code eingelöst.</p>
         </div>
     </div>
+
     <div id="notification-toast"></div>
 
     <script>
@@ -324,52 +356,75 @@
             });
         }
 
-        // ====================== REFERRAL-SYSTEM ======================
+        // ====================== VERBESSERTE REFERRAL-FUNKTIONEN ======================
+
         async function shareReferral() {
             if (!currentUserName) {
                 alert("Bitte zuerst deinen Namen eingeben!");
                 showNameModal();
                 return;
             }
+
+            let toast = document.getElementById('notification-toast');
+            toast.innerHTML = `📤 Generiere Referral-Link...`;
+            toast.classList.add('visible');
+
             try {
-                const res = await fetch(REFERRAL_SERVER + "?action=generate&name=" + encodeURIComponent(currentUserName));
+                const ts = Date.now();
+                const res = await fetch(`${REFERRAL_SERVER}?action=generate&name=${encodeURIComponent(currentUserName)}&_=${ts}`, {
+                    cache: 'no-store'
+                });
+
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
+
                 if (!data.code) throw new Error("Kein Code erhalten");
-                const link = window.location.origin + window.location.pathname + "?ref=" + data.code;
-                await navigator.clipboard.writeText(link);
-                const toast = document.getElementById('notification-toast');
-                toast.innerHTML = `📤 <strong>Referral-Link kopiert!</strong><br>Teile ihn: <span class="font-mono text-xs break-all">${link}</span><br><small>Du bekommst 10% Rabatt, sobald dein Freund bezahlt hat!</small>`;
+
+                const link = `${window.location.origin}${window.location.pathname}?ref=${data.code}`;
+
+                try {
+                    await navigator.clipboard.writeText(link);
+                    toast.innerHTML = `📋 <strong>Referral-Link kopiert!</strong><br><span class="font-mono text-xs break-all">${link}</span><br><small>Teile ihn mit Freunden!</small>`;
+                } catch (clipboardErr) {
+                    console.warn("Clipboard fehlgeschlagen:", clipboardErr);
+                    toast.innerHTML = `⚠️ <strong>Link konnte nicht automatisch kopiert werden</strong><br>Markiere & kopiere manuell:<br><span class="font-mono text-xs break-all select-all bg-zinc-800 p-2 rounded inline-block">${link}</span>`;
+                }
+
                 toast.classList.add('visible');
-                setTimeout(() => toast.classList.remove('visible'), 7000);
+                setTimeout(() => toast.classList.remove('visible'), 9000);
             } catch (e) {
                 console.error("Share Referral Fehler:", e);
-                alert("Fehler beim Generieren des Links. Versuche es später erneut.");
+                toast.innerHTML = `❌ Fehler beim Generieren. Bitte versuche es erneut.`;
+                setTimeout(() => toast.classList.remove('visible'), 5000);
             }
         }
 
-        // ====================== FIX: checkReferralCode mit starkem Retry + Cache-Busting ======================
         async function checkReferralCode() {
             const urlParams = new URLSearchParams(window.location.search);
-            let refCode = urlParams.get("ref");
+            const refCode = urlParams.get("ref");
             if (!refCode) return;
 
             const statusEl = document.getElementById("discount-status");
-            statusEl.innerHTML = `<span class="text-gray-400">Prüfe Referral-Code...</span>`;
+            statusEl.innerHTML = `<span class="loading-spinner"></span> Prüfe Referral-Code... (kann etwas dauern)`;
 
-            const maxAttempts = 4;
+            const maxAttempts = 5;
+            const baseDelay = 1500;
+
             for (let attempt = 1; attempt <= maxAttempts; attempt++) {
                 try {
-                    const timestamp = Date.now();
-                    const url = REFERRAL_SERVER + `?action=redeem&code=${encodeURIComponent(refCode)}&name=${encodeURIComponent(currentUserName || "Gast")}&t=${timestamp}`;
+                    const ts = Date.now();
+                    const url = `${REFERRAL_SERVER}?action=redeem&code=${encodeURIComponent(refCode)}&name=${encodeURIComponent(currentUserName || "Gast")}&_=${ts}`;
 
-                    console.log(`Referral-Request Versuch ${attempt}/${maxAttempts} an:`, url);
+                    console.log(`Referral-Prüfung Versuch ${attempt}/${maxAttempts}: ${url}`);
 
-                    const res = await fetch(url, { cache: 'no-store' });
-                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    const res = await fetch(url, { cache: 'no-store', redirect: 'follow' });
+
+                    if (!res.ok) {
+                        throw new Error(`HTTP ${res.status} - ${res.statusText}`);
+                    }
 
                     const data = await res.json();
-                    console.log(`Versuch ${attempt} Antwort:`, data);
+                    console.log(`Antwort Versuch ${attempt}:`, data);
 
                     if (data.valid === true) {
                         discountPercent = 10;
@@ -377,22 +432,28 @@
                         statusEl.innerHTML = `<span class="text-emerald-400">🎉 Referral-Rabatt 10% aktiviert!</span>`;
                         updateCartDisplay();
                         showReferralToast();
-                        return; // Erfolg → sofort fertig
+                        // URL bereinigen (verhindert erneutes Prüfen beim Refresh)
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                        return;
                     } else {
-                        statusEl.innerHTML = `<span class="text-red-400">${data.reason || "Ungültiger Code"}</span>`;
+                        let msg = data.reason || "Code nicht gefunden oder ungültig";
+                        if (attempt === maxAttempts) {
+                            statusEl.innerHTML = `<span class="text-red-400">${msg} – bitte neuen Link versuchen</span>`;
+                        } else {
+                            statusEl.innerHTML = `<span class="text-yellow-400">Versuch ${attempt}/${maxAttempts} – warte kurz...</span>`;
+                            await new Promise(r => setTimeout(r, baseDelay * attempt));
+                        }
                     }
-                } catch (e) {
-                    console.error(`Versuch ${attempt} fehlgeschlagen:`, e);
-                    statusEl.innerHTML = `<span class="text-red-400">Verbindungsfehler – Versuch ${attempt}/${maxAttempts}...</span>`;
-                }
-
-                if (attempt < maxAttempts) {
-                    await new Promise(r => setTimeout(r, 500 + attempt * 400)); // 500ms, 900ms, 1300ms, 1700ms
+                } catch (err) {
+                    console.error(`Versuch ${attempt} Fehler:`, err);
+                    if (attempt === maxAttempts) {
+                        statusEl.innerHTML = `<span class="text-red-400">Verbindungsproblem oder Code nicht gefunden. Bitte neuen Link versuchen.</span>`;
+                    } else {
+                        statusEl.innerHTML = `<span class="text-yellow-400">Verbindung schwierig – Versuch ${attempt+1}...</span>`;
+                        await new Promise(r => setTimeout(r, baseDelay * attempt));
+                    }
                 }
             }
-
-            // Nach allen Versuchen
-            statusEl.innerHTML = `<span class="text-red-400">Code konnte nicht gefunden werden. Versuche einen neuen Link oder lade die Seite neu.</span>`;
         }
 
         function showReferralToast() {
@@ -455,7 +516,7 @@
                                     <div class="bg-zinc-900 p-3 rounded-xl text-center font-mono text-lg text-emerald-300 break-all">
                                         ${ref.bonusCode}
                                     </div>
-                                    <button onclick="copyToClipboard('${ref.bonusCode}')" 
+                                    <button onclick="copyToClipboard('${ref.bonusCode}')"
                                             class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-xl transition">
                                         Code kopieren
                                     </button>
@@ -685,7 +746,7 @@
             renderProducts();
             updateCartDisplay();
             startNotificationCycle();
-            checkReferralCode();
+            checkReferralCode();  // Prüft Referral beim Laden
         }
 
         function showNameModal() {

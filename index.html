@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Inter:wght@400;500;600&display=swap');
-   
+  
         html, body { touch-action: manipulation; }
         body { font-family: 'Inter', system_ui, sans-serif; }
         .neon-text { text-shadow: 0 0 15px #67e8f9, 0 0 30px #67e8f9; }
@@ -25,7 +25,7 @@
         .wave-bg { background: linear-gradient(135deg, #0a0a0a, #1e1233, #0a0a0a); }
         .qty-btn { transition: all 0.2s ease; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
         .qty-btn:hover { background-color: #22d3ee; color: black; }
-   
+  
         @keyframes boltPulse {
             0%, 100% { transform: scale(1) rotate(0deg); color: #fde047; }
             50% { transform: scale(1.35) rotate(20deg); color: #facc15; }
@@ -35,7 +35,7 @@
             display: inline-block;
             text-shadow: 0 0 15px #facc15;
         }
-   
+  
         #notification-toast {
             position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%);
             background: rgba(0,0,0,0.78); backdrop-filter: blur(12px);
@@ -46,7 +46,7 @@
         @media (max-width: 1023px) { #notification-toast { bottom: 15px !important; } }
         #notification-toast.visible { opacity: 1; transform: translateX(-50%) translateY(-8px); }
         #notification-toast.deal, #notification-toast.mystery, #notification-toast.discount { font-weight: 700; }
-   
+  
         .tornado-image { width: 100%; height: 160px; object-fit: cover; border-radius: 16px; margin-bottom: 12px; background: #1f2937; }
         .price-row { display: flex; justify-content: center; align-items: baseline; gap: 16px; margin-bottom: 12px; }
         .discount-price { font-size: 1.35rem; text-decoration: line-through; color: #9ca3af; }
@@ -57,6 +57,7 @@
     </style>
 </head>
 <body class="wave-bg text-white min-h-screen">
+
     <!-- NAVBAR -->
     <nav class="bg-black/90 backdrop-blur-xl border-b border-cyan-400/30 sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex justify-between items-center">
@@ -97,7 +98,7 @@
             </div>
         </div>
 
-        <!-- NAME BANNER -->
+        <!-- NAME BANNER mit neuem Referrals-Button -->
         <div id="user-banner" class="mb-10 bg-gradient-to-r from-zinc-900 to-purple-950 border border-cyan-300/30 hover:border-cyan-300 rounded-3xl p-5 flex items-center justify-between cursor-pointer transition-all group">
             <div onclick="showNameModal()" class="flex items-center gap-4 flex-1">
                 <i class="fa-solid fa-circle-user text-4xl text-cyan-300"></i>
@@ -106,18 +107,23 @@
                     <p id="user-name-display" class="text-2xl font-semibold group-hover:text-cyan-200 transition">Bitte Namen eingeben</p>
                 </div>
             </div>
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-4 flex-wrap justify-end">
                 <button onclick="event.stopImmediatePropagation(); showOrderHistory()"
-                        class="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-cyan-300 hover:text-white px-5 py-2 rounded-2xl text-sm font-medium transition-all">
+                        class="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-cyan-300 hover:text-white px-4 py-2 rounded-2xl text-sm font-medium transition-all">
                     <i class="fa-solid fa-clock-rotate-left"></i>
                     <span class="hidden sm:inline">Meine Bestellungen</span>
                 </button>
                 <button onclick="event.stopImmediatePropagation(); shareReferral()"
-                        class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2 rounded-2xl text-sm font-medium transition-all">
+                        class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-2xl text-sm font-medium transition-all">
                     <i class="fa-solid fa-share-nodes"></i>
                     <span class="hidden sm:inline">Freunde einladen</span>
                 </button>
-                <div onclick="showNameModal()" class="text-cyan-400 group-hover:text-white transition text-base">ändern →</div>
+                <button onclick="event.stopImmediatePropagation(); showMyReferrals()"
+                        class="flex items-center gap-2 bg-purple-600/80 hover:bg-purple-600 text-white px-4 py-2 rounded-2xl text-sm font-medium transition-all border border-purple-400/50">
+                    <i class="fa-solid fa-gift"></i>
+                    Meine Referrals
+                </button>
+                <div onclick="showNameModal()" class="text-cyan-400 group-hover:text-white transition text-base cursor-pointer">ändern →</div>
             </div>
         </div>
 
@@ -134,7 +140,7 @@
         <div id="products-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6"></div>
     </div>
 
-    <!-- FLOATING CART BUTTON (mobile) -->
+    <!-- FLOATING CART (mobile) -->
     <button onclick="toggleCart()" class="fixed bottom-6 right-6 lg:hidden bg-gradient-to-r from-cyan-400 to-purple-500 text-black w-14 h-14 rounded-3xl shadow-2xl flex items-center justify-center z-50">
         <i class="fa-solid fa-cart-shopping text-3xl"></i>
     </button>
@@ -208,6 +214,18 @@
         </div>
     </div>
 
+    <!-- NEUES MODAL: MEINE REFERRALS & BONUS -->
+    <div id="referrals-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-[9999]">
+        <div class="bg-zinc-900 max-w-2xl w-full mx-4 rounded-3xl p-8 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-3xl font-bold neon-text">Meine Referrals & Bonus</h3>
+                <button onclick="closeReferralsModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
+            </div>
+            <div id="referrals-list" class="space-y-5"></div>
+            <p id="no-referrals" class="hidden text-center text-gray-400 py-12">Noch keine Freunde haben deinen Code eingelöst.</p>
+        </div>
+    </div>
+
     <div id="notification-toast"></div>
 
     <script>
@@ -216,11 +234,7 @@
             "WAVE5": 5,
             "Freund10": 10
         };
-        // ──────────────────────────────────────────────────────────────
-        //  ← DEINE NEUESTE SERVER-URL ←
         const REFERRAL_SERVER = "https://script.google.com/macros/s/AKfycbxmnAzO99Mm16bYZMwEUCEYcjWwnr_fZblbecucLGgxMi46QCTSjoo-brooAf8zWMoG2A/exec";
-        // ──────────────────────────────────────────────────────────────
-
         const FORMSPREE_ENDPOINT = "https://formspree.io/f/mqedvnkb";
         const MYSTERY_ID = 999;
 
@@ -358,22 +372,15 @@
             const urlParams = new URLSearchParams(window.location.search);
             const refCode = urlParams.get("ref");
             if (!refCode) return;
-
             const statusEl = document.getElementById("discount-status");
             statusEl.innerHTML = `<span class="text-gray-400">Prüfe Referral-Code...</span>`;
-
             try {
                 const url = REFERRAL_SERVER + `?action=redeem&code=${encodeURIComponent(refCode)}&name=${encodeURIComponent(currentUserName || "Gast")}`;
                 console.log("Referral-Request an:", url);
-
                 const res = await fetch(url);
-                if (!res.ok) {
-                    throw new Error(`HTTP ${res.status} - ${res.statusText}`);
-                }
-
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
                 console.log("Server-Antwort:", data);
-
                 if (data.valid === true) {
                     discountPercent = 10;
                     appliedDiscountCode = refCode;
@@ -384,17 +391,15 @@
                     let msg = "Ungültiger oder abgelaufener Referral-Code";
                     if (data.reason) {
                         if (data.reason.includes("Selbst-Referral")) msg = "Selbst-Einladung nicht erlaubt 😅";
-                        else if (data.reason.includes("Bereits verwendet") || data.reason.includes("nicht open")) msg = "Dieser Code wurde bereits eingelöst";
-                        else if (data.reason.includes("Code nicht gefunden")) msg = "Referral-Code nicht gefunden";
+                        else if (data.reason.includes("bereits verwendet") || data.reason.includes("nicht open")) msg = "Dieser Code wurde bereits eingelöst";
+                        else if (data.reason.includes("nicht gefunden")) msg = "Referral-Code nicht gefunden";
                         else msg = data.reason;
                     }
                     statusEl.innerHTML = `<span class="text-red-400">${msg}</span>`;
                 }
             } catch (e) {
-                console.error("Referral Fehler:", e);
-                let errorMsg = "Verbindungsfehler zum Referral-Server";
-                if (e.message.includes("fetch")) errorMsg += " (Netzwerk/CORS?)";
-                statusEl.innerHTML = `<span class="text-red-400">${errorMsg} – Seite neu laden oder später versuchen</span>`;
+                console.error("Referral-Check Fehler:", e);
+                statusEl.innerHTML = `<span class="text-red-400">Verbindungsfehler zum Server – versuche Seite neu zu laden</span>`;
             }
         }
 
@@ -412,6 +417,96 @@
                     showNextNotification();
                 }, 600);
             }, 4500);
+        }
+
+        // ====================== NEU: MEINE REFERRALS & BONUS ======================
+        async function showMyReferrals() {
+            if (!currentUserName) {
+                alert("Bitte zuerst deinen Namen eingeben!");
+                showNameModal();
+                return;
+            }
+
+            const modal = document.getElementById("referrals-modal");
+            const listEl = document.getElementById("referrals-list");
+            const noEl = document.getElementById("no-referrals");
+
+            listEl.innerHTML = '<p class="text-center text-gray-400 py-8">Lade deine Einladungen...</p>';
+            modal.classList.remove("hidden");
+            modal.classList.add("flex");
+
+            try {
+                const url = REFERRAL_SERVER + "?action=get_my_referrals&name=" + encodeURIComponent(currentUserName);
+                const res = await fetch(url);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+
+                listEl.innerHTML = "";
+                if (!data.referrals || data.referrals.length === 0) {
+                    noEl.classList.remove("hidden");
+                    return;
+                }
+
+                noEl.classList.add("hidden");
+
+                data.referrals.forEach(ref => {
+                    const item = document.createElement("div");
+                    item.className = "bg-zinc-800 rounded-2xl p-5 border border-cyan-500/20";
+
+                    let statusHTML = "";
+                    let actionButton = "";
+
+                    if (ref.status === "pending") {
+                        statusHTML = `<span class="text-yellow-400 font-medium">Eingelöst – warte auf Bezahlung</span>`;
+                    } else if (ref.status === "paid") {
+                        statusHTML = `<span class="text-emerald-400 font-medium">Bezahlt! Bonus abholbereit</span>`;
+                        actionButton = `<button onclick="claimBonus('${ref.referralCode}')" class="mt-4 w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-xl transition">Bonus-Code holen</button>`;
+                    } else {
+                        statusHTML = `<span class="text-gray-400">Status: ${ref.status}</span>`;
+                    }
+
+                    item.innerHTML = `
+                        <div class="flex justify-between items-start mb-3">
+                            <div>
+                                <div class="font-semibold text-lg">${ref.friend}</div>
+                                ${ref.redeemedAt ? `<div class="text-sm text-gray-400">am ${ref.redeemedAt}</div>` : ''}
+                            </div>
+                            <div class="text-right">${statusHTML}</div>
+                        </div>
+                        ${actionButton}
+                    `;
+                    listEl.appendChild(item);
+                });
+            } catch (err) {
+                console.error("Referrals Fehler:", err);
+                listEl.innerHTML = `<p class="text-red-400 text-center py-8">Fehler beim Laden: ${err.message}</p>`;
+            }
+        }
+
+        function closeReferralsModal() {
+            document.getElementById("referrals-modal").classList.add("hidden");
+            document.getElementById("referrals-modal").classList.remove("flex");
+        }
+
+        async function claimBonus(referralCode) {
+            try {
+                const url = REFERRAL_SERVER + "?action=claim_bonus&code=" + encodeURIComponent(referralCode);
+                const res = await fetch(url);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+
+                if (data.valid && data.bonusCode) {
+                    const toast = document.getElementById('notification-toast');
+                    toast.innerHTML = `🎉 <strong>Dein Bonus-Code:</strong><br><span class="font-mono text-lg">${data.bonusCode}</span><br><small>10% Rabatt – einmalig einlösbar!</small>`;
+                    toast.classList.add('visible', 'discount');
+                    setTimeout(() => toast.classList.remove('visible'), 8000);
+                    alert(`Dein Bonus-Code: ${data.bonusCode}\n\nGib ihn einfach im Warenkorb ein!`);
+                } else {
+                    alert(data.reason || "Bonus noch nicht verfügbar.");
+                }
+            } catch (err) {
+                alert("Fehler beim Abholen: " + err.message);
+            }
         }
 
         // ====================== RABATT + MANUELLE CODES ======================

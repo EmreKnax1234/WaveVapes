@@ -348,26 +348,28 @@
             }
         }
 
-        // ====================== FIX: checkReferralCode mit Retry + Cache-Busting ======================
+        // ====================== FIX: checkReferralCode mit starkem Retry + Cache-Busting ======================
         async function checkReferralCode() {
             const urlParams = new URLSearchParams(window.location.search);
-            const refCode = urlParams.get("ref");
+            let refCode = urlParams.get("ref");
             if (!refCode) return;
 
             const statusEl = document.getElementById("discount-status");
             statusEl.innerHTML = `<span class="text-gray-400">Prüfe Referral-Code...</span>`;
 
-            // Retry-Logik: bis zu 3 Versuche mit Cache-Busting
-            for (let attempt = 1; attempt <= 3; attempt++) {
+            const maxAttempts = 4;
+            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
                 try {
                     const timestamp = Date.now();
                     const url = REFERRAL_SERVER + `?action=redeem&code=${encodeURIComponent(refCode)}&name=${encodeURIComponent(currentUserName || "Gast")}&t=${timestamp}`;
-                    console.log(`Referral-Request Versuch ${attempt} an:`, url);
 
-                    const res = await fetch(url);
+                    console.log(`Referral-Request Versuch ${attempt}/${maxAttempts} an:`, url);
+
+                    const res = await fetch(url, { cache: 'no-store' });
                     if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
                     const data = await res.json();
-                    console.log("Server-Antwort (redeem):", data);
+                    console.log(`Versuch ${attempt} Antwort:`, data);
 
                     if (data.valid === true) {
                         discountPercent = 10;
@@ -375,22 +377,22 @@
                         statusEl.innerHTML = `<span class="text-emerald-400">🎉 Referral-Rabatt 10% aktiviert!</span>`;
                         updateCartDisplay();
                         showReferralToast();
-                        return; // Erfolg → fertig
+                        return; // Erfolg → sofort fertig
                     } else {
-                        let msg = data.reason || "Ungültiger oder abgelaufener Referral-Code";
-                        statusEl.innerHTML = `<span class="text-red-400">${msg}</span>`;
+                        statusEl.innerHTML = `<span class="text-red-400">${data.reason || "Ungültiger Code"}</span>`;
                     }
                 } catch (e) {
                     console.error(`Versuch ${attempt} fehlgeschlagen:`, e);
-                    statusEl.innerHTML = `<span class="text-red-400">Verbindungsfehler – versuche erneut...</span>`;
+                    statusEl.innerHTML = `<span class="text-red-400">Verbindungsfehler – Versuch ${attempt}/${maxAttempts}...</span>`;
                 }
 
-                // Warte kurz vor dem nächsten Versuch (außer beim letzten)
-                if (attempt < 3) await new Promise(r => setTimeout(r, 800));
+                if (attempt < maxAttempts) {
+                    await new Promise(r => setTimeout(r, 500 + attempt * 400)); // 500ms, 900ms, 1300ms, 1700ms
+                }
             }
 
-            // Nach 3 Versuchen immer noch Fehler
-            statusEl.innerHTML = `<span class="text-red-400">Code konnte nicht gefunden werden. Versuche einen neuen Link.</span>`;
+            // Nach allen Versuchen
+            statusEl.innerHTML = `<span class="text-red-400">Code konnte nicht gefunden werden. Versuche einen neuen Link oder lade die Seite neu.</span>`;
         }
 
         function showReferralToast() {
@@ -408,9 +410,6 @@
                 }, 600);
             }, 4500);
         }
-
-        // ====================== REST DER FUNKTIONEN (unverändert) ======================
-        // (alles von showMyReferrals bis window.onload bleibt exakt wie in deiner Version)
 
         // ====================== MEINE REFERRALS & BONUS ======================
         async function showMyReferrals() {

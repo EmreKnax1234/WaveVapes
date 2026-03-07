@@ -43,7 +43,6 @@
         @media (max-width: 1023px) { #notification-toast { bottom: 15px !important; } }
         #notification-toast.visible { opacity: 1; transform: translateX(-50%) translateY(-8px); }
         #notification-toast.deal, #notification-toast.mystery, #notification-toast.discount { font-weight: 700; }
-
         /* REFERRAL-WARN-BAUM */
         .referral-warning-tree {
             background: rgba(15, 15, 15, 0.92);
@@ -64,10 +63,10 @@
             font-size: 2.1rem;
             line-height: 1;
             display: inline-block;
-            animation: 
+            animation:
                 glowRed 2.8s ease-in-out infinite alternate,
                 sway 9s ease-in-out infinite;
-            text-shadow: 
+            text-shadow:
                 0 0 12px #ef4444,
                 0 0 24px #dc2626,
                 0 0 40px #b91c1c;
@@ -89,17 +88,15 @@
         .whatsapp-link:hover {
             color: #128C7E;
         }
-
         @keyframes glowRed {
-            0%   { text-shadow: 0 0 12px #ef4444, 0 0 24px #dc2626, 0 0 40px #b91c1c; }
+            0% { text-shadow: 0 0 12px #ef4444, 0 0 24px #dc2626, 0 0 40px #b91c1c; }
             100% { text-shadow: 0 0 20px #f87171, 0 0 45px #ef4444, 0 0 70px #dc2626; }
         }
         @keyframes sway {
-            0%   { transform: rotate(-3.5deg); }
-            50%  { transform: rotate(3.5deg); }
+            0% { transform: rotate(-3.5deg); }
+            50% { transform: rotate(3.5deg); }
             100% { transform: rotate(-3.5deg); }
         }
-
         .tornado-image { width: 100%; height: 160px; object-fit: cover; border-radius: 16px; margin-bottom: 12px; background: #1f2937; }
         .price-row { display: flex; justify-content: center; align-items: baseline; gap: 16px; margin-bottom: 12px; }
         .discount-price { font-size: 1.35rem; text-decoration: line-through; color: #9ca3af; }
@@ -124,10 +121,16 @@
             border-color: #22d3ee;
             box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.3);
         }
+        /* LOYALTY BAR (aus der International-Version) */
+        .loyalty-bar {
+            height: 6px;
+            background: linear-gradient(to right, #67e8f9, #a5f3fc);
+            border-radius: 9999px;
+            transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
     </style>
 </head>
 <body class="wave-bg text-white min-h-screen">
-
     <!-- NAVBAR -->
     <nav class="bg-black/90 backdrop-blur-xl border-b border-cyan-400/30 sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex justify-between items-center">
@@ -151,7 +154,6 @@
             </div>
         </div>
     </nav>
-
     <!-- REFERRAL BAUM WARNUNG – ganz oben, sticky -->
     <div class="referral-warning-tree sticky top-0 z-40">
         <div class="tree-container flex flex-col sm:flex-row items-center justify-center flex-wrap gap-2 sm:gap-5 px-4 text-center sm:text-left">
@@ -159,8 +161,8 @@
             <div class="warning-text text-base sm:text-lg">
                 Referral-System <strong>noch in Entwicklung</strong> – Fehler möglich! 🚧 Wir fixen das schnellstmöglich.
                 <br class="sm:hidden">
-                <a href="https://chat.whatsapp.com/LM0rL2VeEDQAnyw83LDLK9" 
-                   target="_blank" 
+                <a href="https://chat.whatsapp.com/LM0rL2VeEDQAnyw83LDLK9"
+                   target="_blank"
                    rel="noopener noreferrer"
                    class="whatsapp-link">
                     → WhatsApp-Gruppe (Hilfe & Support)
@@ -168,9 +170,7 @@
             </div>
         </div>
     </div>
-
     <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-8 pb-20">
-
         <!-- HERO -->
         <div class="text-center mb-12">
             <div class="inline-flex items-center gap-2 bg-white/10 px-5 py-1.5 rounded-3xl text-xs mb-6 backdrop-blur-md">
@@ -185,14 +185,30 @@
                 <span>Ab 100€ Bestellwert gibt's eine <span class="text-white font-bold underline">Mystery Vape gratis</span> dazu! 🎁</span>
             </div>
         </div>
-
-        <!-- NAME BANNER + REFERRAL WARNING -->
+        <!-- NAME BANNER + LOYALTY + REFERRAL WARNING -->
         <div id="user-banner" class="mb-10 bg-gradient-to-r from-zinc-900 to-purple-950 border border-cyan-300/30 hover:border-cyan-300 rounded-3xl p-5 cursor-pointer transition-all group">
-            <div onclick="showNameModal()" class="flex items-center gap-4 mb-5">
+            <div onclick="showNameModal()" class="flex items-center gap-4 mb-3">
                 <i class="fa-solid fa-circle-user text-4xl text-cyan-300"></i>
                 <div>
                     <p class="text-cyan-300 text-xs">Bestellt als</p>
                     <p id="user-name-display" class="text-2xl font-semibold group-hover:text-cyan-200 transition">Bitte Namen eingeben</p>
+                </div>
+            </div>
+            
+            <!-- LOYALTY PUNKTE (integriert aus International-Version) -->
+            <div class="flex items-center justify-between bg-zinc-950/70 rounded-2xl p-4 mb-5">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-star text-3xl text-yellow-400"></i>
+                    <div>
+                        <p class="text-xs text-yellow-300">LOYALTY PUNKTE</p>
+                        <p id="loyalty-points" class="text-3xl font-bold text-white">0</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <p id="loyalty-progress-text" class="text-xs text-emerald-400">Nächster Bonus in <span class="font-bold">300</span> Punkten</p>
+                    <div class="w-36 h-2 bg-zinc-800 rounded-full mt-2 overflow-hidden">
+                        <div id="loyalty-progress-bar" class="loyalty-bar w-0"></div>
+                    </div>
                 </div>
             </div>
 
@@ -204,7 +220,6 @@
                 <p>Derzeit können Fehler auftreten (Link nicht erstellbar, Referrals nicht sichtbar, Bonus nicht verfügbar etc.).</p>
                 <p class="mt-1">Wir arbeiten intensiv daran danke für dein Verständnis! 🚧</p>
             </div>
-
             <div class="flex items-center gap-4 flex-wrap justify-end">
                 <button onclick="event.stopImmediatePropagation(); showOrderHistory()"
                         class="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-cyan-300 hover:text-white px-4 py-2 rounded-2xl text-sm font-medium transition-all">
@@ -224,25 +239,20 @@
                 <div onclick="showNameModal()" class="text-cyan-400 group-hover:text-white transition text-base cursor-pointer">ändern →</div>
             </div>
         </div>
-
         <!-- TABS -->
         <div id="category-tabs" class="category-tabs flex overflow-x-auto gap-x-6 pb-4 border-b border-white/10 mb-8 text-base whitespace-nowrap"></div>
-
         <!-- SEARCH -->
         <div class="relative mb-8">
             <i class="fa-solid fa-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-cyan-400"></i>
             <input id="search-input" type="text" placeholder="Flavor suchen..." onkeyup="filterProducts()" class="w-full bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl pl-12 pr-6 py-4 text-base outline-none transition">
         </div>
-
         <!-- PRODUCTS GRID -->
         <div id="products-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6"></div>
     </div>
-
     <!-- FLOATING CART BUTTON (mobile) -->
     <button onclick="toggleCart()" class="fixed bottom-6 right-6 lg:hidden bg-gradient-to-r from-cyan-400 to-purple-500 text-black w-14 h-14 rounded-3xl shadow-2xl flex items-center justify-center z-50">
         <i class="fa-solid fa-cart-shopping text-3xl"></i>
     </button>
-
     <!-- CART SIDEBAR -->
     <div id="cart-sidebar" class="fixed top-0 right-0 h-full w-full md:w-96 bg-zinc-950 border-l border-cyan-400/30 shadow-2xl translate-x-full transition-all duration-300 z-[999] overflow-y-auto">
         <div class="p-6">
@@ -251,7 +261,6 @@
                 <button onclick="toggleCart()" class="text-4xl text-gray-400 hover:text-white">✕</button>
             </div>
             <div id="cart-items-list" class="space-y-6 min-h-[300px]"></div>
-
             <div class="mt-8 pt-6 border-t border-white/10">
                 <p class="text-xs uppercase tracking-widest text-gray-400 mb-3">Rabattcode oder Referral</p>
                 <div class="flex flex-col gap-3">
@@ -264,31 +273,32 @@
                 </div>
                 <div id="discount-status" class="mt-3 text-sm min-h-[24px]"></div>
             </div>
-
             <div class="mt-10 pt-8 border-t border-white/10">
                 <div class="flex justify-between text-2xl font-semibold mb-2">
                     <span>Gesamt</span>
                     <span id="cart-total-price" class="text-cyan-300">0,00 €</span>
                 </div>
                 <p class="text-xs text-gray-400">Zahlung bei Abholung</p>
+                <!-- LOYALTY VORSCHAU IM WARENKORB (integriert) -->
+                <p id="loyalty-cart-info" class="text-emerald-400 text-xs mt-3 flex items-center gap-2 font-medium"></p>
             </div>
             <button onclick="placeOrder()" class="mt-8 w-full py-6 bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 text-black font-bold text-xl rounded-3xl transition-all">BESTELLUNG ABSCHICKEN</button>
             <button onclick="clearCart()" class="mt-4 text-red-400 text-sm w-full py-3">Warenkorb leeren</button>
         </div>
     </div>
-
     <!-- SUCCESS MODAL -->
     <div id="success-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-[9999]">
         <div class="bg-zinc-900 max-w-lg w-full mx-4 rounded-3xl p-8 text-center">
             <div class="mx-auto w-20 h-20 bg-emerald-400/10 text-emerald-400 rounded-3xl flex items-center justify-center text-6xl mb-8">✓</div>
             <h3 class="text-4xl font-bold mb-3">Bestellung gesendet!</h3>
-            <p class="text-cyan-300 text-xl mb-8">Bestellnummer: <span id="success-order-id" class="font-mono font-bold"></span></p>
+            <p class="text-cyan-300 text-xl mb-2">Bestellnummer: <span id="success-order-id" class="font-mono font-bold"></span></p>
+            <!-- LOYALTY INFO IM SUCCESS MODAL -->
+            <p id="success-loyalty-info" class="text-emerald-400 text-sm mb-6"></p>
             <div id="success-details" class="text-left bg-black/60 rounded-2xl p-6 text-sm mb-8 max-h-64 overflow-auto"></div>
             <button onclick="closeSuccessModal()" class="bg-white text-black px-14 py-5 rounded-3xl font-semibold text-lg">Zurück zum Shop</button>
             <p class="text-[10px] text-gray-500 mt-8">Ich erhalte deine Bestellung per E-Mail und bereite sie vor.</p>
         </div>
     </div>
-
     <!-- NAME MODAL -->
     <div id="name-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]">
         <div class="bg-zinc-900 rounded-3xl p-8 max-w-sm w-full mx-4">
@@ -297,7 +307,6 @@
             <button onclick="saveUserName()" class="w-full bg-cyan-400 hover:bg-cyan-300 text-black py-5 rounded-3xl font-bold text-xl">Speichern</button>
         </div>
     </div>
-
     <!-- REFERRAL CONSENT MODAL -->
     <div id="referral-consent-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]">
         <div class="bg-zinc-900 rounded-3xl p-8 max-w-md w-full mx-4 text-center">
@@ -316,7 +325,6 @@
             </button>
         </div>
     </div>
-
     <!-- REFERRAL LINK MODAL -->
     <div id="referral-link-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]">
         <div class="bg-zinc-900 rounded-3xl p-8 max-w-md w-full mx-4 text-center">
@@ -334,7 +342,6 @@
             </button>
         </div>
     </div>
-
     <!-- HISTORY MODAL -->
     <div id="history-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-[9999]">
         <div class="bg-zinc-900 max-w-2xl w-full mx-4 rounded-3xl p-8 max-h-[90vh] overflow-y-auto">
@@ -342,11 +349,15 @@
                 <h3 class="text-3xl font-bold">Meine Bestellungen</h3>
                 <button onclick="closeHistoryModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
             </div>
+            <!-- LOYALTY GESAMT IN HISTORY (integriert) -->
+            <div class="bg-zinc-800 rounded-2xl p-4 mb-6 flex justify-between items-center">
+                <div><span class="text-yellow-400">Gesamt Punkte:</span> <span id="history-loyalty-points" class="font-bold text-2xl">0</span></div>
+                <div class="text-xs text-gray-400">Loyalty-System aktiv</div>
+            </div>
             <div id="history-list" class="space-y-4"></div>
             <p id="no-history" class="hidden text-center text-gray-400 py-12">Noch keine Bestellungen gespeichert.</p>
         </div>
     </div>
-
     <!-- MEINE REFERRALS MODAL -->
     <div id="referrals-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-[9999]">
         <div class="bg-zinc-900 max-w-2xl w-full mx-4 rounded-3xl p-8 max-h-[90vh] overflow-y-auto">
@@ -354,30 +365,37 @@
                 <h3 class="text-3xl font-bold neon-text">Meine Referrals & Bonus</h3>
                 <button onclick="closeReferralsModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
             </div>
-
             <div class="mb-6 p-4 bg-red-950/60 border border-red-600/50 rounded-2xl text-red-200 text-sm text-center">
                 <strong>Referral-Funktion noch in Entwicklung</strong><br>
                 Fehler möglich – wir fixen das schnellstmöglich!
             </div>
-
             <div id="referrals-list" class="space-y-5"></div>
             <p id="no-referrals" class="hidden text-center text-gray-400 py-12">Noch keine Freunde haben deinen Code eingelöst.</p>
         </div>
     </div>
-
     <div id="notification-toast"></div>
 
     <script>
         // ====================== KONFIGURATION ======================
         const VALID_DISCOUNTS = {
             "WAVE5": 5,
-            "Freund10": 10
+            "Freund10": 10,
+            "LOYAL5": 5,
+            "LOYAL10": 10
         };
         const REFERRAL_SERVER = "https://script.google.com/macros/s/AKfycbyLCL_owTtTs0X8wrgULsTNKNMU9TilBuljZrxco8Y9mZDkWte-gzKIsLYyZhky5qsQLQ/exec";
         const FORMSPREE_ENDPOINT = "https://formspree.io/f/mqedvnkb";
         const MYSTERY_ID = 999;
         const fakeNames = ["Tim","Anna","Max","Sophie","Luca","Mia","Felix","Emma","Noah","Lena","Leon","Julia","Paul","Laura","Ben","Sarah","David","Hannah","Jonas","Lea"];
         const NICOTINE_OPTIONS = ["10 mg", "20 mg"];
+
+        // ====================== LOYALTY SYSTEM (voll integriert aus International-Version) ======================
+        const LOYALTY_PER_EURO = 1;
+        const REWARDS = [
+            { points: 300, code: "LOYAL5", discount: 5, text: "5 € Gutschein" },
+            { points: 600, code: "LOYAL10", discount: 10, text: "10 € Gutschein" }
+        ];
+
         let allProducts = [
             { id: 1, name: "Apple Peach", category: "Normale Sorten", isNew: false, available: true, price: 8 },
             { id: 2, name: "Blueberry", category: "Normale Sorten", isNew: false, available: true, price: 8 },
@@ -416,6 +434,7 @@
         ];
         let cart = [];
         let currentUserName = localStorage.getItem("wavevapes_username") || "";
+        let loyaltyPoints = parseInt(localStorage.getItem("wavevapes_loyalty_points")) || 0;
         let currentCategoryFilter = "Alle";
         let notificationList = [];
         const NOTIFICATION_DURATION = 6500;
@@ -425,6 +444,45 @@
         let appliedDiscountCode = null;
         let discountPercent = 0;
         let orderHistory = [];
+
+        // ====================== LOYALTY HELPER FUNCTIONS ======================
+        function updateLoyaltyDisplay() {
+            const pointsEl = document.getElementById("loyalty-points");
+            const progressEl = document.getElementById("loyalty-progress-bar");
+            const progressText = document.getElementById("loyalty-progress-text");
+            const historyPoints = document.getElementById("history-loyalty-points");
+            if (pointsEl) pointsEl.textContent = loyaltyPoints;
+            if (historyPoints) historyPoints.textContent = loyaltyPoints;
+
+            let nextReward = REWARDS.find(r => loyaltyPoints < r.points) || { points: 9999, text: "MAXIMAL" };
+            const needed = Math.max(0, nextReward.points - loyaltyPoints);
+            if (progressText) progressText.innerHTML = `Nächster Bonus in <span class="font-bold">${needed}</span> Punkten`;
+            const percent = Math.min(100, Math.floor((loyaltyPoints / nextReward.points) * 100));
+            if (progressEl) progressEl.style.width = percent + "%";
+        }
+
+        function addLoyaltyPoints(amount) {
+            loyaltyPoints += Math.floor(amount);
+            localStorage.setItem("wavevapes_loyalty_points", loyaltyPoints);
+            updateLoyaltyDisplay();
+        }
+
+        function checkAndAutoRedeemLoyalty() {
+            for (let reward of REWARDS) {
+                if (loyaltyPoints >= reward.points && !appliedDiscountCode) {
+                    if (confirm(`🎉 Du hast genug Punkte für einen ${reward.text}!\nMöchtest du ihn jetzt einlösen?`)) {
+                        discountPercent = reward.discount;
+                        appliedDiscountCode = reward.code;
+                        loyaltyPoints -= reward.points;
+                        localStorage.setItem("wavevapes_loyalty_points", loyaltyPoints);
+                        document.getElementById("discount-status").innerHTML = `<span class="text-emerald-400">✓ ${reward.code} automatisch eingelöst!</span>`;
+                        updateLoyaltyDisplay();
+                        updateCartDisplay();
+                        return;
+                    }
+                }
+            }
+        }
 
         function loadOrderHistory() {
             const saved = localStorage.getItem("wavevapes_orderhistory");
@@ -891,16 +949,54 @@
             setInterval(checkAndGenerateNotifications, 60000);
         }
 
+        function getTornadoQuantity() {
+            return cart.reduce((sum, item) => {
+                const prod = allProducts.find(p => p.id === item.id);
+                return (prod && prod.category === "WaveVapes Tornado 30000") ? sum + item.qty : sum;
+            }, 0);
+        }
+
+        function calculateCartTotal() {
+            let subtotal = getSubtotal();
+            const tornadoQty = getTornadoQuantity();
+            const freeBottles = Math.floor(tornadoQty / 4);
+            const savings = freeBottles * 20.00;
+            let total = Math.max(0, subtotal - savings);
+            if (discountPercent > 0) {
+                const discountAmount = total * (discountPercent / 100);
+                total = Math.max(0, total - discountAmount);
+            }
+            return total;
+        }
+
+        function showDealToast() {
+            const toast = document.getElementById('notification-toast');
+            notificationCyclePaused = true;
+            toast.classList.add('deal');
+            toast.innerHTML = `⚡ <strong>4 FÜR 3 AKTION EINGELÖST!</strong><br><span class="text-xs">Du bekommst jede 4. Tornado-Vape gratis!</span>`;
+            toast.classList.add('visible');
+            setTimeout(() => {
+                toast.classList.remove('visible');
+                setTimeout(() => {
+                    toast.classList.remove('deal');
+                    notificationCyclePaused = false;
+                    showNextNotification();
+                }, 800);
+            }, 5000);
+        }
+
         function initialize() {
             localStorage.removeItem('wavevapes_notifications');
             localStorage.removeItem('wavevapes_last_generate');
             loadOrderHistory();
             updateUserDisplay();
+            updateLoyaltyDisplay();           // ← Loyalty
             renderCategoryTabs();
             renderProducts();
             updateCartDisplay();
             startNotificationCycle();
             checkReferralCode();
+            checkAndAutoRedeemLoyalty();      // ← Loyalty Auto-Redeem
         }
 
         function showNameModal() {
@@ -949,42 +1045,6 @@
             currentCategoryFilter = cat;
             renderCategoryTabs();
             renderProducts();
-        }
-
-        function getTornadoQuantity() {
-            return cart.reduce((sum, item) => {
-                const prod = allProducts.find(p => p.id === item.id);
-                return (prod && prod.category === "WaveVapes Tornado 30000") ? sum + item.qty : sum;
-            }, 0);
-        }
-
-        function calculateCartTotal() {
-            let subtotal = getSubtotal();
-            const tornadoQty = getTornadoQuantity();
-            const freeBottles = Math.floor(tornadoQty / 4);
-            const savings = freeBottles * 20.00;
-            let total = Math.max(0, subtotal - savings);
-            if (discountPercent > 0) {
-                const discountAmount = total * (discountPercent / 100);
-                total = Math.max(0, total - discountAmount);
-            }
-            return total;
-        }
-
-        function showDealToast() {
-            const toast = document.getElementById('notification-toast');
-            notificationCyclePaused = true;
-            toast.classList.add('deal');
-            toast.innerHTML = `⚡ <strong>4 FÜR 3 AKTION EINGELÖST!</strong><br><span class="text-xs">Du bekommst jede 4. Tornado-Vape gratis!</span>`;
-            toast.classList.add('visible');
-            setTimeout(() => {
-                toast.classList.remove('visible');
-                setTimeout(() => {
-                    toast.classList.remove('deal');
-                    notificationCyclePaused = false;
-                    showNextNotification();
-                }, 800);
-            }, 5000);
         }
 
         function renderProducts() {
@@ -1080,12 +1140,19 @@
             const countEl = document.getElementById("cart-count-badge");
             const totalEl = document.getElementById("cart-total-price");
             const listEl = document.getElementById("cart-items-list");
+            const loyaltyCartInfo = document.getElementById("loyalty-cart-info");
             const totalItems = cart.reduce((sum, item) => sum + item.qty, 0);
             countEl.textContent = totalItems;
             const totalPrice = calculateCartTotal();
             totalEl.textContent = `${totalPrice.toFixed(2).replace('.', ',')} €`;
+
+            // LOYALTY VORSCHAU (1 Punkt pro € des Endbetrags)
+            const pointsEarned = Math.floor(totalPrice);
+            loyaltyCartInfo.innerHTML = `🎁 Mit diesem Kauf erhältst du <span class="font-bold">+${pointsEarned}</span> Loyalty-Punkte!`;
+
             if (cart.length === 0) {
                 listEl.innerHTML = `<p class="text-center py-16 text-gray-400">Dein Warenkorb ist leer</p>`;
+                loyaltyCartInfo.innerHTML = "";
                 return;
             }
             let itemsHTML = "";
@@ -1151,6 +1218,7 @@
                 orderText += `• Rabattcode ${appliedDiscountCode} (${discountPercent}%) angewendet\n`;
             }
             saveToHistory(orderNumber, totalPrice, orderText);
+            addLoyaltyPoints(totalPrice);   // ← Loyalty Punkte gutschreiben
             const formData = new FormData();
             formData.append("name", currentUserName);
             formData.append("bestellnummer", orderNumber);
@@ -1168,6 +1236,7 @@
                     updateCartDisplay();
                     renderProducts();
                     toggleCart();
+                    checkAndAutoRedeemLoyalty();   // ← nach Bestellung erneut prüfen
                 } else alert("Fehler beim Senden.");
             } catch (e) { alert("Verbindungsfehler."); }
         }
@@ -1176,6 +1245,13 @@
             document.getElementById("success-order-id").textContent = orderNumber;
             const detailsDiv = document.getElementById("success-details");
             detailsDiv.innerHTML = `<div class="font-mono text-xs leading-relaxed bg-black p-5 rounded-2xl">${details.replace(/\n/g, '<br>')}</div><div class="mt-6 text-right text-xl font-bold">Gesamt: ${total.toFixed(2).replace('.', ',')} €</div>`;
+            
+            // LOYALTY INFO IM SUCCESS
+            document.getElementById("success-loyalty-info").innerHTML = `
+                <span class="text-emerald-400 font-medium">+${Math.floor(total)} Punkte erhalten!</span><br>
+                Du hast jetzt <span class="font-bold">${loyaltyPoints}</span> Loyalty-Punkte
+            `;
+            
             document.getElementById("success-modal").classList.remove("hidden");
             document.getElementById("success-modal").classList.add("flex");
         }
@@ -1193,4 +1269,3 @@
     </script>
 </body>
 </html>
-

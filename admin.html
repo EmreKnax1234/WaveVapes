@@ -1,18 +1,431 @@
-<h1>WaveVapes Admin Dashboard</h1>
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>WaveVapes – Admin Dashboard</title>
 
-<table border="1">
-<thead>
-<tr>
-<th>Bestellung</th>
-<th>User ID</th>
-<th>Produkte</th>
-<th>Datum</th>
-<th>Status</th>
-<th>Aktion</th>
-</tr>
-</thead>
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 
-<tbody id="ordersTable">
-</tbody>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
 
-</table>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: linear-gradient(135deg, #0a0a0a, #1e1233, #0a0a0a);
+      color: white;
+      min-height: 100vh;
+    }
+
+    .neon-text {
+      text-shadow: 0 0 15px #67e8f9, 0 0 30px #67e8f9;
+    }
+
+    .admin-card {
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 1rem;
+      padding: 1.5rem;
+    }
+
+    .status-waiting { background: #92400e; color: #fbbf24; }
+    .status-paid    { background: #1e40af; color: #60a5fa; }
+    .status-shipped { background: #065f46; color: #34d399; }
+    .status-cancelled { background: #991b1b; color: #fca5a5; }
+
+    .btn-admin {
+      @apply px-4 py-2 rounded-lg font-medium transition-all;
+    }
+
+    .btn-primary   { @apply bg-cyan-500 hover:bg-cyan-400 text-black; }
+    .btn-danger    { @apply bg-red-600 hover:bg-red-500 text-white; }
+    .btn-success   { @apply bg-emerald-600 hover:bg-emerald-500 text-white; }
+  </style>
+</head>
+<body class="bg-black text-white">
+
+  <!-- HEADER -->
+  <header class="bg-zinc-950 border-b border-cyan-900/30 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex justify-between items-center">
+      <div class="flex items-center gap-3">
+        <h1 class="text-3xl font-bold tracking-tight neon-text">WAVEVAPES ADMIN</h1>
+      </div>
+      <div class="flex items-center gap-6">
+        <span id="admin-email" class="text-cyan-300"></span>
+        <button onclick="logout()" class="bg-red-600 hover:bg-red-500 px-5 py-2 rounded-lg font-medium">
+          Logout
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTENT -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-10">
+
+    <!-- AUTH CHECK OVERLAY -->
+    <div id="auth-loading" class="fixed inset-0 bg-black/90 flex items-center justify-center z-50">
+      <div class="text-center">
+        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-cyan-400 mx-auto mb-6"></div>
+        <p class="text-xl">Prüfe Admin-Rechte...</p>
+      </div>
+    </div>
+
+    <div id="no-admin" class="hidden text-center py-20">
+      <h2 class="text-4xl font-bold text-red-400 mb-6">Zugriff verweigert</h2>
+      <p class="text-xl mb-8">Du bist kein Admin.</p>
+      <button onclick="window.location.href='index.html'" class="bg-cyan-500 hover:bg-cyan-400 text-black px-8 py-4 rounded-xl text-lg font-bold">
+        Zurück zum Shop
+      </button>
+    </div>
+
+    <!-- ADMIN DASHBOARD (wird sichtbar wenn Admin) -->
+    <div id="admin-content" class="hidden">
+
+      <!-- STATISTIKEN -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+        <div class="admin-card text-center">
+          <p class="text-gray-400 mb-2">Gesamtumsatz</p>
+          <p id="total-revenue" class="text-4xl font-bold text-emerald-400">0 €</p>
+        </div>
+        <div class="admin-card text-center">
+          <p class="text-gray-400 mb-2">Bestellungen</p>
+          <p id="total-orders" class="text-4xl font-bold text-cyan-400">0</p>
+        </div>
+        <div class="admin-card text-center">
+          <p class="text-gray-400 mb-2">Produkte</p>
+          <p id="total-products" class="text-4xl font-bold text-purple-400">0</p>
+        </div>
+      </div>
+
+      <!-- TABS -->
+      <div class="flex border-b border-zinc-700 mb-8">
+        <button onclick="showTab('orders')" class="tab-btn px-6 py-3 font-medium border-b-4 border-transparent hover:border-cyan-400 transition-all tab-active">Bestellungen</button>
+        <button onclick="showTab('products')" class="tab-btn px-6 py-3 font-medium border-b-4 border-transparent hover:border-cyan-400 transition-all">Produkte</button>
+      </div>
+
+      <!-- BESTELLUNGEN TAB -->
+      <div id="tab-orders" class="tab-content">
+        <div class="admin-card mb-8">
+          <h2 class="text-2xl font-bold mb-6">Alle Bestellungen (Live)</h2>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left">
+              <thead>
+                <tr class="border-b border-zinc-700">
+                  <th class="py-3 px-4">Nr</th>
+                  <th class="py-3 px-4">Kunde</th>
+                  <th class="py-3 px-4">Gesamt</th>
+                  <th class="py-3 px-4">Status</th>
+                  <th class="py-3 px-4">Datum</th>
+                  <th class="py-3 px-4">Aktion</th>
+                </tr>
+              </thead>
+              <tbody id="orders-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- PRODUKTE TAB -->
+      <div id="tab-products" class="tab-content hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <!-- Neue Produkt hinzufügen -->
+          <div class="admin-card">
+            <h3 class="text-xl font-bold mb-6">Neues Produkt hinzufügen</h3>
+            <form id="add-product-form" class="space-y-4">
+              <input type="text" id="prod-name" placeholder="Produktname" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-cyan-500" required/>
+              <input type="number" id="prod-price" placeholder="Preis (€)" step="0.01" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-cyan-500" required/>
+              <input type="number" id="prod-stock" placeholder="Lagerbestand" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-cyan-500" required/>
+              <select id="prod-category" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-cyan-500">
+                <option value="vape">Disposable Vape</option>
+                <option value="liquid">Liquid</option>
+                <option value="accessory">Zubehör</option>
+              </select>
+              <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-lg font-bold">Produkt erstellen</button>
+            </form>
+          </div>
+
+          <!-- Produktliste -->
+          <div class="admin-card">
+            <h3 class="text-xl font-bold mb-6">Produkte verwalten</h3>
+            <div id="products-list" class="space-y-4 max-h-[600px] overflow-y-auto"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // ────────────────────────────────────────────────
+    //  FIREBASE KONFIGURATION (genau wie in deinem Shop)
+    // ────────────────────────────────────────────────
+    const firebaseConfig = {
+      apiKey: "AIzaSyDsIUl-iYmH42MPbusFLhGhj5oGLh01BzI",
+      authDomain: "wavevapes-7a960.firebaseapp.com",
+      projectId: "wavevapes-7a960",
+      storageBucket: "wavevapes-7a960.firebasestorage.app",
+      messagingSenderId: "1093624390275",
+      appId: "1:1093624390275:web:b1b8ae17bcf1b59dffb1b6",
+      measurementId: "G-B8T2B657LL"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // ────────────────────────────────────────────────
+    //  AUTH & ADMIN CHECK
+    // ────────────────────────────────────────────────
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) {
+        window.location.href = "index.html";
+        return;
+      }
+
+      document.getElementById("admin-email").textContent = user.email;
+
+      try {
+        const userDoc = await db.collection("users").doc(user.uid).get();
+        if (!userDoc.exists || userDoc.data().role !== "admin") {
+          document.getElementById("auth-loading").classList.add("hidden");
+          document.getElementById("no-admin").classList.remove("hidden");
+          return;
+        }
+
+        // Admin → Dashboard laden
+        document.getElementById("auth-loading").classList.add("hidden");
+        document.getElementById("admin-content").classList.remove("hidden");
+
+        loadStats();
+        loadOrders();
+        loadProducts();
+      } catch (err) {
+        console.error(err);
+        alert("Fehler beim Laden der Admin-Rechte.");
+      }
+    });
+
+    // Logout
+    function logout() {
+      auth.signOut().then(() => {
+        window.location.href = "index.html";
+      });
+    }
+
+    // ────────────────────────────────────────────────
+    //  TABS
+    // ────────────────────────────────────────────────
+    function showTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('tab-active', 'border-cyan-400'));
+      event.target.classList.add('tab-active', 'border-cyan-400');
+    }
+
+    // ────────────────────────────────────────────────
+    //  STATISTIKEN
+    // ────────────────────────────────────────────────
+    async function loadStats() {
+      try {
+        const ordersSnap = await db.collection("orders").get();
+        let revenue = 0;
+        ordersSnap.forEach(doc => {
+          revenue += doc.data().total || 0;
+        });
+
+        const productsSnap = await db.collection("products").get();
+
+        document.getElementById("total-revenue").textContent = revenue.toFixed(2) + " €";
+        document.getElementById("total-orders").textContent = ordersSnap.size;
+        document.getElementById("total-products").textContent = productsSnap.size;
+      } catch (err) {
+        console.error("Stats Fehler:", err);
+      }
+    }
+
+    // ────────────────────────────────────────────────
+    //  BESTELLUNGEN LIVE LADEN + STATUS ÄNDERN
+    // ────────────────────────────────────────────────
+    function loadOrders() {
+      const tbody = document.getElementById("orders-table-body");
+      tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8">Lade Bestellungen...</td></tr>';
+
+      db.collection("orders")
+        .orderBy("date", "desc")
+        .onSnapshot((snapshot) => {
+          tbody.innerHTML = "";
+          if (snapshot.empty) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-400">Keine Bestellungen vorhanden</td></tr>';
+            return;
+          }
+
+          snapshot.forEach((doc) => {
+            const data = doc.data();
+            const date = data.date?.toDate?.() ? data.date.toDate().toLocaleString("de-DE") : "—";
+
+            let statusClass = "";
+            if (data.status === "Warten auf Zahlung") statusClass = "status-waiting";
+            else if (data.status === "Bezahlt")      statusClass = "status-paid";
+            else if (data.status === "Versendet")    statusClass = "status-shipped";
+            else if (data.status === "Storniert")    statusClass = "status-cancelled";
+
+            const tr = document.createElement("tr");
+            tr.className = "border-b border-zinc-800 hover:bg-zinc-800/50 transition";
+            tr.innerHTML = `
+              <td class="py-4 px-4 font-mono">${data.orderNumber || doc.id.slice(0,8)}</td>
+              <td class="py-4 px-4">${data.userEmail || "—"}</td>
+              <td class="py-4 px-4 font-bold">${(data.total || 0).toFixed(2)} €</td>
+              <td class="py-4 px-4">
+                <span class="px-3 py-1 rounded-full text-sm ${statusClass}">
+                  ${data.status || "Unbekannt"}
+                </span>
+              </td>
+              <td class="py-4 px-4 text-gray-400">${date}</td>
+              <td class="py-4 px-4">
+                <select onchange="updateOrderStatus('${doc.id}', this.value)" class="bg-zinc-800 border border-zinc-700 rounded px-3 py-1 text-sm">
+                  <option value="Warten auf Zahlung" ${data.status === "Warten auf Zahlung" ? "selected" : ""}>Warten auf Zahlung</option>
+                  <option value="Bezahlt" ${data.status === "Bezahlt" ? "selected" : ""}>Bezahlt</option>
+                  <option value="Versendet" ${data.status === "Versendet" ? "selected" : ""}>Versendet</option>
+                  <option value="Storniert" ${data.status === "Storniert" ? "selected" : ""}>Storniert</option>
+                </select>
+              </td>
+            `;
+            tbody.appendChild(tr);
+          });
+        }, (err) => {
+          console.error("Orders Snapshot Fehler:", err);
+          tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-red-400">Fehler beim Laden der Bestellungen</td></tr>';
+        });
+    }
+
+    async function updateOrderStatus(orderId, newStatus) {
+      try {
+        await db.collection("orders").doc(orderId).update({
+          status: newStatus,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        showToast(`Status auf "${newStatus}" geändert`);
+      } catch (err) {
+        console.error(err);
+        alert("Fehler beim Ändern des Status");
+      }
+    }
+
+    // ────────────────────────────────────────────────
+    //  PRODUKTE VERWALTEN
+    // ────────────────────────────────────────────────
+    function loadProducts() {
+      const container = document.getElementById("products-list");
+      container.innerHTML = '<p class="text-center py-8 text-gray-400">Lade Produkte...</p>';
+
+      db.collection("products")
+        .orderBy("name")
+        .onSnapshot((snapshot) => {
+          container.innerHTML = "";
+          if (snapshot.empty) {
+            container.innerHTML = '<p class="text-center py-8 text-gray-400">Keine Produkte vorhanden</p>';
+            return;
+          }
+
+          snapshot.forEach((doc) => {
+            const p = doc.data();
+            const div = document.createElement("div");
+            div.className = "bg-zinc-800 border border-zinc-700 rounded-lg p-4 flex justify-between items-center";
+            div.innerHTML = `
+              <div>
+                <div class="font-medium">${p.name}</div>
+                <div class="text-sm text-gray-400">
+                  Preis: ${p.price} € • Lager: ${p.stock} • Kategorie: ${p.category}
+                </div>
+              </div>
+              <div class="flex gap-3">
+                <button onclick="editProduct('${doc.id}', ${p.price}, ${p.stock})" class="text-cyan-400 hover:text-cyan-300">
+                  <i class="fa-solid fa-edit"></i>
+                </button>
+                <button onclick="toggleProductActive('${doc.id}', ${!p.active})" class="${p.active ? 'text-green-400' : 'text-red-400'} hover:opacity-80">
+                  <i class="fa-solid fa-power-off"></i>
+                </button>
+              </div>
+            `;
+            container.appendChild(div);
+          });
+        });
+    }
+
+    // Produkt hinzufügen
+    document.getElementById("add-product-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const name   = document.getElementById("prod-name").value.trim();
+      const price  = parseFloat(document.getElementById("prod-price").value);
+      const stock  = parseInt(document.getElementById("prod-stock").value);
+      const category = document.getElementById("prod-category").value;
+
+      if (!name || isNaN(price) || isNaN(stock)) {
+        alert("Bitte alle Felder korrekt ausfüllen");
+        return;
+      }
+
+      try {
+        await db.collection("products").add({
+          name,
+          price,
+          stock,
+          category,
+          active: true,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        e.target.reset();
+        showToast("Produkt hinzugefügt");
+      } catch (err) {
+        console.error(err);
+        alert("Fehler beim Erstellen");
+      }
+    });
+
+    // Produkt aktiv/deaktiv
+    async function toggleProductActive(id, active) {
+      if (!confirm(`Produkt wirklich ${active ? "deaktivieren" : "aktivieren"}?`)) return;
+      try {
+        await db.collection("products").doc(id).update({ active });
+        showToast(`Produkt ${active ? "deaktiviert" : "aktiviert"}`);
+      } catch (err) {
+        alert("Fehler: " + err.message);
+      }
+    }
+
+    // Einfacher Edit-Button (kann später modal werden)
+    function editProduct(id, oldPrice, oldStock) {
+      const newPrice = prompt("Neuer Preis:", oldPrice);
+      const newStock = prompt("Neuer Lagerbestand:", oldStock);
+
+      if (newPrice === null || newStock === null) return;
+
+      const price = parseFloat(newPrice);
+      const stock = parseInt(newStock);
+
+      if (isNaN(price) || isNaN(stock)) return alert("Ungültige Eingabe");
+
+      db.collection("products").doc(id).update({ price, stock })
+        .then(() => showToast("Produkt aktualisiert"))
+        .catch(err => alert("Fehler: " + err.message));
+    }
+
+    // ────────────────────────────────────────────────
+    //  HELPER
+    // ────────────────────────────────────────────────
+    function showToast(msg) {
+      const t = document.createElement("div");
+      t.className = "fixed bottom-6 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-6 py-3 rounded-lg shadow-xl z-50 animate-fade-in-out";
+      t.textContent = msg;
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 3000);
+    }
+  </script>
+</body>
+</html>

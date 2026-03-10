@@ -56,9 +56,9 @@
 
     <!-- TABS -->
     <div class="flex border-b border-white/10 mb-8">
-      <button onclick="switchAdminTab(0)" id="tab-products" 
+      <button onclick="switchAdminTab(0)" id="tab-products"
               class="tab-active flex-1 py-4 text-center text-lg font-medium">Produkte verwalten</button>
-      <button onclick="switchAdminTab(1)" id="tab-orders" 
+      <button onclick="switchAdminTab(1)" id="tab-orders"
               class="flex-1 py-4 text-center text-lg font-medium">Live Bestellungen</button>
     </div>
 
@@ -182,27 +182,33 @@
     let selectedFile = null;
     let currentPreviewImage = null;
 
-    // ====================== AUTH + AUTO-ADMIN ======================
+    // ====================== AUTH + AUTO-ADMIN – HIER DIE WICHTIGE ÄNDERUNG ======================
     auth.onAuthStateChanged(async (user) => {
       if (!user) return window.location.href = 'index.html';
+
       document.getElementById('admin-email').textContent = user.email;
+
       try {
         const userRef = db.collection('users').doc(user.uid);
         const userDoc = await userRef.get();
+
         if (!userDoc.exists) {
+          // NEUE REGEL: Neue Nutzer bekommen NUR "user" – KEIN ADMIN mehr!
           await userRef.set({
-            role: 'admin',
+            role: 'user',                           // ← geändert von 'admin' zu 'user'
             email: user.email,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
           });
         } else if (userDoc.data().role !== 'admin') {
+          // Nur wer explizit "admin" hat, darf ins Panel
           document.getElementById('auth-loading').classList.add('hidden');
           document.getElementById('no-admin').classList.remove('hidden');
           return;
         }
+
         document.getElementById('auth-loading').classList.add('hidden');
         document.getElementById('admin-content').classList.remove('hidden');
-        switchAdminTab(0); // Start mit Produkte-Tab
+        switchAdminTab(0); // Standard: Produkte-Tab
         loadProducts();
       } catch (err) {
         console.error(err);

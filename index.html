@@ -14,7 +14,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Inter:wght@400;500;600&display=swap');
- 
         html, body {
             touch-action: manipulation !important;
             -webkit-text-size-adjust: 100% !important;
@@ -54,7 +53,6 @@
         @keyframes glowRed { 0% { text-shadow: 0 0 12px #ef4444, 0 0 24px #dc2626, 0 0 40px #b91c1c; } 100% { text-shadow: 0 0 20px #f87171, 0 0 45px #ef4444, 0 0 70px #dc2626; } }
         @keyframes sway { 0% { transform: rotate(-3.5deg); } 50% { transform: rotate(3.5deg); } 100% { transform: rotate(-3.5deg); } }
         .tornado-image { width: 100%; height: 160px; object-fit: cover; border-radius: 16px; margin-bottom: 12px; background: #1f2937; }
-       
         .price-row {
             display: flex;
             justify-content: center;
@@ -78,6 +76,7 @@
     </style>
 </head>
 <body class="wave-bg text-white min-h-screen">
+
     <!-- NAVBAR -->
     <nav class="bg-black/90 backdrop-blur-xl border-b border-cyan-400/30 sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex justify-between items-center">
@@ -544,7 +543,6 @@
                 btn.classList.remove("bg-emerald-600", "text-white");
             }
         }
-
         function showAuthModal() {
             if (currentUser) {
                 document.getElementById("login-form").classList.add("hidden");
@@ -556,16 +554,12 @@
                 switchAuthTab(0);
             }
             const modal = document.getElementById("auth-modal");
-            modal.classList.remove("hidden");
-            modal.classList.add("flex");
+            modal.classList.remove("hidden"); modal.classList.add("flex");
         }
-
         function closeAuthModal() {
             const modal = document.getElementById("auth-modal");
-            modal.classList.add("hidden");
-            modal.classList.remove("flex");
+            modal.classList.add("hidden"); modal.classList.remove("flex");
         }
-
         function switchAuthTab(tab) {
             document.getElementById("tab-login").classList.toggle("auth-tab-active", tab === 0);
             document.getElementById("tab-register").classList.toggle("auth-tab-active", tab === 1);
@@ -574,7 +568,6 @@
             document.getElementById("logged-in-view").classList.add("hidden");
             document.getElementById("auth-title").textContent = tab === 0 ? "Anmelden" : "Registrieren";
         }
-
         async function registerUser() {
             const email = document.getElementById("register-email").value.trim();
             const password = document.getElementById("register-password").value.trim();
@@ -587,7 +580,6 @@
                 alert("Registrierung fehlgeschlagen: " + e.message);
             }
         }
-
         async function loginUser() {
             const email = document.getElementById("login-email").value.trim();
             const password = document.getElementById("login-password").value.trim();
@@ -599,7 +591,6 @@
                 alert("Login fehlgeschlagen: " + e.message);
             }
         }
-
         function logoutUser() {
             auth.signOut();
             closeAuthModal();
@@ -623,7 +614,6 @@
             updateUserDisplay();
             showToast("✅ Benutzername gespeichert");
         }
-
         function updateUserDisplay() {
             const display = document.getElementById("user-name-display");
             const nav = document.getElementById("current-user-display");
@@ -713,7 +703,7 @@
             return getProductTotal() + getShippingCost();
         }
 
-        // ====================== PRODUCTS FROM FIRESTORE ======================
+        // ====================== PRODUCTS FROM FIRESTORE (STRING-ID FIX) ======================
         async function loadProducts() {
             const container = document.getElementById("products-grid");
             container.innerHTML = `<p class="col-span-full text-center py-16 text-gray-400 flex items-center justify-center gap-3"><i class="fa-solid fa-spinner animate-spin text-2xl"></i> Produkte werden live aus deinem Admin-Panel geladen...</p>`;
@@ -722,24 +712,22 @@
                 allProducts = [];
                 snapshot.forEach(doc => {
                     const data = doc.data();
-                    const product = {
-                        id: parseInt(doc.id),
+                    allProducts.push({
+                        id: doc.id,                    // ← STRING-ID (wichtig!)
                         name: data.name,
                         category: data.category,
                         isNew: data.isNew || false,
                         available: data.available !== false,
                         price: data.price || 7.99,
                         image: data.image || null
-                    };
-                    if (product.available) allProducts.push(product);
+                    });
                 });
-                allProducts.sort((a, b) => a.id - b.id);
+                allProducts.sort((a, b) => a.name.localeCompare(b.name));
                 renderProducts();
                 showToast("✅ Produkte aus Firestore geladen");
             } catch (e) {
                 console.error(e);
                 showToast("⚠️ Firestore nicht erreichbar – prüfe Admin-Panel");
-                renderProducts();
             }
         }
 
@@ -752,6 +740,7 @@
                 const searchMatch = !searchTerm || p.name.toLowerCase().includes(searchTerm);
                 return catMatch && searchMatch;
             });
+
             filtered.forEach(product => {
                 const cartItem = cart.find(i => i.id === product.id);
                 const qty = cartItem ? cartItem.qty : 0;
@@ -759,11 +748,12 @@
                 const imageHTML = product.image ? `<img src="${product.image}" class="tornado-image" alt="${product.name}">` : '';
                 const oldPrice = product.category === "WaveVapes Tornado 30000" ? "35,99" : "9,99";
                 const salePrice = product.price.toFixed(2).replace('.', ',');
-                const priceHTML = `<div class="price-row"><span class="discount-price">${oldPrice}€</span> → <span class="sale-price">${salePrice}€</span></div>`;
+
                 let nicotineHTML = '';
                 if (product.category !== "WaveVapes Tornado 30000") {
-                    nicotineHTML = `<select class="nicotine-select" onchange="updateNicotine(${product.id}, this.value)">${NICOTINE_OPTIONS.map(opt => `<option value="${opt}" ${nicotine === opt ? 'selected' : ''}>${opt}</option>`).join('')}</select>`;
+                    nicotineHTML = `<select class="nicotine-select" onchange="updateNicotine('${product.id}', this.value)">${NICOTINE_OPTIONS.map(opt => `<option value="${opt}" ${nicotine === opt ? 'selected' : ''}>${opt}</option>`).join('')}</select>`;
                 }
+
                 html += `
                     <div class="product-card bg-zinc-900 border border-white/10 rounded-3xl overflow-hidden">
                         <div class="h-1.5 bg-gradient-to-r from-cyan-400 to-purple-500"></div>
@@ -774,12 +764,12 @@
                                 ${product.isNew ? `<span class="px-3 py-1 bg-lime-400 text-black text-xs font-bold rounded-2xl">NEW</span>` : ''}
                             </div>
                             <div class="flex flex-col items-center">
-                                ${priceHTML}
+                                <div class="price-row"><span class="discount-price">${oldPrice}€</span> → <span class="sale-price">${salePrice}€</span></div>
                                 ${nicotineHTML}
                                 <div class="flex items-center bg-zinc-800 rounded-3xl mt-4">
-                                    <button onclick="changeQuantity(${product.id}, -1)" class="qty-btn w-9 h-9 text-2xl text-cyan-300">-</button>
+                                    <button onclick="changeQuantity('${product.id}', -1)" class="qty-btn w-9 h-9 text-2xl text-cyan-300">-</button>
                                     <div class="w-10 text-center font-bold text-xl">${qty}</div>
-                                    <button onclick="changeQuantity(${product.id}, 1)" class="qty-btn w-9 h-9 text-2xl text-cyan-300">+</button>
+                                    <button onclick="changeQuantity('${product.id}', 1)" class="qty-btn w-9 h-9 text-2xl text-cyan-300">+</button>
                                 </div>
                             </div>
                         </div>
@@ -838,44 +828,36 @@
             const shippingNote = document.getElementById("cart-shipping-note");
             const addressDisplay = document.getElementById("cart-address-display");
             const loyaltyCartInfo = document.getElementById("loyalty-cart-info");
-
             const totalItems = cart.reduce((sum, item) => sum + item.qty, 0);
             countEl.textContent = totalItems;
-
             const grandTotal = calculateCartTotal();
             totalEl.textContent = `${grandTotal.toFixed(2).replace('.', ',')} €`;
-
             const shipping = getShippingCost();
             shippingNote.innerHTML = shipping === 0 ? `✅ Gratis Versand (ab 100 €)` : `+ ${shipping.toFixed(2).replace('.', ',')} € Versand`;
-
             const pointsEarned = Math.floor(grandTotal);
             loyaltyCartInfo.innerHTML = `🎁 Mit diesem Kauf erhältst du <span class="font-bold">+${pointsEarned}</span> Loyalty-Punkte!`;
-
             if (userAddress.street) {
                 addressDisplay.innerHTML = `${userAddress.street}<br>${userAddress.zip} ${userAddress.city}`;
             } else {
                 addressDisplay.innerHTML = `<span class="text-red-400">Noch keine Adresse angegeben</span>`;
             }
-
             if (cart.length === 0) {
                 listEl.innerHTML = `<p class="text-center py-16 text-gray-400">Dein Warenkorb ist leer</p>`;
                 return;
             }
-
             let itemsHTML = "";
             const tornadoQty = getTornadoQuantity();
             const free = Math.floor(tornadoQty / 4);
             if (free > 0) {
                 itemsHTML += `<div class="bg-gradient-to-r from-amber-400 to-yellow-400 text-black p-6 rounded-3xl mb-6 text-center shadow-inner"><div class="flex items-center justify-center gap-3 text-2xl font-black">⚡ 4 FÜR 3 AKTION AKTIV!</div><p class="font-semibold text-base mt-2">Du bekommst <span class="underline">${free} Vape${free > 1 ? 's' : ''} gratis</span></p></div>`;
             }
-
             cart.forEach(item => {
                 const p = item.price || 7.99;
                 const nicDisplay = item.nicotine ? ` (${item.nicotine})` : '';
                 if (item.id === MYSTERY_ID) {
                     itemsHTML += `<div class="mystery-item flex justify-between items-center rounded-3xl p-5"><div class="flex items-center gap-3"><i class="fa-solid fa-gift text-3xl"></i><div><div class="font-medium">${item.name}</div><div class="text-xs bg-white/30 px-3 py-0.5 rounded-full inline-block">GRATIS AB 100€</div></div></div><div class="text-right"><div class="font-bold text-xl text-emerald-900">0,00 €</div></div></div>`;
                 } else {
-                    itemsHTML += `<div class="flex justify-between items-center bg-zinc-900 border border-white/10 rounded-3xl p-5"><div><div class="font-medium">${item.name}${nicDisplay}</div><div class="text-xs text-gray-400">${item.qty} × ${p.toFixed(2).replace('.', ',')} €</div></div><div class="flex items-center gap-6"><div class="font-bold text-xl">${(item.qty * p).toFixed(2).replace('.', ',')} €</div><button onclick="removeCartItem(${item.id}); event.stopImmediatePropagation()" class="text-red-400"><i class="fa-solid fa-trash"></i></button></div></div>`;
+                    itemsHTML += `<div class="flex justify-between items-center bg-zinc-900 border border-white/10 rounded-3xl p-5"><div><div class="font-medium">${item.name}${nicDisplay}</div><div class="text-xs text-gray-400">${item.qty} × ${p.toFixed(2).replace('.', ',')} €</div></div><div class="flex items-center gap-6"><div class="font-bold text-xl">${(item.qty * p).toFixed(2).replace('.', ',')} €</div><button onclick="removeCartItem('${item.id}'); event.stopImmediatePropagation()" class="text-red-400"><i class="fa-solid fa-trash"></i></button></div></div>`;
                 }
             });
             listEl.innerHTML = itemsHTML;
@@ -1047,7 +1029,6 @@
             const modal = document.getElementById("history-modal");
             modal.classList.add("hidden"); modal.classList.remove("flex");
         }
-
         function showPaymentInfo(orderNumber) {
             const infoHTML = `
                 <div class="space-y-4 text-sm">
@@ -1153,7 +1134,7 @@
             renderProducts();
         }
 
-        // ====================== REFERRAL (Dummy) ======================
+        // ====================== REFERRAL & LEGAL ======================
         function shareReferral() {
             showToast("Referral-Link kopiert! (noch in Entwicklung)");
         }
@@ -1166,7 +1147,6 @@
             modal.classList.add("hidden"); modal.classList.remove("flex");
         }
 
-        // ====================== LEGAL ======================
         function showAgeModal() {
             const modal = document.getElementById("age-modal");
             modal.classList.remove("hidden"); modal.classList.add("flex");

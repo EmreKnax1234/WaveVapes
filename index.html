@@ -891,16 +891,28 @@
             renderProducts();
         }
 
-        // ====================== PRODUCTS RENDER – € DIREKT AN DER ZAHL ======================
+        // ====================== AUTOMATISCHE SORTIERUNG ======================
         function renderProducts() {
             const container = document.getElementById("products-grid");
             let html = "";
             const searchTerm = document.getElementById("search-input").value.toLowerCase();
-            const filtered = allProducts.filter(p => {
+
+            let filtered = allProducts.filter(p => {
                 const matchesCat = currentCategoryFilter === "Alle" || p.category === currentCategoryFilter;
                 const matchesSearch = !searchTerm || p.name.toLowerCase().includes(searchTerm);
                 return matchesCat && matchesSearch;
             });
+
+            // Automatische Sortierung: Liquids zuerst, Tornado ganz unten
+            if (currentCategoryFilter === "Alle" || currentCategoryFilter === "Normale Sorten") {
+                filtered.sort((a, b) => {
+                    const aIsTornado = a.category === "WaveVapes Tornado 30000";
+                    const bIsTornado = b.category === "WaveVapes Tornado 30000";
+                    if (aIsTornado && !bIsTornado) return 1;
+                    if (!aIsTornado && bIsTornado) return -1;
+                    return 0;
+                });
+            }
 
             filtered.forEach(product => {
                 const cartItem = cart.find(i => i.id === product.id);

@@ -146,17 +146,28 @@
     let selectedFile = null;
     let currentPreviewImage = null;
 
-    // ====================== AUTH ======================
+    // ====================== AUTH + AUTO-ADMIN ======================
     auth.onAuthStateChanged(async (user) => {
       if (!user) return window.location.href = 'index.html';
       document.getElementById('admin-email').textContent = user.email;
+
       try {
-        const userDoc = await db.collection('users').doc(user.uid).get();
-        if (!userDoc.exists || userDoc.data().role !== 'admin') {
+        const userRef = db.collection('users').doc(user.uid);
+        const userDoc = await userRef.get();
+
+        if (!userDoc.exists) {
+          // Erster Login → automatisch Admin machen
+          await userRef.set({ 
+            role: 'admin', 
+            email: user.email, 
+            createdAt: firebase.firestore.FieldValue.serverTimestamp() 
+          });
+        } else if (userDoc.data().role !== 'admin') {
           document.getElementById('auth-loading').classList.add('hidden');
           document.getElementById('no-admin').classList.remove('hidden');
           return;
         }
+
         document.getElementById('auth-loading').classList.add('hidden');
         document.getElementById('admin-content').classList.remove('hidden');
         loadProducts();
@@ -228,7 +239,7 @@
       updatePreview();
     }
 
-    // ====================== NEUES PRODUKT SPEICHERN (Firebase Storage) ======================
+    // ====================== NEUES PRODUKT SPEICHERN ======================
     document.getElementById('add-form').addEventListener('submit', async e => {
       e.preventDefault();
       const name = document.getElementById('name').value.trim();

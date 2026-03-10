@@ -54,17 +54,65 @@
         @keyframes sway { 0% { transform: rotate(-3.5deg); } 50% { transform: rotate(3.5deg); } 100% { transform: rotate(-3.5deg); } }
         .tornado-image { width: 100%; height: 160px; object-fit: cover; border-radius: 16px; margin-bottom: 12px; background: #1f2937; }
         
-        /* === DEINE GEWÜNSCHTE ÄNDERUNG === */
-        .price-row { 
-            display: flex; 
-            justify-content: center; 
-            align-items: baseline; 
-            gap: 8px; /* war 16px – jetzt viel enger, genau wie gewünscht! */
-            margin-bottom: 12px; 
+        /* === PREIS ABSTAND ENGER (wie gewünscht) === */
+        .price-row {
+            display: flex;
+            justify-content: center;
+            align-items: baseline;
+            gap: 8px;
+            margin-bottom: 12px;
         }
         
         .discount-price { font-size: 1.35rem; text-decoration: line-through; color: #9ca3af; }
         .sale-price { font-size: 1.85rem; font-weight: 700; color: #ef4444; }
+
+        /* === NEUER QUANTITY SELECTOR (direkt Zahl eingeben) === */
+        .qty-container {
+            display: flex;
+            align-items: center;
+            background: #27272a;
+            border-radius: 9999px;
+            overflow: hidden;
+            border: 2px solid rgba(103,232,249,0.3);
+            transition: all 0.2s ease;
+            width: fit-content;
+            margin: 12px auto 0;
+        }
+        .qty-container:focus-within {
+            border-color: #67e8f9;
+            box-shadow: 0 0 0 4px rgba(103,232,249,0.2);
+        }
+        .qty-btn {
+            width: 48px;
+            height: 48px;
+            font-size: 28px;
+            font-weight: 700;
+            color: #67e8f9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+        .qty-btn:hover {
+            background: #22d3ee;
+            color: black;
+        }
+        .qty-input {
+            width: 68px;
+            text-align: center;
+            background: transparent;
+            border: none;
+            font-size: 24px;
+            font-weight: 700;
+            color: white;
+            outline: none;
+        }
+        .qty-input::-webkit-inner-spin-button,
+        .qty-input::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
         .mystery-item { background: linear-gradient(90deg, #10b981, #34d399) !important; border: 2px solid #a7f3d0 !important; color: black; }
         .nicotine-select { background: #1f2937; color: white; border: 1px solid rgba(103,232,249,0.5); border-radius: 9999px; padding: 6px 12px; font-size: 0.875rem; margin-top: 8px; width: 100%; max-width: 180px; appearance: none; }
         .nicotine-select:focus { outline: none; border-color: #22d3ee; box-shadow: 0 0 0 3px rgba(34,211,238,0.3); }
@@ -881,6 +929,29 @@
         function filterProducts() {
             renderProducts();
         }
+        // ====================== NEUE FUNKTION: DIREKT ZAHL EINGEBEN ======================
+        function setQuantityDirect(id, newQty) {
+            if (isNaN(newQty)) newQty = 0;
+            newQty = Math.max(0, Math.floor(newQty));
+
+            let existing = cart.find(item => item.id === id);
+            if (!existing) {
+                const product = allProducts.find(p => p.id === id);
+                if (!product) return;
+                existing = { id, name: product.name, qty: 0, price: product.price, nicotine: "20 mg" };
+                cart.push(existing);
+            }
+
+            existing.qty = newQty;
+            if (existing.qty === 0) cart = cart.filter(item => item.id !== id);
+
+            manageMysteryVape();
+            const newTornadoQty = getTornadoQuantity();
+            if (newTornadoQty >= 4 && newTornadoQty % 4 === 0) showDealToast();
+
+            updateCartDisplay();
+            renderProducts();
+        }
         // ====================== RENDER ======================
         function renderProducts() {
             const container = document.getElementById("products-grid");
@@ -929,10 +1000,11 @@
                             <div class="flex flex-col items-center">
                                 ${priceHTML}
                                 ${nicotineHTML}
-                                <div class="flex items-center bg-zinc-800 rounded-3xl mt-4">
-                                    <button onclick="changeQuantity(${product.id}, -1)" class="qty-btn w-9 h-9 text-2xl text-cyan-300">-</button>
-                                    <div class="w-10 text-center font-bold text-xl">${qty}</div>
-                                    <button onclick="changeQuantity(${product.id}, 1)" class="qty-btn w-9 h-9 text-2xl text-cyan-300">+</button>
+                                <!-- NEUER MENGE-SELECTOR -->
+                                <div class="qty-container">
+                                    <button onclick="changeQuantity(${product.id}, -1)" class="qty-btn">-</button>
+                                    <input type="number" value="${qty}" min="0" class="qty-input" onchange="setQuantityDirect(${product.id}, this.valueAsNumber)">
+                                    <button onclick="changeQuantity(${product.id}, 1)" class="qty-btn">+</button>
                                 </div>
                             </div>
                         </div>

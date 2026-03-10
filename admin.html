@@ -8,7 +8,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <style>
@@ -141,7 +140,6 @@
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
-    const storage = firebase.storage();
 
     let selectedFile = null;
     let currentPreviewImage = null;
@@ -253,12 +251,17 @@
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        let imageUrl = null;
+        // ====================== CLOUDINARY UPLOAD ======================
         if (selectedFile) {
-          const storageRef = storage.ref(`product-images/${docRef.id}.jpg`);
-          await storageRef.put(selectedFile);
-          imageUrl = await storageRef.getDownloadURL();
-          await docRef.update({ image: imageUrl });
+          const url = "https://api.cloudinary.com/v1_1/WaveVapes/upload";
+          const formData = new FormData();
+          formData.append("file", selectedFile);
+          formData.append("upload_preset", "WaveVapes");
+          const res = await fetch(url, { method: "POST", body: formData });
+          const data = await res.json();
+          if (data.secure_url) {
+            await docRef.update({ image: data.secure_url });
+          }
         }
 
         e.target.reset();
@@ -393,9 +396,7 @@
     }
 
     // ====================== INITIALISIERUNG ======================
-    window.onload = () => {
-      updatePreview();
-    };
+    window.onload = () => { updatePreview(); };
   </script>
 </body>
 </html>

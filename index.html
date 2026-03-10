@@ -55,6 +55,17 @@
         .whatsapp-link:hover { color: #128C7E; }
         @keyframes glowRed { 0% { text-shadow: 0 0 12px #ef4444, 0 0 24px #dc2626, 0 0 40px #b91c1c; } 100% { text-shadow: 0 0 20px #f87171, 0 0 45px #ef4444, 0 0 70px #dc2626; } }
         @keyframes sway { 0% { transform: rotate(-3.5deg); } 50% { transform: rotate(3.5deg); } 100% { transform: rotate(-3.5deg); } }
+        
+        /* NEUER UPDATE-HINWEIS STYLES */
+        .update-hint { 
+            background: rgba(16,185,129,0.95); 
+            border-bottom: 2px solid #10b981; 
+            padding: 10px 0; 
+            position: sticky; 
+            top: 0; 
+            z-index: 48; 
+        }
+
         .tornado-image { width: 100%; height: 160px; object-fit: cover; border-radius: 16px; margin-bottom: 12px; background: #1f2937; }
         .price-row { display: flex; justify-content: center; align-items: baseline; gap: 16px; margin-bottom: 12px; }
         .discount-price { font-size: 1.35rem; text-decoration: line-through; color: #9ca3af; }
@@ -111,6 +122,14 @@
                 Referral-System <strong>noch in Entwicklung</strong> – Fehler möglich! 🚧 Wir fixen das schnellstmöglich.<br class="sm:hidden">
                 <a href="https://chat.whatsapp.com/LM0rL2VeEDQAnyw83LDLK9" target="_blank" rel="noopener noreferrer" class="whatsapp-link">→ WhatsApp-Gruppe (Hilfe & Support)</a>
             </div>
+        </div>
+    </div>
+
+    <!-- NEUER UPDATE-HINWEIS (live aus Firestore) -->
+    <div class="update-hint">
+        <div class="max-w-7xl mx-auto px-4 text-center text-emerald-100 text-sm font-medium flex items-center justify-center gap-3">
+            <i class="fa-solid fa-arrow-up text-lg"></i>
+            <span>🚀 <strong>Update März 2026:</strong> Produkte werden jetzt <strong>live aus Firestore</strong> geladen – Änderungen im Admin-Panel sind sofort sichtbar!</span>
         </div>
     </div>
 
@@ -346,24 +365,20 @@
                 <h3 id="auth-title" class="text-3xl font-bold neon-text">Anmelden</h3>
                 <button onclick="closeAuthModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
             </div>
-
             <div class="flex border-b border-white/10 mb-6">
                 <button onclick="switchAuthTab(0)" id="tab-login" class="auth-tab flex-1 py-3 text-center auth-tab-active">Login</button>
                 <button onclick="switchAuthTab(1)" id="tab-register" class="auth-tab flex-1 py-3 text-center">Registrieren</button>
             </div>
-
             <div id="login-form">
                 <input id="login-email" type="email" placeholder="E-Mail Adresse" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-4 outline-none mb-4">
                 <input id="login-password" type="password" placeholder="Passwort" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-4 outline-none mb-6">
                 <button onclick="loginUser()" class="w-full bg-cyan-400 hover:bg-cyan-300 text-black py-5 rounded-3xl font-bold text-xl">Einloggen</button>
             </div>
-
             <div id="register-form" class="hidden">
                 <input id="register-email" type="email" placeholder="E-Mail Adresse" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-4 outline-none mb-4">
                 <input id="register-password" type="password" placeholder="Passwort (min. 6 Zeichen)" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-4 outline-none mb-6">
                 <button onclick="registerUser()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-5 rounded-3xl font-bold text-xl">Konto erstellen</button>
             </div>
-
             <div id="logged-in-view" class="hidden text-center">
                 <i class="fa-solid fa-circle-user text-6xl text-cyan-300 mb-4"></i>
                 <p id="logged-in-email" class="text-xl font-medium mb-2"></p>
@@ -373,7 +388,7 @@
         </div>
     </div>
 
-    <!-- BENUTZERNAME MODAL (nur localStorage) -->
+    <!-- BENUTZERNAME MODAL -->
     <div id="name-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]">
         <div class="bg-zinc-900 rounded-3xl p-8 max-w-sm w-full mx-4">
             <h3 class="text-2xl font-semibold mb-6">Dein Benutzername</h3>
@@ -508,42 +523,8 @@
             { points: 600, code: "LOYAL10", discount: 10, text: "10 € Gutschein" }
         ];
 
-        let allProducts = [
-            { id: 1, name: "Apple Peach", category: "Normale Sorten", isNew: false, available: true, price: 7.99 },
-            { id: 2, name: "Blueberry", category: "Normale Sorten", isNew: false, available: true, price: 7.99 },
-            { id: 3, name: "Blueberry Sour Raspberry", category: "Normale Sorten", isNew: false, available: true, price: 7.99 },
-            { id: 4, name: "Cherry", category: "Normale Sorten", isNew: false, available: true, price: 7.99 },
-            { id: 5, name: "Cola", category: "Normale Sorten", isNew: false, available: true, price: 7.99 },
-            { id: 6, name: "Grape", category: "Normale Sorten", isNew: false, available: true, price: 7.99 },
-            { id: 7, name: "Peach Ice", category: "Normale Sorten", isNew: false, available: true, price: 7.99 },
-            { id: 8, name: "Pink Lemonade", category: "Normale Sorten", isNew: false, available: true, price: 7.99 },
-            { id: 9, name: "Strawberry Ice", category: "Normale Sorten", isNew: false, available: true, price: 7.99 },
-            { id: 10, name: "Strawberry Kiwi", category: "Normale Sorten", isNew: false, available: true, price: 7.99 },
-            { id: 11, name: "Watermelon", category: "Normale Sorten", isNew: false, available: true, price: 7.99 },
-            { id: 12, name: "Cherry Cola", category: "Normale Sorten", isNew: false, available: true, price: 7.99 },
-            { id: 13, name: "Blue Razz Lemonade", category: "Normale Sorten", isNew: false, available: true, price: 7.99 },
-            { id: 14, name: "Spearmint", category: "Normale Sorten", isNew: false, available: true, price: 7.99 },
-            { id: 15, name: "Mango", category: "Normale Sorten", isNew: false, available: true, price: 7.99 },
-            { id: 16, name: "Blackberry Lemon", category: "Neue Sorten", isNew: true, available: true, price: 7.99 },
-            { id: 17, name: "Pineapple Mango Orange", category: "Neue Sorten", isNew: true, available: true, price: 7.99 },
-            { id: 18, name: "Sour Apple", category: "Neue Sorten", isNew: true, available: true, price: 7.99 },
-            { id: 19, name: "Strawberry Raspberry Cherry Ice", category: "Neue Sorten", isNew: true, available: true, price: 7.99 },
-            { id: 20, name: "Blackberry Ice", category: "Neue Sorten", isNew: true, available: true, price: 7.99 },
-            { id: 21, name: "Lemon Peach Passionfruit", category: "Neue Sorten", isNew: true, available: true, price: 7.99 },
-            { id: 22, name: "Menthol", category: "Neue Sorten", isNew: true, available: true, price: 7.99 },
-            { id: 23, name: "Mixed Berries", category: "Neue Sorten", isNew: true, available: true, price: 7.99 },
-            { id: 24, name: "Tropical Fruit", category: "Neue Sorten", isNew: true, available: true, price: 7.99 },
-            { id: 25, name: "Coconut Blueberry", category: "Neue Sorten", isNew: true, available: true, price: 7.99 },
-            { id: 26, name: "Frozen Berries", category: "Neue Sorten", isNew: true, available: true, price: 7.99 },
-            { id: 27, name: "Blackberry Cherry", category: "Neue Sorten", isNew: true, available: true, price: 7.99 },
-            { id: 28, name: "Pineapple Coconut", category: "Neue Sorten", isNew: true, available: true, price: 7.99 },
-            { id: 29, name: "Lemon Mint", category: "Neue Sorten", isNew: true, available: true, price: 7.99 },
-            { id: 30, name: "Kiwi Passion Fruit Guava", category: "Normale Sorten", isNew: false, available: false, price: 7.99 },
-            { id: 31, name: "Blackcurrant Aniseed", category: "Normale Sorten", isNew: false, available: false, price: 7.99 },
-            { id: 32, name: "WaveVapes 30000 Cherry Cola", category: "WaveVapes Tornado 30000", isNew: true, available: true, price: 19.99, image: "tornado-1.jpg" },
-            { id: 33, name: "WaveVapes 30000 Cherry Ice", category: "WaveVapes Tornado 30000", isNew: true, available: true, price: 19.99, image: "tornado-2.jpg" },
-            { id: 34, name: "WaveVapes 30000 Peach Berry", category: "WaveVapes Tornado 30000", isNew: true, available: true, price: 19.99, image: "tornado-3.jpg" }
-        ];
+        // ====================== PRODUKTE WERDEN JETZT AUS FIRESTORE GEHOLT ======================
+        let allProducts = [];   // ← jetzt leer – wird live geladen
 
         let cart = [];
         let currentUser = null;
@@ -688,7 +669,6 @@
             const displayEl = document.getElementById("user-name-display");
             const navDisplay = document.getElementById("current-user-display");
             const localName = localStorage.getItem("wavevapes_username");
-
             if (localName) {
                 displayEl.textContent = localName;
                 navDisplay.textContent = localName;
@@ -821,10 +801,8 @@
                 showAddressModal();
                 return;
             }
-
             const orderNumber = generateOrderNumber();
             const finalTotal = calculateCartTotal();
-
             try {
                 await db.collection("orders").add({
                     userId: currentUser.uid,
@@ -840,8 +818,6 @@
                     address: userAddress,
                     date: firebase.firestore.Timestamp.now()
                 });
-
-                // Optional: Formspree E-Mail-Benachrichtigung
                 const formData = new FormData();
                 formData.append("name", currentUser.email);
                 formData.append("bestellnummer", orderNumber);
@@ -865,20 +841,17 @@
             if (!currentUser) return;
             const container = document.getElementById("history-list");
             container.innerHTML = '<p class="text-center text-gray-400 py-8">Lade Bestellungen...</p>';
-
             try {
                 const snapshot = await db.collection("orders")
                     .where("userId", "==", currentUser.uid)
                     .orderBy("date", "desc")
                     .get();
-
                 container.innerHTML = "";
                 if (snapshot.empty) {
                     document.getElementById("no-history").classList.remove("hidden");
                     return;
                 }
                 document.getElementById("no-history").classList.add("hidden");
-
                 snapshot.forEach(doc => {
                     const data = doc.data();
                     const div = document.createElement("div");
@@ -934,6 +907,40 @@
             }, 5000);
         }
 
+        // ====================== PRODUKTE LIVE AUS FIRESTORE LADEN ======================
+        async function loadProducts() {
+            const container = document.getElementById("products-grid");
+            container.innerHTML = `<p class="col-span-full text-center py-16 text-gray-400 flex items-center justify-center gap-3"><i class="fa-solid fa-spinner animate-spin text-2xl"></i> Produkte werden live aus Firestore geladen...</p>`;
+
+            try {
+                const snapshot = await db.collection("products").get();
+                allProducts = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    allProducts.push({
+                        id: parseInt(doc.id),
+                        name: data.name,
+                        category: data.category,
+                        isNew: data.isNew || false,
+                        available: data.available !== false,
+                        price: data.price || 7.99,
+                        image: data.image || null
+                    });
+                });
+                allProducts.sort((a, b) => a.id - b.id);
+                renderProducts();
+                showToast("✅ Produkte erfolgreich aus Firestore geladen");
+            } catch (e) {
+                console.error(e);
+                showToast("⚠️ Firestore konnte nicht erreicht werden – bitte später erneut laden");
+                renderProducts();
+            }
+        }
+
+        function filterProducts() {
+            renderProducts();
+        }
+
         // ====================== PRODUCTS RENDER ======================
         function renderProducts() {
             const container = document.getElementById("products-grid");
@@ -953,12 +960,10 @@
                 let priceHTML = product.category === "WaveVapes Tornado 30000"
                     ? `<div class="price-row"><span class="discount-price">35,99</span><span class="euro">€</span> → <span class="sale-price">19,99</span><span class="euro">€</span></div>`
                     : `<div class="price-row"><span class="discount-price">9,99</span><span class="euro">€</span> → <span class="sale-price">7,99</span><span class="euro">€</span></div>`;
-
                 let nicotineHTML = '';
                 if (product.category !== "WaveVapes Tornado 30000" && product.available) {
                     nicotineHTML = `<select class="nicotine-select" onchange="updateNicotine(${product.id}, this.value)">${NICOTINE_OPTIONS.map(opt => `<option value="${opt}" ${nicotine === opt ? 'selected' : ''}>${opt}</option>`).join('')}</select>`;
                 }
-
                 html += `
                     <div class="product-card bg-zinc-900 border ${product.available ? 'border-white/10' : 'border-red-500/40'} rounded-3xl overflow-hidden">
                         <div class="h-1.5 bg-gradient-to-r from-cyan-400 to-purple-500"></div>
@@ -982,7 +987,6 @@
                         </div>
                     </div>`;
             });
-
             container.innerHTML = html || `<p class="col-span-full text-center py-16 text-gray-400">Keine Produkte gefunden.</p>`;
         }
 
@@ -1222,6 +1226,21 @@
             document.getElementById("datenschutz-modal").classList.remove("flex");
         }
 
+        // ====================== MISSING HELPER FUNCTIONS (um JS-Fehler zu vermeiden) ======================
+        function shareReferral() {
+            showToast("Referral-Link kopiert! (noch in Entwicklung – kommt bald)");
+        }
+
+        function showMyReferrals() {
+            document.getElementById("referrals-modal").classList.remove("hidden");
+            document.getElementById("referrals-modal").classList.add("flex");
+        }
+
+        function closeReferralsModal() {
+            document.getElementById("referrals-modal").classList.add("hidden");
+            document.getElementById("referrals-modal").classList.remove("flex");
+        }
+
         // ====================== ORDER NUMBER ======================
         function generateOrderNumber() {
             const now = new Date();
@@ -1264,7 +1283,7 @@
             updateUserDisplay();
             updateLoyaltyDisplay();
             renderCategoryTabs();
-            renderProducts();
+            loadProducts();                    // ← JETZT LIVE AUS FIRESTORE
             updateCartDisplay();
             startNotificationCycle();
             checkAndAutoRedeemLoyalty();

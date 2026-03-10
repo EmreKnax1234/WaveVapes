@@ -8,6 +8,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <style>
@@ -140,6 +141,7 @@
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
+    const storage = firebase.storage();
 
     let selectedFile = null;
     let currentPreviewImage = null;
@@ -174,8 +176,6 @@
       const price = parseFloat(document.getElementById('price').value) || 7.99;
       const isNew = document.getElementById('isNew').checked;
       const type = document.getElementById('type').value;
-      const category = type === 'vape' ? 'WaveVapes Tornado 30000' : (isNew ? 'Neue Sorten' : 'Normale Sorten');
-
       const previewHTML = `
         <div class="product-card bg-zinc-900 border border-white/10 rounded-3xl overflow-hidden">
           <div class="h-1.5 bg-gradient-to-r from-cyan-400 to-purple-500"></div>
@@ -228,7 +228,7 @@
       updatePreview();
     }
 
-    // ====================== NEUES PRODUKT SPEICHERN ======================
+    // ====================== NEUES PRODUKT SPEICHERN (Firebase Storage) ======================
     document.getElementById('add-form').addEventListener('submit', async e => {
       e.preventDefault();
       const name = document.getElementById('name').value.trim();
@@ -251,17 +251,12 @@
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        // ====================== CLOUDINARY UPLOAD ======================
+        let imageUrl = null;
         if (selectedFile) {
-          const url = "https://api.cloudinary.com/v1_1/WaveVapes/upload";
-          const formData = new FormData();
-          formData.append("file", selectedFile);
-          formData.append("upload_preset", "WaveVapes");
-          const res = await fetch(url, { method: "POST", body: formData });
-          const data = await res.json();
-          if (data.secure_url) {
-            await docRef.update({ image: data.secure_url });
-          }
+          const storageRef = storage.ref(`product-images/${docRef.id}.jpg`);
+          await storageRef.put(selectedFile);
+          imageUrl = await storageRef.getDownloadURL();
+          await docRef.update({ image: imageUrl });
         }
 
         e.target.reset();

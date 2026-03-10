@@ -6,7 +6,7 @@
     <title>WaveVapes – Disposable Vapes & Liquids</title>
     <meta name="description" content="WaveVapes Shop – Disposable Vapes bis 30000 Puffs und Premium Liquids online.">
     <meta name="google-site-verification" content="3kBk4qEfWOIpWL7969larnRHDzPJ60AVgzE67bUkS18" />
-  
+ 
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -456,6 +456,27 @@
     </div>
     <div id="notification-toast"></div>
     <script>
+        // ====================== WICHTIGER HINWEIS FÜR BILDER ======================
+        // Damit die Bilder im Shop angezeigt werden, musst du ONCE die Firebase Storage Rules anpassen:
+        // 
+        // Gehe zu: Firebase Console → Storage → Rules
+        // Ersetze ALLES mit folgendem Code und klicke auf "Veröffentlichen":
+        /*
+        rules_version = '2';
+        service firebase.storage {
+          match /b/{bucket}/o {
+            match /product-images/{allPaths=**} {
+              allow read: if true;      // Öffentlich lesbar für den Shop
+              allow write: if request.auth != null;
+            }
+            match /{allPaths=**} {
+              allow read, write: if request.auth != null;
+            }
+          }
+        }
+        */
+        // Danach Strg + F5 im Shop → Bilder erscheinen sofort!
+
         // ====================== KONFIGURATION ======================
         const VALID_DISCOUNTS = { "WAVE5": 5, "Freund10": 10, "LOYAL5": 5, "LOYAL10": 10 };
         const FORMSPREE_ENDPOINT = "https://formspree.io/f/xeerjpqd";
@@ -819,7 +840,7 @@
                 setTimeout(() => { toast.classList.remove('deal'); notificationCyclePaused = false; showNextNotification(); }, 800);
             }, 5000);
         }
-        // ====================== PRODUKTE LIVE AUS FIRESTORE (MIT FILTER!) ======================
+        // ====================== PRODUKTE LIVE AUS FIRESTORE ======================
         async function loadProducts() {
             const container = document.getElementById("products-grid");
             container.innerHTML = `<p class="col-span-full text-center py-16 text-gray-400 flex items-center justify-center gap-3"><i class="fa-solid fa-spinner animate-spin text-2xl"></i> Produkte werden live aus Firestore geladen...</p>`;
@@ -833,13 +854,10 @@
                         name: data.name,
                         category: data.category,
                         isNew: data.isNew || false,
-                        available: data.available !== false, // true oder false
+                        available: data.available !== false,
                         price: data.price || 7.99,
                         image: data.image || null
                     };
-                    // ←←← HIER WIRD GEfiltert: Nur verfügbare Produkte werden geladen!
-                    // Deaktivierte Produkte (available: false) erscheinen gar nicht mehr im Shop.
-                    // (Falls du später eine Admin-Ansicht brauchst, sag Bescheid – dann bauen wir eine Rolle ein)
                     if (product.available) {
                         allProducts.push(product);
                     }
@@ -856,7 +874,7 @@
         function filterProducts() {
             renderProducts();
         }
-        // ====================== AUTOMATISCHE SORTIERUNG ======================
+        // ====================== RENDER ======================
         function renderProducts() {
             const container = document.getElementById("products-grid");
             let html = "";
@@ -866,7 +884,6 @@
                 const matchesSearch = !searchTerm || p.name.toLowerCase().includes(searchTerm);
                 return matchesCat && matchesSearch;
             });
-            // Automatische Sortierung: Liquids zuerst, Tornado ganz unten
             if (currentCategoryFilter === "Alle" || currentCategoryFilter === "Normale Sorten") {
                 filtered.sort((a, b) => {
                     const aIsTornado = a.category === "WaveVapes Tornado 30000";
@@ -1025,7 +1042,7 @@
         }
         function generateNotificationList() {
             notificationList = [];
-            const available = allProducts; // alleProducts sind bereits gefiltert
+            const available = allProducts;
             for (let i = 0; i < 10; i++) {
                 const name = fakeNames[Math.floor(Math.random() * fakeNames.length)];
                 const prod = available[Math.floor(Math.random() * available.length)].name;
@@ -1162,6 +1179,13 @@
         function closeSuccessModal() {
             document.getElementById("success-modal").classList.add("hidden");
             document.getElementById("success-modal").classList.remove("flex");
+        }
+        // ====================== TORNADO 4-FÜR-3 ======================
+        function getTornadoQuantity() {
+            return cart.reduce((sum, item) => {
+                const prod = allProducts.find(p => p.id === item.id);
+                return (prod && prod.category === "WaveVapes Tornado 30000") ? sum + item.qty : sum;
+            }, 0);
         }
         // ====================== INITIALIZE ======================
         function initialize() {

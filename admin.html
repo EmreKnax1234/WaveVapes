@@ -23,13 +23,14 @@
     .preview-card { background: #18181b; border: 1px solid #27272a; border-radius: 1rem; overflow: hidden; }
     .inactive { opacity: 0.5; background: #111827; }
     .tab-active { border-bottom: 4px solid #67e8f9; color: #67e8f9; font-weight: 600; }
+    .order-details { background: #111827; border: 1px solid #374151; border-radius: 0.75rem; padding: 1.25rem; margin-top: 1rem; }
   </style>
 </head>
 <body>
   <!-- HEADER -->
   <header class="bg-zinc-950 border-b border-cyan-900/40 sticky top-0 z-50 backdrop-blur-md">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex justify-between items-center">
-      <h1 class="text-2xl sm:text-3xl font-bold neon">WaveVapes – Admin Panel</h1>
+      <h1 class="text-2xl sm:text-3xl font-bold neon">WaveVapes – Produktverwaltung</h1>
       <div class="flex items-center gap-6">
         <span id="admin-email" class="text-cyan-300 text-sm sm:text-base"></span>
         <button onclick="logout()" class="bg-red-600 hover:bg-red-500 px-5 py-2 rounded-lg font-medium text-sm sm:text-base">Logout</button>
@@ -143,7 +144,7 @@
           Live Bestellungen
           <span id="orders-count" class="ml-auto bg-emerald-600 text-xs px-3 py-1 rounded-full">0 Bestellungen</span>
         </h2>
-        <table class="w-full text-left min-w-[900px]">
+        <table class="w-full text-left min-w-[1100px]">
           <thead>
             <tr class="border-b border-zinc-700 text-gray-300">
               <th class="py-4 px-4">Bestellnummer</th>
@@ -201,7 +202,7 @@
         }
         document.getElementById('auth-loading').classList.add('hidden');
         document.getElementById('admin-content').classList.remove('hidden');
-        switchAdminTab(0); // Standard: Produkte
+        switchAdminTab(0); // Start mit Produkte-Tab
         loadProducts();
       } catch (err) {
         console.error(err);
@@ -306,6 +307,9 @@
           if (res.ok && data.secure_url) {
             imageUrl = data.secure_url;
             await docRef.update({ image: imageUrl });
+            showToast('Bild erfolgreich hochgeladen!', 'success');
+          } else {
+            showToast('Bild-Upload fehlgeschlagen', 'error');
           }
         }
         e.target.reset();
@@ -386,12 +390,12 @@
     }
 
     async function deleteProduct(id) {
-      if (!confirm('⚠️ Produkt IRREVERSIBEL löschen?')) return;
+      if (!confirm('⚠️ Produkt IRREVERSIBEL löschen?\n\nDas kann nicht rückgängig gemacht werden!')) return;
       try {
         await db.collection('products').doc(id).delete();
-        showToast('✅ Produkt gelöscht', 'success');
+        showToast('✅ Produkt wurde gelöscht', 'success');
       } catch (err) {
-        showToast('Fehler beim Löschen', 'error');
+        showToast('❌ Fehler beim Löschen', 'error');
       }
     }
 
@@ -411,6 +415,7 @@
         await docRef.update({ name, price, stock, type, isNew, category });
         showToast('Produkt aktualisiert', 'success');
       } catch (err) {
+        console.error(err);
         showToast('Fehler beim Speichern', 'error');
       }
     }
@@ -436,11 +441,12 @@
             const row = document.createElement('tr');
             const date = order.date ? order.date.toDate().toLocaleString('de-DE') : '—';
             const addressShort = order.address ? `${order.address.street}, ${order.address.zip} ${order.address.city}` : '—';
+            const emailDisplay = order.userEmail || '—';
 
             row.innerHTML = `
               <td class="py-4 px-4 font-mono text-cyan-300">${order.orderNumber}</td>
               <td class="py-4 px-4">${date}</td>
-              <td class="py-4 px-4">${order.userEmail || '—'}</td>
+              <td class="py-4 px-4">${emailDisplay}</td>
               <td class="py-4 px-4 font-bold">${order.total.toFixed(2)} €</td>
               <td class="py-4 px-4 text-sm text-gray-400">${addressShort}</td>
               <td class="py-4 px-4 text-right">
@@ -453,18 +459,48 @@
         });
     }
 
+    // ====================== BESTELLDETAILS (Modal) ======================
     async function showOrderDetails(orderId) {
       try {
         const doc = await db.collection('orders').doc(orderId).get();
         if (!doc.exists) return showToast('Bestellung nicht gefunden', 'error');
         const order = doc.data();
-        let itemsHTML = '';
+
+        let itemsHTML = '<div class="space-y-2 mt-4">';
         order.items.forEach(item => {
-          itemsHTML += `<div>${item.name} × ${item.qty} = ${(item.price * item.qty).toFixed(2)} €</div>`;
+          itemsHTML += `
+            <div class="flex justify-between py-2 border-b border-white/10">
+              <span>${item.name} × ${item.qty}${item.nicotine ? ` (${item.nicotine})` : ''}</span>
+              <span>${(item.price * item.qty).toFixed(2)} €</span>
+            </div>`;
         });
-        alert(`Bestellung ${order.orderNumber}\n\n${itemsHTML}\nGesamt: ${order.total.toFixed(2)} €\nAdresse: ${order.address.street}, ${order.address.zip} ${order.address.city}`);
-      } catch (e) {
-        showToast('Fehler beim Laden', 'error');
+        itemsHTML += '</div>';
+
+        const modalContent = `
+          <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]">
+            <div class="bg-zinc-900 rounded-3xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+              <div class="flex justify-between items-center mb-6">
+                <h3 class="text-3xl font-bold neon">Bestelldetails</h3>
+                <button onclick="this.closest('.fixed').remove()" class="text-4xl text-gray-400 hover:text-white">✕</button>
+              </div>
+              <div class="space-y-4 text-gray-300">
+                <div><strong>Bestellnummer:</strong> <span class="font-mono text-cyan-300">${order.orderNumber}</span></div>
+                <div><strong>Datum:</strong> ${order.date ? order.date.toDate().toLocaleString('de-DE') : '—'}</div>
+                <div><strong>E-Mail:</strong> <span class="text-emerald-400">${order.userEmail || '—'}</span></div>
+                <div><strong>Gesamt:</strong> <span class="text-emerald-400 font-bold">${order.total.toFixed(2)} €</span></div>
+                <div><strong>Adresse:</strong><br>${order.address.street}<br>${order.address.zip} ${order.address.city}</div>
+                <div class="pt-4 border-t border-white/20">
+                  <strong>Bestellte Artikel:</strong>
+                  ${itemsHTML}
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalContent);
+      } catch (err) {
+        showToast('Fehler beim Laden der Details', 'error');
       }
     }
 
@@ -479,7 +515,9 @@
     }
 
     // ====================== INITIALISIERUNG ======================
-    window.onload = () => { updatePreview(); };
+    window.onload = () => { 
+      updatePreview(); 
+    };
   </script>
 </body>
 </html>

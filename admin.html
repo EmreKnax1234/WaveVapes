@@ -3,188 +3,155 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>WaveVapes – Admin Dashboard</title>
+  <title>WaveVapes – Admin • Produkte</title>
 
-  <!-- Firebase SDKs -->
+  <!-- Firebase Compat SDKs -->
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
 
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
     body {
       font-family: 'Inter', system-ui, sans-serif;
       background: linear-gradient(135deg, #0a0a0a, #1e1233, #0a0a0a);
       color: white;
       min-height: 100vh;
     }
-
-    .neon-text {
-      text-shadow: 0 0 15px #67e8f9, 0 0 30px #67e8f9;
-    }
-
-    .admin-card {
-      background: #18181b;
-      border: 1px solid #27272a;
-      border-radius: 1rem;
-      padding: 1.5rem;
-    }
-
-    .status-waiting { background: #92400e; color: #fbbf24; }
-    .status-paid    { background: #1e40af; color: #60a5fa; }
-    .status-shipped { background: #065f46; color: #34d399; }
-    .status-cancelled { background: #991b1b; color: #fca5a5; }
-
-    .btn-admin {
-      padding: 0.5rem 1rem;
-      border-radius: 0.5rem;
-      font-weight: 500;
-      transition: all 0.2s;
-    }
-
-    .btn-primary   { background: #06b6d4; color: black; }
-    .btn-primary:hover { background: #22d3ee; }
-
-    .btn-danger    { background: #dc2626; color: white; }
-    .btn-danger:hover { background: #ef4444; }
-
-    .btn-success   { background: #10b981; color: white; }
-    .btn-success:hover { background: #34d399; }
-
+    .neon { text-shadow: 0 0 10px #67e8f9, 0 0 20px #67e8f9; }
+    .card { background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 1.5rem; }
+    .input { background: #1f2937; border: 1px solid #374151; color: white; }
+    .input:focus { border-color: #67e8f9; outline: none; box-shadow: 0 0 0 3px rgba(103,232,249,0.2); }
+    .btn { transition: all 0.2s; }
+    .btn:hover { transform: translateY(-1px); }
+    .status-active   { color: #34d399; }
+    .status-inactive { color: #f87171; opacity: 0.7; }
     .toast {
-      position: fixed;
-      bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: #10b981;
-      color: white;
-      padding: 12px 24px;
-      border-radius: 9999px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.4);
-      z-index: 9999;
-      opacity: 0;
-      transition: opacity 0.4s, transform 0.4s;
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: #10b981; color: white; padding: 12px 24px; border-radius: 8px;
+      z-index: 9999; opacity: 0; transition: opacity 0.4s;
     }
-
-    .toast.show {
-      opacity: 1;
-      transform: translateX(-50%) translateY(-8px);
-    }
+    .toast.show { opacity: 1; }
   </style>
 </head>
-<body>
+<body class="antialiased">
 
   <!-- HEADER -->
-  <header class="bg-zinc-950 border-b border-cyan-900/30 sticky top-0 z-50">
+  <header class="bg-black/80 backdrop-blur-md border-b border-cyan-900/40 sticky top-0 z-50">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex justify-between items-center">
-      <div class="flex items-center gap-3">
-        <h1 class="text-3xl font-bold tracking-tight neon-text">WAVEVAPES ADMIN</h1>
-      </div>
+      <h1 class="text-2xl sm:text-3xl font-bold neon">WaveVapes • Admin Produkte</h1>
       <div class="flex items-center gap-6">
-        <span id="admin-email" class="text-cyan-300"></span>
-        <button onclick="logout()" class="bg-red-600 hover:bg-red-500 px-5 py-2 rounded-lg font-medium">
+        <span id="current-user" class="text-cyan-300 text-sm sm:text-base"></span>
+        <button onclick="logout()" class="bg-red-600/90 hover:bg-red-600 px-5 py-2 rounded-lg text-sm font-medium">
           Logout
         </button>
       </div>
     </div>
   </header>
 
-  <!-- MAIN -->
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-10">
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8">
 
-    <!-- Lade-Overlay + No-Admin -->
-    <div id="auth-loading" class="fixed inset-0 bg-black/90 flex items-center justify-center z-50">
+    <!-- Lade- & Kein-Admin-Screen -->
+    <div id="loading-screen" class="fixed inset-0 bg-black/95 flex items-center justify-center z-50">
       <div class="text-center">
-        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-cyan-400 mx-auto mb-6"></div>
-        <p class="text-xl">Prüfe Admin-Rechte...</p>
+        <div class="animate-spin h-12 w-12 border-4 border-cyan-400 border-t-transparent rounded-full mx-auto mb-6"></div>
+        <p class="text-xl">Prüfe Berechtigung…</p>
       </div>
     </div>
 
-    <div id="no-admin" class="hidden text-center py-20">
-      <h2 class="text-4xl font-bold text-red-400 mb-6">Zugriff verweigert</h2>
-      <p class="text-xl mb-8">Du bist kein Admin.</p>
-      <button onclick="window.location.href='index.html'" class="bg-cyan-500 hover:bg-cyan-400 text-black px-8 py-4 rounded-xl text-lg font-bold">
-        Zurück zum Shop
-      </button>
+    <div id="no-permission" class="hidden text-center py-32">
+      <h2 class="text-4xl font-bold text-red-400 mb-6">Kein Admin-Zugriff</h2>
+      <p class="text-lg mb-8">Du bist kein Administrator.</p>
+      <a href="index.html" class="inline-block bg-cyan-500 hover:bg-cyan-400 text-black px-8 py-4 rounded-xl font-bold">
+        ← Zum Shop
+      </a>
     </div>
 
-    <!-- ADMIN DASHBOARD -->
-    <div id="admin-content" class="hidden">
+    <!-- Eigentliches Dashboard (wird sichtbar bei Admin) -->
+    <div id="dashboard" class="hidden">
 
-      <!-- TABS -->
-      <div class="flex border-b border-zinc-700 mb-8">
-        <button onclick="showTab('orders')" class="tab-btn px-6 py-3 font-medium border-b-4 border-transparent hover:border-cyan-400 transition-all tab-active">
-          Bestellungen
-        </button>
-        <button onclick="showTab('products')" class="tab-btn px-6 py-3 font-medium border-b-4 border-transparent hover:border-cyan-400 transition-all">
-          Produkte verwalten
-        </button>
+      <!-- Live Einnahmen (potenziell) -->
+      <div class="card mb-10 text-center">
+        <p class="text-gray-400 text-lg mb-2">Aktuelle potenzielle Einnahmen (alle verkauften Einheiten)</p>
+        <p id="live-revenue" class="text-5xl sm:text-6xl font-bold text-emerald-400">0,00 €</p>
+        <p class="text-sm text-gray-500 mt-2">(Preis × sold pro Produkt • live)</p>
       </div>
 
-      <!-- BESTELLUNGEN -->
-      <div id="tab-orders" class="tab-content">
-        <div class="admin-card mb-8">
-          <h2 class="text-2xl font-bold mb-6">Alle Bestellungen (Live)</h2>
-          <div class="overflow-x-auto">
-            <table class="w-full text-left">
-              <thead>
-                <tr class="border-b border-zinc-700">
-                  <th class="py-3 px-4">Nr</th>
-                  <th class="py-3 px-4">Kunde</th>
-                  <th class="py-3 px-4">Gesamt</th>
-                  <th class="py-3 px-4">Status</th>
-                  <th class="py-3 px-4">Datum</th>
-                  <th class="py-3 px-4">Aktion</th>
-                </tr>
-              </thead>
-              <tbody id="orders-table-body"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+      <!-- Formular: Neues Produkt -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+        <div class="card lg:col-span-1">
+          <h2 class="text-2xl font-bold mb-6">Neues Produkt hinzufügen</h2>
 
-      <!-- PRODUKTE -->
-      <div id="tab-products" class="tab-content hidden">
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <!-- Neues Produkt -->
-          <div class="admin-card">
-            <h3 class="text-xl font-bold mb-6">Neues Produkt hinzufügen</h3>
-            <form id="add-product-form" class="space-y-4">
-              <input type="text" id="prod-name" placeholder="Produktname (z. B. Tornado Mango)" required class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-cyan-500"/>
-              <input type="number" id="prod-price" placeholder="Preis in €" step="0.01" min="0.01" required class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-cyan-500"/>
-              <input type="number" id="prod-stock" placeholder="Lagerbestand" min="0" required class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-cyan-500"/>
-              <select id="prod-category" required class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-cyan-500">
-                <option value="" disabled selected>Kategorie wählen</option>
-                <option value="Tornado 30.000">Tornado 30.000</option>
+          <form id="add-product-form" class="space-y-5">
+            <div>
+              <label class="block text-sm text-gray-300 mb-1">Name</label>
+              <input type="text" id="name" required class="input w-full px-4 py-3 rounded-lg" placeholder="z. B. Tornado 30000 Mango" />
+            </div>
+
+            <div>
+              <label class="block text-sm text-gray-300 mb-1">Preis (€)</label>
+              <input type="number" id="price" step="0.01" min="0.01" required class="input w-full px-4 py-3 rounded-lg" placeholder="19.99" />
+            </div>
+
+            <div>
+              <label class="block text-sm text-gray-300 mb-1">Lagerbestand</label>
+              <input type="number" id="stock" min="0" required class="input w-full px-4 py-3 rounded-lg" placeholder="100" value="100" />
+            </div>
+
+            <div>
+              <label class="block text-sm text-gray-300 mb-1">Kategorie</label>
+              <select id="category" required class="input w-full px-4 py-3 rounded-lg">
+                <option value="WaveVapes Tornado 30000">WaveVapes Tornado 30000</option>
                 <option value="Normale Sorten">Normale Sorten</option>
                 <option value="Neue Sorten">Neue Sorten</option>
               </select>
-              <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-lg font-bold">
-                Produkt erstellen
-              </button>
-            </form>
-          </div>
+            </div>
 
-          <!-- Produktliste -->
-          <div class="admin-card">
-            <h3 class="text-xl font-bold mb-6">Produkte verwalten</h3>
-            <div id="products-list" class="space-y-4 max-h-[600px] overflow-y-auto pr-2"></div>
+            <div class="flex items-center gap-3">
+              <input type="checkbox" id="active" checked class="w-5 h-5 accent-cyan-500" />
+              <label for="active" class="text-gray-300">Aktiv (im Shop sichtbar)</label>
+            </div>
+
+            <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-4 rounded-lg font-bold text-lg transition">
+              Produkt speichern
+            </button>
+          </form>
+        </div>
+
+        <!-- Live Tabelle -->
+        <div class="card lg:col-span-2">
+          <h2 class="text-2xl font-bold mb-6">Produkte (live)</h2>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-zinc-900/70">
+                  <th class="p-4">Name</th>
+                  <th class="p-4">Preis</th>
+                  <th class="p-4">Stock</th>
+                  <th class="p-4">Verkauft</th>
+                  <th class="p-4">Einnahmen</th>
+                  <th class="p-4">Kategorie</th>
+                  <th class="p-4">Aktiv</th>
+                  <th class="p-4">Aktion</th>
+                </tr>
+              </thead>
+              <tbody id="products-table"></tbody>
+            </table>
           </div>
         </div>
       </div>
     </div>
   </main>
 
-  <!-- TOAST CONTAINER -->
-  <div id="toast-container"></div>
+  <!-- Toast -->
+  <div id="toast" class="toast"></div>
 
   <script>
     // ────────────────────────────────────────────────
-    //  FIREBASE KONFIGURATION (identisch mit deinem Shop)
+    //  FIREBASE INIT
     // ────────────────────────────────────────────────
     const firebaseConfig = {
       apiKey: "AIzaSyDsIUl-iYmH42MPbusFLhGhj5oGLh01BzI",
@@ -209,24 +176,23 @@
         return;
       }
 
-      document.getElementById("admin-email").textContent = user.email;
+      document.getElementById("current-user").textContent = user.email;
 
       try {
         const userDoc = await db.collection("users").doc(user.uid).get();
         if (!userDoc.exists || userDoc.data().role !== "admin") {
-          document.getElementById("auth-loading").classList.add("hidden");
-          document.getElementById("no-admin").classList.remove("hidden");
+          document.getElementById("loading-screen").classList.add("hidden");
+          document.getElementById("no-permission").classList.remove("hidden");
           return;
         }
 
-        // Admin → Dashboard laden
-        document.getElementById("auth-loading").classList.add("hidden");
-        document.getElementById("admin-content").classList.remove("hidden");
+        // Admin → alles laden
+        document.getElementById("loading-screen").classList.add("hidden");
+        document.getElementById("dashboard").classList.remove("hidden");
 
-        loadOrders();
-        loadProducts();
+        listenToProducts();
       } catch (err) {
-        console.error("Admin-Check Fehler:", err);
+        console.error(err);
         alert("Fehler beim Prüfen der Admin-Rechte.");
       }
     });
@@ -236,156 +202,66 @@
     }
 
     // ────────────────────────────────────────────────
-    //  TABS STEUERUNG
+    //  LIVE PRODUKTE + Einnahmen
     // ────────────────────────────────────────────────
-    function showTab(tabId) {
-      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-      document.getElementById(`tab-${tabId}`).classList.remove('hidden');
-
-      document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('tab-active', 'border-cyan-400');
-      });
-      event.target.classList.add('tab-active', 'border-cyan-400');
-    }
-
-    // ────────────────────────────────────────────────
-    //  BESTELLUNGEN LIVE (onSnapshot)
-    // ────────────────────────────────────────────────
-    function loadOrders() {
-      const tbody = document.getElementById("orders-table-body");
-      tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8">Lade Bestellungen...</td></tr>';
-
-      db.collection("orders")
-        .orderBy("date", "desc")
-        .onSnapshot((snapshot) => {
+    function listenToProducts() {
+      db.collection("products")
+        .onSnapshot((snap) => {
+          const tbody = document.getElementById("products-table");
           tbody.innerHTML = "";
-          if (snapshot.empty) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-400">Keine Bestellungen vorhanden</td></tr>';
-            return;
-          }
 
-          snapshot.forEach((doc) => {
-            const data = doc.data();
-            const date = data.date?.toDate?.() ? data.date.toDate().toLocaleString("de-DE") : "—";
+          let totalRevenue = 0;
 
-            let statusClass = "";
-            switch (data.status) {
-              case "Warten auf Zahlung": statusClass = "status-waiting"; break;
-              case "Bezahlt":            statusClass = "status-paid";    break;
-              case "Versendet":          statusClass = "status-shipped"; break;
-              case "Storniert":          statusClass = "status-cancelled"; break;
-              default:                   statusClass = "bg-gray-700 text-gray-300";
-            }
+          snap.forEach((doc) => {
+            const p = doc.data();
+            const revenue = (p.price || 0) * (p.sold || 0);
+            totalRevenue += revenue;
 
             const tr = document.createElement("tr");
-            tr.className = "border-b border-zinc-800 hover:bg-zinc-800/50 transition";
+            tr.className = `border-b border-zinc-800 ${!p.active ? 'opacity-60 bg-zinc-900/40' : ''}`;
             tr.innerHTML = `
-              <td class="py-4 px-4 font-mono">${data.orderNumber || doc.id.slice(0,8)}</td>
-              <td class="py-4 px-4">${data.userEmail || data.userId.slice(0,8) + '...'}</td>
-              <td class="py-4 px-4 font-bold">${(data.total || 0).toFixed(2)} €</td>
-              <td class="py-4 px-4">
-                <span class="px-3 py-1 rounded-full text-sm ${statusClass}">
-                  ${data.status || "Unbekannt"}
-                </span>
+              <td class="p-4 font-medium">${p.name || "—"}</td>
+              <td class="p-4">${(p.price || 0).toFixed(2)} €</td>
+              <td class="p-4">${p.stock ?? "—"}</td>
+              <td class="p-4">${p.sold ?? 0}</td>
+              <td class="p-4 font-bold ${revenue > 0 ? 'text-emerald-400' : 'text-gray-500'}">
+                ${revenue.toFixed(2)} €
               </td>
-              <td class="py-4 px-4 text-gray-400">${date}</td>
-              <td class="py-4 px-4">
-                <select onchange="updateOrderStatus('${doc.id}', this.value)" class="bg-zinc-800 border border-zinc-700 rounded px-3 py-1 text-sm">
-                  <option value="Warten auf Zahlung" ${data.status === "Warten auf Zahlung" ? "selected" : ""}>Warten auf Zahlung</option>
-                  <option value="Bezahlt" ${data.status === "Bezahlt" ? "selected" : ""}>Bezahlt</option>
-                  <option value="Versendet" ${data.status === "Versendet" ? "selected" : ""}>Versendet</option>
-                  <option value="Storniert" ${data.status === "Storniert" ? "selected" : ""}>Storniert</option>
-                </select>
+              <td class="p-4">${p.category || "—"}</td>
+              <td class="p-4">
+                <input type="checkbox" ${p.active ? 'checked' : ''} 
+                       onchange="toggleActive('${doc.id}', this.checked)" 
+                       class="w-5 h-5 accent-cyan-500" />
+              </td>
+              <td class="p-4">
+                <button onclick="editProduct('${doc.id}')" class="text-cyan-400 hover:text-cyan-300 mr-3">
+                  <i class="fa-solid fa-edit"></i>
+                </button>
               </td>
             `;
             tbody.appendChild(tr);
           });
-        });
-    }
 
-    async function updateOrderStatus(orderId, newStatus) {
-      try {
-        await db.collection("orders").doc(orderId).update({
-          status: newStatus,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          document.getElementById("live-revenue").textContent = totalRevenue.toFixed(2) + " €";
         });
-        showToast(`Status auf "${newStatus}" geändert`);
-      } catch (err) {
-        console.error(err);
-        alert("Fehler beim Ändern: " + err.message);
-      }
     }
 
     // ────────────────────────────────────────────────
-    //  PRODUKTE LADEN + VERWALTEN (exakt deine 3 Kategorien)
+    //  NEUES PRODUKT SPEICHERN
     // ────────────────────────────────────────────────
-    function loadProducts() {
-      const container = document.getElementById("products-list");
-      container.innerHTML = '<p class="text-center py-8 text-gray-400">Lade Produkte...</p>';
-
-      db.collection("products")
-        .onSnapshot((snapshot) => {
-          container.innerHTML = "";
-          if (snapshot.empty) {
-            container.innerHTML = '<p class="text-center py-8 text-gray-400">Noch keine Produkte vorhanden</p>';
-            return;
-          }
-
-          const products = [];
-          snapshot.forEach(doc => {
-            const data = doc.data();
-            products.push({ id: doc.id, ...data });
-          });
-
-          // Sortieren: erst aktive, dann alphabetisch
-          products.sort((a, b) => {
-            if (a.active !== b.active) return a.active ? -1 : 1;
-            return a.name.localeCompare(b.name);
-          });
-
-          products.forEach(p => {
-            const div = document.createElement("div");
-            div.className = `flex justify-between items-center p-4 rounded-lg border ${p.active ? 'border-emerald-700 bg-emerald-950/30' : 'border-red-800 bg-red-950/30 opacity-75'}`;
-            div.innerHTML = `
-              <div class="flex-1">
-                <div class="font-medium ${p.active ? '' : 'line-through text-gray-500'}">${p.name}</div>
-                <div class="text-sm text-gray-400">
-                  ${p.price.toFixed(2)} € • Lager: ${p.stock} • ${p.category}
-                </div>
-              </div>
-              <div class="flex gap-3">
-                <button onclick="editProduct('${p.id}', '${p.name}', ${p.price}, ${p.stock})" class="text-cyan-400 hover:text-cyan-300">
-                  <i class="fa-solid fa-edit"></i>
-                </button>
-                <button onclick="toggleActive('${p.id}', ${!p.active})" class="${p.active ? 'text-emerald-400' : 'text-red-400'} hover:opacity-80">
-                  <i class="fa-solid fa-power-off"></i>
-                </button>
-              </div>
-            `;
-            container.appendChild(div);
-          });
-        });
-    }
-
-    // Produkt hinzufügen
     document.getElementById("add-product-form").addEventListener("submit", async (e) => {
       e.preventDefault();
 
-      const name     = document.getElementById("prod-name").value.trim();
-      const priceStr = document.getElementById("prod-price").value.trim();
-      const stockStr = document.getElementById("prod-stock").value.trim();
-      const category = document.getElementById("prod-category").value;
+      const name     = document.getElementById("name").value.trim();
+      const price    = parseFloat(document.getElementById("price").value);
+      const stock    = parseInt(document.getElementById("stock").value);
+      const category = document.getElementById("category").value;
+      const active   = document.getElementById("active").checked;
 
-      if (!name || !priceStr || !stockStr || !category) {
-        alert("Bitte alle Felder ausfüllen");
+      if (!name || isNaN(price) || price <= 0 || isNaN(stock) || !category) {
+        alert("Bitte alle Felder korrekt ausfüllen.");
         return;
       }
-
-      const price = parseFloat(priceStr);
-      const stock = parseInt(stockStr);
-
-      if (isNaN(price) || price <= 0) return alert("Preis muss größer 0 sein");
-      if (isNaN(stock) || stock < 0) return alert("Lagerbestand darf nicht negativ sein");
 
       try {
         await db.collection("products").add({
@@ -393,66 +269,77 @@
           price,
           stock,
           category,
-          active: true
+          active,
+          sold: 0,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
         e.target.reset();
-        showToast("Produkt erfolgreich hinzugefügt");
+        showToast("Produkt erfolgreich angelegt ✓");
       } catch (err) {
         console.error(err);
         alert("Fehler beim Speichern: " + err.message);
       }
     });
 
-    // Aktiv/Deaktivieren
-    async function toggleActive(id, newActiveState) {
-      if (!confirm(`Produkt wirklich ${newActiveState ? "aktivieren" : "deaktivieren"}?`)) return;
-
+    // ────────────────────────────────────────────────
+    //  AKTIVIEREN / DEAKTIVIEREN
+    // ────────────────────────────────────────────────
+    async function toggleActive(docId, isActive) {
       try {
-        await db.collection("products").doc(id).update({ active: newActiveState });
-        showToast(`Produkt ${newActiveState ? "aktiviert" : "deaktiviert"}`);
+        await db.collection("products").doc(docId).update({
+          active: isActive
+        });
+        showToast(`Produkt ${isActive ? "aktiviert" : "deaktiviert"}`);
       } catch (err) {
+        console.error(err);
         alert("Fehler: " + err.message);
       }
     }
 
-    // Bearbeiten (einfache Prompt-Version – kann später Modal werden)
-    function editProduct(id, currentName, currentPrice, currentStock) {
-      const newName  = prompt("Neuer Name:", currentName);
-      const newPrice = prompt("Neuer Preis:", currentPrice);
-      const newStock = prompt("Neuer Lagerbestand:", currentStock);
+    // ────────────────────────────────────────────────
+    //  PRODUKT BEARBEITEN (einfache prompt-Version – kann später modal werden)
+    // ────────────────────────────────────────────────
+    async function editProduct(docId) {
+      const docRef = db.collection("products").doc(docId);
+      const docSnap = await docRef.get();
+      if (!docSnap.exists) return alert("Produkt nicht gefunden");
 
-      if (newName === null || newPrice === null || newStock === null) return;
+      const p = docSnap.data();
 
-      const price = parseFloat(newPrice);
-      const stock = parseInt(newStock);
+      const newName     = prompt("Neuer Name:", p.name) || p.name;
+      const newPrice    = parseFloat(prompt("Neuer Preis:", p.price)) || p.price;
+      const newStock    = parseInt(prompt("Neuer Lagerbestand:", p.stock)) || p.stock;
+      const newSold     = parseInt(prompt("Verkaufte Stückzahl:", p.sold || 0)) || (p.sold || 0);
+      const newCategory = prompt("Neue Kategorie (genau wie Tabs):", p.category) || p.category;
 
-      if (!newName.trim()) return alert("Name darf nicht leer sein");
-      if (isNaN(price) || price <= 0) return alert("Ungültiger Preis");
-      if (isNaN(stock) || stock < 0) return alert("Ungültiger Lagerbestand");
+      if (!newName || isNaN(newPrice) || newPrice <= 0 || isNaN(newStock) || !newCategory) {
+        return alert("Bearbeitung abgebrochen oder ungültige Werte.");
+      }
 
-      db.collection("products").doc(id).update({
-        name: newName.trim(),
-        price,
-        stock
-      })
-      .then(() => showToast("Produkt aktualisiert"))
-      .catch(err => alert("Fehler: " + err.message));
+      try {
+        await docRef.update({
+          name: newName,
+          price: newPrice,
+          stock: newStock,
+          sold: newSold,
+          category: newCategory,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        showToast("Produkt aktualisiert ✓");
+      } catch (err) {
+        alert("Fehler beim Updaten: " + err.message);
+      }
     }
 
     // ────────────────────────────────────────────────
     //  TOAST HELPER
     // ────────────────────────────────────────────────
     function showToast(message) {
-      const toast = document.createElement("div");
-      toast.className = "toast show";
+      const toast = document.getElementById("toast");
       toast.textContent = message;
-      document.getElementById("toast-container").appendChild(toast);
-
-      setTimeout(() => {
-        toast.classList.remove("show");
-        setTimeout(() => toast.remove(), 400);
-      }, 2600);
+      toast.classList.add("show");
+      setTimeout(() => toast.classList.remove("show"), 3000);
     }
   </script>
 </body>

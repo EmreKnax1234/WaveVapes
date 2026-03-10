@@ -8,7 +8,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <style>
@@ -141,7 +140,6 @@
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
-    const storage = firebase.storage();
 
     let selectedFile = null;
     let currentPreviewImage = null;
@@ -156,7 +154,6 @@
         const userDoc = await userRef.get();
 
         if (!userDoc.exists) {
-          // Erster Login → automatisch Admin machen
           await userRef.set({ 
             role: 'admin', 
             email: user.email, 
@@ -173,7 +170,7 @@
         loadProducts();
       } catch (err) {
         console.error(err);
-        alert('Fehler beim Laden der Admin-Rechte.');
+        alert('Fehler beim Laden der Admin-Rechte: ' + err.message);
       }
     });
 
@@ -239,7 +236,7 @@
       updatePreview();
     }
 
-    // ====================== NEUES PRODUKT SPEICHERN ======================
+    // ====================== NEUES PRODUKT SPEICHERN – MIT CLOUDINARY ======================
     document.getElementById('add-form').addEventListener('submit', async e => {
       e.preventDefault();
       const name = document.getElementById('name').value.trim();
@@ -262,12 +259,28 @@
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
+        // Cloudinary Upload – DEIN SETUP
         let imageUrl = null;
         if (selectedFile) {
-          const storageRef = storage.ref(`product-images/${docRef.id}.jpg`);
-          await storageRef.put(selectedFile);
-          imageUrl = await storageRef.getDownloadURL();
-          await docRef.update({ image: imageUrl });
+          const formData = new FormData();
+          formData.append("file", selectedFile);
+          formData.append("upload_preset", "wavevapes");  // ← dein Preset-Name aus dem Screenshot
+
+          const res = await fetch(
+            "https://api.cloudinary.com/v1_1/dbbkmjsr5/image/upload",  // ← dein Cloud-Name
+            { method: "POST", body: formData }
+          );
+
+          const data = await res.json();
+
+          if (res.ok && data.secure_url) {
+            imageUrl = data.secure_url;
+            await docRef.update({ image: imageUrl });
+            showToast('Bild erfolgreich hochgeladen!', 'success');
+          } else {
+            console.error("Cloudinary Fehler:", data);
+            showToast('Bild-Upload fehlgeschlagen: ' + (data.error?.message || 'Unbekannter Fehler'), 'error');
+          }
         }
 
         e.target.reset();
@@ -275,10 +288,10 @@
         currentPreviewImage = null;
         thumb.classList.add('hidden');
         updatePreview();
-        showToast('✅ Produkt mit Bild gespeichert!', 'success');
+        showToast('✅ Produkt gespeichert' + (imageUrl ? ' (mit Bild)' : ''), 'success');
       } catch (err) {
         console.error(err);
-        showToast('Fehler beim Speichern', 'error');
+        showToast('Fehler beim Speichern: ' + err.message, 'error');
       }
     });
 

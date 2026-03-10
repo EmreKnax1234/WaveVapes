@@ -4,15 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>WaveVapes – Produktverwaltung (Admin)</title>
-
   <!-- Firebase Compat SDKs -->
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
-
   <style>
     body {
       font-family: 'Inter', system-ui, sans-serif;
@@ -36,7 +33,6 @@
   </style>
 </head>
 <body>
-
   <!-- HEADER -->
   <header class="bg-zinc-950 border-b border-cyan-900/40 sticky top-0 z-50 backdrop-blur-md">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex justify-between items-center">
@@ -57,7 +53,6 @@
       <p class="text-xl">Prüfe Admin-Rechte…</p>
     </div>
   </div>
-
   <div id="no-admin" class="hidden text-center py-32">
     <h2 class="text-5xl font-bold text-red-400 mb-6">Zugriff verweigert</h2>
     <p class="text-xl mb-10">Du bist kein Administrator.</p>
@@ -68,7 +63,6 @@
 
   <!-- HAUPTINHALT – nur für Admins sichtbar -->
   <main id="admin-content" class="hidden max-w-7xl mx-auto px-4 sm:px-6 py-10">
-
     <!-- STATISTIK-BOX -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
       <div class="card text-center">
@@ -89,9 +83,9 @@
     <div class="card mb-12">
       <h2 class="text-2xl font-bold mb-6">Neues Produkt hinzufügen</h2>
       <form id="add-form" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <input id="name"     type="text"     placeholder="Name"              class="input rounded-lg px-4 py-3 col-span-2" required />
-        <input id="price"    type="number"   placeholder="Preis (€)"         class="input rounded-lg px-4 py-3" step="0.01" min="0" required />
-        <input id="stock"    type="number"   placeholder="Lagerbestand"      class="input rounded-lg px-4 py-3" min="0" required />
+        <input id="name" type="text" placeholder="Name" class="input rounded-lg px-4 py-3 col-span-2" required />
+        <input id="price" type="number" placeholder="Preis (€)" class="input rounded-lg px-4 py-3" step="0.01" min="0" required />
+        <input id="stock" type="number" placeholder="Lagerbestand" class="input rounded-lg px-4 py-3" min="0" required />
         <select id="type" class="input rounded-lg px-4 py-3">
           <option value="vape">Vape (Tornado)</option>
           <option value="liquid">Liquid</option>
@@ -118,7 +112,7 @@
             <th class="py-4 px-4">Typ</th>
             <th class="py-4 px-4">Kategorie</th>
             <th class="py-4 px-4">Neu?</th>
-            <th class="py-4 px-4">Aktiv</th>
+            <th class="py-4 px-4">Verfügbar</th>
             <th class="py-4 px-4">Verkauft</th>
             <th class="py-4 px-4 text-right">Aktionen</th>
           </tr>
@@ -133,7 +127,7 @@
 
   <script>
     // ────────────────────────────────────────────────
-    //  FIREBASE KONFIG (genau wie in deinem Shop)
+    // FIREBASE KONFIG
     // ────────────────────────────────────────────────
     const firebaseConfig = {
       apiKey: "AIzaSyDsIUl-iYmH42MPbusFLhGhj5oGLh01BzI",
@@ -144,19 +138,16 @@
       appId: "1:1093624390275:web:b1b8ae17bcf1b59dffb1b6",
       measurementId: "G-B8T2B657LL"
     };
-
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
 
     // ────────────────────────────────────────────────
-    //  AUTH + ADMIN CHECK
+    // AUTH + ADMIN CHECK
     // ────────────────────────────────────────────────
     auth.onAuthStateChanged(async (user) => {
       if (!user) return window.location.href = 'index.html';
-
       document.getElementById('admin-email').textContent = user.email;
-
       try {
         const userDoc = await db.collection('users').doc(user.uid).get();
         if (!userDoc.exists || userDoc.data().role !== 'admin') {
@@ -164,11 +155,8 @@
           document.getElementById('no-admin').classList.remove('hidden');
           return;
         }
-
-        // Admin → Dashboard laden
         document.getElementById('auth-loading').classList.add('hidden');
         document.getElementById('admin-content').classList.remove('hidden');
-
         loadProducts();
       } catch (err) {
         console.error(err);
@@ -181,7 +169,7 @@
     }
 
     // ────────────────────────────────────────────────
-    //  PRODUKTE LIVE LADEN + KATEGORIE AUTO
+    // PRODUKTE LADEN (JETZT MIT "available")
     // ────────────────────────────────────────────────
     function loadProducts() {
       const tbody = document.getElementById('products-tbody');
@@ -197,67 +185,63 @@
 
           if (snap.empty) {
             tbody.innerHTML = '<tr><td colspan="9" class="text-center py-12 text-gray-400">Keine Produkte vorhanden</td></tr>';
-          } else {
-            snap.forEach(doc => {
-              const p = doc.data();
-              const id = doc.id;
-
-              revenue += (p.price || 0) * (p.sold || 0);
-              if (p.active) activeCount++;
-              totalSold += p.sold || 0;
-
-              const row = document.createElement('tr');
-              row.className = p.active ? '' : 'inactive';
-              row.innerHTML = `
-                <td class="py-4 px-4 font-medium">${p.name || '—'}</td>
-                <td class="py-4 px-4">${(p.price || 0).toFixed(2)} €</td>
-                <td class="py-4 px-4">${p.stock ?? '—'}</td>
-                <td class="py-4 px-4">${p.type === 'vape' ? 'Vape' : 'Liquid'}</td>
-                <td class="py-4 px-4">${p.category || '—'}</td>
-                <td class="py-4 px-4 text-center">${p.isNew ? 'Ja' : '—'}</td>
-                <td class="py-4 px-4 text-center">
-                  <input type="checkbox" ${p.active ? 'checked' : ''} onchange="toggleActive('${id}', this.checked)" class="w-5 h-5 accent-cyan-500" />
-                </td>
-                <td class="py-4 px-4 text-center font-medium">${p.sold || 0}</td>
-                <td class="py-4 px-4 text-right space-x-3">
-                  <button onclick="editProduct('${id}')" class="text-cyan-400 hover:text-cyan-300">
-                    <i class="fa-solid fa-pen-to-square"></i>
-                  </button>
-                </td>
-              `;
-              tbody.appendChild(row);
-            });
+            return;
           }
 
-          // Live-Statistiken aktualisieren
-          document.getElementById('revenue').textContent     = revenue.toFixed(2) + ' €';
+          snap.forEach(doc => {
+            const p = doc.data();
+            const id = doc.id;
+
+            revenue += (p.price || 0) * (p.sold || 0);
+            if (p.available !== false) activeCount++;
+            totalSold += p.sold || 0;
+
+            const row = document.createElement('tr');
+            row.className = (p.available !== false) ? '' : 'inactive';
+            row.innerHTML = `
+              <td class="py-4 px-4 font-medium">${p.name || '—'}</td>
+              <td class="py-4 px-4">${(p.price || 0).toFixed(2)} €</td>
+              <td class="py-4 px-4">${p.stock ?? '—'}</td>
+              <td class="py-4 px-4">${p.type === 'vape' ? 'Vape' : 'Liquid'}</td>
+              <td class="py-4 px-4">${p.category || '—'}</td>
+              <td class="py-4 px-4 text-center">${p.isNew ? 'Ja' : '—'}</td>
+              <td class="py-4 px-4 text-center">
+                <input type="checkbox" ${p.available !== false ? 'checked' : ''} 
+                       onchange="toggleAvailable('${id}', this.checked)" 
+                       class="w-5 h-5 accent-cyan-500" />
+              </td>
+              <td class="py-4 px-4 text-center font-medium">${p.sold || 0}</td>
+              <td class="py-4 px-4 text-right space-x-3">
+                <button onclick="editProduct('${id}')" class="text-cyan-400 hover:text-cyan-300">
+                  <i class="fa-solid fa-pen-to-square"></i>
+                </button>
+              </td>
+            `;
+            tbody.appendChild(row);
+          });
+
+          document.getElementById('revenue').textContent = revenue.toFixed(2) + ' €';
           document.getElementById('active-count').textContent = activeCount;
-          document.getElementById('total-sold').textContent   = totalSold;
+          document.getElementById('total-sold').textContent = totalSold;
         });
     }
 
     // ────────────────────────────────────────────────
-    //  NEUES PRODUKT SPEICHERN + AUTO-KATEGORIE
+    // NEUES PRODUKT (JETZT mit available: true)
     // ────────────────────────────────────────────────
     document.getElementById('add-form').addEventListener('submit', async e => {
       e.preventDefault();
+      const name = document.getElementById('name').value.trim();
+      const price = parseFloat(document.getElementById('price').value);
+      const stock = parseInt(document.getElementById('stock').value);
+      const type = document.getElementById('type').value;
+      const isNew = document.getElementById('isNew').checked;
 
-      const name   = document.getElementById('name').value.trim();
-      const price  = parseFloat(document.getElementById('price').value);
-      const stock  = parseInt(document.getElementById('stock').value);
-      const type   = document.getElementById('type').value;
-      const isNew  = document.getElementById('isNew').checked;
-
-      if (!name) return showToast('Name fehlt', 'error');
-      if (isNaN(price) || price <= 0) return showToast('Preis ungültig', 'error');
-      if (isNaN(stock) || stock < 0) return showToast('Lagerbestand ungültig', 'error');
-
-      let category = '';
-      if (type === 'vape') {
-        category = 'Tornado 30.000';
-      } else if (type === 'liquid') {
-        category = isNew ? 'Neue Sorten' : 'Normale Sorten';
+      if (!name || isNaN(price) || price <= 0 || isNaN(stock) || stock < 0) {
+        return showToast('Bitte alle Felder korrekt ausfüllen', 'error');
       }
+
+      let category = type === 'vape' ? 'WaveVapes Tornado 30000' : (isNew ? 'Neue Sorten' : 'Normale Sorten');
 
       try {
         await db.collection('products').add({
@@ -267,11 +251,10 @@
           type,
           isNew: type === 'liquid' ? isNew : false,
           category,
-          active: true,
+          available: true,          // ← WICHTIG: jetzt "available"
           sold: 0,
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
-
         e.target.reset();
         showToast('Produkt erfolgreich angelegt', 'success');
       } catch (err) {
@@ -281,12 +264,12 @@
     });
 
     // ────────────────────────────────────────────────
-    //  AKTIVIEREN / DEAKTIVIEREN
+    // VERFÜGBARKEIT UMSCHALTEN (available)
     // ────────────────────────────────────────────────
-    async function toggleActive(id, active) {
+    async function toggleAvailable(id, available) {
       try {
-        await db.collection('products').doc(id).update({ active });
-        showToast(`Produkt ${active ? 'aktiviert' : 'deaktiviert'}`, 'success');
+        await db.collection('products').doc(id).update({ available });
+        showToast(`Produkt ${available ? 'aktiviert' : 'deaktiviert'}`, 'success');
       } catch (err) {
         console.error(err);
         showToast('Fehler beim Umschalten', 'error');
@@ -294,35 +277,25 @@
     }
 
     // ────────────────────────────────────────────────
-    //  PRODUKT BEARBEITEN (Prompt-Style – kann später Modal werden)
+    // PRODUKT BEARBEITEN
     // ────────────────────────────────────────────────
     async function editProduct(id) {
       const docRef = db.collection('products').doc(id);
       const docSnap = await docRef.get();
       if (!docSnap.exists) return showToast('Produkt nicht gefunden', 'error');
-
       const p = docSnap.data();
 
-      const name   = prompt('Name:', p.name) || p.name;
-      const price  = parseFloat(prompt('Preis (€):', p.price)) || p.price;
-      const stock  = parseInt(prompt('Lagerbestand:', p.stock)) || p.stock;
-      const type   = prompt('Typ (vape / liquid):', p.type)?.toLowerCase() || p.type;
-      const isNewRaw = prompt('Neue Sorte? (ja/nein) – nur bei Liquid:', p.isNew ? 'ja' : 'nein')?.toLowerCase();
+      const name = prompt('Name:', p.name) || p.name;
+      const price = parseFloat(prompt('Preis (€):', p.price)) || p.price;
+      const stock = parseInt(prompt('Lagerbestand:', p.stock)) || p.stock;
+      const type = prompt('Typ (vape / liquid):', p.type)?.toLowerCase() || p.type;
+      const isNewRaw = prompt('Neue Sorte? (ja/nein):', p.isNew ? 'ja' : 'nein')?.toLowerCase();
       const isNew = (type === 'liquid') && (isNewRaw === 'ja' || isNewRaw === 'true');
 
-      if (!name || isNaN(price) || isNaN(stock) || !['vape','liquid'].includes(type)) {
-        return showToast('Ungültige Eingabe – abgebrochen', 'error');
-      }
-
-      let category = '';
-      if (type === 'vape') category = 'Tornado 30.000';
-      else if (type === 'liquid') category = isNew ? 'Neue Sorten' : 'Normale Sorten';
+      let category = type === 'vape' ? 'WaveVapes Tornado 30000' : (isNew ? 'Neue Sorten' : 'Normale Sorten');
 
       try {
-        await docRef.update({
-          name, price, stock, type, isNew, category,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        await docRef.update({ name, price, stock, type, isNew, category });
         showToast('Produkt aktualisiert', 'success');
       } catch (err) {
         console.error(err);
@@ -331,7 +304,7 @@
     }
 
     // ────────────────────────────────────────────────
-    //  TOAST HELPER
+    // TOAST
     // ────────────────────────────────────────────────
     function showToast(message, type = 'success') {
       const bg = type === 'error' ? 'bg-red-600' : 'bg-emerald-600';

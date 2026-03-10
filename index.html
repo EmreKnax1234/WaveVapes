@@ -63,10 +63,7 @@
             margin-bottom: 12px;
         }
         
-        .discount-price { font-size: 1.35rem; text-decoration: line-through; color: #9ca3af; }
-        .sale-price { font-size: 1.85rem; font-weight: 700; color: #ef4444; }
-
-        /* === NEUER QUANTITY SELECTOR (direkt Zahl eingeben) === */
+        /* === NEUER QUANTITY SELECTOR (direkt Zahl eingeben + + / - funktionieren) === */
         .qty-container {
             display: flex;
             align-items: center;
@@ -113,6 +110,8 @@
             margin: 0;
         }
 
+        .discount-price { font-size: 1.35rem; text-decoration: line-through; color: #9ca3af; }
+        .sale-price { font-size: 1.85rem; font-weight: 700; color: #ef4444; }
         .mystery-item { background: linear-gradient(90deg, #10b981, #34d399) !important; border: 2px solid #a7f3d0 !important; color: black; }
         .nicotine-select { background: #1f2937; color: white; border: 1px solid rgba(103,232,249,0.5); border-radius: 9999px; padding: 6px 12px; font-size: 0.875rem; margin-top: 8px; width: 100%; max-width: 180px; appearance: none; }
         .nicotine-select:focus { outline: none; border-color: #22d3ee; box-shadow: 0 0 0 3px rgba(34,211,238,0.3); }
@@ -933,7 +932,6 @@
         function setQuantityDirect(id, newQty) {
             if (isNaN(newQty)) newQty = 0;
             newQty = Math.max(0, Math.floor(newQty));
-
             let existing = cart.find(item => item.id === id);
             if (!existing) {
                 const product = allProducts.find(p => p.id === id);
@@ -941,14 +939,11 @@
                 existing = { id, name: product.name, qty: 0, price: product.price, nicotine: "20 mg" };
                 cart.push(existing);
             }
-
             existing.qty = newQty;
             if (existing.qty === 0) cart = cart.filter(item => item.id !== id);
-
             manageMysteryVape();
             const newTornadoQty = getTornadoQuantity();
             if (newTornadoQty >= 4 && newTornadoQty % 4 === 0) showDealToast();
-
             updateCartDisplay();
             renderProducts();
         }
@@ -1000,7 +995,6 @@
                             <div class="flex flex-col items-center">
                                 ${priceHTML}
                                 ${nicotineHTML}
-                                <!-- NEUER MENGE-SELECTOR -->
                                 <div class="qty-container">
                                     <button onclick="changeQuantity(${product.id}, -1)" class="qty-btn">-</button>
                                     <input type="number" value="${qty}" min="0" class="qty-input" onchange="setQuantityDirect(${product.id}, this.valueAsNumber)">

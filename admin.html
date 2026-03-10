@@ -40,15 +40,43 @@
     .status-cancelled { background: #991b1b; color: #fca5a5; }
 
     .btn-admin {
-      @apply px-4 py-2 rounded-lg font-medium transition-all;
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+      font-weight: 500;
+      transition: all 0.2s;
     }
 
-    .btn-primary   { @apply bg-cyan-500 hover:bg-cyan-400 text-black; }
-    .btn-danger    { @apply bg-red-600 hover:bg-red-500 text-white; }
-    .btn-success   { @apply bg-emerald-600 hover:bg-emerald-500 text-white; }
+    .btn-primary   { background: #06b6d4; color: black; }
+    .btn-primary:hover { background: #22d3ee; }
+
+    .btn-danger    { background: #dc2626; color: white; }
+    .btn-danger:hover { background: #ef4444; }
+
+    .btn-success   { background: #10b981; color: white; }
+    .btn-success:hover { background: #34d399; }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #10b981;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 9999px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+      z-index: 9999;
+      opacity: 0;
+      transition: opacity 0.4s, transform 0.4s;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(-8px);
+    }
   </style>
 </head>
-<body class="bg-black text-white">
+<body>
 
   <!-- HEADER -->
   <header class="bg-zinc-950 border-b border-cyan-900/30 sticky top-0 z-50">
@@ -65,10 +93,10 @@
     </div>
   </header>
 
-  <!-- MAIN CONTENT -->
+  <!-- MAIN -->
   <main class="max-w-7xl mx-auto px-4 sm:px-6 py-10">
 
-    <!-- AUTH CHECK OVERLAY -->
+    <!-- Lade-Overlay + No-Admin -->
     <div id="auth-loading" class="fixed inset-0 bg-black/90 flex items-center justify-center z-50">
       <div class="text-center">
         <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-cyan-400 mx-auto mb-6"></div>
@@ -84,32 +112,20 @@
       </button>
     </div>
 
-    <!-- ADMIN DASHBOARD (wird sichtbar wenn Admin) -->
+    <!-- ADMIN DASHBOARD -->
     <div id="admin-content" class="hidden">
-
-      <!-- STATISTIKEN -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-        <div class="admin-card text-center">
-          <p class="text-gray-400 mb-2">Gesamtumsatz</p>
-          <p id="total-revenue" class="text-4xl font-bold text-emerald-400">0 €</p>
-        </div>
-        <div class="admin-card text-center">
-          <p class="text-gray-400 mb-2">Bestellungen</p>
-          <p id="total-orders" class="text-4xl font-bold text-cyan-400">0</p>
-        </div>
-        <div class="admin-card text-center">
-          <p class="text-gray-400 mb-2">Produkte</p>
-          <p id="total-products" class="text-4xl font-bold text-purple-400">0</p>
-        </div>
-      </div>
 
       <!-- TABS -->
       <div class="flex border-b border-zinc-700 mb-8">
-        <button onclick="showTab('orders')" class="tab-btn px-6 py-3 font-medium border-b-4 border-transparent hover:border-cyan-400 transition-all tab-active">Bestellungen</button>
-        <button onclick="showTab('products')" class="tab-btn px-6 py-3 font-medium border-b-4 border-transparent hover:border-cyan-400 transition-all">Produkte</button>
+        <button onclick="showTab('orders')" class="tab-btn px-6 py-3 font-medium border-b-4 border-transparent hover:border-cyan-400 transition-all tab-active">
+          Bestellungen
+        </button>
+        <button onclick="showTab('products')" class="tab-btn px-6 py-3 font-medium border-b-4 border-transparent hover:border-cyan-400 transition-all">
+          Produkte verwalten
+        </button>
       </div>
 
-      <!-- BESTELLUNGEN TAB -->
+      <!-- BESTELLUNGEN -->
       <div id="tab-orders" class="tab-content">
         <div class="admin-card mb-8">
           <h2 class="text-2xl font-bold mb-6">Alle Bestellungen (Live)</h2>
@@ -131,38 +147,44 @@
         </div>
       </div>
 
-      <!-- PRODUKTE TAB -->
+      <!-- PRODUKTE -->
       <div id="tab-products" class="tab-content hidden">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <!-- Neue Produkt hinzufügen -->
+          <!-- Neues Produkt -->
           <div class="admin-card">
             <h3 class="text-xl font-bold mb-6">Neues Produkt hinzufügen</h3>
             <form id="add-product-form" class="space-y-4">
-              <input type="text" id="prod-name" placeholder="Produktname" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-cyan-500" required/>
-              <input type="number" id="prod-price" placeholder="Preis (€)" step="0.01" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-cyan-500" required/>
-              <input type="number" id="prod-stock" placeholder="Lagerbestand" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-cyan-500" required/>
-              <select id="prod-category" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-cyan-500">
-                <option value="vape">Disposable Vape</option>
-                <option value="liquid">Liquid</option>
-                <option value="accessory">Zubehör</option>
+              <input type="text" id="prod-name" placeholder="Produktname (z. B. Tornado Mango)" required class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-cyan-500"/>
+              <input type="number" id="prod-price" placeholder="Preis in €" step="0.01" min="0.01" required class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-cyan-500"/>
+              <input type="number" id="prod-stock" placeholder="Lagerbestand" min="0" required class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-cyan-500"/>
+              <select id="prod-category" required class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-cyan-500">
+                <option value="" disabled selected>Kategorie wählen</option>
+                <option value="Tornado 30.000">Tornado 30.000</option>
+                <option value="Normale Sorten">Normale Sorten</option>
+                <option value="Neue Sorten">Neue Sorten</option>
               </select>
-              <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-lg font-bold">Produkt erstellen</button>
+              <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-lg font-bold">
+                Produkt erstellen
+              </button>
             </form>
           </div>
 
           <!-- Produktliste -->
           <div class="admin-card">
             <h3 class="text-xl font-bold mb-6">Produkte verwalten</h3>
-            <div id="products-list" class="space-y-4 max-h-[600px] overflow-y-auto"></div>
+            <div id="products-list" class="space-y-4 max-h-[600px] overflow-y-auto pr-2"></div>
           </div>
         </div>
       </div>
     </div>
   </main>
 
+  <!-- TOAST CONTAINER -->
+  <div id="toast-container"></div>
+
   <script>
     // ────────────────────────────────────────────────
-    //  FIREBASE KONFIGURATION (genau wie in deinem Shop)
+    //  FIREBASE KONFIGURATION (identisch mit deinem Shop)
     // ────────────────────────────────────────────────
     const firebaseConfig = {
       apiKey: "AIzaSyDsIUl-iYmH42MPbusFLhGhj5oGLh01BzI",
@@ -179,7 +201,7 @@
     const db = firebase.firestore();
 
     // ────────────────────────────────────────────────
-    //  AUTH & ADMIN CHECK
+    //  AUTH + ADMIN CHECK
     // ────────────────────────────────────────────────
     auth.onAuthStateChanged(async (user) => {
       if (!user) {
@@ -201,56 +223,33 @@
         document.getElementById("auth-loading").classList.add("hidden");
         document.getElementById("admin-content").classList.remove("hidden");
 
-        loadStats();
         loadOrders();
         loadProducts();
       } catch (err) {
-        console.error(err);
-        alert("Fehler beim Laden der Admin-Rechte.");
+        console.error("Admin-Check Fehler:", err);
+        alert("Fehler beim Prüfen der Admin-Rechte.");
       }
     });
 
-    // Logout
     function logout() {
-      auth.signOut().then(() => {
-        window.location.href = "index.html";
-      });
+      auth.signOut().then(() => window.location.href = "index.html");
     }
 
     // ────────────────────────────────────────────────
-    //  TABS
+    //  TABS STEUERUNG
     // ────────────────────────────────────────────────
     function showTab(tabId) {
       document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
       document.getElementById(`tab-${tabId}`).classList.remove('hidden');
 
-      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('tab-active', 'border-cyan-400'));
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('tab-active', 'border-cyan-400');
+      });
       event.target.classList.add('tab-active', 'border-cyan-400');
     }
 
     // ────────────────────────────────────────────────
-    //  STATISTIKEN
-    // ────────────────────────────────────────────────
-    async function loadStats() {
-      try {
-        const ordersSnap = await db.collection("orders").get();
-        let revenue = 0;
-        ordersSnap.forEach(doc => {
-          revenue += doc.data().total || 0;
-        });
-
-        const productsSnap = await db.collection("products").get();
-
-        document.getElementById("total-revenue").textContent = revenue.toFixed(2) + " €";
-        document.getElementById("total-orders").textContent = ordersSnap.size;
-        document.getElementById("total-products").textContent = productsSnap.size;
-      } catch (err) {
-        console.error("Stats Fehler:", err);
-      }
-    }
-
-    // ────────────────────────────────────────────────
-    //  BESTELLUNGEN LIVE LADEN + STATUS ÄNDERN
+    //  BESTELLUNGEN LIVE (onSnapshot)
     // ────────────────────────────────────────────────
     function loadOrders() {
       const tbody = document.getElementById("orders-table-body");
@@ -270,16 +269,19 @@
             const date = data.date?.toDate?.() ? data.date.toDate().toLocaleString("de-DE") : "—";
 
             let statusClass = "";
-            if (data.status === "Warten auf Zahlung") statusClass = "status-waiting";
-            else if (data.status === "Bezahlt")      statusClass = "status-paid";
-            else if (data.status === "Versendet")    statusClass = "status-shipped";
-            else if (data.status === "Storniert")    statusClass = "status-cancelled";
+            switch (data.status) {
+              case "Warten auf Zahlung": statusClass = "status-waiting"; break;
+              case "Bezahlt":            statusClass = "status-paid";    break;
+              case "Versendet":          statusClass = "status-shipped"; break;
+              case "Storniert":          statusClass = "status-cancelled"; break;
+              default:                   statusClass = "bg-gray-700 text-gray-300";
+            }
 
             const tr = document.createElement("tr");
             tr.className = "border-b border-zinc-800 hover:bg-zinc-800/50 transition";
             tr.innerHTML = `
               <td class="py-4 px-4 font-mono">${data.orderNumber || doc.id.slice(0,8)}</td>
-              <td class="py-4 px-4">${data.userEmail || "—"}</td>
+              <td class="py-4 px-4">${data.userEmail || data.userId.slice(0,8) + '...'}</td>
               <td class="py-4 px-4 font-bold">${(data.total || 0).toFixed(2)} €</td>
               <td class="py-4 px-4">
                 <span class="px-3 py-1 rounded-full text-sm ${statusClass}">
@@ -298,9 +300,6 @@
             `;
             tbody.appendChild(tr);
           });
-        }, (err) => {
-          console.error("Orders Snapshot Fehler:", err);
-          tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-red-400">Fehler beim Laden der Bestellungen</td></tr>';
         });
     }
 
@@ -313,42 +312,52 @@
         showToast(`Status auf "${newStatus}" geändert`);
       } catch (err) {
         console.error(err);
-        alert("Fehler beim Ändern des Status");
+        alert("Fehler beim Ändern: " + err.message);
       }
     }
 
     // ────────────────────────────────────────────────
-    //  PRODUKTE VERWALTEN
+    //  PRODUKTE LADEN + VERWALTEN (exakt deine 3 Kategorien)
     // ────────────────────────────────────────────────
     function loadProducts() {
       const container = document.getElementById("products-list");
       container.innerHTML = '<p class="text-center py-8 text-gray-400">Lade Produkte...</p>';
 
       db.collection("products")
-        .orderBy("name")
         .onSnapshot((snapshot) => {
           container.innerHTML = "";
           if (snapshot.empty) {
-            container.innerHTML = '<p class="text-center py-8 text-gray-400">Keine Produkte vorhanden</p>';
+            container.innerHTML = '<p class="text-center py-8 text-gray-400">Noch keine Produkte vorhanden</p>';
             return;
           }
 
-          snapshot.forEach((doc) => {
-            const p = doc.data();
+          const products = [];
+          snapshot.forEach(doc => {
+            const data = doc.data();
+            products.push({ id: doc.id, ...data });
+          });
+
+          // Sortieren: erst aktive, dann alphabetisch
+          products.sort((a, b) => {
+            if (a.active !== b.active) return a.active ? -1 : 1;
+            return a.name.localeCompare(b.name);
+          });
+
+          products.forEach(p => {
             const div = document.createElement("div");
-            div.className = "bg-zinc-800 border border-zinc-700 rounded-lg p-4 flex justify-between items-center";
+            div.className = `flex justify-between items-center p-4 rounded-lg border ${p.active ? 'border-emerald-700 bg-emerald-950/30' : 'border-red-800 bg-red-950/30 opacity-75'}`;
             div.innerHTML = `
-              <div>
-                <div class="font-medium">${p.name}</div>
+              <div class="flex-1">
+                <div class="font-medium ${p.active ? '' : 'line-through text-gray-500'}">${p.name}</div>
                 <div class="text-sm text-gray-400">
-                  Preis: ${p.price} € • Lager: ${p.stock} • Kategorie: ${p.category}
+                  ${p.price.toFixed(2)} € • Lager: ${p.stock} • ${p.category}
                 </div>
               </div>
               <div class="flex gap-3">
-                <button onclick="editProduct('${doc.id}', ${p.price}, ${p.stock})" class="text-cyan-400 hover:text-cyan-300">
+                <button onclick="editProduct('${p.id}', '${p.name}', ${p.price}, ${p.stock})" class="text-cyan-400 hover:text-cyan-300">
                   <i class="fa-solid fa-edit"></i>
                 </button>
-                <button onclick="toggleProductActive('${doc.id}', ${!p.active})" class="${p.active ? 'text-green-400' : 'text-red-400'} hover:opacity-80">
+                <button onclick="toggleActive('${p.id}', ${!p.active})" class="${p.active ? 'text-emerald-400' : 'text-red-400'} hover:opacity-80">
                   <i class="fa-solid fa-power-off"></i>
                 </button>
               </div>
@@ -361,15 +370,22 @@
     // Produkt hinzufügen
     document.getElementById("add-product-form").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const name   = document.getElementById("prod-name").value.trim();
-      const price  = parseFloat(document.getElementById("prod-price").value);
-      const stock  = parseInt(document.getElementById("prod-stock").value);
+
+      const name     = document.getElementById("prod-name").value.trim();
+      const priceStr = document.getElementById("prod-price").value.trim();
+      const stockStr = document.getElementById("prod-stock").value.trim();
       const category = document.getElementById("prod-category").value;
 
-      if (!name || isNaN(price) || isNaN(stock)) {
-        alert("Bitte alle Felder korrekt ausfüllen");
+      if (!name || !priceStr || !stockStr || !category) {
+        alert("Bitte alle Felder ausfüllen");
         return;
       }
+
+      const price = parseFloat(priceStr);
+      const stock = parseInt(stockStr);
+
+      if (isNaN(price) || price <= 0) return alert("Preis muss größer 0 sein");
+      if (isNaN(stock) || stock < 0) return alert("Lagerbestand darf nicht negativ sein");
 
       try {
         await db.collection("products").add({
@@ -377,54 +393,66 @@
           price,
           stock,
           category,
-          active: true,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          active: true
         });
+
         e.target.reset();
-        showToast("Produkt hinzugefügt");
+        showToast("Produkt erfolgreich hinzugefügt");
       } catch (err) {
         console.error(err);
-        alert("Fehler beim Erstellen");
+        alert("Fehler beim Speichern: " + err.message);
       }
     });
 
-    // Produkt aktiv/deaktiv
-    async function toggleProductActive(id, active) {
-      if (!confirm(`Produkt wirklich ${active ? "deaktivieren" : "aktivieren"}?`)) return;
+    // Aktiv/Deaktivieren
+    async function toggleActive(id, newActiveState) {
+      if (!confirm(`Produkt wirklich ${newActiveState ? "aktivieren" : "deaktivieren"}?`)) return;
+
       try {
-        await db.collection("products").doc(id).update({ active });
-        showToast(`Produkt ${active ? "deaktiviert" : "aktiviert"}`);
+        await db.collection("products").doc(id).update({ active: newActiveState });
+        showToast(`Produkt ${newActiveState ? "aktiviert" : "deaktiviert"}`);
       } catch (err) {
         alert("Fehler: " + err.message);
       }
     }
 
-    // Einfacher Edit-Button (kann später modal werden)
-    function editProduct(id, oldPrice, oldStock) {
-      const newPrice = prompt("Neuer Preis:", oldPrice);
-      const newStock = prompt("Neuer Lagerbestand:", oldStock);
+    // Bearbeiten (einfache Prompt-Version – kann später Modal werden)
+    function editProduct(id, currentName, currentPrice, currentStock) {
+      const newName  = prompt("Neuer Name:", currentName);
+      const newPrice = prompt("Neuer Preis:", currentPrice);
+      const newStock = prompt("Neuer Lagerbestand:", currentStock);
 
-      if (newPrice === null || newStock === null) return;
+      if (newName === null || newPrice === null || newStock === null) return;
 
       const price = parseFloat(newPrice);
       const stock = parseInt(newStock);
 
-      if (isNaN(price) || isNaN(stock)) return alert("Ungültige Eingabe");
+      if (!newName.trim()) return alert("Name darf nicht leer sein");
+      if (isNaN(price) || price <= 0) return alert("Ungültiger Preis");
+      if (isNaN(stock) || stock < 0) return alert("Ungültiger Lagerbestand");
 
-      db.collection("products").doc(id).update({ price, stock })
-        .then(() => showToast("Produkt aktualisiert"))
-        .catch(err => alert("Fehler: " + err.message));
+      db.collection("products").doc(id).update({
+        name: newName.trim(),
+        price,
+        stock
+      })
+      .then(() => showToast("Produkt aktualisiert"))
+      .catch(err => alert("Fehler: " + err.message));
     }
 
     // ────────────────────────────────────────────────
-    //  HELPER
+    //  TOAST HELPER
     // ────────────────────────────────────────────────
-    function showToast(msg) {
-      const t = document.createElement("div");
-      t.className = "fixed bottom-6 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-6 py-3 rounded-lg shadow-xl z-50 animate-fade-in-out";
-      t.textContent = msg;
-      document.body.appendChild(t);
-      setTimeout(() => t.remove(), 3000);
+    function showToast(message) {
+      const toast = document.createElement("div");
+      toast.className = "toast show";
+      toast.textContent = message;
+      document.getElementById("toast-container").appendChild(toast);
+
+      setTimeout(() => {
+        toast.classList.remove("show");
+        setTimeout(() => toast.remove(), 400);
+      }, 2600);
     }
   </script>
 </body>

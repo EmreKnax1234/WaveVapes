@@ -61,7 +61,7 @@
     </a>
   </div>
 
-  <!-- HAUPTINHALT – nur für Admins sichtbar -->
+  <!-- HAUPTINHALT -->
   <main id="admin-content" class="hidden max-w-7xl mx-auto px-4 sm:px-6 py-10">
     <!-- STATISTIK-BOX -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
@@ -169,7 +169,7 @@
     }
 
     // ────────────────────────────────────────────────
-    // PRODUKTE LADEN (JETZT MIT "available")
+    // PRODUKTE LADEN
     // ────────────────────────────────────────────────
     function loadProducts() {
       const tbody = document.getElementById('products-tbody');
@@ -211,9 +211,12 @@
                        class="w-5 h-5 accent-cyan-500" />
               </td>
               <td class="py-4 px-4 text-center font-medium">${p.sold || 0}</td>
-              <td class="py-4 px-4 text-right space-x-3">
+              <td class="py-4 px-4 text-right space-x-4">
                 <button onclick="editProduct('${id}')" class="text-cyan-400 hover:text-cyan-300">
                   <i class="fa-solid fa-pen-to-square"></i>
+                </button>
+                <button onclick="deleteProduct('${id}')" class="text-red-400 hover:text-red-500">
+                  <i class="fa-solid fa-trash"></i>
                 </button>
               </td>
             `;
@@ -227,7 +230,7 @@
     }
 
     // ────────────────────────────────────────────────
-    // NEUES PRODUKT (JETZT mit available: true)
+    // NEUES PRODUKT
     // ────────────────────────────────────────────────
     document.getElementById('add-form').addEventListener('submit', async e => {
       e.preventDefault();
@@ -245,14 +248,8 @@
 
       try {
         await db.collection('products').add({
-          name,
-          price,
-          stock,
-          type,
-          isNew: type === 'liquid' ? isNew : false,
-          category,
-          available: true,          // ← WICHTIG: jetzt "available"
-          sold: 0,
+          name, price, stock, type, isNew: type === 'liquid' ? isNew : false,
+          category, available: true, sold: 0,
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         e.target.reset();
@@ -264,7 +261,7 @@
     });
 
     // ────────────────────────────────────────────────
-    // VERFÜGBARKEIT UMSCHALTEN (available)
+    // VERFÜGBARKEIT UMSCHALTEN
     // ────────────────────────────────────────────────
     async function toggleAvailable(id, available) {
       try {
@@ -273,6 +270,21 @@
       } catch (err) {
         console.error(err);
         showToast('Fehler beim Umschalten', 'error');
+      }
+    }
+
+    // ────────────────────────────────────────────────
+    // PRODUKT LÖSCHEN (NEU!)
+    // ────────────────────────────────────────────────
+    async function deleteProduct(id) {
+      if (!confirm('⚠️ Produkt IRREVERSIBEL löschen?\n\nDas kann nicht rückgängig gemacht werden!')) return;
+      
+      try {
+        await db.collection('products').doc(id).delete();
+        showToast('✅ Produkt wurde gelöscht', 'success');
+      } catch (err) {
+        console.error(err);
+        showToast('❌ Fehler beim Löschen', 'error');
       }
     }
 

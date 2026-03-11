@@ -852,11 +852,22 @@
 
         document.getElementById('user-search').addEventListener('input', loadUsers);
 
+        // ==================== PASSWORT ZURÜCKSETZEN MIT MELDUNG ====================
         async function resetPassword(email) {
             if (!confirm(`Passwort-Zurücksetzen-E-Mail an ${email} senden?`)) return;
             try {
+                // Flag setzen, damit der User die Meldung bekommt
+                const userSnapshot = await db.collection('users').where('email', '==', email).limit(1).get();
+                if (!userSnapshot.empty) {
+                    const uid = userSnapshot.docs[0].id;
+                    await db.collection('users').doc(uid).update({
+                        passwordResetRequested: true,
+                        passwordResetTimestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                }
+
                 await auth.sendPasswordResetEmail(email);
-                showToast(`✅ Reset-E-Mail wurde an ${email} gesendet!`);
+                showToast(`✅ Reset-E-Mail wurde an ${email} gesendet!<br>Der User sieht jetzt die Meldung beim nächsten Login.`);
             } catch (e) {
                 showToast("Fehler: " + e.message, "error");
             }

@@ -465,6 +465,16 @@
         </div>
     </div>
 
+    <!-- ==================== PRODUKT DETAIL MODAL ==================== -->
+    <div id="product-detail-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-[9999] p-4">
+        <div class="bg-zinc-900 max-w-3xl w-full mx-auto rounded-3xl overflow-hidden">
+            <div class="flex justify-end p-6 border-b border-white/10">
+                <button onclick="closeProductDetail()" class="text-4xl text-gray-400 hover:text-white">✕</button>
+            </div>
+            <div id="detail-content" class="p-8"></div>
+        </div>
+    </div>
+
     <div id="notification-toast"></div>
 
     <script>
@@ -501,7 +511,7 @@
         const HOUR_MS = 3600000;
         let currentNotificationIndex = 0;
         let notificationCyclePaused = false;
-        let appliedDiscount = null; // {code, type: "percent"|"fixed", value: number}
+        let appliedDiscount = null;
         let ordersUnsubscribe = null;
         let userSnapshotUnsubscribe = null;
 
@@ -829,10 +839,8 @@
                         return;
                     }
 
-                    // Code ist noch nicht eingelöst → freigeben
                     appliedDiscount = { code: input, type: d.type, value: d.value };
 
-                    // In Firestore speichern
                     await userRef.update({
                         redeemedLoyaltyCodes: firebase.firestore.FieldValue.arrayUnion(input)
                     });
@@ -847,7 +855,6 @@
                     status.innerHTML = `<span class="text-red-400">Fehler: ${err.message}</span>`;
                 }
             } else {
-                // Normale Codes (keine Einmalprüfung)
                 appliedDiscount = { code: input, type: d.type, value: d.value };
                 const display = d.type === "fixed" ? `${d.value} €` : `${d.value}%`;
                 status.innerHTML = `<span class="text-emerald-400">✓ ${input} (${display}) eingelöst!</span>`;
@@ -937,7 +944,8 @@
                         available: data.available !== false,
                         price: data.price || 7.99,
                         image: data.image || null,
-                        stock: data.stock || 0
+                        stock: data.stock || 0,
+                        description: data.description || ""
                     });
                 });
                 renderProducts();
@@ -970,44 +978,51 @@
                 if (prioA !== prioB) return prioA - prioB;
                 return a.name.localeCompare(b.name);
             });
+
             let html = "";
             filtered.forEach(product => {
                 const cartItem = cart.find(i => i.id === product.id);
                 const qty = cartItem ? cartItem.qty : 0;
                 const nicotine = cartItem?.nicotine || "20 mg";
-                const imageHTML = product.image ? `<img src="${product.image}" class="tornado-image" alt="${product.name}" loading="lazy">` : '';
-                const oldPrice = product.category === "WaveVapes Tornado 30000" ? "35,99" : "10,99";
+
+                const isVape = product.category === "WaveVapes Tornado 30000";
+                const imageHTML = isVape && product.image 
+                    ? `<img src="${product.image}" class="tornado-image" alt="${product.name}" loading="lazy">` 
+                    : '';
+
+                const oldPrice = isVape ? "35,99" : "10,99";
                 const salePrice = product.price.toFixed(2).replace('.', ',');
                 const unavailableClass = !product.available ? 'unavailable-product' : '';
-                const liquidClass = product.category !== "WaveVapes Tornado 30000" ? 'liquid-card' : '';
+                const liquidClass = !isVape ? 'liquid-card' : '';
+
                 let nicotineHTML = '';
-                if (product.category !== "WaveVapes Tornado 30000" && product.available) {
-                    nicotineHTML = `<select class="nicotine-select" onchange="updateNicotine('${product.id}', this.value)">${NICOTINE_OPTIONS.map(opt => `<option value="${opt}" ${nicotine === opt ? 'selected' : ''}>${opt}</option>`).join('')}</select>`;
+                if (!isVape && product.available) {
+                    nicotineHTML = `<select class="nicotine-select" onchange="updateNicotine('${product.id}', this.value); event.stopImmediatePropagation()">${NICOTINE_OPTIONS.map(opt => `<option value="${opt}" ${nicotine === opt ? 'selected' : ''}>${opt}</option>`).join('')}</select>`;
                 }
+
                 let unavailableTagHTML = !product.available ? `<div class="unavailable-tag">Aktuell NICHT verfügbar</div>` : '';
                 let qtyHTML = product.available ? `
-                    <div class="flex items-center bg-zinc-800 rounded-3xl mt-4">
-                        <button onclick="changeQuantity('${product.id}', -1)" class="qty-btn w-9 h-9 text-2xl text-cyan-300">-</button>
+                    <div class="flex items-center bg-zinc-800 rounded-3xl mt-4" onclick="event.stopImmediatePropagation()">
+                        <button onclick="changeQuantity('${product.id}', -1); event.stopImmediatePropagation()" class="qty-btn w-9 h-9 text-2xl text-cyan-300">-</button>
                         <div class="w-10 text-center font-bold text-xl">${qty}</div>
-                        <button onclick="changeQuantity('${product.id}', 1)" class="qty-btn w-9 h-9 text-2xl text-cyan-300">+</button>
+                        <button onclick="changeQuantity('${product.id}', 1); event.stopImmediatePropagation()" class="qty-btn w-9 h-9 text-2xl text-cyan-300">+</button>
                     </div>` : '';
-                let stockHTML = (product.available && product.stock > 0) ? `<p class="text-sm text-emerald-400 mt-2">Noch ${product.stock} verfügbar</p>` : '';
-                const newBadge = product.isNew ? `<span class="ml-auto px-3 py-1 bg-lime-400 text-black text-xs font-black tracking-wider rounded-2xl whitespace-nowrap flex-shrink-0">NEW</span>` : '';
+
                 html += `
-                    <div class="product-card bg-zinc-900 border border-white/10 rounded-3xl overflow-hidden ${unavailableClass} ${liquidClass}">
+                    <div onclick="showProductDetail('${product.id}')" 
+                         class="product-card bg-zinc-900 border border-white/10 rounded-3xl overflow-hidden ${unavailableClass} ${liquidClass} cursor-pointer">
                         <div class="h-1.5 bg-gradient-to-r from-cyan-400 to-purple-500"></div>
                         <div class="p-5">
                             ${imageHTML}
                             <div class="flex items-start justify-between mb-3">
                                 <h4 class="font-semibold text-lg leading-tight flex-1">${product.name}</h4>
-                                ${newBadge}
+                                ${product.isNew ? `<span class="ml-auto px-3 py-1 bg-lime-400 text-black text-xs font-black tracking-wider rounded-2xl">NEW</span>` : ''}
                             </div>
                             ${unavailableTagHTML}
                             <div class="flex flex-col items-center">
-                                <div class="price-row"><span class="discount-price">${oldPrice}€</span> → <span class="sale-price ${!product.available ? 'line-through text-red-400' : ''}">${salePrice}€</span></div>
-                                ${stockHTML}
-                                ${nicotineHTML}
+                                <div class="price-row"><span class="discount-price">${oldPrice}€</span> → <span class="sale-price">${salePrice}€</span></div>
                                 ${qtyHTML}
+                                ${nicotineHTML}
                             </div>
                         </div>
                     </div>`;
@@ -1487,6 +1502,87 @@
         // ====================== SEARCH ======================
         function filterProducts() {
             renderProducts();
+        }
+
+        // ====================== PRODUKT DETAIL MODAL ======================
+        function showProductDetail(id) {
+            const product = allProducts.find(p => p.id === id);
+            if (!product) return;
+
+            const nicotineHTML = product.category !== "WaveVapes Tornado 30000" ? `
+                <div class="mt-6">
+                    <p class="text-xs text-gray-400 mb-2">Nikotinstärke</p>
+                    <select id="modal-nicotine" class="nicotine-select w-full">
+                        <option value="10 mg">10 mg</option>
+                        <option value="20 mg" selected>20 mg</option>
+                    </select>
+                </div>` : '';
+
+            const html = `
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                    <div>
+                        ${product.image ? `<img src="${product.image}" class="w-full rounded-3xl shadow-2xl">` : ''}
+                    </div>
+                    <div>
+                        <h2 class="text-4xl font-bold tracking-tighter neon-text">${product.name}</h2>
+                        <div class="flex items-center gap-3 mt-3 text-emerald-400">
+                            <span class="text-3xl">★ ★ ★ ★ ★</span>
+                            <span class="text-sm">(4.98 • 347 Bewertungen)</span>
+                        </div>
+
+                        <div class="mt-8 text-gray-300 leading-relaxed text-[15px]">
+                            ${product.description ? product.description.replace(/\n/g, '<br>') : '<p class="text-gray-400 italic">Noch keine Beschreibung hinterlegt.<br>Trage sie im Admin-Panel ein!</p>'}
+                        </div>
+
+                        <div class="price-row mt-8">
+                            <span class="discount-price text-2xl">35,99 €</span>
+                            <span class="sale-price text-5xl font-bold">${product.price.toFixed(2).replace('.', ',')} €</span>
+                        </div>
+
+                        ${nicotineHTML}
+
+                        <div class="flex items-center gap-4 mt-10">
+                            <button onclick="addFromDetail('${product.id}')" 
+                                    class="flex-1 bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-6 rounded-3xl text-xl hover:scale-105 transition">
+                                In den Warenkorb
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('detail-content').innerHTML = html;
+            const modal = document.getElementById("product-detail-modal");
+            modal.classList.remove("hidden");
+            modal.classList.add("flex");
+        }
+
+        function closeProductDetail() {
+            const modal = document.getElementById("product-detail-modal");
+            modal.classList.add("hidden");
+            modal.classList.remove("flex");
+        }
+
+        function addFromDetail(id) {
+            const product = allProducts.find(p => p.id === id);
+            if (!product || !product.available) return;
+
+            let existing = cart.find(item => item.id === id);
+            if (!existing) {
+                existing = { id, name: product.name, qty: 0, price: product.price, nicotine: "20 mg" };
+                cart.push(existing);
+            }
+
+            const select = document.getElementById("modal-nicotine");
+            if (select) existing.nicotine = select.value;
+
+            existing.qty = (existing.qty || 0) + 1;
+
+            manageMysteryVape();
+            updateCartDisplay();
+            renderProducts();
+            closeProductDetail();
+            showToast(`✅ ${product.name} wurde hinzugefügt!`);
         }
 
         // ====================== INITIALIZE ======================

@@ -99,6 +99,33 @@
         .liquid-card {
             min-height: auto; /* Keine feste Höhe */
         }
+        /* NEU: Status Badges */
+        .status-badge{
+            padding:4px 10px;
+            border-radius:999px;
+            font-size:12px;
+            font-weight:600;
+        }
+        .status-Zahlung{
+            background:#facc15;
+            color:black;
+        }
+        .status-Wird{
+            background:#60a5fa;
+            color:black;
+        }
+        .status-Versendet{
+            background:#a78bfa;
+            color:black;
+        }
+        .status-Zugestellt{
+            background:#34d399;
+            color:black;
+        }
+        .status-Storniert{
+            background:#ef4444;
+            color:white;
+        }
     </style>
 </head>
 <body class="wave-bg text-white min-h-screen">
@@ -945,7 +972,6 @@
                 showAddressModal();
                 return;
             }
-            // Überprüfe Stock vor Bestellung
             for (let item of cart) {
                 if (item.id === MYSTERY_ID) continue;
                 const product = allProducts.find(p => p.id === item.id);
@@ -970,9 +996,11 @@
                     })),
                     total: finalTotal,
                     address: userAddress,
-                    date: firebase.firestore.Timestamp.now()
+                    date: firebase.firestore.Timestamp.now(),
+                    status: "Zahlung erwartet", // NEU
+                    trackingNumber: "", // NEU
+                    carrier: "" // NEU
                 });
-                // Decrement Stock
                 for (let item of cart) {
                     if (item.id === MYSTERY_ID) continue;
                     await db.collection("products").doc(item.id).update({
@@ -987,7 +1015,7 @@
                 fetch(FORMSPREE_ENDPOINT, { method: "POST", body: formData });
                 showSuccessModal(orderNumber, finalTotal);
                 cart = [];
-                await loadProducts(); // Reload für aktualisierten Stock
+                await loadProducts();
                 updateCartDisplay();
                 renderProducts();
                 toggleCart();
@@ -1043,13 +1071,24 @@
                             <div class="text-sm text-gray-400">${data.date.toDate().toLocaleDateString('de-DE')}</div>
                         </div>
                         <div class="font-bold text-xl mb-2">${data.total.toFixed(2)} €</div>
-                        <button onclick="showPaymentInfo('${data.orderNumber}')" class="w-full bg-cyan-400 hover:bg-cyan-300 text-black py-3 rounded-2xl text-sm font-medium transition-all">Überweisungsdaten anzeigen</button>
+                        <div class="status-badge status-${data.status.replace(/ /g, '')} mb-2">${data.status}</div>
+                        ${data.trackingNumber ? `<a href="${getTrackingLink(data.carrier, data.trackingNumber)}" target="_blank" class="text-cyan-400 underline">Sendung verfolgen</a>` : ''}
+                        <button onclick="showPaymentInfo('${data.orderNumber}')" class="w-full bg-cyan-400 hover:bg-cyan-300 text-black py-3 rounded-2xl text-sm font-medium transition-all mt-2">Überweisungsdaten anzeigen</button>
                     `;
                     container.appendChild(div);
                 });
             } catch (e) {
                 container.innerHTML = `<p class="text-red-400 text-center py-8">Fehler beim Laden</p>`;
             }
+        }
+        function getTrackingLink(carrier, tracking) {
+            const links = {
+                "DHL": `https://www.dhl.de/de/privatkunden/dhl-sendungsverfolgung.html?piececode=${tracking}`,
+                "Hermes": `https://www.myhermes.de/empfangen/sendungsverfolgung/sendungssuche/?searchtext=${tracking}`,
+                "DPD": `https://my.dpd.de/myDPD/tracking.aspx?shipment=${tracking}`,
+                "UPS": `https://www.ups.com/track?loc=de_DE&tracknum=${tracking}`
+            };
+            return links[carrier] || '';
         }
         function showOrderHistory() {
             if (!currentUser) { alert("Bitte zuerst einloggen!"); showAuthModal(); return; }

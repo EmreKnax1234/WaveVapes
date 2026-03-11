@@ -27,6 +27,7 @@
     </style>
 </head>
 <body class="min-h-screen">
+
     <!-- HEADER -->
     <header class="bg-zinc-950 border-b border-cyan-400/30 sticky top-0 z-50 backdrop-blur-xl">
         <div class="max-w-7xl mx-auto px-6 py-5 flex justify-between items-center">
@@ -48,7 +49,6 @@
             <p class="text-xl">Prüfe Admin-Rechte...</p>
         </div>
     </div>
-
     <div id="no-admin" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-50">
         <div class="text-center">
             <h2 class="text-6xl font-bold text-red-500 mb-4">Zugriff verweigert</h2>
@@ -59,6 +59,7 @@
 
     <!-- HAUPTINHALT -->
     <main id="admin-content" class="hidden max-w-7xl mx-auto px-6 py-10">
+
         <!-- TABS -->
         <div class="flex border-b border-white/10 mb-10">
             <button onclick="switchTab(0)" id="tab0" class="tab-active flex-1 py-5 text-lg font-semibold">Produkte</button>
@@ -67,6 +68,7 @@
 
         <!-- ====================== PRODUKTE TAB ====================== -->
         <div id="tab-content-0">
+
             <!-- STATS -->
             <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
                 <div class="card p-6">
@@ -107,6 +109,22 @@
                 </div>
             </div>
 
+            <!-- RESET ALL STATISTICS BUTTON -->
+            <div class="card p-8 mb-12 bg-red-950/30 border border-red-500/50">
+                <div class="flex items-center gap-4 mb-6">
+                    <i class="fa-solid fa-trash-can text-3xl text-red-500"></i>
+                    <div>
+                        <h2 class="text-2xl font-bold text-red-400">Statistiken komplett zurücksetzen</h2>
+                        <p class="text-gray-400">Setzt bei ALLEN Produkten das Feld „sold“ auf 0.<br>Umsatz, verkaufte Einheiten und Top-Seller werden neu berechnet.</p>
+                    </div>
+                </div>
+                <button onclick="resetAllStatistics()" 
+                        class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-5 rounded-3xl text-xl transition-all flex items-center justify-center gap-3">
+                    <i class="fa-solid fa-warning"></i>
+                    ALLE STATISTIKEN ZURÜCKSETZEN
+                </button>
+            </div>
+
             <!-- NEUES PRODUKT -->
             <div class="card p-8 mb-12">
                 <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><i class="fa-solid fa-plus"></i> Neues Produkt hinzufügen</h2>
@@ -114,7 +132,7 @@
                     <input id="prod-name" placeholder="Produktname" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4 text-lg" required>
                     <input id="prod-price" type="number" step="0.01" placeholder="Preis (€)" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4" required>
                     <input id="prod-stock" type="number" placeholder="Lagerbestand" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4" required>
-                    
+                   
                     <select id="prod-type" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4">
                         <option value="vape">Vape (Tornado 30000)</option>
                         <option value="liquid">Liquid</option>
@@ -127,13 +145,11 @@
                         <input id="prod-unavailable" type="checkbox" class="w-5 h-5 accent-red-400">
                         <label class="text-sm">Nicht verfügbar</label>
                     </div>
-
                     <div id="dropzone" class="col-span-full border-2 border-dashed border-cyan-400/50 hover:border-cyan-400 rounded-3xl p-10 text-center cursor-pointer">
                         <i class="fa-solid fa-cloud-arrow-up text-5xl mb-4 text-cyan-400"></i>
                         <p class="text-cyan-300 text-lg">Bild per Drag & Drop oder klicken</p>
                         <img id="preview-thumb" class="hidden mx-auto mt-6 max-h-48 rounded-2xl border border-cyan-400/30 shadow-xl">
                     </div>
-
                     <button type="submit" class="lg:col-span-1 bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-5 rounded-3xl text-xl hover:scale-105 transition">Produkt speichern</button>
                 </form>
             </div>
@@ -241,7 +257,6 @@
         auth.onAuthStateChanged(async (user) => {
             if (!user) return window.location.href = 'index.html';
             document.getElementById('admin-email').textContent = user.email;
-
             const userDoc = await db.collection('users').doc(user.uid).get();
             if (!userDoc.exists || userDoc.data().role !== 'admin') {
                 document.getElementById('auth-loading').classList.add('hidden');
@@ -273,9 +288,31 @@
             setTimeout(() => toast.remove(), 3500);
         }
 
+        // ==================== RESET ALL STATISTICS ====================
+        async function resetAllStatistics() {
+            if (!confirm("⚠️ ALLE STATISTIKEN ZURÜCKSETZEN?\n\nDies setzt bei JEDER Produkt das Feld 'sold' auf 0.\nUmsatz, verkaufte Einheiten und Top-Seller werden auf Null gestellt.\n\nDas kann NICHT rückgängig gemacht werden!")) return;
+            if (!confirm("LETZTE WARNUNG!\nWirklich ALLE Verkaufszahlen löschen?")) return;
+
+            try {
+                const snapshot = await db.collection("products").get();
+                const batch = db.batch();
+
+                snapshot.forEach(doc => {
+                    batch.update(doc.ref, { sold: 0 });
+                });
+
+                await batch.commit();
+
+                showToast("✅ Alle Statistiken wurden zurückgesetzt (sold = 0 bei allen Produkten)", "success");
+                loadProducts();
+            } catch (e) {
+                console.error(e);
+                alert("Fehler beim Zurücksetzen: " + e.message);
+            }
+        }
+
         // ==================== PRODUKTE ====================
         let allProducts = [];
-
         function loadProducts() {
             db.collection('products').onSnapshot(snap => {
                 allProducts = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -302,7 +339,6 @@
             const filtered = allProducts
                 .filter(p => p.name.toLowerCase().includes(filter.toLowerCase()))
                 .sort((a, b) => (b.sold || 0) - (a.sold || 0));
-
             filtered.forEach(p => {
                 html += `
                 <tr class="table-row-hover border-b border-white/10">
@@ -337,7 +373,6 @@
             currentEditId = id;
             const doc = await db.collection('products').doc(id).get();
             const p = doc.data();
-
             const html = `
                 <input id="edit-name" value="${p.name}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 text-lg">
                 <div class="grid grid-cols-2 gap-6">
@@ -359,7 +394,6 @@
             document.getElementById('edit-form').innerHTML = html;
             document.getElementById('edit-modal').classList.remove('hidden');
 
-            // Dropzone im Edit-Modal
             const dz = document.getElementById('edit-dropzone');
             dz.onclick = () => {
                 const input = document.createElement('input');
@@ -386,9 +420,7 @@
             const stock = parseInt(document.getElementById('edit-stock').value);
             const type = document.getElementById('edit-type').value;
             const isNew = document.getElementById('edit-new').checked;
-
             let data = { name, price, stock, type, isNew };
-
             if (selectedFile) {
                 const formData = new FormData();
                 formData.append("file", selectedFile);
@@ -397,7 +429,6 @@
                 const json = await res.json();
                 if (json.secure_url) data.image = json.secure_url;
             }
-
             await db.collection('products').doc(currentEditId).update(data);
             closeEditModal();
             showToast('Produkt gespeichert ✅');
@@ -418,9 +449,7 @@
             const type = document.getElementById('prod-type').value;
             const isNew = document.getElementById('prod-new').checked;
             const unavailable = document.getElementById('prod-unavailable').checked;
-
             const category = type === 'vape' ? 'WaveVapes Tornado 30000' : (isNew ? 'Neue Sorten' : 'Normale Sorten');
-
             const docRef = await db.collection('products').add({
                 name, price, stock, type, category,
                 isNew: type === 'liquid' ? isNew : false,
@@ -428,7 +457,6 @@
                 sold: 0,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
-
             if (selectedFile) {
                 const formData = new FormData();
                 formData.append("file", selectedFile);
@@ -437,7 +465,6 @@
                 const json = await res.json();
                 if (json.secure_url) await docRef.update({ image: json.secure_url });
             }
-
             e.target.reset();
             document.getElementById('preview-thumb').classList.add('hidden');
             selectedFile = null;
@@ -468,12 +495,10 @@
                     const o = doc.data();
                     const date = o.date ? o.date.toDate().toLocaleString('de-DE') : '—';
                     const status = o.status || 'Zahlung erwartet';
-
-                    if (document.getElementById('order-search').value && 
-                        !o.orderNumber.includes(document.getElementById('order-search').value) && 
+                    if (document.getElementById('order-search').value &&
+                        !o.orderNumber.includes(document.getElementById('order-search').value) &&
                         !o.userEmail.includes(document.getElementById('order-search').value)) return;
                     if (document.getElementById('status-filter').value && status !== document.getElementById('status-filter').value) return;
-
                     html += `
                     <tr class="border-b border-white/10 hover:bg-zinc-800/50">
                         <td class="py-6 px-6 font-mono text-cyan-300">${o.orderNumber}</td>
@@ -507,12 +532,11 @@
             return map[s] || "status-Zahlung";
         }
 
-        // ==================== BESTELL-DETAIL MODAL (VOLLSTÄNDIG) ====================
+        // ==================== BESTELL-DETAIL MODAL ====================
         async function showOrderModal(orderId) {
             currentOrderId = orderId;
             const doc = await db.collection('orders').doc(orderId).get();
             const order = doc.data();
-
             const date = order.date ? order.date.toDate().toLocaleString('de-DE') : '—';
             let itemsHTML = '';
             order.items.forEach(item => {
@@ -522,7 +546,6 @@
                         <span>${(item.price * item.qty).toFixed(2)} €</span>
                     </div>`;
             });
-
             const modalHTML = `
             <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]">
                 <div class="bg-zinc-900 rounded-3xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto modal">
@@ -536,15 +559,11 @@
                             <div><strong>Kunde:</strong> <span class="text-emerald-400">${order.userEmail}</span></div>
                         </div>
                         <div><strong>Adresse:</strong><br>${order.address.street}<br>${order.address.zip} ${order.address.city}</div>
-                        
                         <div>
                             <strong>Artikel</strong>
                             ${itemsHTML}
                         </div>
-                        
                         <div class="text-2xl font-bold">Gesamt: <span class="text-emerald-400">${order.total.toFixed(2)} €</span></div>
-
-                        <!-- ADMIN BEREICH -->
                         <div class="bg-zinc-950 -mx-8 -mb-8 p-8 rounded-b-3xl border-t border-white/10">
                             <h4 class="font-bold mb-6 text-cyan-400 flex items-center gap-2"><i class="fa-solid fa-truck"></i> Admin-Steuerung</h4>
                             <select id="modal-status" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 mb-6">
@@ -576,7 +595,6 @@
                     </div>
                 </div>
             </div>`;
-
             document.getElementById('order-modal-container').innerHTML = modalHTML;
         }
 
@@ -588,7 +606,6 @@
             const status = document.getElementById('modal-status').value;
             const carrier = document.getElementById('modal-carrier').value;
             const tracking = document.getElementById('modal-tracking').value.trim();
-
             await db.collection('orders').doc(currentOrderId).update({ status, carrier, trackingNumber: tracking });
             showToast('Bestellung aktualisiert');
             closeOrderModal();

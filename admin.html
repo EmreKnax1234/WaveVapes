@@ -24,10 +24,10 @@
         .status-Versendet{background:#a78bfa;color:black;}
         .status-Zugestellt{background:#34d399;color:black;}
         .status-Storniert{background:#ef4444;color:white;}
+        .disabled { background: #7f1d1d !important; color: #fca5a5; }
     </style>
 </head>
 <body class="min-h-screen">
-
     <!-- HEADER -->
     <header class="bg-zinc-950 border-b border-cyan-400/30 sticky top-0 z-50 backdrop-blur-xl">
         <div class="max-w-7xl mx-auto px-6 py-5 flex justify-between items-center">
@@ -63,6 +63,7 @@
         <div class="flex border-b border-white/10 mb-10">
             <button onclick="switchTab(0)" id="tab0" class="tab-active flex-1 py-5 text-lg font-semibold">Produkte</button>
             <button onclick="switchTab(1)" id="tab1" class="flex-1 py-5 text-lg font-semibold">Bestellungen</button>
+            <button onclick="switchTab(2)" id="tab2" class="flex-1 py-5 text-lg font-semibold">Benutzer</button>
         </div>
 
         <!-- ====================== PRODUKTE TAB ====================== -->
@@ -71,12 +72,12 @@
             <div class="card p-8 mb-12 bg-gradient-to-br from-emerald-950 to-cyan-950 border border-emerald-400/30">
                 <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><i class="fa-solid fa-download"></i> Backup & Restore</h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <button onclick="exportProductsToCSV()" 
+                    <button onclick="exportProductsToCSV()"
                             class="bg-emerald-600 hover:bg-emerald-500 py-6 rounded-3xl font-bold text-xl flex items-center justify-center gap-3 transition">
                         <i class="fa-solid fa-file-csv text-3xl"></i>
                         Alle Produkte als CSV exportieren
                     </button>
-                    <button onclick="document.getElementById('csv-upload').click()" 
+                    <button onclick="document.getElementById('csv-upload').click()"
                             class="bg-orange-600 hover:bg-orange-500 py-6 rounded-3xl font-bold text-xl flex items-center justify-center gap-3 transition">
                         <i class="fa-solid fa-upload text-3xl"></i>
                         CSV importieren & Produkte wiederherstellen
@@ -238,6 +239,32 @@
                 </div>
             </div>
         </div>
+
+        <!-- ====================== BENUTZER TAB ====================== -->
+        <div id="tab-content-2" class="hidden">
+            <div class="card overflow-hidden">
+                <div class="p-6 border-b border-white/10 flex items-center justify-between">
+                    <h2 class="text-2xl font-bold flex items-center gap-3"><i class="fa-solid fa-users"></i> Benutzer verwalten</h2>
+                    <input id="user-search" placeholder="E-Mail oder Username suchen..." 
+                           class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-3 w-96">
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-zinc-950">
+                            <tr>
+                                <th class="py-5 px-6 text-left">E-Mail</th>
+                                <th class="py-5 px-6 text-left">Benutzername</th>
+                                <th class="py-5 px-6 text-center">Referral-Code</th>
+                                <th class="py-5 px-6 text-center">Loyalty-Punkte</th>
+                                <th class="py-5 px-6 text-center">Status</th>
+                                <th class="py-5 px-6 text-right">Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-tbody" class="text-sm"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </main>
 
     <!-- EDIT MODAL -->
@@ -274,7 +301,6 @@
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
-
         let currentEditId = null;
         let selectedFile = null;
         let currentOrderId = null;
@@ -294,15 +320,19 @@
             document.getElementById('admin-content').classList.remove('hidden');
             switchTab(0);
         });
+
         function logout() { auth.signOut().then(() => location.href = 'index.html'); }
 
         // ==================== TABS ====================
         function switchTab(n) {
             document.getElementById('tab0').classList.toggle('tab-active', n === 0);
             document.getElementById('tab1').classList.toggle('tab-active', n === 1);
+            document.getElementById('tab2').classList.toggle('tab-active', n === 2);
             document.getElementById('tab-content-0').classList.toggle('hidden', n !== 0);
             document.getElementById('tab-content-1').classList.toggle('hidden', n !== 1);
+            document.getElementById('tab-content-2').classList.toggle('hidden', n !== 2);
             if (n === 1) loadOrders();
+            if (n === 2) loadUsers();
         }
 
         // ==================== TOAST ====================
@@ -378,12 +408,10 @@
             tbody.innerHTML = html || `<tr><td colspan="9" class="text-center py-16 text-gray-400">Keine Produkte gefunden</td></tr>`;
         }
         document.getElementById('product-search').addEventListener('input', e => renderProductTable(e.target.value));
-
         async function toggleAvailable(id, val) {
             await db.collection('products').doc(id).update({ available: val });
             showToast('Verfügbarkeit aktualisiert');
         }
-
         async function deleteProduct(id) {
             if (!confirm('Produkt wirklich endgültig löschen?')) return;
             await db.collection('products').doc(id).delete();
@@ -396,7 +424,6 @@
             removeCurrentImage = false;
             const doc = await db.collection('products').doc(id).get();
             const p = doc.data();
-
             const html = `
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <div>
@@ -442,10 +469,8 @@
                     </div>
                 </div>
             `;
-
             document.getElementById('edit-form').innerHTML = html;
             document.getElementById('edit-modal').classList.remove('hidden');
-
             const dropzone = document.getElementById('edit-dropzone');
             dropzone.onclick = () => {
                 const input = document.createElement('input');
@@ -460,7 +485,6 @@
                 input.click();
             };
         }
-
         function removeImageInEdit() {
             removeCurrentImage = true;
             document.getElementById('preview-image').innerHTML = `
@@ -470,16 +494,13 @@
                 </div>`;
             showToast('Bild wird entfernt – speichern nicht vergessen!', 'success');
         }
-
         function closeEditModal() {
             document.getElementById('edit-modal').classList.add('hidden');
             selectedFile = null;
             removeCurrentImage = false;
         }
-
         async function saveEdit() {
             if (!currentEditId) return;
-
             const name = document.getElementById('edit-name').value;
             const price = parseFloat(document.getElementById('edit-price').value);
             const stock = parseInt(document.getElementById('edit-stock').value);
@@ -487,7 +508,6 @@
             const description = document.getElementById('edit-description').value;
             const isNew = document.getElementById('edit-new').checked;
             const unavailable = document.getElementById('edit-unavailable').checked;
-
             let data = {
                 name,
                 price,
@@ -497,7 +517,6 @@
                 isNew,
                 available: !unavailable
             };
-
             if (removeCurrentImage && !selectedFile) {
                 data.image = null;
             } else if (selectedFile) {
@@ -508,7 +527,6 @@
                 const json = await res.json();
                 if (json.secure_url) data.image = json.secure_url;
             }
-
             await db.collection('products').doc(currentEditId).update(data);
             closeEditModal();
             showToast('✅ Produkt gespeichert! Bild wurde entfernt (falls gewünscht).');
@@ -525,7 +543,6 @@
             const unavailable = document.getElementById('prod-unavailable').checked;
             const description = document.getElementById('prod-description').value.trim();
             const category = type === 'vape' ? 'WaveVapes Tornado 30000' : (isNew ? 'Neue Sorten' : 'Normale Sorten');
-
             const docRef = await db.collection('products').add({
                 name,
                 price,
@@ -538,7 +555,6 @@
                 sold: 0,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
-
             if (selectedFile) {
                 const formData = new FormData();
                 formData.append("file", selectedFile);
@@ -547,13 +563,11 @@
                 const json = await res.json();
                 if (json.secure_url) await docRef.update({ image: json.secure_url });
             }
-
             e.target.reset();
             document.getElementById('preview-thumb').classList.add('hidden');
             selectedFile = null;
             showToast('✅ Produkt erfolgreich angelegt! 🎉');
         });
-
         const dropzone = document.getElementById('dropzone');
         dropzone.addEventListener('click', () => {
             const input = document.createElement('input');
@@ -572,9 +586,8 @@
         async function exportProductsToCSV() {
             const snapshot = await db.collection("products").get();
             if (snapshot.empty) return alert("Keine Produkte vorhanden!");
-
             let csv = "id,name,price,stock,type,category,isNew,available,description,image,sold\n";
-            
+           
             snapshot.forEach(doc => {
                 const p = doc.data();
                 const row = [
@@ -592,7 +605,6 @@
                 ].join(",");
                 csv += row + "\n";
             });
-
             const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
             const link = document.createElement("a");
             const date = new Date().toISOString().slice(0,10);
@@ -606,23 +618,21 @@
         async function importProductsFromCSV(e) {
             const file = e.target.files[0];
             if (!file) return;
-            
+           
             if (!confirm("⚠️ WARNUNG!\n\nAlle aktuellen Produkte werden GELÖSCHT und durch die CSV ersetzt.\n\nWirklich fortfahren?")) {
                 e.target.value = "";
                 return;
             }
-
             const reader = new FileReader();
             reader.onload = async function(event) {
                 const text = event.target.result;
                 const rows = text.trim().split("\n");
-                
+               
                 // Alle bestehenden Produkte löschen
                 const deleteSnapshot = await db.collection("products").get();
                 const batchDelete = db.batch();
                 deleteSnapshot.forEach(doc => batchDelete.delete(doc.ref));
                 await batchDelete.commit();
-
                 // Neue Produkte importieren
                 const batch = db.batch();
                 for (let i = 1; i < rows.length; i++) {
@@ -644,14 +654,13 @@
                     batch.set(docRef, data);
                 }
                 await batch.commit();
-                
+               
                 showToast("✅ Alle Produkte wurden erfolgreich wiederhergestellt!", "success");
                 loadProducts();
             };
             reader.readAsText(file);
             e.target.value = "";
         }
-
         function parseCSVLine(line) {
             const result = [];
             let current = "";
@@ -797,11 +806,89 @@
             closeOrderModal();
         }
 
+        // ==================== BENUTZER TAB ====================
+        function loadUsers() {
+            const tbody = document.getElementById('users-tbody');
+            db.collection('users').onSnapshot(snapshot => {
+                let html = '';
+                const search = (document.getElementById('user-search').value || '').toLowerCase();
+
+                snapshot.forEach(doc => {
+                    const u = doc.data();
+                    const email = u.email || '—';
+                    const username = u.username || '—';
+                    const refCode = u.referralCode || '—';
+                    const points = u.totalBonusPoints || 0;
+                    const disabled = u.disabled === true;
+
+                    if (search && !email.toLowerCase().includes(search) && !username.toLowerCase().includes(search)) return;
+
+                    html += `
+                    <tr class="table-row-hover border-b border-white/10">
+                        <td class="py-5 px-6 font-medium">${email}</td>
+                        <td class="py-5 px-6">${username}</td>
+                        <td class="py-5 px-6 text-center font-mono text-cyan-300">${refCode}</td>
+                        <td class="py-5 px-6 text-center font-bold text-emerald-400">${points}</td>
+                        <td class="py-5 px-6 text-center">
+                            <span class="status-badge ${disabled ? 'disabled' : 'bg-emerald-600 text-white'}">
+                                ${disabled ? 'GESPERRT' : 'AKTIV'}
+                            </span>
+                        </td>
+                        <td class="py-5 px-6 text-right space-x-3">
+                            <button onclick="resetPassword('${email}')" 
+                                    class="text-amber-400 hover:text-amber-300 text-sm font-medium">PW zurücksetzen</button>
+                            <button onclick="toggleDisable('${doc.id}', ${!disabled})" 
+                                    class="text-red-400 hover:text-red-300 text-sm font-medium">
+                                ${disabled ? 'Entsperren' : 'Sperren'}
+                            </button>
+                            <button onclick="deleteUser('${doc.id}', '${email}')" 
+                                    class="text-red-500 hover:text-red-400 text-sm font-medium">Löschen</button>
+                        </td>
+                    </tr>`;
+                });
+                tbody.innerHTML = html || `<tr><td colspan="6" class="text-center py-16 text-gray-400">Keine Benutzer gefunden</td></tr>`;
+            });
+        }
+
+        document.getElementById('user-search').addEventListener('input', loadUsers);
+
+        async function resetPassword(email) {
+            if (!confirm(`Passwort-Zurücksetzen-E-Mail an ${email} senden?`)) return;
+            try {
+                await auth.sendPasswordResetEmail(email);
+                showToast(`✅ Reset-E-Mail wurde an ${email} gesendet!`);
+            } catch (e) {
+                showToast("Fehler: " + e.message, "error");
+            }
+        }
+
+        async function toggleDisable(uid, disable) {
+            await db.collection('users').doc(uid).update({ disabled: disable });
+            showToast(disable ? '✅ Benutzer gesperrt' : '✅ Benutzer entsperrt');
+        }
+
+        async function deleteUser(uid, email) {
+            if (!confirm(`⚠️ Account von ${email} WIRKLICH LÖSCHEN?\n\nAlle Bestellungen werden ebenfalls gelöscht!`)) return;
+            if (!confirm('LETZTE WARNUNG – unwiderruflich!')) return;
+
+            try {
+                await db.collection('users').doc(uid).delete();
+                const orders = await db.collection('orders').where('userId', '==', uid).get();
+                const batch = db.batch();
+                orders.forEach(doc => batch.delete(doc.ref));
+                await batch.commit();
+                showToast(`✅ Account ${email} komplett gelöscht`);
+            } catch (e) {
+                showToast("Fehler: " + e.message, "error");
+            }
+        }
+
         // ==================== START ====================
         window.onload = () => {
             loadProducts();
             document.getElementById('order-search').addEventListener('input', loadOrders);
             document.getElementById('status-filter').addEventListener('change', loadOrders);
+            document.getElementById('user-search').addEventListener('input', loadUsers);
         };
     </script>
 </body>

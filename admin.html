@@ -11,20 +11,61 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Inter:wght@400;500;600&display=swap');
-        body { font-family: 'Inter', system-ui, sans-serif; background: linear-gradient(135deg, #0a0a0a, #1e1233, #0a0a0a); color: white; }
-        .neon { text-shadow: 0 0 20px #67e8f9, 0 0 40px #67e8f9; }
-        .card { background: #18181b; border: 1px solid #27272a; border-radius: 1.5rem; }
-        .modal { animation: modalPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
-        @keyframes modalPop { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-        .toast { animation: toastSlide 0.4s ease forwards; }
-        .table-row-hover:hover { background: #27272a !important; transition: all 0.2s; }
-        .status-badge{padding:4px 10px;border-radius:999px;font-size:12px;font-weight:600;display:inline-block;text-align:center;min-width:118px;}
+        :root { 
+            --neon-cyan: #67e8f9; 
+        }
+        body { 
+            font-family: 'Inter', system-ui, sans-serif; 
+            background: linear-gradient(135deg, #0a0a0a, #1e1233, #0a0a0a); 
+            color: white; 
+        }
+        .neon { 
+            text-shadow: 0 0 20px #67e8f9, 0 0 40px #67e8f9; 
+        }
+        .card { 
+            background: #18181b; 
+            border: 1px solid #27272a; 
+            border-radius: 1.5rem; 
+        }
+        .modal { 
+            animation: modalPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); 
+        }
+        @keyframes modalPop { 
+            from { transform: scale(0.85); opacity: 0; } 
+            to { transform: scale(1); opacity: 1; } 
+        }
+        .toast { 
+            animation: toastSlide 0.4s ease forwards; 
+        }
+        .table-row-hover:hover { 
+            background: #27272a !important; 
+            transition: all 0.2s; 
+        }
+        .status-badge{
+            padding:4px 10px;
+            border-radius:999px;
+            font-size:12px;
+            font-weight:600;
+            display:inline-block;
+            text-align:center;
+            min-width:118px;
+        }
         .status-Zahlung{background:#facc15;color:black;}
         .status-Wird{background:#60a5fa;color:black;}
         .status-Versendet{background:#a78bfa;color:black;}
         .status-Zugestellt{background:#34d399;color:black;}
         .status-Storniert{background:#ef4444;color:white;}
-        .disabled { background: #7f1d1d !important; color: #fca5a5; }
+        .disabled { 
+            background: #7f1d1d !important; 
+            color: #fca5a5; 
+        }
+
+        /* NEUE TAB-AKTIV-STYLING – hellblau wie im Shop */
+        .tab-active { 
+            border-bottom: 4px solid var(--neon-cyan); 
+            color: var(--neon-cyan); 
+            font-weight: 600; 
+        }
     </style>
 </head>
 <body class="min-h-screen">
@@ -323,7 +364,7 @@
 
         function logout() { auth.signOut().then(() => location.href = 'index.html'); }
 
-        // ==================== TABS ====================
+        // ==================== TABS (mit hellblauer Hervorhebung) ====================
         function switchTab(n) {
             document.getElementById('tab0').classList.toggle('tab-active', n === 0);
             document.getElementById('tab1').classList.toggle('tab-active', n === 1);
@@ -852,11 +893,9 @@
 
         document.getElementById('user-search').addEventListener('input', loadUsers);
 
-        // ==================== PASSWORT ZURÜCKSETZEN MIT MELDUNG ====================
         async function resetPassword(email) {
             if (!confirm(`Passwort-Zurücksetzen-E-Mail an ${email} senden?`)) return;
             try {
-                // Flag setzen, damit der User die Meldung bekommt
                 const userSnapshot = await db.collection('users').where('email', '==', email).limit(1).get();
                 if (!userSnapshot.empty) {
                     const uid = userSnapshot.docs[0].id;
@@ -865,7 +904,6 @@
                         passwordResetTimestamp: firebase.firestore.FieldValue.serverTimestamp()
                     });
                 }
-
                 await auth.sendPasswordResetEmail(email);
                 showToast(`✅ Reset-E-Mail wurde an ${email} gesendet!<br>Der User sieht jetzt die Meldung beim nächsten Login.`);
             } catch (e) {

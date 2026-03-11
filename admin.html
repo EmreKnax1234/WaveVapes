@@ -27,7 +27,6 @@
     </style>
 </head>
 <body class="min-h-screen">
-
     <!-- HEADER -->
     <header class="bg-zinc-950 border-b border-cyan-400/30 sticky top-0 z-50 backdrop-blur-xl">
         <div class="max-w-7xl mx-auto px-6 py-5 flex justify-between items-center">
@@ -59,7 +58,6 @@
 
     <!-- HAUPTINHALT -->
     <main id="admin-content" class="hidden max-w-7xl mx-auto px-6 py-10">
-
         <!-- TABS -->
         <div class="flex border-b border-white/10 mb-10">
             <button onclick="switchTab(0)" id="tab0" class="tab-active flex-1 py-5 text-lg font-semibold">Produkte</button>
@@ -68,7 +66,6 @@
 
         <!-- ====================== PRODUKTE TAB ====================== -->
         <div id="tab-content-0">
-
             <!-- STATS -->
             <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
                 <div class="card p-6">
@@ -118,8 +115,7 @@
                         <p class="text-gray-400">Setzt bei ALLEN Produkten das Feld „sold“ auf 0.<br>Umsatz, verkaufte Einheiten und Top-Seller werden neu berechnet.</p>
                     </div>
                 </div>
-                <button onclick="resetAllStatistics()" 
-                        class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-5 rounded-3xl text-xl transition-all flex items-center justify-center gap-3">
+                <button onclick="resetAllStatistics()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-5 rounded-3xl text-xl transition-all flex items-center justify-center gap-3">
                     <i class="fa-solid fa-warning"></i>
                     ALLE STATISTIKEN ZURÜCKSETZEN
                 </button>
@@ -132,12 +128,10 @@
                     <input id="prod-name" placeholder="Produktname" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4 text-lg" required>
                     <input id="prod-price" type="number" step="0.01" placeholder="Preis (€)" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4" required>
                     <input id="prod-stock" type="number" placeholder="Lagerbestand" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4" required>
-                    
                     <select id="prod-type" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4">
                         <option value="vape">Vape (Tornado 30000)</option>
                         <option value="liquid">Liquid</option>
                     </select>
-                    
                     <div class="flex items-center gap-3">
                         <input id="prod-new" type="checkbox" class="w-5 h-5 accent-lime-400">
                         <label class="text-sm">Neue Sorte</label>
@@ -146,20 +140,15 @@
                         <input id="prod-unavailable" type="checkbox" class="w-5 h-5 accent-red-400">
                         <label class="text-sm">Nicht verfügbar</label>
                     </div>
-                    
-                    <!-- Beschreibung -->
                     <div class="col-span-full">
                         <label class="text-xs text-gray-400 block mb-2">Produktbeschreibung (erscheint im Detail-Modal)</label>
-                        <textarea id="prod-description" rows="4" placeholder="Intensiver Blue Raspberry Geschmack mit eiskalter Frische..." 
-                                  class="w-full bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-4 resize-y"></textarea>
+                        <textarea id="prod-description" rows="4" placeholder="Intensiver Blue Raspberry Geschmack mit eiskalter Frische..." class="w-full bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-4 resize-y"></textarea>
                     </div>
-                    
                     <div id="dropzone" class="col-span-full border-2 border-dashed border-cyan-400/50 hover:border-cyan-400 rounded-3xl p-10 text-center cursor-pointer">
                         <i class="fa-solid fa-cloud-arrow-up text-5xl mb-4 text-cyan-400"></i>
                         <p class="text-cyan-300 text-lg">Bild per Drag & Drop oder klicken</p>
                         <img id="preview-thumb" class="hidden mx-auto mt-6 max-h-48 rounded-2xl border border-cyan-400/30 shadow-xl">
                     </div>
-                    
                     <button type="submit" class="lg:col-span-1 bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-5 rounded-3xl text-xl hover:scale-105 transition">Produkt speichern</button>
                 </form>
             </div>
@@ -227,7 +216,7 @@
         </div>
     </main>
 
-    <!-- EDIT MODAL (voller Detail-Editor mit Live-Vorschau) -->
+    <!-- EDIT MODAL -->
     <div id="edit-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]">
         <div class="bg-zinc-900 rounded-3xl p-8 max-w-6xl w-full mx-4 modal max-h-[95vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-8">
@@ -242,7 +231,7 @@
         </div>
     </div>
 
-    <!-- BESTELL-DETAIL MODAL -->
+    <!-- BESTELL-DETAIL MODAL CONTAINER -->
     <div id="order-modal-container"></div>
 
     <!-- TOAST -->
@@ -265,6 +254,7 @@
         let currentEditId = null;
         let selectedFile = null;
         let currentOrderId = null;
+        let removeCurrentImage = false;
 
         // ==================== AUTH ====================
         auth.onAuthStateChanged(async (user) => {
@@ -280,7 +270,6 @@
             document.getElementById('admin-content').classList.remove('hidden');
             switchTab(0);
         });
-
         function logout() { auth.signOut().then(() => location.href = 'index.html'); }
 
         // ==================== TABS ====================
@@ -305,7 +294,6 @@
         async function resetAllStatistics() {
             if (!confirm("⚠️ ALLE STATISTIKEN ZURÜCKSETZEN?\n\nDies setzt bei JEDER Produkt das Feld 'sold' auf 0.\n\nDas kann NICHT rückgängig gemacht werden!")) return;
             if (!confirm("LETZTE WARNUNG!\nWirklich ALLE Verkaufszahlen löschen?")) return;
-
             try {
                 const snapshot = await db.collection("products").get();
                 const batch = db.batch();
@@ -328,19 +316,16 @@
                 renderProductTable();
             });
         }
-
         function updateStats() {
             const active = allProducts.filter(p => p.available !== false).length;
             const soldTotal = allProducts.reduce((sum, p) => sum + (p.sold || 0), 0);
             const revenue = allProducts.reduce((sum, p) => sum + (p.sold || 0) * (p.price || 0), 0);
             const top = [...allProducts].sort((a, b) => (b.sold || 0) - (a.sold || 0))[0];
-
             document.getElementById('active-products').textContent = active;
             document.getElementById('total-sold').textContent = soldTotal;
             document.getElementById('total-revenue').textContent = revenue.toFixed(0) + ' €';
             document.getElementById('top-seller').textContent = top ? `${top.name} (${top.sold || 0}×)` : '—';
         }
-
         function renderProductTable(filter = '') {
             const tbody = document.getElementById('products-tbody');
             let html = '';
@@ -368,51 +353,47 @@
             });
             tbody.innerHTML = html || `<tr><td colspan="9" class="text-center py-16 text-gray-400">Keine Produkte gefunden</td></tr>`;
         }
-
         document.getElementById('product-search').addEventListener('input', e => renderProductTable(e.target.value));
-
         async function toggleAvailable(id, val) {
             await db.collection('products').doc(id).update({ available: val });
             showToast('Verfügbarkeit aktualisiert');
         }
 
-        // ==================== EDIT MODAL (voller Detail-Editor) ====================
+        // ==================== EDIT MODAL MIT BILD ENTFERNEN ====================
         async function openEditModal(id) {
             currentEditId = id;
+            removeCurrentImage = false;
             const doc = await db.collection('products').doc(id).get();
             const p = doc.data();
 
             const html = `
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <!-- Live-Vorschau -->
                     <div>
                         <h3 class="text-xl font-bold mb-4">Vorschau (wie im Shop)</h3>
                         <div id="preview-image" class="bg-zinc-950 border border-white/10 rounded-3xl overflow-hidden h-96 flex items-center justify-center">
-                            ${p.image ? `<img src="${p.image}" class="max-h-full w-full object-contain">` : 
-                            `<div class="text-center text-gray-500"><i class="fa-solid fa-image text-6xl mb-4"></i><br>Kein Bild hochgeladen</div>`}
+                            ${p.image ? `<img src="${p.image}" class="max-h-full w-full object-contain">` : `<div class="text-center text-gray-500"><i class="fa-solid fa-image text-6xl mb-4"></i><br>Kein Bild hochgeladen</div>`}
                         </div>
+                        ${p.image ? `
+                        <button onclick="removeImageInEdit()" class="mt-4 w-full bg-red-600/80 hover:bg-red-600 text-white py-3 rounded-2xl text-sm font-medium flex items-center justify-center gap-2 transition">
+                            <i class="fa-solid fa-trash"></i>
+                            Aktuelles Bild entfernen
+                        </button>` : ''}
                         <p class="text-xs text-gray-400 mt-4 text-center">Das sehen deine Kunden im Detail-Modal</p>
                     </div>
-
-                    <!-- Bearbeiten -->
                     <div class="space-y-6">
                         <input id="edit-name" value="${p.name}" placeholder="Produktname" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 text-lg">
-                        
                         <div class="grid grid-cols-2 gap-4">
                             <input id="edit-price" type="number" step="0.01" value="${p.price}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
                             <input id="edit-stock" type="number" value="${p.stock}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
                         </div>
-
                         <select id="edit-type" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
                             <option value="vape" ${p.type==='vape'?'selected':''}>Vape (Tornado 30000)</option>
                             <option value="liquid" ${p.type==='liquid'?'selected':''}>Liquid</option>
                         </select>
-
                         <div>
                             <label class="text-xs text-gray-400 block mb-2">Produktbeschreibung</label>
                             <textarea id="edit-description" rows="8" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-3xl px-6 py-4">${p.description || ''}</textarea>
                         </div>
-
                         <div class="flex items-center gap-6">
                             <div class="flex items-center gap-3">
                                 <input id="edit-new" type="checkbox" ${p.isNew?'checked':''}>
@@ -423,8 +404,6 @@
                                 <label>Nicht verfügbar</label>
                             </div>
                         </div>
-
-                        <!-- Bild hochladen -->
                         <div id="edit-dropzone" class="border-2 border-dashed border-cyan-400/50 hover:border-cyan-400 rounded-3xl p-8 text-center cursor-pointer">
                             <i class="fa-solid fa-cloud-arrow-up text-4xl mb-3 text-cyan-400"></i>
                             <p class="text-cyan-300">Neues Bild hochladen (klicken oder Drag & Drop)</p>
@@ -436,7 +415,6 @@
             document.getElementById('edit-form').innerHTML = html;
             document.getElementById('edit-modal').classList.remove('hidden');
 
-            // Bild-Upload
             const dropzone = document.getElementById('edit-dropzone');
             dropzone.onclick = () => {
                 const input = document.createElement('input');
@@ -444,6 +422,7 @@
                 input.accept = 'image/*';
                 input.onchange = e => {
                     selectedFile = e.target.files[0];
+                    removeCurrentImage = false;
                     const url = URL.createObjectURL(selectedFile);
                     document.getElementById('preview-image').innerHTML = `<img src="${url}" class="max-h-full w-full object-contain">`;
                 };
@@ -451,13 +430,25 @@
             };
         }
 
+        function removeImageInEdit() {
+            removeCurrentImage = true;
+            document.getElementById('preview-image').innerHTML = `
+                <div class="text-center text-red-400">
+                    <i class="fa-solid fa-trash text-6xl mb-4"></i><br>
+                    Bild wird beim Speichern entfernt
+                </div>`;
+            showToast('Bild wird entfernt – speichern nicht vergessen!', 'success');
+        }
+
         function closeEditModal() {
             document.getElementById('edit-modal').classList.add('hidden');
             selectedFile = null;
+            removeCurrentImage = false;
         }
 
         async function saveEdit() {
             if (!currentEditId) return;
+
             const name = document.getElementById('edit-name').value;
             const price = parseFloat(document.getElementById('edit-price').value);
             const stock = parseInt(document.getElementById('edit-stock').value);
@@ -466,17 +457,19 @@
             const isNew = document.getElementById('edit-new').checked;
             const unavailable = document.getElementById('edit-unavailable').checked;
 
-            let data = { 
-                name, 
-                price, 
-                stock, 
-                type, 
-                description: description || "", 
-                isNew, 
-                available: !unavailable 
+            let data = {
+                name,
+                price,
+                stock,
+                type,
+                description: description || "",
+                isNew,
+                available: !unavailable
             };
 
-            if (selectedFile) {
+            if (removeCurrentImage && !selectedFile) {
+                data.image = null;
+            } else if (selectedFile) {
                 const formData = new FormData();
                 formData.append("file", selectedFile);
                 formData.append("upload_preset", "wavevapes");
@@ -487,10 +480,10 @@
 
             await db.collection('products').doc(currentEditId).update(data);
             closeEditModal();
-            showToast('✅ Produkt gespeichert – Bild und Beschreibung aktualisiert!');
+            showToast('✅ Produkt gespeichert! Bild wurde entfernt (falls gewünscht).');
         }
 
-        // ==================== NEUES PRODUKT (mit Beschreibung) ====================
+        // ==================== NEUES PRODUKT ====================
         document.getElementById('add-form').addEventListener('submit', async e => {
             e.preventDefault();
             const name = document.getElementById('prod-name').value.trim();
@@ -503,10 +496,10 @@
             const category = type === 'vape' ? 'WaveVapes Tornado 30000' : (isNew ? 'Neue Sorten' : 'Normale Sorten');
 
             const docRef = await db.collection('products').add({
-                name, 
-                price, 
-                stock, 
-                type, 
+                name,
+                price,
+                stock,
+                type,
                 category,
                 isNew: type === 'liquid' ? isNew : false,
                 available: !unavailable,
@@ -573,12 +566,10 @@
                 tbody.innerHTML = html || `<tr><td colspan="6" class="text-center py-16 text-gray-400">Noch keine Bestellungen</td></tr>`;
             });
         }
-
         function quickStatus(id, status) {
             db.collection('orders').doc(id).update({ status });
             showToast(`Status auf „${status}“ gesetzt`);
         }
-
         function getStatusClass(s) {
             const map = {
                 "Zahlung erwartet": "status-Zahlung",
@@ -655,11 +646,9 @@
             </div>`;
             document.getElementById('order-modal-container').innerHTML = modalHTML;
         }
-
         function closeOrderModal() {
             document.getElementById('order-modal-container').innerHTML = '';
         }
-
         async function saveOrderChanges() {
             const status = document.getElementById('modal-status').value;
             const carrier = document.getElementById('modal-carrier').value;
@@ -668,7 +657,6 @@
             showToast('Bestellung aktualisiert');
             closeOrderModal();
         }
-
         async function deleteOrder() {
             if (!confirm('Bestellung IRREVERSIBEL löschen?')) return;
             await db.collection('orders').doc(currentOrderId).delete();

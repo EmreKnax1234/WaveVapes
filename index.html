@@ -91,7 +91,6 @@
             text-align: center;
             margin-bottom: 12px;
         }
-        /* Entfernt through für h4 – Name bleibt normal */
         /* NEU: Kleinere Box für Liquids */
         .liquid-card .p-5 {
             padding: 1rem; /* Reduziertes Padding */
@@ -99,12 +98,16 @@
         .liquid-card {
             min-height: auto; /* Keine feste Höhe */
         }
-        /* NEU: Status Badges */
+
+        /* STATUS BADGES – NEU FÜR MEINE BESTELLUNGEN */
         .status-badge{
             padding:4px 10px;
             border-radius:999px;
             font-size:12px;
             font-weight:600;
+            display: inline-block;
+            text-align: center;
+            min-width: 118px;
         }
         .status-Zahlung{
             background:#facc15;
@@ -418,7 +421,7 @@
                 <h3 class="text-3xl font-bold">Meine Bestellungen</h3>
                 <button onclick="closeHistoryModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
             </div>
-            <div id="history-list" class="space-y-4"></div>
+            <div id="history-list" class="space-y-6"></div>
             <p id="no-history" class="hidden text-center text-gray-400 py-12">Noch keine Bestellungen gespeichert.</p>
         </div>
     </div>
@@ -539,6 +542,8 @@
         let notificationCyclePaused = false;
         let appliedDiscountCode = null;
         let discountPercent = 0;
+        let ordersUnsubscribe = null;   // NEU: für live Bestellungen
+
         // ====================== FIREBASE ======================
         const firebaseConfig = {
             apiKey: "AIzaSyDsIUl-iYmH42MPbusFLhGhj5oGLh01BzI",
@@ -555,8 +560,21 @@
             currentUser = user;
             updateAuthUI();
             updateUserDisplay();
-            if (user) loadUserOrders();
+            if (user) loadUserOrders();   // wird bei jedem Login neu geladen
         });
+
+        // ====================== STATUS HELPER (neu) ======================
+        function getStatusClass(status) {
+            switch(status || "Zahlung erwartet") {
+                case "Zahlung erwartet": return "status-Zahlung";
+                case "Wird bearbeitet": return "status-Wird";
+                case "Versendet": return "status-Versendet";
+                case "Zugestellt": return "status-Zugestellt";
+                case "Storniert": return "status-Storniert";
+                default: return "status-Zahlung";
+            }
+        }
+
         // ====================== AUTH ======================
         function updateAuthUI() {
             const btn = document.getElementById("account-btn");
@@ -621,6 +639,7 @@
             auth.signOut();
             closeAuthModal();
         }
+
         // ====================== USER NAME ======================
         function showNameModal() {
             document.getElementById("name-input-field").value = localStorage.getItem("wavevapes_username") || "";
@@ -654,6 +673,7 @@
                 nav.textContent = "Account";
             }
         }
+
         // ====================== LOYALTY ======================
         function updateLoyaltyDisplay() {
             document.getElementById("loyalty-points").textContent = loyaltyPoints;
@@ -684,6 +704,7 @@
                 }
             }
         }
+
         // ====================== ADDRESS ======================
         function showAddressModal() {
             document.getElementById("addr-street").value = userAddress.street || "";
@@ -706,6 +727,7 @@
             closeAddressModal();
             updateCartDisplay();
         }
+
         // ====================== CART CALCULATIONS ======================
         function getSubtotal() {
             return cart.reduce((sum, item) => item.id === MYSTERY_ID ? sum : sum + item.qty * (item.price || 7.99), 0);
@@ -724,6 +746,7 @@
         function calculateCartTotal() {
             return getProductTotal() + getShippingCost();
         }
+
         // ====================== PRODUCTS FROM FIRESTORE ======================
         async function loadProducts() {
             const container = document.getElementById("products-grid");
@@ -870,6 +893,7 @@
                 showNextNotification();
             }, 5000);
         }
+
         // ====================== CART ======================
         function updateCartDisplay() {
             const countEl = document.getElementById("cart-count-badge");
@@ -954,6 +978,7 @@
                 showNextNotification();
             }, 4800);
         }
+
         // ====================== ORDER ======================
         function generateOrderNumber() {
             const now = new Date();
@@ -997,9 +1022,9 @@
                     total: finalTotal,
                     address: userAddress,
                     date: firebase.firestore.Timestamp.now(),
-                    status: "Zahlung erwartet", // NEU
-                    trackingNumber: "", // NEU
-                    carrier: "" // NEU
+                    status: "Zahlung erwartet",
+                    trackingNumber: "",
+                    carrier: ""
                 });
                 for (let item of cart) {
                     if (item.id === MYSTERY_ID) continue;
@@ -1048,58 +1073,118 @@
             const modal = document.getElementById("success-modal");
             modal.classList.add("hidden"); modal.classList.remove("flex");
         }
-        // ====================== HISTORY ======================
-        async function loadUserOrders() {
+
+        // ====================== HISTORY – NEU MIT STATUS + TRACKING + LIVE ======================
+        function loadUserOrders() {
             if (!currentUser) return;
             const container = document.getElementById("history-list");
-            container.innerHTML = '<p class="text-center text-gray-400 py-8">Lade Bestellungen...</p>';
-            try {
-                const snapshot = await db.collection("orders").where("userId", "==", currentUser.uid).orderBy("date", "desc").get();
-                container.innerHTML = "";
-                if (snapshot.empty) {
-                    document.getElementById("no-history").classList.remove("hidden");
-                    return;
-                }
-                document.getElementById("no-history").classList.add("hidden");
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    const div = document.createElement("div");
-                    div.className = "history-item rounded-3xl p-6";
-                    div.innerHTML = `
-                        <div class="flex justify-between mb-3">
-                            <div class="font-mono text-cyan-300">${data.orderNumber}</div>
-                            <div class="text-sm text-gray-400">${data.date.toDate().toLocaleDateString('de-DE')}</div>
-                        </div>
-                        <div class="font-bold text-xl mb-2">${data.total.toFixed(2)} €</div>
-                        <div class="status-badge status-${data.status.replace(/ /g, '')} mb-2">${data.status}</div>
-                        ${data.trackingNumber ? `<a href="${getTrackingLink(data.carrier, data.trackingNumber)}" target="_blank" class="text-cyan-400 underline">Sendung verfolgen</a>` : ''}
-                        <button onclick="showPaymentInfo('${data.orderNumber}')" class="w-full bg-cyan-400 hover:bg-cyan-300 text-black py-3 rounded-2xl text-sm font-medium transition-all mt-2">Überweisungsdaten anzeigen</button>
-                    `;
-                    container.appendChild(div);
+            container.innerHTML = '<p class="text-center text-gray-400 py-8">Lade Bestellungen live...</p>';
+
+            if (ordersUnsubscribe) ordersUnsubscribe();
+
+            ordersUnsubscribe = db.collection("orders")
+                .where("userId", "==", currentUser.uid)
+                .orderBy("date", "desc")
+                .onSnapshot((snap) => {
+                    container.innerHTML = "";
+                    if (snap.empty) {
+                        document.getElementById("no-history").classList.remove("hidden");
+                        return;
+                    }
+                    document.getElementById("no-history").classList.add("hidden");
+
+                    snap.forEach(doc => {
+                        const order = doc.data();
+                        const dateStr = order.date ? order.date.toDate().toLocaleDateString('de-DE') : '—';
+                        const status = order.status || "Zahlung erwartet";
+                        const statusClass = getStatusClass(status);
+
+                        let itemsHTML = order.items.map(item => 
+                            `<div class="flex justify-between text-sm"><span>${item.name} × ${item.qty}</span><span>${item.nicotine ? '(' + item.nicotine + ')' : ''}</span></div>`
+                        ).join('');
+
+                        let trackingHTML = '';
+                        if (order.trackingNumber) {
+                            trackingHTML = `
+                                <div class="mt-5 pt-5 border-t border-white/10">
+                                    <p class="text-xs text-gray-400">Trackingnummer (${order.carrier || '—'})</p>
+                                    <p class="font-mono text-cyan-300 break-all">${order.trackingNumber}</p>
+                                </div>`;
+                        }
+
+                        let trackButton = '';
+                        if (order.carrier === "DHL" && order.trackingNumber) {
+                            const url = `https://www.dhl.de/de/privatkunden/dhl-sendungsverfolgung.html?piececode=${encodeURIComponent(order.trackingNumber)}`;
+                            trackButton = `
+                                <a href="${url}" target="_blank" rel="noopener noreferrer"
+                                   class="mt-4 w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-3.5 rounded-2xl text-center flex items-center justify-center gap-2 transition">
+                                    <i class="fa-solid fa-truck"></i>
+                                    Sendung verfolgen
+                                </a>`;
+                        }
+
+                        const card = document.createElement("div");
+                        card.className = "bg-zinc-900 border border-white/10 rounded-3xl p-6";
+                        card.innerHTML = `
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <div class="font-mono text-xl text-cyan-300">${order.orderNumber}</div>
+                                    <div class="text-sm text-gray-400 mt-1">${dateStr}</div>
+                                </div>
+                                <span class="status-badge ${statusClass}">${status}</span>
+                            </div>
+
+                            <div class="mb-5">
+                                <p class="text-xs uppercase text-gray-400 mb-2">Artikel</p>
+                                <div class="space-y-1 text-gray-200">${itemsHTML}</div>
+                            </div>
+
+                            <div class="flex justify-between items-end mb-6">
+                                <div>
+                                    <p class="text-xs text-gray-400">Gesamt</p>
+                                    <p class="text-2xl font-bold">${order.total.toFixed(2).replace('.', ',')} €</p>
+                                </div>
+                            </div>
+
+                            ${trackingHTML}
+
+                            <div class="flex flex-col gap-3 mt-6">
+                                ${trackButton}
+                                <button onclick="showPaymentInfo('${order.orderNumber}')" 
+                                        class="w-full bg-zinc-800 hover:bg-zinc-700 text-cyan-300 py-3 rounded-2xl text-sm font-medium transition-all">
+                                    Überweisungsdaten anzeigen
+                                </button>
+                            </div>
+                        `;
+                        container.appendChild(card);
+                    });
                 });
-            } catch (e) {
-                container.innerHTML = `<p class="text-red-400 text-center py-8">Fehler beim Laden</p>`;
-            }
         }
-        function getTrackingLink(carrier, tracking) {
-            const links = {
-                "DHL": `https://www.dhl.de/de/privatkunden/dhl-sendungsverfolgung.html?piececode=${tracking}`,
-                "Hermes": `https://www.myhermes.de/empfangen/sendungsverfolgung/sendungssuche/?searchtext=${tracking}`,
-                "DPD": `https://my.dpd.de/myDPD/tracking.aspx?shipment=${tracking}`,
-                "UPS": `https://www.ups.com/track?loc=de_DE&tracknum=${tracking}`
-            };
-            return links[carrier] || '';
-        }
+
         function showOrderHistory() {
-            if (!currentUser) { alert("Bitte zuerst einloggen!"); showAuthModal(); return; }
-            loadUserOrders();
+            if (!currentUser) { 
+                alert("Bitte zuerst einloggen!"); 
+                showAuthModal(); 
+                return; 
+            }
             const modal = document.getElementById("history-modal");
-            modal.classList.remove("hidden"); modal.classList.add("flex");
+            modal.classList.remove("hidden"); 
+            modal.classList.add("flex");
+            loadUserOrders();
         }
+
         function closeHistoryModal() {
             const modal = document.getElementById("history-modal");
-            modal.classList.add("hidden"); modal.classList.remove("flex");
+            modal.classList.add("hidden"); 
+            modal.classList.remove("flex");
+
+            if (ordersUnsubscribe) {
+                ordersUnsubscribe();
+                ordersUnsubscribe = null;
+            }
         }
+
+        // ====================== PAYMENT INFO ======================
         function showPaymentInfo(orderNumber) {
             const infoHTML = `
                 <div class="space-y-4 text-sm">
@@ -1123,6 +1208,7 @@
             const modal = document.getElementById("payment-info-modal");
             modal.classList.add("hidden"); modal.classList.remove("flex");
         }
+
         // ====================== NOTIFICATIONS ======================
         function showToast(msg) {
             const toast = document.getElementById('notification-toast');
@@ -1166,6 +1252,7 @@
             setInterval(showNextNotification, NOTIFICATION_DURATION);
             setInterval(checkAndGenerateNotifications, 60000);
         }
+
         // ====================== DISCOUNT ======================
         function applyDiscountCode() {
             const input = document.getElementById("discount-input").value.trim().toUpperCase();
@@ -1180,6 +1267,7 @@
             }
             status.innerHTML = `<span class="text-red-400">Ungültig</span>`;
         }
+
         // ====================== CATEGORY TABS ======================
         function renderCategoryTabs() {
             const html = `
@@ -1197,6 +1285,7 @@
             renderCategoryTabs();
             renderProducts();
         }
+
         // ====================== REFERRAL & LEGAL ======================
         function shareReferral() {
             showToast("Referral-Link kopiert! (noch in Entwicklung)");
@@ -1240,6 +1329,7 @@
             const modal = document.getElementById("datenschutz-modal");
             modal.classList.add("hidden"); modal.classList.remove("flex");
         }
+
         // ====================== INITIALIZE ======================
         function initialize() {
             if (!localStorage.getItem("age_verified")) showAgeModal();

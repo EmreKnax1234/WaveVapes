@@ -20,13 +20,16 @@
     <meta name="twitter:site" content="@WaveVapes">
     <meta name="twitter:creator" content="@WaveVapes">
 
-    <!-- Preconnect für maximale Performance (Lighthouse Core Web Vitals) -->
+    <!-- Preconnect für maximale Performance -->
     <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
     <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
 
-    <!-- JSON-LD Structured Data (erweitert mit Organization) -->
+    <!-- EMAILJS -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+
+    <!-- JSON-LD Structured Data -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -123,7 +126,6 @@
         .stock-high { background: rgba(16, 185, 129, 0.15); color: #10b981; }
         .stock-low { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
         .stock-zero { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
-        /* Performance-Optimierung: verhindert Cumulative Layout Shift (CLS) */
         img { max-width: 100%; height: auto; display: block; }
     </style>
 </head>
@@ -499,6 +501,11 @@
     </div>
     <div id="notification-toast"></div>
     <script>
+        // ====================== EMAILJS KONFIGURATION ======================
+        const EMAILJS_SERVICE_ID = "service_lzvte0x";
+        const EMAILJS_PUBLIC_KEY = "t19pJAHgBpbKpZFGU";
+        const EMAILJS_ORDER_TEMPLATE = "order_confirmation";
+
         // ====================== KONFIGURATION ======================
         const VALID_DISCOUNTS = {
             "WAVE5": { type: "percent", value: 5 },
@@ -906,6 +913,38 @@
         function calculateCartTotal() {
             return getProductTotal() + getShippingCost();
         }
+        // ====================== EMAILJS INIT & SEND ======================
+        function initEmailJS() {
+            if (typeof emailjs !== "undefined") {
+                emailjs.init(EMAILJS_PUBLIC_KEY);
+            }
+        }
+        async function sendOrderConfirmationEmail(orderData) {
+            try {
+                const orderItems = orderData.items.map(item => {
+                    const prod = allProducts.find(p => p.id === item.id);
+                    return {
+                        name: item.name,
+                        units: item.qty,
+                        price: (item.price * item.qty).toFixed(2),
+                        image_url: prod && prod.image ? prod.image : "https://wavevapes.de/logo.png"
+                    };
+                });
+                await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_ORDER_TEMPLATE, {
+                    order_id: orderData.orderNumber,
+                    email: orderData.userEmail,
+                    orders: orderItems,
+                    cost: {
+                        shipping: orderData.shipping.toFixed(2),
+                        tax: "0.00",
+                        total: orderData.total.toFixed(2)
+                    }
+                });
+                console.log("✅ Schöne Bestellbestätigung per E-Mail gesendet!");
+            } catch (e) {
+                console.error("E-Mail Fehler:", e);
+            }
+        }
         async function loadProducts() {
             const container = document.getElementById("products-grid");
             container.innerHTML = `<p class="col-span-full text-center py-16 text-gray-400 flex items-center justify-center gap-3"><i class="fa-solid fa-spinner animate-spin text-2xl"></i> Produkte werden live aus deinem Admin-Panel geladen...</p>`;
@@ -1191,6 +1230,13 @@
                     });
                 }
                 addLoyaltyPoints(getProductTotal());
+                await sendOrderConfirmationEmail({
+                    userEmail: currentUser.email,
+                    orderNumber: orderNumber,
+                    total: finalTotal,
+                    items: cart,
+                    shipping: getShippingCost()
+                });
                 showSuccessModal(orderNumber, finalTotal);
                 cart = [];
                 appliedDiscount = null;
@@ -1507,6 +1553,7 @@
             showToast(`✅ ${product.name} wurde hinzugefügt!`);
         }
         function initialize() {
+            initEmailJS();
             if (!localStorage.getItem("age_verified")) showAgeModal();
             localStorage.removeItem('wavevapes_notifications');
             localStorage.removeItem('wavevapes_last_generate');

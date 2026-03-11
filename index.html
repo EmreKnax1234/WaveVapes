@@ -520,7 +520,6 @@
             const doc = await userRef.get();
 
             if (!doc.exists) {
-                // Neuer Account
                 myReferralCode = "WV-" + Math.random().toString(36).substring(2,8).toUpperCase();
                 const urlParams = new URLSearchParams(window.location.search);
                 const refCode = urlParams.get("ref");
@@ -537,12 +536,12 @@
 
                 if (refCode) {
                     addLoyaltyPoints(50);
+                    await applyReferralBonusToReferrer(refCode);
                     showToast("🎉 +50 Punkte Willkommensbonus durch Referral!");
                 }
             } else {
                 const data = doc.data();
                 if (!data.referralCode) {
-                    // ALTER Account ohne Code → jetzt erstellen
                     myReferralCode = "WV-" + Math.random().toString(36).substring(2,8).toUpperCase();
                     await userRef.update({ referralCode: myReferralCode });
                     showToast("✅ Dein Referral-Code wurde nachträglich erstellt!");
@@ -551,10 +550,21 @@
                 }
             }
 
-            // Live-Listener
             db.collection("users").doc(currentUser.uid).onSnapshot(doc => {
                 if (doc.exists) myReferralCode = doc.data().referralCode || "";
             });
+        }
+
+        async function applyReferralBonusToReferrer(refCode) {
+            const snapshot = await db.collection("users").where("referralCode", "==", refCode).limit(1).get();
+            if (!snapshot.empty) {
+                const referrerRef = snapshot.docs[0].ref;
+                await referrerRef.update({
+                    referralCount: firebase.firestore.FieldValue.increment(1),
+                    totalBonusPoints: firebase.firestore.FieldValue.increment(100)
+                });
+                showToast("🎉 Dein Freund hat sich registriert – du bekommst +100 Punkte!");
+            }
         }
 
         // ====================== shareReferral ======================

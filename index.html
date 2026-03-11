@@ -3,17 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>WaveVapes – Disposable Vapes & Liquids</title>
-    <meta name="description" content="WaveVapes Shop – Disposable Vapes bis 30000 Puffs und Premium Liquids online.">
+    <title>WaveVapes – Disposable Vapes & Premium Liquids</title>
+    <meta name="description" content="WaveVapes Shop – Disposable Vapes bis 30000 Puffs und Premium Liquids online. 4 für 3 Aktion • Mystery Vape gratis ab 100 € • Gratis Versand ab 100 €.">
+    
+    <!-- SEO + Social Media -->
+    <meta property="og:title" content="WaveVapes – Tornado 30000 & Premium Liquids">
+    <meta property="og:description" content="4 für 3 Aktion + Mystery Vape gratis ab 100 €. Schnell & diskret per DHL. Nur für Volljährige.">
+    <meta property="og:image" content="https://wavevapes.de/og-image.jpg">
+    <meta property="og:url" content="https://wavevapes.de">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "WaveVapes",
+      "url": "https://wavevapes.de",
+      "description": "Disposable Vapes und Premium Liquids mit Loyalty-System und 4-für-3-Aktion",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://wavevapes.de/?search={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+
     <meta name="google-site-verification" content="3kBk4qEfWOIpWL7969larnRHDzPJ60AVgzE67bUkS18" />
+
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Inter:wght@400;500;600&display=swap');
+        :root {
+            --neon-cyan: #67e8f9;
+        }
         html, body {
             touch-action: manipulation !important;
             -webkit-text-size-adjust: 100% !important;
@@ -27,10 +57,10 @@
             touch-action: manipulation !important;
         }
         body { font-family: 'Inter', system-ui, sans-serif; }
-        .neon-text { text-shadow: 0 0 15px #67e8f9, 0 0 30px #67e8f9; }
+        .neon-text { text-shadow: 0 0 15px var(--neon-cyan), 0 0 30px var(--neon-cyan); }
         .product-card { transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
         .product-card:hover { transform: translateY(-12px) scale(1.04); box-shadow: 0 25px 50px -12px rgb(103 232 249); }
-        .tab-active { border-bottom: 4px solid #67e8f9; color: #67e8f9; font-weight: 600; }
+        .tab-active { border-bottom: 4px solid var(--neon-cyan); color: var(--neon-cyan); font-weight: 600; }
         .wave-bg { background: linear-gradient(135deg, #0a0a0a, #1e1233, #0a0a0a); }
         .qty-btn { transition: all 0.2s ease; }
         .qty-btn:hover { background-color: #22d3ee; color: black; }
@@ -38,12 +68,13 @@
         .animate-bolt { animation: boltPulse 650ms infinite alternate ease-in-out; display: inline-block; text-shadow: 0 0 15px #facc15; }
         #notification-toast {
             position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%);
-            background: rgba(0,0,0,0.78); backdrop-filter: blur(12px); color: #67e8f9;
-            padding: 10px 22px; border-radius: 9999px; font-size: 13px; opacity: 0;
-            transition: all 0.6s ease; z-index: 1000; max-width: 92%; text-align: center;
+            background: rgba(0,0,0,0.85); backdrop-filter: blur(12px); color: #67e8f9;
+            padding: 12px 24px; border-radius: 9999px; font-size: 13px; opacity: 0;
+            transition: all 0.6s cubic-bezier(0.34,1.56,0.64,1); z-index: 1000;
+            max-width: 92%; text-align: center; box-shadow: 0 10px 30px -10px rgb(103 232 249);
         }
         @media (max-width: 1023px) { #notification-toast { bottom: 15px !important; } }
-        #notification-toast.visible { opacity: 1; transform: translateX(-50%) translateY(-8px); }
+        #notification-toast.visible { opacity: 1; transform: translateX(-50%) translateY(-10px); }
         .referral-warning-tree { background: rgba(15,15,15,0.92); border-bottom: 2px solid #991b1b; padding: 12px 0; position: relative; z-index: 49; box-shadow: 0 4px 25px rgba(153,27,27,0.35); }
         .tree-container { max-width: 980px; margin: 0 auto; padding: 0 16px; }
         .christmas-tree { font-size: 2.1rem; animation: glowRed 2.8s ease-in-out infinite alternate, sway 9s ease-in-out infinite; text-shadow: 0 0 12px #ef4444, 0 0 24px #dc2626, 0 0 40px #b91c1c; transform-origin: bottom center; }
@@ -72,13 +103,12 @@
         .social-icon { transition: all 0.3s ease; }
         .social-icon:hover { transform: scale(1.25) rotate(10deg); filter: brightness(1.2); }
         .auth-tab { transition: all 0.2s; }
-        .auth-tab-active { border-bottom: 4px solid #67e8f9; color: #67e8f9; font-weight: 600; }
+        .auth-tab-active { border-bottom: 4px solid var(--neon-cyan); color: var(--neon-cyan); font-weight: 600; }
         .unavailable-product { opacity: 0.65; }
         .unavailable-product .sale-price { text-decoration: line-through; color: #ef4444 !important; }
         .unavailable-tag { background: rgba(239, 68, 68, 0.3); color: #ef4444; padding: 4px 12px; border-radius: 9999px; font-size: 0.875rem; font-weight: 500; text-align: center; margin-bottom: 12px; }
         .liquid-card .p-5 { padding: 1rem; }
         .liquid-card { min-height: auto; }
-        /* STATUS BADGES */
         .status-badge{
             padding:4px 10px;
             border-radius:999px;
@@ -100,7 +130,7 @@
     <nav class="bg-black/90 backdrop-blur-xl border-b border-cyan-400/30 sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex justify-between items-center">
             <div class="flex items-center gap-3">
-                <img src="logo.png" alt="WaveVapes Logo" class="h-8 sm:h-11 w-auto drop-shadow-xl">
+                <img src="logo.png" alt="WaveVapes Logo" class="h-8 sm:h-11 w-auto drop-shadow-xl" loading="lazy">
                 <div>
                     <h1 class="text-3xl sm:text-4xl font-bold tracking-tighter neon-text">WAVEVAPES</h1>
                     <p class="text-[9px] sm:text-[10px] text-cyan-300 tracking-[3px] -mt-1">2026 SORTIMENT</p>
@@ -476,6 +506,7 @@
         </div>
     </div>
     <div id="notification-toast"></div>
+
     <script>
         // ====================== KONFIGURATION ======================
         const VALID_DISCOUNTS = { "WAVE5": 5, "Freund10": 10, "LOYAL5": 5, "LOYAL10": 10 };
@@ -507,6 +538,7 @@
         let appliedDiscountCode = null;
         let discountPercent = 0;
         let ordersUnsubscribe = null;
+
         // ====================== FIREBASE ======================
         const firebaseConfig = {
             apiKey: "AIzaSyDsIUl-iYmH42MPbusFLhGhj5oGLh01BzI",
@@ -525,6 +557,7 @@
             updateUserDisplay();
             if (user) loadUserOrders();
         });
+
         // ====================== STATUS HELPER ======================
         function getStatusClass(status) {
             switch(status || "Zahlung erwartet") {
@@ -536,6 +569,7 @@
                 default: return "status-Zahlung";
             }
         }
+
         // ====================== AUTH ======================
         function updateAuthUI() {
             const btn = document.getElementById("account-btn");
@@ -600,6 +634,7 @@
             auth.signOut();
             closeAuthModal();
         }
+
         // ====================== USER NAME ======================
         function showNameModal() {
             document.getElementById("name-input-field").value = localStorage.getItem("wavevapes_username") || "";
@@ -633,6 +668,7 @@
                 nav.textContent = "Account";
             }
         }
+
         // ====================== LOYALTY ======================
         function updateLoyaltyDisplay() {
             document.getElementById("loyalty-points").textContent = loyaltyPoints;
@@ -646,6 +682,7 @@
             loyaltyPoints += Math.floor(amount);
             localStorage.setItem("wavevapes_loyalty_points", loyaltyPoints);
             updateLoyaltyDisplay();
+            showToast(`🎉 +${Math.floor(amount)} Loyalty-Punkte gutgeschrieben!`);
         }
         function checkAndAutoRedeemLoyalty() {
             for (let r of REWARDS) {
@@ -663,6 +700,7 @@
                 }
             }
         }
+
         // ====================== ADDRESS ======================
         function showAddressModal() {
             document.getElementById("addr-street").value = userAddress.street || "";
@@ -685,6 +723,7 @@
             closeAddressModal();
             updateCartDisplay();
         }
+
         // ====================== CART CALCULATIONS ======================
         function getSubtotal() {
             return cart.reduce((sum, item) => item.id === MYSTERY_ID ? sum : sum + item.qty * (item.price || 7.99), 0);
@@ -703,6 +742,7 @@
         function calculateCartTotal() {
             return getProductTotal() + getShippingCost();
         }
+
         // ====================== PRODUCTS FROM FIRESTORE ======================
         async function loadProducts() {
             const container = document.getElementById("products-grid");
@@ -741,11 +781,11 @@
             if (p.isNew) return 2;
             return 1;
         }
+
         // ====================== PRODUKTE RENDERN ======================
         function renderProducts() {
             const container = document.getElementById("products-grid");
-            let html = "";
-            const searchTerm = document.getElementById("search-input").value.toLowerCase();
+            const searchTerm = document.getElementById("search-input").value.toLowerCase().trim();
             let filtered = allProducts.filter(p => {
                 const catMatch = currentCategoryFilter === "Alle" || p.category === currentCategoryFilter;
                 const searchMatch = !searchTerm || p.name.toLowerCase().includes(searchTerm);
@@ -757,11 +797,12 @@
                 if (prioA !== prioB) return prioA - prioB;
                 return a.name.localeCompare(b.name);
             });
+            let html = "";
             filtered.forEach(product => {
                 const cartItem = cart.find(i => i.id === product.id);
                 const qty = cartItem ? cartItem.qty : 0;
                 const nicotine = cartItem?.nicotine || "20 mg";
-                const imageHTML = product.image ? `<img src="${product.image}" class="tornado-image" alt="${product.name}">` : '';
+                const imageHTML = product.image ? `<img src="${product.image}" class="tornado-image" alt="${product.name}" loading="lazy">` : '';
                 const oldPrice = product.category === "WaveVapes Tornado 30000" ? "35,99" : "10,99";
                 const salePrice = product.price.toFixed(2).replace('.', ',');
                 const unavailableClass = !product.available ? 'unavailable-product' : '';
@@ -844,6 +885,7 @@
                 showNextNotification();
             }, 5000);
         }
+
         // ====================== CART ======================
         function updateCartDisplay() {
             const countEl = document.getElementById("cart-count-badge");
@@ -928,6 +970,7 @@
                 showNextNotification();
             }, 4800);
         }
+
         // ====================== ORDER ======================
         function generateOrderNumber() {
             const now = new Date();
@@ -975,12 +1018,11 @@
                     trackingNumber: "",
                     carrier: ""
                 });
-                // === WICHTIG: JETZT WIRD AUCH "sold" HOCHGEZÄHLT (für Admin-Top-Seller!) ===
                 for (let item of cart) {
                     if (item.id === MYSTERY_ID) continue;
                     await db.collection("products").doc(item.id).update({
                         stock: firebase.firestore.FieldValue.increment(-item.qty),
-                        sold: firebase.firestore.FieldValue.increment(item.qty)   // ← NEU & ENTSCHEIDEND
+                        sold: firebase.firestore.FieldValue.increment(item.qty)
                     });
                 }
                 const formData = new FormData();
@@ -989,8 +1031,12 @@
                 formData.append("adresse", `${userAddress.street}, ${userAddress.zip} ${userAddress.city}`);
                 formData.append("gesamt", `${finalTotal.toFixed(2)} €`);
                 fetch(FORMSPREE_ENDPOINT, { method: "POST", body: formData });
+                addLoyaltyPoints(finalTotal);
                 showSuccessModal(orderNumber, finalTotal);
                 cart = [];
+                appliedDiscountCode = null;
+                discountPercent = 0;
+                document.getElementById("discount-status").innerHTML = "";
                 await loadProducts();
                 updateCartDisplay();
                 renderProducts();
@@ -1024,7 +1070,8 @@
             const modal = document.getElementById("success-modal");
             modal.classList.add("hidden"); modal.classList.remove("flex");
         }
-        // ====================== HISTORY – LIVE MIT STATUS + TRACKING ======================
+
+        // ====================== HISTORY ======================
         function loadUserOrders() {
             if (!currentUser) return;
             const container = document.getElementById("history-list");
@@ -1116,6 +1163,7 @@
                 ordersUnsubscribe = null;
             }
         }
+
         // ====================== PAYMENT INFO ======================
         function showPaymentInfo(orderNumber) {
             const infoHTML = `
@@ -1140,6 +1188,7 @@
             const modal = document.getElementById("payment-info-modal");
             modal.classList.add("hidden"); modal.classList.remove("flex");
         }
+
         // ====================== NOTIFICATIONS ======================
         function showToast(msg) {
             const toast = document.getElementById('notification-toast');
@@ -1183,6 +1232,7 @@
             setInterval(showNextNotification, NOTIFICATION_DURATION);
             setInterval(checkAndGenerateNotifications, 60000);
         }
+
         // ====================== DISCOUNT ======================
         function applyDiscountCode() {
             const input = document.getElementById("discount-input").value.trim().toUpperCase();
@@ -1197,6 +1247,7 @@
             }
             status.innerHTML = `<span class="text-red-400">Ungültig</span>`;
         }
+
         // ====================== CATEGORY TABS ======================
         function renderCategoryTabs() {
             const html = `
@@ -1214,6 +1265,7 @@
             renderCategoryTabs();
             renderProducts();
         }
+
         // ====================== REFERRAL & LEGAL ======================
         function shareReferral() {
             showToast("Referral-Link kopiert! (noch in Entwicklung)");
@@ -1257,6 +1309,12 @@
             const modal = document.getElementById("datenschutz-modal");
             modal.classList.add("hidden"); modal.classList.remove("flex");
         }
+
+        // ====================== SEARCH FILTER ======================
+        function filterProducts() {
+            renderProducts();
+        }
+
         // ====================== INITIALIZE ======================
         function initialize() {
             if (!localStorage.getItem("age_verified")) showAgeModal();

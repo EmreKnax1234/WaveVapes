@@ -445,7 +445,12 @@
     <div id="notification-toast"></div>
     <script>
         // ====================== KONFIGURATION ======================
-        const VALID_DISCOUNTS = { "WAVE5": 5, "Freund10": 10, "LOYAL5": 5, "LOYAL10": 10 };
+        const VALID_DISCOUNTS = {
+            "WAVE5": { type: "percent", value: 5 },
+            "Freund10": { type: "percent", value: 10 },
+            "LOYAL5": { type: "fixed", value: 5 },
+            "LOYAL10": { type: "fixed", value: 10 }
+        };
         const MYSTERY_ID = 999;
         const fakeNames = ["Tim","Anna","Max","Sophie","Luca","Mia","Felix","Emma","Noah","Lena","Leon","Julia","Paul","Laura","Ben","Sarah","David","Hannah","Jonas","Lea"];
         const NICOTINE_OPTIONS = ["10 mg", "20 mg"];
@@ -470,8 +475,7 @@
         const HOUR_MS = 3600000;
         let currentNotificationIndex = 0;
         let notificationCyclePaused = false;
-        let appliedDiscountCode = null;
-        let discountPercent = 0;
+        let appliedDiscount = null;           // jetzt {code, type: "percent"|"fixed", value: number}
         let ordersUnsubscribe = null;
         let userSnapshotUnsubscribe = null;
         // ====================== REFERRAL SYSTEM ======================
@@ -589,6 +593,7 @@
             const modal = document.getElementById("referrals-modal");
             modal.classList.add("hidden"); modal.classList.remove("flex");
         }
+        // ====================== STATUS HELPER ======================
         function getStatusClass(status) {
             switch(status || "Zahlung erwartet") {
                 case "Zahlung erwartet": return "status-Zahlung";
@@ -599,6 +604,7 @@
                 default: return "status-Zahlung";
             }
         }
+        // ====================== AUTH + LOYALTY ======================
         auth.onAuthStateChanged(async (user) => {
             currentUser = user;
             updateAuthUI();
@@ -716,6 +722,7 @@
                 nav.textContent = "Account";
             }
         }
+        // ====================== LOYALTY ======================
         function updateLoyaltyDisplay() {
             document.getElementById("loyalty-points").textContent = loyaltyPoints;
             let next = REWARDS.find(r => loyaltyPoints < r.points) || {points:9999};
@@ -732,13 +739,12 @@
         }
         function checkAndAutoRedeemLoyalty() {
             for (let r of REWARDS) {
-                if (loyaltyPoints >= r.points && !appliedDiscountCode) {
+                if (loyaltyPoints >= r.points && !appliedDiscount) {
                     if (confirm(`🎉 Du hast genug Punkte für ${r.text}!\nJetzt einlösen?`)) {
-                        discountPercent = r.discount;
-                        appliedDiscountCode = r.code;
+                        appliedDiscount = { code: r.code, type: "fixed", value: r.discount };
                         loyaltyPoints -= r.points;
                         localStorage.setItem("wavevapes_loyalty_points", loyaltyPoints);
-                        document.getElementById("discount-status").innerHTML = `<span class="text-emerald-400">✓ ${r.code} eingelöst!</span>`;
+                        document.getElementById("discount-status").innerHTML = `<span class="text-emerald-400">✓ ${r.code} (${r.discount} €) eingelöst!</span>`;
                         updateLoyaltyDisplay();
                         updateCartDisplay();
                         return;
@@ -746,6 +752,7 @@
                 }
             }
         }
+        // ====================== ADDRESS ======================
         function showAddressModal() {
             document.getElementById("addr-street").value = userAddress.street || "";
             document.getElementById("addr-zip").value = userAddress.zip || "";
@@ -767,6 +774,7 @@
             closeAddressModal();
             updateCartDisplay();
         }
+        // ====================== CART CALCULATIONS ======================
         function getSubtotal() {
             return cart.reduce((sum, item) => item.id === MYSTERY_ID ? sum : sum + item.qty * (item.price || 7.99), 0);
         }
@@ -775,7 +783,14 @@
             const tornadoQty = getTornadoQuantity();
             const free = Math.floor(tornadoQty / 4);
             let total = Math.max(0, subtotal - free * 19.99);
-            if (discountPercent > 0) total = Math.max(0, total - total * discountPercent / 100);
+            // NEUE LOGIK: fester Euro-Betrag oder Prozent
+            if (appliedDiscount) {
+                if (appliedDiscount.type === "percent") {
+                    total = Math.max(0, total - total * appliedDiscount.value / 100);
+                } else {
+                    total = Math.max(0, total - appliedDiscount.value);
+                }
+            }
             return total;
         }
         function getShippingCost() {
@@ -784,6 +799,7 @@
         function calculateCartTotal() {
             return getProductTotal() + getShippingCost();
         }
+        // ====================== PRODUCTS ======================
         async function loadProducts() {
             const container = document.getElementById("products-grid");
             container.innerHTML = `<p class="col-span-full text-center py-16 text-gray-400 flex items-center justify-center gap-3"><i class="fa-solid fa-spinner animate-spin text-2xl"></i> Produkte werden live aus deinem Admin-Panel geladen...</p>`;
@@ -917,6 +933,7 @@
                 showNextNotification();
             }, 5000);
         }
+        // ====================== CART ======================
         function updateCartDisplay() {
             const countEl = document.getElementById("cart-count-badge");
             const totalEl = document.getElementById("cart-total-price");
@@ -930,7 +947,6 @@
             totalEl.textContent = `${grandTotal.toFixed(2).replace('.', ',')} €`;
             const shipping = getShippingCost();
             shippingNote.innerHTML = shipping === 0 ? `✅ Gratis Versand (ab 100 €)` : `+ ${shipping.toFixed(2).replace('.', ',')} € Versand`;
-            // NEUE LOGIK: Punkte nur anzeigen, wenn wirklich Produkte im Warenkorb sind
             const productTotal = getProductTotal();
             if (productTotal > 0) {
                 const pointsEarned = Math.floor(productTotal);
@@ -974,8 +990,7 @@
         function clearCart() {
             if (confirm("Wirklich ganzen Warenkorb leeren?")) {
                 cart = [];
-                appliedDiscountCode = null;
-                discountPercent = 0;
+                appliedDiscount = null;
                 document.getElementById("discount-status").innerHTML = "";
                 updateCartDisplay();
                 renderProducts();
@@ -1006,6 +1021,7 @@
                 showNextNotification();
             }, 4800);
         }
+        // ====================== ORDER ======================
         function generateOrderNumber() {
             const now = new Date();
             const dateStr = now.getFullYear().toString().slice(2) + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0');
@@ -1059,12 +1075,10 @@
                         sold: firebase.firestore.FieldValue.increment(item.qty)
                     });
                 }
-                // Punkte nur für die Produkte (nicht Versand)
                 addLoyaltyPoints(getProductTotal());
                 showSuccessModal(orderNumber, finalTotal);
                 cart = [];
-                appliedDiscountCode = null;
-                discountPercent = 0;
+                appliedDiscount = null;
                 document.getElementById("discount-status").innerHTML = "";
                 await loadProducts();
                 updateCartDisplay();
@@ -1077,7 +1091,6 @@
         }
         function showSuccessModal(orderNumber, total) {
             document.getElementById("success-order-id").textContent = orderNumber;
-            // Punkte im Success-Modal ebenfalls nur für Produkte
             const productPoints = Math.floor(getProductTotal());
             document.getElementById("success-loyalty-info").innerHTML = `<span class="text-emerald-400">+${productPoints} Punkte!</span><br>Aktuell: <span class="font-bold">${loyaltyPoints}</span>`;
             document.getElementById("bank-payment-info").innerHTML = `
@@ -1101,6 +1114,7 @@
             const modal = document.getElementById("success-modal");
             modal.classList.add("hidden"); modal.classList.remove("flex");
         }
+        // ====================== HISTORY ======================
         function loadUserOrders() {
             if (!currentUser) return;
             const container = document.getElementById("history-list");
@@ -1192,6 +1206,7 @@
                 ordersUnsubscribe = null;
             }
         }
+        // ====================== PAYMENT INFO ======================
         function showPaymentInfo(orderNumber) {
             const infoHTML = `
                 <div class="space-y-4 text-sm">
@@ -1215,6 +1230,7 @@
             const modal = document.getElementById("payment-info-modal");
             modal.classList.add("hidden"); modal.classList.remove("flex");
         }
+        // ====================== NOTIFICATIONS ======================
         function showToast(msg, type = "success") {
             const toast = document.getElementById('notification-toast');
             if (type === "error") {
@@ -1262,19 +1278,22 @@
             setInterval(showNextNotification, NOTIFICATION_DURATION);
             setInterval(checkAndGenerateNotifications, 60000);
         }
+        // ====================== DISCOUNT ======================
         function applyDiscountCode() {
             const input = document.getElementById("discount-input").value.trim().toUpperCase();
             const status = document.getElementById("discount-status");
             if (!input) return status.innerHTML = `<span class="text-red-400">Code eingeben</span>`;
-            if (VALID_DISCOUNTS[input]) {
-                discountPercent = VALID_DISCOUNTS[input];
-                appliedDiscountCode = input;
-                status.innerHTML = `<span class="text-emerald-400">✓ ${input} (${discountPercent}%)</span>`;
+            const d = VALID_DISCOUNTS[input];
+            if (d) {
+                appliedDiscount = { code: input, type: d.type, value: d.value };
+                const display = d.type === "fixed" ? `${d.value} €` : `${d.value}%`;
+                status.innerHTML = `<span class="text-emerald-400">✓ ${input} (${display}) eingelöst!</span>`;
                 updateCartDisplay();
                 return;
             }
             status.innerHTML = `<span class="text-red-400">Ungültig</span>`;
         }
+        // ====================== CATEGORY TABS ======================
         function renderCategoryTabs() {
             const html = `
                 <button onclick="setCategoryFilter('Alle')" class="px-5 py-2 transition ${currentCategoryFilter === 'Alle' ? 'tab-active' : ''}">Alle</button>
@@ -1291,6 +1310,7 @@
             renderCategoryTabs();
             renderProducts();
         }
+        // ====================== LEGAL MODALS ======================
         function showImpressumModal() {
             const modal = document.getElementById("impressum-modal");
             modal.classList.remove("hidden"); modal.classList.add("flex");
@@ -1322,9 +1342,11 @@
             modal.classList.add("hidden"); modal.classList.remove("flex");
             alert("Dieser Shop ist nur für Personen ab 18 Jahren.");
         }
+        // ====================== SEARCH ======================
         function filterProducts() {
             renderProducts();
         }
+        // ====================== INITIALIZE ======================
         function initialize() {
             if (!localStorage.getItem("age_verified")) showAgeModal();
             localStorage.removeItem('wavevapes_notifications');

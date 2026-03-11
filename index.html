@@ -714,7 +714,7 @@
                         available: data.available !== false,
                         price: data.price || 7.99,
                         image: data.image || null,
-                        stock: data.stock || 0  // NEU: Lagerbestand laden
+                        stock: data.stock || 0
                     });
                 });
                 renderProducts();
@@ -726,17 +726,14 @@
         }
         function getSortPriority(p) {
             if (currentCategoryFilter !== "Alle") {
-                // Für spezifische Kategorien: Verfügbare zuerst, dann alphabetisch
                 return p.available ? 0 : 1;
             }
-            // Für "Alle"
             if (p.category === "WaveVapes Tornado 30000") {
-                return p.available ? 4 : 5; // Vapes verfügbar, dann nicht verfügbar
+                return p.available ? 4 : 5;
             }
-            // Liquids
-            if (!p.available) return 3; // Nicht verfügbar
-            if (p.isNew) return 2; // Neu verfügbar
-            return 1; // Normal verfügbar
+            if (!p.available) return 3;
+            if (p.isNew) return 2;
+            return 1;
         }
         function renderProducts() {
             const container = document.getElementById("products-grid");
@@ -747,7 +744,6 @@
                 const searchMatch = !searchTerm || p.name.toLowerCase().includes(searchTerm);
                 return catMatch && searchMatch;
             });
-            // Sortiere die gefilterte Liste
             filtered.sort((a, b) => {
                 const prioA = getSortPriority(a);
                 const prioB = getSortPriority(b);
@@ -762,7 +758,7 @@
                 const oldPrice = product.category === "WaveVapes Tornado 30000" ? "35,99" : "10,99";
                 const salePrice = product.price.toFixed(2).replace('.', ',');
                 const unavailableClass = !product.available ? 'unavailable-product' : '';
-                const liquidClass = product.category !== "WaveVapes Tornado 30000" ? 'liquid-card' : ''; // NEU: Klasse für kleinere Box
+                const liquidClass = product.category !== "WaveVapes Tornado 30000" ? 'liquid-card' : '';
                 let nicotineHTML = '';
                 if (product.category !== "WaveVapes Tornado 30000" && product.available) {
                     nicotineHTML = `<select class="nicotine-select" onchange="updateNicotine('${product.id}', this.value)">${NICOTINE_OPTIONS.map(opt => `<option value="${opt}" ${nicotine === opt ? 'selected' : ''}>${opt}</option>`).join('')}</select>`;
@@ -796,7 +792,7 @@
                             ${unavailableTagHTML}
                             <div class="flex flex-col items-center">
                                 <div class="price-row"><span class="discount-price">${oldPrice}€</span> → <span class="sale-price ${priceClass}">${salePrice}€</span></div>
-                                ${stockHTML} <!-- NEU: Lagerbestand -->
+                                ${stockHTML}
                                 ${nicotineHTML}
                                 ${qtyHTML}
                             </div>
@@ -949,6 +945,15 @@
                 showAddressModal();
                 return;
             }
+            // Überprüfe Stock vor Bestellung
+            for (let item of cart) {
+                if (item.id === MYSTERY_ID) continue;
+                const product = allProducts.find(p => p.id === item.id);
+                if (product.stock < item.qty) {
+                    alert(`Nicht genug Vorrat für ${item.name}! Verfügbar: ${product.stock}`);
+                    return;
+                }
+            }
             const orderNumber = generateOrderNumber();
             const finalTotal = calculateCartTotal();
             try {
@@ -967,6 +972,13 @@
                     address: userAddress,
                     date: firebase.firestore.Timestamp.now()
                 });
+                // Decrement Stock
+                for (let item of cart) {
+                    if (item.id === MYSTERY_ID) continue;
+                    await db.collection("products").doc(item.id).update({
+                        stock: firebase.firestore.FieldValue.increment(-item.qty)
+                    });
+                }
                 const formData = new FormData();
                 formData.append("name", currentUser.email);
                 formData.append("bestellnummer", orderNumber);
@@ -975,6 +987,7 @@
                 fetch(FORMSPREE_ENDPOINT, { method: "POST", body: formData });
                 showSuccessModal(orderNumber, finalTotal);
                 cart = [];
+                await loadProducts(); // Reload für aktualisierten Stock
                 updateCartDisplay();
                 renderProducts();
                 toggleCart();

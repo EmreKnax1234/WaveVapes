@@ -132,10 +132,12 @@
                     <input id="prod-name" placeholder="Produktname" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4 text-lg" required>
                     <input id="prod-price" type="number" step="0.01" placeholder="Preis (€)" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4" required>
                     <input id="prod-stock" type="number" placeholder="Lagerbestand" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4" required>
+                    
                     <select id="prod-type" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4">
                         <option value="vape">Vape (Tornado 30000)</option>
                         <option value="liquid">Liquid</option>
                     </select>
+                    
                     <div class="flex items-center gap-3">
                         <input id="prod-new" type="checkbox" class="w-5 h-5 accent-lime-400">
                         <label class="text-sm">Neue Sorte</label>
@@ -144,11 +146,20 @@
                         <input id="prod-unavailable" type="checkbox" class="w-5 h-5 accent-red-400">
                         <label class="text-sm">Nicht verfügbar</label>
                     </div>
+                    
+                    <!-- Beschreibung -->
+                    <div class="col-span-full">
+                        <label class="text-xs text-gray-400 block mb-2">Produktbeschreibung (erscheint im Detail-Modal)</label>
+                        <textarea id="prod-description" rows="4" placeholder="Intensiver Blue Raspberry Geschmack mit eiskalter Frische..." 
+                                  class="w-full bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-4 resize-y"></textarea>
+                    </div>
+                    
                     <div id="dropzone" class="col-span-full border-2 border-dashed border-cyan-400/50 hover:border-cyan-400 rounded-3xl p-10 text-center cursor-pointer">
                         <i class="fa-solid fa-cloud-arrow-up text-5xl mb-4 text-cyan-400"></i>
                         <p class="text-cyan-300 text-lg">Bild per Drag & Drop oder klicken</p>
                         <img id="preview-thumb" class="hidden mx-auto mt-6 max-h-48 rounded-2xl border border-cyan-400/30 shadow-xl">
                     </div>
+                    
                     <button type="submit" class="lg:col-span-1 bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-5 rounded-3xl text-xl hover:scale-105 transition">Produkt speichern</button>
                 </form>
             </div>
@@ -216,10 +227,13 @@
         </div>
     </main>
 
-    <!-- EDIT MODAL -->
+    <!-- EDIT MODAL (voller Detail-Editor mit Live-Vorschau) -->
     <div id="edit-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]">
-        <div class="bg-zinc-900 rounded-3xl p-8 max-w-lg w-full mx-4 modal">
-            <h3 class="text-2xl font-bold mb-6 neon">Produkt bearbeiten</h3>
+        <div class="bg-zinc-900 rounded-3xl p-8 max-w-6xl w-full mx-4 modal max-h-[95vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-8">
+                <h3 class="text-3xl font-bold neon">Produkt bearbeiten</h3>
+                <button onclick="closeEditModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
+            </div>
             <div id="edit-form" class="space-y-6"></div>
             <div class="flex gap-4 mt-10">
                 <button onclick="saveEdit()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-5 rounded-3xl font-bold text-lg">Speichern</button>
@@ -295,11 +309,7 @@
             try {
                 const snapshot = await db.collection("products").get();
                 const batch = db.batch();
-
-                snapshot.forEach(doc => {
-                    batch.update(doc.ref, { sold: 0 });
-                });
-
+                snapshot.forEach(doc => batch.update(doc.ref, { sold: 0 }));
                 await batch.commit();
                 showToast("✅ Alle Statistiken wurden zurückgesetzt!", "success");
                 loadProducts();
@@ -366,41 +376,76 @@
             showToast('Verfügbarkeit aktualisiert');
         }
 
-        // ==================== EDIT MODAL ====================
+        // ==================== EDIT MODAL (voller Detail-Editor) ====================
         async function openEditModal(id) {
             currentEditId = id;
             const doc = await db.collection('products').doc(id).get();
             const p = doc.data();
+
             const html = `
-                <input id="edit-name" value="${p.name}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 text-lg">
-                <div class="grid grid-cols-2 gap-6">
-                    <input id="edit-price" type="number" step="0.01" value="${p.price}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
-                    <input id="edit-stock" type="number" value="${p.stock}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
-                </div>
-                <select id="edit-type" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
-                    <option value="vape" ${p.type==='vape'?'selected':''}>Vape</option>
-                    <option value="liquid" ${p.type==='liquid'?'selected':''}>Liquid</option>
-                </select>
-                <div class="flex items-center gap-3">
-                    <input id="edit-new" type="checkbox" ${p.isNew?'checked':''}>
-                    <label class="text-sm">Neue Sorte</label>
-                </div>
-                <div id="edit-dropzone" class="border-2 border-dashed border-cyan-400/50 hover:border-cyan-400 rounded-3xl p-8 text-center cursor-pointer">
-                    ${p.image ? `<img src="${p.image}" class="mx-auto max-h-48 rounded-2xl">` : `<p class="text-cyan-300">Neues Bild hochladen (klicken)</p>`}
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <!-- Live-Vorschau -->
+                    <div>
+                        <h3 class="text-xl font-bold mb-4">Vorschau (wie im Shop)</h3>
+                        <div id="preview-image" class="bg-zinc-950 border border-white/10 rounded-3xl overflow-hidden h-96 flex items-center justify-center">
+                            ${p.image ? `<img src="${p.image}" class="max-h-full w-full object-contain">` : 
+                            `<div class="text-center text-gray-500"><i class="fa-solid fa-image text-6xl mb-4"></i><br>Kein Bild hochgeladen</div>`}
+                        </div>
+                        <p class="text-xs text-gray-400 mt-4 text-center">Das sehen deine Kunden im Detail-Modal</p>
+                    </div>
+
+                    <!-- Bearbeiten -->
+                    <div class="space-y-6">
+                        <input id="edit-name" value="${p.name}" placeholder="Produktname" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 text-lg">
+                        
+                        <div class="grid grid-cols-2 gap-4">
+                            <input id="edit-price" type="number" step="0.01" value="${p.price}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
+                            <input id="edit-stock" type="number" value="${p.stock}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
+                        </div>
+
+                        <select id="edit-type" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
+                            <option value="vape" ${p.type==='vape'?'selected':''}>Vape (Tornado 30000)</option>
+                            <option value="liquid" ${p.type==='liquid'?'selected':''}>Liquid</option>
+                        </select>
+
+                        <div>
+                            <label class="text-xs text-gray-400 block mb-2">Produktbeschreibung</label>
+                            <textarea id="edit-description" rows="8" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-3xl px-6 py-4">${p.description || ''}</textarea>
+                        </div>
+
+                        <div class="flex items-center gap-6">
+                            <div class="flex items-center gap-3">
+                                <input id="edit-new" type="checkbox" ${p.isNew?'checked':''}>
+                                <label>Neue Sorte</label>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <input id="edit-unavailable" type="checkbox" ${p.available === false ? 'checked' : ''}>
+                                <label>Nicht verfügbar</label>
+                            </div>
+                        </div>
+
+                        <!-- Bild hochladen -->
+                        <div id="edit-dropzone" class="border-2 border-dashed border-cyan-400/50 hover:border-cyan-400 rounded-3xl p-8 text-center cursor-pointer">
+                            <i class="fa-solid fa-cloud-arrow-up text-4xl mb-3 text-cyan-400"></i>
+                            <p class="text-cyan-300">Neues Bild hochladen (klicken oder Drag & Drop)</p>
+                        </div>
+                    </div>
                 </div>
             `;
+
             document.getElementById('edit-form').innerHTML = html;
             document.getElementById('edit-modal').classList.remove('hidden');
 
-            const dz = document.getElementById('edit-dropzone');
-            dz.onclick = () => {
+            // Bild-Upload
+            const dropzone = document.getElementById('edit-dropzone');
+            dropzone.onclick = () => {
                 const input = document.createElement('input');
                 input.type = 'file';
                 input.accept = 'image/*';
                 input.onchange = e => {
                     selectedFile = e.target.files[0];
                     const url = URL.createObjectURL(selectedFile);
-                    dz.innerHTML = `<img src="${url}" class="mx-auto max-h-48 rounded-2xl">`;
+                    document.getElementById('preview-image').innerHTML = `<img src="${url}" class="max-h-full w-full object-contain">`;
                 };
                 input.click();
             };
@@ -417,8 +462,20 @@
             const price = parseFloat(document.getElementById('edit-price').value);
             const stock = parseInt(document.getElementById('edit-stock').value);
             const type = document.getElementById('edit-type').value;
+            const description = document.getElementById('edit-description').value;
             const isNew = document.getElementById('edit-new').checked;
-            let data = { name, price, stock, type, isNew };
+            const unavailable = document.getElementById('edit-unavailable').checked;
+
+            let data = { 
+                name, 
+                price, 
+                stock, 
+                type, 
+                description: description || "", 
+                isNew, 
+                available: !unavailable 
+            };
+
             if (selectedFile) {
                 const formData = new FormData();
                 formData.append("file", selectedFile);
@@ -427,18 +484,13 @@
                 const json = await res.json();
                 if (json.secure_url) data.image = json.secure_url;
             }
+
             await db.collection('products').doc(currentEditId).update(data);
             closeEditModal();
-            showToast('Produkt gespeichert ✅');
+            showToast('✅ Produkt gespeichert – Bild und Beschreibung aktualisiert!');
         }
 
-        async function deleteProduct(id) {
-            if (!confirm('Produkt wirklich IRREVERSIBEL löschen?')) return;
-            await db.collection('products').doc(id).delete();
-            showToast('Produkt gelöscht');
-        }
-
-        // ==================== NEUES PRODUKT ====================
+        // ==================== NEUES PRODUKT (mit Beschreibung) ====================
         document.getElementById('add-form').addEventListener('submit', async e => {
             e.preventDefault();
             const name = document.getElementById('prod-name').value.trim();
@@ -447,14 +499,22 @@
             const type = document.getElementById('prod-type').value;
             const isNew = document.getElementById('prod-new').checked;
             const unavailable = document.getElementById('prod-unavailable').checked;
+            const description = document.getElementById('prod-description').value.trim();
             const category = type === 'vape' ? 'WaveVapes Tornado 30000' : (isNew ? 'Neue Sorten' : 'Normale Sorten');
+
             const docRef = await db.collection('products').add({
-                name, price, stock, type, category,
+                name, 
+                price, 
+                stock, 
+                type, 
+                category,
                 isNew: type === 'liquid' ? isNew : false,
                 available: !unavailable,
+                description: description || "",
                 sold: 0,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
+
             if (selectedFile) {
                 const formData = new FormData();
                 formData.append("file", selectedFile);
@@ -463,10 +523,11 @@
                 const json = await res.json();
                 if (json.secure_url) await docRef.update({ image: json.secure_url });
             }
+
             e.target.reset();
             document.getElementById('preview-thumb').classList.add('hidden');
             selectedFile = null;
-            showToast('Produkt erfolgreich angelegt! 🎉');
+            showToast('✅ Produkt erfolgreich angelegt! 🎉');
         });
 
         const dropzone = document.getElementById('dropzone');

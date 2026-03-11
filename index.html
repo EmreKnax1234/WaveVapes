@@ -73,6 +73,20 @@
         .social-icon:hover { transform: scale(1.25) rotate(10deg); filter: brightness(1.2); }
         .auth-tab { transition: all 0.2s; }
         .auth-tab-active { border-bottom: 4px solid #67e8f9; color: #67e8f9; font-weight: 600; }
+
+        /* NICHT VERFÜGBARE PRODUKTE – GENAU WIE GEWÜNSCHT */
+        .unavailable-product {
+            opacity: 0.65;
+        }
+        .unavailable-product .sale-price,
+        .unavailable-product h4 {
+            text-decoration: line-through;
+            color: #ef4444 !important;
+        }
+        .unavailable-product .qty-btn {
+            opacity: 0.4;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body class="wave-bg text-white min-h-screen">
@@ -703,7 +717,7 @@
             return getProductTotal() + getShippingCost();
         }
 
-        // ====================== PRODUCTS FROM FIRESTORE (STRING-ID FIX) ======================
+        // ====================== PRODUCTS FROM FIRESTORE ======================
         async function loadProducts() {
             const container = document.getElementById("products-grid");
             container.innerHTML = `<p class="col-span-full text-center py-16 text-gray-400 flex items-center justify-center gap-3"><i class="fa-solid fa-spinner animate-spin text-2xl"></i> Produkte werden live aus deinem Admin-Panel geladen...</p>`;
@@ -713,7 +727,7 @@
                 snapshot.forEach(doc => {
                     const data = doc.data();
                     allProducts.push({
-                        id: doc.id,                    // ← STRING-ID (wichtig!)
+                        id: doc.id,
                         name: data.name,
                         category: data.category,
                         isNew: data.isNew || false,
@@ -746,8 +760,9 @@
                 const qty = cartItem ? cartItem.qty : 0;
                 const nicotine = cartItem?.nicotine || "20 mg";
                 const imageHTML = product.image ? `<img src="${product.image}" class="tornado-image" alt="${product.name}">` : '';
-                const oldPrice = product.category === "WaveVapes Tornado 30000" ? "35,99" : "9,99";
+                const oldPrice = product.category === "WaveVapes Tornado 30000" ? "35,99" : "10,99";
                 const salePrice = product.price.toFixed(2).replace('.', ',');
+                const unavailableClass = !product.available ? 'unavailable-product' : '';
 
                 let nicotineHTML = '';
                 if (product.category !== "WaveVapes Tornado 30000") {
@@ -755,7 +770,7 @@
                 }
 
                 html += `
-                    <div class="product-card bg-zinc-900 border border-white/10 rounded-3xl overflow-hidden">
+                    <div class="product-card bg-zinc-900 border border-white/10 rounded-3xl overflow-hidden ${unavailableClass}">
                         <div class="h-1.5 bg-gradient-to-r from-cyan-400 to-purple-500"></div>
                         <div class="p-5">
                             ${imageHTML}
@@ -787,6 +802,10 @@
         function changeQuantity(id, delta) {
             const product = allProducts.find(p => p.id === id);
             if (!product) return;
+            if (!product.available) {
+                showToast("❌ Dieses Produkt ist momentan nicht verfügbar", "error");
+                return;
+            }
             let existing = cart.find(item => item.id === id);
             if (!existing) {
                 existing = { id, name: product.name, qty: 0, price: product.price, nicotine: "20 mg" };
@@ -934,6 +953,7 @@
             try {
                 await db.collection("orders").add({
                     userId: currentUser.uid,
+                    userEmail: currentUser.email,
                     orderNumber: orderNumber,
                     items: cart.map(item => ({
                         id: item.id,

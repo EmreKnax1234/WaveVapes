@@ -59,7 +59,20 @@
         .discount-price { font-size: 1.35rem; text-decoration: line-through; color: #9ca3af; }
         .sale-price { font-size: 1.85rem; font-weight: 700; color: #ef4444; }
         .mystery-item { background: linear-gradient(90deg, #10b981, #34d399) !important; border: 2px solid #a7f3d0 !important; color: black; }
-        .nicotine-select { background: #1f2937; color: white; border: 1px solid rgba(103,232,249,0.5); border-radius: 9999px; padding: 6px 12px; font-size: 0.875rem; margin-top: 8px; width: 100%; max-width: 180px; appearance: none; }
+        .nicotine-select { 
+            background: #1f2937; 
+            color: white; 
+            border: 1px solid rgba(103,232,249,0.5); 
+            border-radius: 9999px; 
+            padding: 6px 12px; 
+            font-size: 0.875rem; 
+            margin-top: 8px; 
+            width: 112px !important; 
+            margin-left: auto; 
+            margin-right: auto; 
+            appearance: none; 
+            text-align: center; 
+        }
         .nicotine-select:focus { outline: none; border-color: #22d3ee; box-shadow: 0 0 0 3px rgba(34,211,238,0.3); }
         .loyalty-bar { height: 6px; background: linear-gradient(to right, #67e8f9, #a5f3fc); border-radius: 9999px; transition: width 0.6s cubic-bezier(0.34,1.56,0.64,1); }
         .review-card { transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1); }
@@ -924,18 +937,16 @@
                 const unavailableClass = !product.available ? 'unavailable-product' : '';
                 const liquidClass = !isVape ? 'liquid-card' : '';
                 let unavailableTagHTML = !product.available ? `<div class="unavailable-tag">Aktuell NICHT verfügbar</div>` : '';
-                // NEUES LAYOUT: Lagerbestand JETZT ÜBER DEM PREIS
                 let nicotineHTML = '';
                 if (!isVape && product.available) {
                     nicotineHTML = `<select class="nicotine-select" onchange="updateNicotine('${product.id}', this.value); event.stopImmediatePropagation()">${NICOTINE_OPTIONS.map(opt => `<option value="${opt}" ${nicotine === opt ? 'selected' : ''}>${opt}</option>`).join('')}</select>`;
                 }
                 let qtyHTML = product.available ? `
                     <div class="flex items-center bg-zinc-800 rounded-3xl" onclick="event.stopImmediatePropagation()">
-                        <button onclick="changeQuantity('${product.id}', -1); event.stopImmediatePropagation()" class="qty-btn w-9 h-9 text-2xl text-cyan-300">-</button>
-                        <div class="w-10 text-center font-bold text-xl">${qty}</div>
-                        <button onclick="changeQuantity('${product.id}', 1); event.stopImmediatePropagation()" class="qty-btn w-9 h-9 text-2xl text-cyan-300">+</button>
+                        <button onclick="changeQuantity('${product.id}', -1); event.stopImmediatePropagation()" class="qty-btn w-9 h-9 text-2xl text-cyan-300 flex-1 flex items-center justify-center">-</button>
+                        <div class="w-10 text-center font-bold text-xl flex items-center justify-center">${qty}</div>
+                        <button onclick="changeQuantity('${product.id}', 1); event.stopImmediatePropagation()" class="qty-btn w-9 h-9 text-2xl text-cyan-300 flex-1 flex items-center justify-center">+</button>
                     </div>` : '';
-                // Lagerbestand
                 let stockHTML = '';
                 if (product.available) {
                     const stock = product.stock || 0;
@@ -956,20 +967,10 @@
                                 ${product.isNew ? `<span class="ml-auto px-3 py-1 bg-lime-400 text-black text-xs font-black tracking-wider rounded-2xl">NEW</span>` : ''}
                             </div>
                             ${unavailableTagHTML}
-                           
-                            <!-- LAGERBESTAND JETZT ÜBER DEM PREIS -->
                             ${stockHTML}
-                           
-                            <!-- Lücke zwischen Lager und Preis -->
                             <div class="flex-1"></div>
-                           
-                            <!-- Preis -->
                             <div class="price-row"><span class="discount-price">${oldPrice}€</span> → <span class="sale-price">${salePrice}€</span></div>
-                           
-                            <!-- Plus / Minus -->
                             ${qtyHTML}
-                           
-                            <!-- Nikotin -->
                             ${nicotineHTML}
                         </div>
                     </div>`;

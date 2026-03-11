@@ -4,15 +4,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>WaveVapes – Disposable Vapes & Premium Liquids</title>
-    <meta name="description" content="WaveVapes Shop – Disposable Vapes bis 30000 Puffs und Premium Liquids online. 4 für 3 Aktion • Mystery Vape gratis ab 100 € • Gratis Versand ab 100 €.">
+    <meta name="description" content="WaveVapes Shop – Disposable Vapes bis 30000 Puffs und Premium Liquids online. 4 für 3 Aktion • Mystery Vape gratis ab 100 € • Gratis Versand ab 100 €. Schnell & diskret per DHL. Nur für Volljährige.">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://wavevapes.de">
+    <meta name="theme-color" content="#0a0a0a">
+
     <!-- SEO + Social Media -->
     <meta property="og:title" content="WaveVapes – Tornado 30000 & Premium Liquids">
     <meta property="og:description" content="4 für 3 Aktion + Mystery Vape gratis ab 100 €. Schnell & diskret per DHL. Nur für Volljährige.">
     <meta property="og:image" content="https://wavevapes.de/og-image.jpg">
     <meta property="og:url" content="https://wavevapes.de">
     <meta property="og:type" content="website">
+    <meta property="og:site_name" content="WaveVapes">
     <meta name="twitter:card" content="summary_large_image">
-    <!-- JSON-LD Structured Data -->
+    <meta name="twitter:site" content="@WaveVapes">
+    <meta name="twitter:creator" content="@WaveVapes">
+
+    <!-- Preconnect für maximale Performance (Lighthouse Core Web Vitals) -->
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+
+    <!-- JSON-LD Structured Data (erweitert mit Organization) -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -20,6 +34,11 @@
       "name": "WaveVapes",
       "url": "https://wavevapes.de",
       "description": "Disposable Vapes und Premium Liquids mit Loyalty-System und 4-für-3-Aktion",
+      "publisher": {
+        "@type": "Organization",
+        "name": "WaveVapes",
+        "logo": "https://wavevapes.de/logo.png"
+      },
       "potentialAction": {
         "@type": "SearchAction",
         "target": "https://wavevapes.de/?search={search_term_string}",
@@ -28,6 +47,7 @@
     }
     </script>
     <meta name="google-site-verification" content="3kBk4qEfWOIpWL7969larnRHDzPJ60AVgzE67bUkS18" />
+
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -103,6 +123,8 @@
         .stock-high { background: rgba(16, 185, 129, 0.15); color: #10b981; }
         .stock-low { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
         .stock-zero { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+        /* Performance-Optimierung: verhindert Cumulative Layout Shift (CLS) */
+        img { max-width: 100%; height: auto; display: block; }
     </style>
 </head>
 <body class="wave-bg text-white min-h-screen">
@@ -110,7 +132,7 @@
     <nav class="bg-black/90 backdrop-blur-xl border-b border-cyan-400/30 sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex justify-between items-center">
             <div class="flex items-center gap-3">
-                <img src="logo.png" alt="WaveVapes Logo" class="h-8 sm:h-11 w-auto drop-shadow-xl" loading="lazy">
+                <img src="logo.png" alt="WaveVapes Logo" class="h-8 sm:h-11 w-auto drop-shadow-xl" loading="eager" fetchpriority="high">
                 <div>
                     <h1 class="text-3xl sm:text-4xl font-bold tracking-tighter neon-text">WAVEVAPES</h1>
                     <p class="text-[9px] sm:text-[10px] text-cyan-300 tracking-[3px] -mt-1">2026 SORTIMENT</p>
@@ -641,28 +663,21 @@
             currentUser = user;
             updateAuthUI();
             updateUserDisplay();
-
             if (user) {
                 const userDoc = await db.collection("users").doc(user.uid).get();
-                
-                // === ACCOUNT GESPERRT ===
                 if (userDoc.exists && userDoc.data().disabled === true) {
                     await auth.signOut();
                     showToast("❌ Dein Account wurde permanent gesperrt.", "error");
                     return;
                 }
-
-                // === PASSWORT WURDE ZURÜCKGESETZT ===
                 if (userDoc.exists && userDoc.data().passwordResetRequested === true) {
                     await db.collection("users").doc(user.uid).update({
                         passwordResetRequested: false
                     });
                     showToast("🔑 Dein Passwort wurde zurückgesetzt, bitte gib ein neues ein.", "success");
                 }
-
                 await createOrUpdateUserProfile();
                 loadUserOrders();
-
                 if (userSnapshotUnsubscribe) userSnapshotUnsubscribe();
                 userSnapshotUnsubscribe = db.collection("users").doc(user.uid).onSnapshot(doc => {
                     if (doc.exists) {
@@ -946,7 +961,7 @@
                 const nicotine = cartItem?.nicotine || "20 mg";
                 const isVape = product.category === "WaveVapes Tornado 30000";
                 const imageHTML = product.image
-                    ? `<img src="${product.image}" class="tornado-image" alt="${product.name}" loading="lazy">`
+                    ? `<img src="${product.image}" class="tornado-image" alt="${product.name} – WaveVapes Disposable Vape" loading="lazy" decoding="async" width="400" height="160">`
                     : `<div class="tornado-image bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-4xl">🧪</div>`;
                 const oldPrice = isVape ? "35,99" : "10,99";
                 const salePrice = product.price.toFixed(2).replace('.', ',');
@@ -1439,7 +1454,7 @@
             const html = `
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
                     <div>
-                        ${product.image ? `<img src="${product.image}" class="w-full rounded-3xl shadow-2xl">` : ''}
+                        ${product.image ? `<img src="${product.image}" class="w-full rounded-3xl shadow-2xl" alt="${product.name} – WaveVapes Premium Vape oder Liquid" loading="eager" decoding="async" width="600" height="400">` : ''}
                     </div>
                     <div>
                         <h2 class="text-4xl font-bold tracking-tighter neon-text">${product.name}</h2>

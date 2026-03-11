@@ -92,6 +92,13 @@
             margin-bottom: 12px;
         }
         /* Entfernt through für h4 – Name bleibt normal */
+        /* NEU: Kleinere Box für Liquids */
+        .liquid-card .p-5 {
+            padding: 1rem; /* Reduziertes Padding */
+        }
+        .liquid-card {
+            min-height: auto; /* Keine feste Höhe */
+        }
     </style>
 </head>
 <body class="wave-bg text-white min-h-screen">
@@ -706,10 +713,10 @@
                         isNew: data.isNew || false,
                         available: data.available !== false,
                         price: data.price || 7.99,
-                        image: data.image || null
+                        image: data.image || null,
+                        stock: data.stock || 0  // NEU: Lagerbestand laden
                     });
                 });
-                // Globale Sortierung bei Load nicht nötig, da per Kategorie sortiert wird
                 renderProducts();
                 showToast("✅ Produkte aus Firestore geladen");
             } catch (e) {
@@ -755,6 +762,7 @@
                 const oldPrice = product.category === "WaveVapes Tornado 30000" ? "35,99" : "10,99";
                 const salePrice = product.price.toFixed(2).replace('.', ',');
                 const unavailableClass = !product.available ? 'unavailable-product' : '';
+                const liquidClass = product.category !== "WaveVapes Tornado 30000" ? 'liquid-card' : ''; // NEU: Klasse für kleinere Box
                 let nicotineHTML = '';
                 if (product.category !== "WaveVapes Tornado 30000" && product.available) {
                     nicotineHTML = `<select class="nicotine-select" onchange="updateNicotine('${product.id}', this.value)">${NICOTINE_OPTIONS.map(opt => `<option value="${opt}" ${nicotine === opt ? 'selected' : ''}>${opt}</option>`).join('')}</select>`;
@@ -772,8 +780,12 @@
                         <button onclick="changeQuantity('${product.id}', 1)" class="qty-btn w-9 h-9 text-2xl text-cyan-300">+</button>
                     </div>`;
                 }
+                let stockHTML = '';
+                if (product.available && product.stock > 0) {
+                    stockHTML = `<p class="text-sm text-emerald-400 mt-2">Noch ${product.stock} verfügbar</p>`;
+                }
                 html += `
-                    <div class="product-card bg-zinc-900 border border-white/10 rounded-3xl overflow-hidden ${unavailableClass}">
+                    <div class="product-card bg-zinc-900 border border-white/10 rounded-3xl overflow-hidden ${unavailableClass} ${liquidClass}">
                         <div class="h-1.5 bg-gradient-to-r from-cyan-400 to-purple-500"></div>
                         <div class="p-5">
                             ${imageHTML}
@@ -784,6 +796,7 @@
                             ${unavailableTagHTML}
                             <div class="flex flex-col items-center">
                                 <div class="price-row"><span class="discount-price">${oldPrice}€</span> → <span class="sale-price ${priceClass}">${salePrice}€</span></div>
+                                ${stockHTML} <!-- NEU: Lagerbestand -->
                                 ${nicotineHTML}
                                 ${qtyHTML}
                             </div>

@@ -1,665 +1,642 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>WaveVapes – Admin Panel (Produkte & Bestellungen)</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>WaveVapes – Produktverwaltung (Admin)</title>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <style>
+        body { font-family: 'Inter', system-ui, sans-serif; background: linear-gradient(135deg, #0a0a0a, #1e1233, #0a0a0a); color: white; min-height: 100vh; }
+        .neon { text-shadow: 0 0 15px #67e8f9, 0 0 30px #67e8f9; }
+        .card { background: #18181b; border: 1px solid #27272a; border-radius: 1rem; padding: 1.5rem; }
+        .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #10b981; color: white; padding: 12px 24px; border-radius: 9999px; box-shadow: 0 10px 25px rgba(0,0,0,0.4); z-index: 9999; opacity: 0; transition: all 0.4s; }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(-8px); }
+        .input { background: #1f2937; border: 1px solid #374151; color: white; }
+        .input:focus { border-color: #67e8f9; outline: none; box-shadow: 0 0 0 3px rgba(103,232,249,0.2); }
+        .dropzone { border: 2px dashed #67e8f9; transition: all 0.3s; }
+        .dropzone.dragover { background: rgba(103,232,249,0.1); border-color: #22d3ee; }
+        .preview-card { background: #18181b; border: 1px solid #27272a; border-radius: 1rem; overflow: hidden; }
+        .unavailable-row { text-decoration: line-through; color: #ef4444 !important; background: #1f2937 !important; }
+        .inactive { opacity: 0.5; background: #111827; }
+        .tab-active { border-bottom: 4px solid #67e8f9; color: #67e8f9; font-weight: 600; }
 
-  <!-- Firebase SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-
-  <!-- Tailwind + Font Awesome -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
-
-  <style>
-    body {
-      font-family: 'Inter', system-ui, sans-serif;
-      background: linear-gradient(135deg, #0a0a0a, #1e1233, #0a0a0a);
-      color: white;
-      min-height: 100vh;
-    }
-    .neon {
-      text-shadow: 0 0 15px #67e8f9, 0 0 30px #67e8f9;
-    }
-    .card {
-      background: #18181b;
-      border: 1px solid #27272a;
-      border-radius: 1rem;
-      padding: 1.5rem;
-    }
-    .toast {
-      position: fixed;
-      bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: #10b981;
-      color: white;
-      padding: 12px 24px;
-      border-radius: 9999px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.4);
-      z-index: 9999;
-      opacity: 0;
-      transition: all 0.4s;
-    }
-    .toast.show {
-      opacity: 1;
-      transform: translateX(-50%) translateY(-8px);
-    }
-    .input {
-      background: #1f2937;
-      border: 1px solid #374151;
-      color: white;
-      border-radius: 0.5rem;
-      padding: 0.75rem 1rem;
-    }
-    .input:focus {
-      border-color: #67e8f9;
-      outline: none;
-      box-shadow: 0 0 0 3px rgba(103,232,249,0.2);
-    }
-    .dropzone {
-      border: 2px dashed #67e8f9;
-      transition: all 0.3s;
-      border-radius: 1rem;
-    }
-    .dropzone.dragover {
-      background: rgba(103,232,249,0.1);
-      border-color: #22d3ee;
-    }
-    .preview-card {
-      background: #18181b;
-      border: 1px solid #27272a;
-      border-radius: 1rem;
-      overflow: hidden;
-    }
-    .unavailable-row {
-      text-decoration: line-through;
-      color: #ef4444 !important;
-      background: #1f2937 !important;
-    }
-    .tab-active {
-      border-bottom: 4px solid #67e8f9;
-      color: #67e8f9;
-      font-weight: 600;
-    }
-    .status-badge {
-      padding: 4px 12px;
-      border-radius: 9999px;
-      font-size: 0.75rem;
-      font-weight: 600;
-    }
-    .status-Zahlungerwartet { background: #facc15; color: black; }
-    .status-Wirdbearbeitet   { background: #60a5fa; color: black; }
-    .status-Versendet        { background: #a78bfa; color: black; }
-    .status-Zugestellt       { background: #34d399; color: black; }
-    .status-Storniert        { background: #ef4444; color: white; }
-  </style>
+        /* STATUS BADGES */
+        .status-badge {
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+            text-align: center;
+            min-width: 110px;
+        }
+        .status-Zahlung {
+            background: #facc15;
+            color: black;
+        }
+        .status-Wird {
+            background: #60a5fa;
+            color: black;
+        }
+        .status-Versendet {
+            background: #a78bfa;
+            color: black;
+        }
+        .status-Zugestellt {
+            background: #34d399;
+            color: black;
+        }
+        .status-Storniert {
+            background: #ef4444;
+            color: white;
+        }
+    </style>
 </head>
-<body class="p-4 md:p-8">
+<body>
+    <!-- HEADER -->
+    <header class="bg-zinc-950 border-b border-cyan-900/40 sticky top-0 z-50 backdrop-blur-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex justify-between items-center">
+            <h1 class="text-2xl sm:text-3xl font-bold neon">WaveVapes – Produktverwaltung</h1>
+            <div class="flex items-center gap-6">
+                <span id="admin-email" class="text-cyan-300 text-sm sm:text-base"></span>
+                <button onclick="logout()" class="bg-red-600 hover:bg-red-500 px-5 py-2 rounded-lg font-medium text-sm sm:text-base">Logout</button>
+            </div>
+        </div>
+    </header>
 
-  <!-- HEADER -->
-  <header class="bg-zinc-950 border-b border-cyan-900/40 sticky top-0 z-50 backdrop-blur-md">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex justify-between items-center">
-      <h1 class="text-2xl sm:text-3xl font-bold neon">WaveVapes Admin</h1>
-      <div class="flex items-center gap-6">
-        <span id="admin-email" class="text-cyan-300 text-sm sm:text-base"></span>
-        <button onclick="logout()" class="bg-red-600 hover:bg-red-500 px-5 py-2 rounded-lg font-medium text-sm sm:text-base">
-          Logout
-        </button>
-      </div>
-    </div>
-  </header>
-
-  <!-- AUTH CHECK OVERLAY -->
-  <div id="auth-loading" class="fixed inset-0 bg-black/90 flex items-center justify-center z-50">
-    <div class="text-center">
-      <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-cyan-400 mx-auto mb-6"></div>
-      <p class="text-xl">Prüfe Admin-Rechte…</p>
-    </div>
-  </div>
-
-  <div id="no-admin" class="hidden text-center py-32">
-    <h2 class="text-5xl font-bold text-red-400 mb-6">Zugriff verweigert</h2>
-    <p class="text-xl mb-10">Du bist kein Administrator.</p>
-    <a href="index.html" class="inline-block bg-cyan-500 hover:bg-cyan-400 text-black px-10 py-5 rounded-xl text-xl font-bold">
-      Zurück zum Shop
-    </a>
-  </div>
-
-  <!-- HAUPTINHALT -->
-  <main id="admin-content" class="hidden max-w-7xl mx-auto px-4 sm:px-6 py-10">
-
-    <!-- TABS -->
-    <div class="flex border-b border-white/10 mb-8">
-      <button onclick="switchAdminTab(0)" id="tab-products" class="tab-active flex-1 py-4 text-center text-lg font-medium">
-        Produkte verwalten
-      </button>
-      <button onclick="switchAdminTab(1)" id="tab-orders" class="flex-1 py-4 text-center text-lg font-medium">
-        Live Bestellungen
-      </button>
+    <!-- AUTH CHECK -->
+    <div id="auth-loading" class="fixed inset-0 bg-black/90 flex items-center justify-center z-50">
+        <div class="text-center">
+            <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-cyan-400 mx-auto mb-6"></div>
+            <p class="text-xl">Prüfe Admin-Rechte…</p>
+        </div>
     </div>
 
-    <!-- ====================== PRODUKTE TAB ====================== -->
-    <div id="products-tab">
-
-      <!-- STATISTIK-BOXEN -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-        <div class="card text-center">
-          <p class="text-gray-400 mb-1">Potenzielle Einnahmen</p>
-          <p id="revenue" class="text-4xl font-bold text-emerald-400">0 €</p>
-        </div>
-        <div class="card text-center">
-          <p class="text-gray-400 mb-1">Aktive Produkte</p>
-          <p id="active-count" class="text-4xl font-bold text-cyan-400">0</p>
-        </div>
-        <div class="card text-center">
-          <p class="text-gray-400 mb-1">Gesamt verkauft</p>
-          <p id="total-sold" class="text-4xl font-bold text-purple-400">0</p>
-        </div>
-      </div>
-
-      <!-- NEUES PRODUKT FORMULAR -->
-      <div class="card mb-12">
-        <h2 class="text-2xl font-bold mb-6">Neues Produkt hinzufügen</h2>
-        <form id="add-form" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <input id="name" type="text" placeholder="Name (z. B. Blue Razz Ice)" class="input col-span-2" required onkeyup="updatePreview()" />
-          <input id="price" type="number" placeholder="Preis (€)" class="input" step="0.01" min="0" required onkeyup="updatePreview()" />
-          <input id="stock" type="number" placeholder="Lagerbestand" class="input" min="0" required />
-          <select id="type" class="input" onchange="updatePreview()">
-            <option value="vape">Vape (Tornado)</option>
-            <option value="liquid">Liquid</option>
-          </select>
-          <div class="flex items-center gap-3">
-            <input id="isNew" type="checkbox" class="w-5 h-5 accent-cyan-500" onchange="updatePreview()" />
-            <label for="isNew" class="text-sm text-gray-300">Neue Sorte?</label>
-          </div>
-          <div class="flex items-center gap-3">
-            <input id="notAvailable" type="checkbox" class="w-5 h-5 accent-red-500" />
-            <label for="notAvailable" class="text-sm text-gray-300">Momentan nicht verfügbar?</label>
-          </div>
-          <button type="submit" class="md:col-span-2 lg:col-span-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg transition">
-            Produkt speichern
-          </button>
-        </form>
-
-        <!-- BILD UPLOAD -->
-        <div id="image-dropzone" class="dropzone mt-8 p-8 rounded-2xl text-center cursor-pointer">
-          <i class="fa-solid fa-cloud-arrow-up text-4xl mb-3 text-cyan-400"></i>
-          <p class="text-cyan-300">Bild per Drag & Drop oder <span class="underline">klicken</span></p>
-          <p class="text-xs text-gray-400 mt-2">JPG / PNG • max. 2 MB</p>
-          <img id="image-preview-thumb" class="hidden mx-auto mt-6 max-h-48 rounded-xl shadow-xl border border-cyan-400/30">
-        </div>
-
-        <!-- LIVE VORSCHAU -->
-        <div class="mt-10">
-          <h3 class="text-xl font-bold mb-4 flex items-center gap-2"><i class="fa-solid fa-eye"></i> Live-Vorschau im Shop</h3>
-          <div id="product-preview" class="preview-card max-w-xs mx-auto"></div>
-        </div>
-      </div>
-
-      <!-- PRODUKTE TABELLE -->
-      <div class="card overflow-x-auto">
-        <h2 class="text-2xl font-bold mb-6">Produkte verwalten (Live)</h2>
-        <table class="w-full text-left min-w-[1100px]">
-          <thead>
-            <tr class="border-b border-zinc-700 text-gray-300">
-              <th class="py-4 px-4">Bild</th>
-              <th class="py-4 px-4">Name</th>
-              <th class="py-4 px-4">Preis</th>
-              <th class="py-4 px-4">Lager</th>
-              <th class="py-4 px-4">Typ</th>
-              <th class="py-4 px-4">Neu?</th>
-              <th class="py-4 px-4">Verfügbar</th>
-              <th class="py-4 px-4">Verkauft</th>
-              <th class="py-4 px-4 text-right">Aktionen</th>
-            </tr>
-          </thead>
-          <tbody id="products-tbody"></tbody>
-        </table>
-      </div>
-
+    <div id="no-admin" class="hidden text-center py-32">
+        <h2 class="text-5xl font-bold text-red-400 mb-6">Zugriff verweigert</h2>
+        <p class="text-xl mb-10">Du bist kein Administrator.</p>
+        <a href="index.html" class="inline-block bg-cyan-500 hover:bg-cyan-400 text-black px-10 py-5 rounded-xl text-xl font-bold">Zurück zum Shop</a>
     </div>
 
-    <!-- ====================== BESTELLUNGEN TAB ====================== -->
-    <div id="orders-tab" class="hidden">
+    <!-- HAUPTINHALT -->
+    <main id="admin-content" class="hidden max-w-7xl mx-auto px-4 sm:px-6 py-10">
+        <!-- TABS -->
+        <div class="flex border-b border-white/10 mb-8">
+            <button onclick="switchAdminTab(0)" id="tab-products" class="tab-active flex-1 py-4 text-center text-lg font-medium">Produkte verwalten</button>
+            <button onclick="switchAdminTab(1)" id="tab-orders" class="flex-1 py-4 text-center text-lg font-medium">Live Bestellungen</button>
+        </div>
 
-      <div class="card overflow-x-auto">
-        <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
-          <i class="fa-solid fa-receipt"></i>
-          Live Bestellungen
-          <span id="orders-count" class="ml-auto bg-emerald-600 text-xs px-3 py-1 rounded-full">0 Bestellungen</span>
-        </h2>
+        <!-- ====================== PRODUKTE TAB ====================== -->
+        <div id="products-tab">
+            <!-- STATISTIK-BOX -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+                <div class="card text-center">
+                    <p class="text-gray-400 mb-1">Potenzielle Einnahmen</p>
+                    <p id="revenue" class="text-4xl font-bold text-emerald-400">0 €</p>
+                </div>
+                <div class="card text-center">
+                    <p class="text-gray-400 mb-1">Aktive Produkte</p>
+                    <p id="active-count" class="text-4xl font-bold text-cyan-400">0</p>
+                </div>
+                <div class="card text-center">
+                    <p class="text-gray-400 mb-1">Gesamt verkauft</p>
+                    <p id="total-sold" class="text-4xl font-bold text-purple-400">0</p>
+                </div>
+            </div>
 
-        <table class="w-full text-left min-w-[1100px]">
-          <thead>
-            <tr class="border-b border-zinc-700 text-gray-300">
-              <th class="py-4 px-4">Bestell-Nr</th>
-              <th class="py-4 px-4">Datum</th>
-              <th class="py-4 px-4">Kunde</th>
-              <th class="py-4 px-4">Gesamt</th>
-              <th class="py-4 px-4">Status</th>
-              <th class="py-4 px-4 text-right">Aktionen</th>
-            </tr>
-          </thead>
-          <tbody id="orders-tbody"></tbody>
-        </table>
-      </div>
+            <!-- NEUES PRODUKT + DRAG & DROP + LIVE-VORSCHAU -->
+            <div class="card mb-12">
+                <h2 class="text-2xl font-bold mb-6">Neues Produkt hinzufügen</h2>
+                <form id="add-form" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                    <input id="name" type="text" placeholder="Name" class="input rounded-lg px-4 py-3 col-span-2" required onkeyup="updatePreview()" />
+                    <input id="price" type="number" placeholder="Preis (€)" class="input rounded-lg px-4 py-3" step="0.01" min="0" required onkeyup="updatePreview()" />
+                    <input id="stock" type="number" placeholder="Lagerbestand" class="input rounded-lg px-4 py-3" min="0" required />
+                    <select id="type" class="input rounded-lg px-4 py-3" onchange="updatePreview()">
+                        <option value="vape">Vape (Tornado)</option>
+                        <option value="liquid">Liquid</option>
+                    </select>
+                    <div class="flex items-center gap-3">
+                        <input id="isNew" type="checkbox" class="w-5 h-5 accent-cyan-500" onchange="updatePreview()" />
+                        <label for="isNew" class="text-sm text-gray-300">Neue Sorte?</label>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <input id="notAvailable" type="checkbox" class="w-5 h-5 accent-red-500" />
+                        <label for="notAvailable" class="text-sm text-gray-300">Momentan nicht verfügbar?</label>
+                    </div>
+                    <button type="submit" class="md:col-span-2 lg:col-span-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg transition">Produkt speichern</button>
+                </form>
 
-    </div>
+                <!-- DRAG & DROP BILD -->
+                <div id="image-dropzone" class="dropzone mt-8 p-8 rounded-2xl text-center cursor-pointer">
+                    <i class="fa-solid fa-cloud-arrow-up text-4xl mb-3 text-cyan-400"></i>
+                    <p class="text-cyan-300">Bild per Drag & Drop hierher ziehen oder <span class="underline">klicken</span></p>
+                    <p class="text-xs text-gray-400 mt-2">JPG / PNG • max. 2 MB</p>
+                    <img id="image-preview-thumb" class="hidden mx-auto mt-6 max-h-48 rounded-xl shadow-xl border border-cyan-400/30">
+                </div>
 
-  </main>
+                <!-- LIVE VORSCHAU -->
+                <div class="mt-10">
+                    <h3 class="text-xl font-bold mb-4 flex items-center gap-2"><i class="fa-solid fa-eye"></i> Live-Vorschau im Shop</h3>
+                    <div id="product-preview" class="preview-card max-w-xs mx-auto"></div>
+                </div>
+            </div>
 
-  <!-- TOAST CONTAINER -->
-  <div id="toast-container"></div>
+            <!-- PRODUKT-TABELLE -->
+            <div class="card overflow-x-auto">
+                <h2 class="text-2xl font-bold mb-6">Produkte verwalten (Live)</h2>
+                <table class="w-full text-left min-w-[1100px]">
+                    <thead>
+                        <tr class="border-b border-zinc-700 text-gray-300">
+                            <th class="py-4 px-4">Bild</th>
+                            <th class="py-4 px-4">Name</th>
+                            <th class="py-4 px-4">Preis</th>
+                            <th class="py-4 px-4">Lager</th>
+                            <th class="py-4 px-4">Typ</th>
+                            <th class="py-4 px-4">Kategorie</th>
+                            <th class="py-4 px-4">Neu?</th>
+                            <th class="py-4 px-4">Verfügbar</th>
+                            <th class="py-4 px-4">Verkauft</th>
+                            <th class="py-4 px-4 text-right">Aktionen</th>
+                        </tr>
+                    </thead>
+                    <tbody id="products-tbody"></tbody>
+                </table>
+            </div>
+        </div>
 
-  <script>
-    // ====================== FIREBASE INIT ======================
-    const firebaseConfig = {
-      apiKey: "AIzaSyDsIUl-iYmH42MPbusFLhGhj5oGLh01BzI",
-      authDomain: "wavevapes-7a960.firebaseapp.com",
-      projectId: "wavevapes-7a960",
-      storageBucket: "wavevapes-7a960.firebasestorage.app",
-      messagingSenderId: "1093624390275",
-      appId: "1:1093624390275:web:b1b8ae17bcf1b59dffb1b6",
-      measurementId: "G-B8T2B657LL"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
+        <!-- ====================== LIVE BESTELLUNGEN TAB ====================== -->
+        <div id="orders-tab" class="hidden">
+            <div class="card overflow-x-auto">
+                <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
+                    <i class="fa-solid fa-receipt"></i>
+                    Live Bestellungen
+                    <span id="orders-count" class="ml-auto bg-emerald-600 text-xs px-3 py-1 rounded-full">0 Bestellungen</span>
+                </h2>
+                <table class="w-full text-left min-w-[1200px]">
+                    <thead>
+                        <tr class="border-b border-zinc-700 text-gray-300">
+                            <th class="py-4 px-4">Bestellnummer</th>
+                            <th class="py-4 px-4">Datum</th>
+                            <th class="py-4 px-4">E-Mail</th>
+                            <th class="py-4 px-4">Gesamt</th>
+                            <th class="py-4 px-4">Adresse</th>
+                            <th class="py-4 px-4">Status</th>
+                            <th class="py-4 px-4 text-right">Aktionen</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orders-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
 
-    let selectedFile = null;
-    let currentPreviewImage = null;
+    <!-- TOAST CONTAINER -->
+    <div id="toast-container"></div>
 
-    // ====================== AUTH + ADMIN CHECK ======================
-    auth.onAuthStateChanged(async (user) => {
-      if (!user) return window.location.href = 'index.html';
+    <script>
+        // ====================== FIREBASE INIT ======================
+        const firebaseConfig = {
+            apiKey: "AIzaSyDsIUl-iYmH42MPbusFLhGhj5oGLh01BzI",
+            authDomain: "wavevapes-7a960.firebaseapp.com",
+            projectId: "wavevapes-7a960",
+            storageBucket: "wavevapes-7a960.firebasestorage.app",
+            messagingSenderId: "1093624390275",
+            appId: "1:1093624390275:web:b1b8ae17bcf1b59dffb1b6",
+            measurementId: "G-B8T2B657LL"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        let selectedFile = null;
+        let currentPreviewImage = null;
 
-      document.getElementById('admin-email').textContent = user.email;
+        // ====================== AUTH + AUTO-ADMIN ======================
+        auth.onAuthStateChanged(async (user) => {
+            if (!user) return window.location.href = 'index.html';
+            document.getElementById('admin-email').textContent = user.email;
+            try {
+                const userRef = db.collection('users').doc(user.uid);
+                const userDoc = await userRef.get();
+                if (!userDoc.exists) {
+                    await userRef.set({
+                        role: 'user',
+                        email: user.email,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                } else if (userDoc.data().role !== 'admin') {
+                    document.getElementById('auth-loading').classList.add('hidden');
+                    document.getElementById('no-admin').classList.remove('hidden');
+                    return;
+                }
+                document.getElementById('auth-loading').classList.add('hidden');
+                document.getElementById('admin-content').classList.remove('hidden');
+                switchAdminTab(0);
+                loadProducts();
+            } catch (err) {
+                console.error(err);
+                alert('Fehler beim Laden der Admin-Rechte: ' + err.message);
+            }
+        });
 
-      try {
-        const userRef = db.collection('users').doc(user.uid);
-        const userDoc = await userRef.get();
-
-        if (!userDoc.exists) {
-          await userRef.set({
-            role: 'user',
-            email: user.email,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-          });
-        } else if (userDoc.data().role !== 'admin') {
-          document.getElementById('auth-loading').classList.add('hidden');
-          document.getElementById('no-admin').classList.remove('hidden');
-          return;
+        function logout() {
+            auth.signOut().then(() => window.location.href = 'index.html');
         }
 
-        document.getElementById('auth-loading').classList.add('hidden');
-        document.getElementById('admin-content').classList.remove('hidden');
-
-        switchAdminTab(0);
-        loadProducts();
-        loadOrders(); // Vorab laden, damit Tab 1 sofort bereit ist
-      } catch (err) {
-        console.error(err);
-        alert('Fehler beim Laden der Admin-Rechte: ' + err.message);
-      }
-    });
-
-    function logout() {
-      auth.signOut().then(() => window.location.href = 'index.html');
-    }
-
-    // ====================== TAB WECHSEL ======================
-    function switchAdminTab(tab) {
-      document.getElementById("tab-products").classList.toggle("tab-active", tab === 0);
-      document.getElementById("tab-orders").classList.toggle("tab-active", tab === 1);
-      document.getElementById("products-tab").classList.toggle("hidden", tab !== 0);
-      document.getElementById("orders-tab").classList.toggle("hidden", tab !== 1);
-    }
-
-    // ====================== PRODUKT LIVE-VORSCHAU ======================
-    function updatePreview() {
-      const name  = document.getElementById('name').value  || 'Produktname';
-      const price = parseFloat(document.getElementById('price').value) || 7.99;
-      const isNew = document.getElementById('isNew').checked;
-      const type  = document.getElementById('type').value;
-
-      const previewHTML = `
-        <div class="product-card bg-zinc-900 border border-white/10 rounded-3xl overflow-hidden">
-          <div class="h-1.5 bg-gradient-to-r from-cyan-400 to-purple-500"></div>
-          <div class="p-5">
-            ${currentPreviewImage ? `<img src="${currentPreviewImage}" class="w-full h-48 object-cover rounded-2xl mb-4">` :
-            `<div class="w-full h-48 bg-zinc-800 rounded-2xl flex items-center justify-center text-gray-500 text-sm">Kein Bild</div>`}
-            <div class="flex justify-between mb-3">
-              <h4 class="font-semibold text-lg leading-tight">${name}</h4>
-              ${isNew ? `<span class="px-3 py-1 bg-lime-400 text-black text-xs font-bold rounded-2xl">NEW</span>` : ''}
-            </div>
-            <div class="flex flex-col items-center">
-              <div class="price-row">
-                <span class="discount-price">${type === 'vape' ? '35,99' : '10,99'}€</span> →
-                <span class="sale-price">${price.toFixed(2).replace('.', ',')}€</span>
-              </div>
-            </div>
-          </div>
-        </div>`;
-
-      document.getElementById('product-preview').innerHTML = previewHTML;
-    }
-
-    // ====================== BILD UPLOAD – DRAG & DROP ======================
-    const dropzone = document.getElementById('image-dropzone');
-    const thumb    = document.getElementById('image-preview-thumb');
-
-    dropzone.addEventListener('click', () => {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = 'image/*';
-      input.onchange = e => handleFile(e.target.files[0]);
-      input.click();
-    });
-
-    dropzone.addEventListener('dragover',  e => { e.preventDefault(); dropzone.classList.add('dragover'); });
-    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
-    dropzone.addEventListener('drop', e => {
-      e.preventDefault();
-      dropzone.classList.remove('dragover');
-      if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
-    });
-
-    function handleFile(file) {
-      if (!file.type.startsWith('image/')) return alert('Nur Bilder erlaubt!');
-      if (file.size > 2 * 1024 * 1024) return alert('Max. 2 MB!');
-      selectedFile = file;
-      currentPreviewImage = URL.createObjectURL(file);
-      thumb.src = currentPreviewImage;
-      thumb.classList.remove('hidden');
-      updatePreview();
-    }
-
-    // ====================== NEUES PRODUKT SPEICHERN ======================
-    document.getElementById('add-form').addEventListener('submit', async e => {
-      e.preventDefault();
-
-      const name        = document.getElementById('name').value.trim();
-      const price       = parseFloat(document.getElementById('price').value);
-      const stock       = parseInt(document.getElementById('stock').value);
-      const type        = document.getElementById('type').value;
-      const isNew       = document.getElementById('isNew').checked;
-      const notAvailable = document.getElementById('notAvailable').checked;
-
-      if (!name || isNaN(price) || price <= 0 || isNaN(stock) || stock < 0) {
-        return showToast('Bitte alle Felder korrekt ausfüllen', 'error');
-      }
-
-      let category = type === 'vape' ? 'WaveVapes Tornado 30000' : (isNew ? 'Neue Sorten' : 'Normale Sorten');
-
-      try {
-        const docRef = await db.collection('products').add({
-          name,
-          price,
-          stock,
-          type,
-          isNew: type === 'liquid' ? isNew : false,
-          category,
-          available: !notAvailable,
-          sold: 0,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-
-        let imageUrl = null;
-        if (selectedFile) {
-          const formData = new FormData();
-          formData.append("file", selectedFile);
-          formData.append("upload_preset", "wavevapes"); // ← Dein Cloudinary Preset
-          const res = await fetch("https://api.cloudinary.com/v1_1/dbbkmjsr5/image/upload", {
-            method: "POST",
-            body: formData
-          });
-          const data = await res.json();
-          if (res.ok && data.secure_url) {
-            imageUrl = data.secure_url;
-            await docRef.update({ image: imageUrl });
-          } else {
-            console.warn("Bild-Upload fehlgeschlagen", data);
-          }
+        // ====================== TAB-SWITCH ======================
+        function switchAdminTab(tab) {
+            document.getElementById("tab-products").classList.toggle("tab-active", tab === 0);
+            document.getElementById("tab-orders").classList.toggle("tab-active", tab === 1);
+            document.getElementById("products-tab").classList.toggle("hidden", tab !== 0);
+            document.getElementById("orders-tab").classList.toggle("hidden", tab !== 1);
+            if (tab === 1) loadOrders();
         }
 
-        e.target.reset();
-        selectedFile = null;
-        currentPreviewImage = null;
-        thumb.classList.add('hidden');
-        updatePreview();
+        // ====================== STATUS HELPER ======================
+        function getStatusClass(status) {
+            switch(status) {
+                case "Zahlung erwartet": return "status-Zahlung";
+                case "Wird bearbeitet": return "status-Wird";
+                case "Versendet": return "status-Versendet";
+                case "Zugestellt": return "status-Zugestellt";
+                case "Storniert": return "status-Storniert";
+                default: return "status-Zahlung";
+            }
+        }
 
-        showToast('Produkt erfolgreich gespeichert' + (imageUrl ? ' (inkl. Bild)' : ''), 'success');
-      } catch (err) {
-        console.error(err);
-        showToast('Fehler beim Speichern: ' + err.message, 'error');
-      }
-    });
+        // ====================== LIVE VORSCHAU ======================
+        function updatePreview() {
+            const name = document.getElementById('name').value || 'Produktname';
+            const price = parseFloat(document.getElementById('price').value) || 7.99;
+            const isNew = document.getElementById('isNew').checked;
+            const type = document.getElementById('type').value;
+            const previewHTML = `
+                <div class="product-card bg-zinc-900 border border-white/10 rounded-3xl overflow-hidden">
+                    <div class="h-1.5 bg-gradient-to-r from-cyan-400 to-purple-500"></div>
+                    <div class="p-5">
+                        ${currentPreviewImage ? `<img src="${currentPreviewImage}" class="w-full h-48 object-cover rounded-2xl mb-4">` : 
+                        `<div class="w-full h-48 bg-zinc-800 rounded-2xl flex items-center justify-center text-gray-500 text-sm">Kein Bild hochgeladen</div>`}
+                        <div class="flex justify-between mb-3">
+                            <h4 class="font-semibold text-lg leading-tight">${name}</h4>
+                            ${isNew ? `<span class="px-3 py-1 bg-lime-400 text-black text-xs font-bold rounded-2xl">NEW</span>` : ''}
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <div class="price-row">
+                                <span class="discount-price">${type === 'vape' ? '35,99' : '10,99'}€</span>
+                                → 
+                                <span class="sale-price">${price.toFixed(2).replace('.', ',')}€</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            document.getElementById('product-preview').innerHTML = previewHTML;
+        }
 
-    // ====================== PRODUKTE LIVE LADEN ======================
-    function loadProducts() {
-      const tbody = document.getElementById('products-tbody');
-      tbody.innerHTML = '<tr><td colspan="10" class="text-center py-12 text-gray-400">Lade Produkte…</td></tr>';
-
-      db.collection('products').onSnapshot(snap => {
-        let totalRevenue = 0;
-        let activeCount = 0;
-        let totalSold   = 0;
-
-        const products = [];
-        snap.forEach(doc => {
-          const p = { id: doc.id, ...doc.data() };
-          products.push(p);
-          if (p.available !== false) activeCount++;
-          totalSold += p.sold || 0;
-          totalRevenue += (p.price || 0) * (p.sold || 0);
+        // ====================== DRAG & DROP ======================
+        const dropzone = document.getElementById('image-dropzone');
+        const thumb = document.getElementById('image-preview-thumb');
+        dropzone.addEventListener('click', () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = e => handleFile(e.target.files[0]);
+            input.click();
+        });
+        dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+        dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+        dropzone.addEventListener('drop', e => {
+            e.preventDefault();
+            dropzone.classList.remove('dragover');
+            if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
         });
 
-        // Sort: Verfügbare zuerst, dann alphabetisch
-        products.sort((a, b) => {
-          if (a.available === b.available) return a.name.localeCompare(b.name);
-          return a.available ? -1 : 1;
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) return alert('Nur Bilder erlaubt!');
+            if (file.size > 2 * 1024 * 1024) return alert('Maximal 2 MB!');
+            selectedFile = file;
+            currentPreviewImage = URL.createObjectURL(file);
+            thumb.src = currentPreviewImage;
+            thumb.classList.remove('hidden');
+            updatePreview();
+        }
+
+        // ====================== NEUES PRODUKT SPEICHERN ======================
+        document.getElementById('add-form').addEventListener('submit', async e => {
+            e.preventDefault();
+            const name = document.getElementById('name').value.trim();
+            const price = parseFloat(document.getElementById('price').value);
+            const stock = parseInt(document.getElementById('stock').value);
+            const type = document.getElementById('type').value;
+            const isNew = document.getElementById('isNew').checked;
+            const notAvailable = document.getElementById('notAvailable').checked;
+            if (!name || isNaN(price) || price <= 0 || isNaN(stock) || stock < 0) {
+                return showToast('Bitte alle Felder korrekt ausfüllen', 'error');
+            }
+            let category = type === 'vape' ? 'WaveVapes Tornado 30000' : (isNew ? 'Neue Sorten' : 'Normale Sorten');
+            try {
+                const docRef = await db.collection('products').add({
+                    name, price, stock, type,
+                    isNew: type === 'liquid' ? isNew : false,
+                    category,
+                    available: !notAvailable,
+                    sold: 0,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                let imageUrl = null;
+                if (selectedFile) {
+                    const formData = new FormData();
+                    formData.append("file", selectedFile);
+                    formData.append("upload_preset", "wavevapes");
+                    const res = await fetch("https://api.cloudinary.com/v1_1/dbbkmjsr5/image/upload", { method: "POST", body: formData });
+                    const data = await res.json();
+                    if (res.ok && data.secure_url) {
+                        imageUrl = data.secure_url;
+                        await docRef.update({ image: imageUrl });
+                    }
+                }
+                e.target.reset();
+                selectedFile = null;
+                currentPreviewImage = null;
+                thumb.classList.add('hidden');
+                updatePreview();
+                showToast('✅ Produkt gespeichert' + (imageUrl ? ' (mit Bild)' : ''), 'success');
+            } catch (err) {
+                console.error(err);
+                showToast('Fehler beim Speichern: ' + err.message, 'error');
+            }
         });
 
-        document.getElementById('revenue').textContent     = totalRevenue.toFixed(2) + ' €';
-        document.getElementById('active-count').textContent = activeCount;
-        document.getElementById('total-sold').textContent   = totalSold;
+        // ====================== PRODUKTE LADEN ======================
+        function loadProducts() {
+            const tbody = document.getElementById('products-tbody');
+            tbody.innerHTML = '<tr><td colspan="10" class="text-center py-12 text-gray-400">Lade Produkte…</td></tr>';
+            db.collection('products')
+                .onSnapshot((snap) => {
+                    let products = [];
+                    snap.forEach(doc => products.push({ id: doc.id, ...doc.data() }));
+                    products.sort((a, b) => {
+                        if (a.available === b.available) return a.name.localeCompare(b.name);
+                        return a.available ? -1 : 1;
+                    });
+                    tbody.innerHTML = '';
+                    products.forEach(p => {
+                        const row = document.createElement('tr');
+                        row.className = (p.available !== false) ? '' : 'unavailable-row';
+                        row.innerHTML = `
+                            <td class="py-4 px-4">
+                                ${p.image ? `<img src="${p.image}" class="w-12 h-12 object-cover rounded-lg">` : '<span class="text-gray-500 text-xs">—</span>'}
+                            </td>
+                            <td class="py-4 px-4 font-medium">${p.name || '—'}</td>
+                            <td class="py-4 px-4">${(p.price || 0).toFixed(2)} €</td>
+                            <td class="py-4 px-4">${p.stock ?? '—'}</td>
+                            <td class="py-4 px-4">${p.type === 'vape' ? 'Vape' : 'Liquid'}</td>
+                            <td class="py-4 px-4">${p.category || '—'}</td>
+                            <td class="py-4 px-4 text-center">${p.isNew ? 'Ja' : '—'}</td>
+                            <td class="py-4 px-4 text-center">
+                                <input type="checkbox" ${p.available !== false ? 'checked' : ''}
+                                    onchange="toggleAvailable('${p.id}', this.checked)"
+                                    class="w-5 h-5 accent-cyan-500" />
+                            </td>
+                            <td class="py-4 px-4 text-center font-medium">${p.sold || 0}</td>
+                            <td class="py-4 px-4 text-right space-x-4">
+                                <button onclick="editProduct('${p.id}')" class="text-cyan-400 hover:text-cyan-300">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </button>
+                                <button onclick="deleteProduct('${p.id}')" class="text-red-400 hover:text-red-500">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </td>`;
+                        tbody.appendChild(row);
+                    });
+                });
+        }
 
-        tbody.innerHTML = '';
-        products.forEach(p => {
-          const row = document.createElement('tr');
-          row.className = (p.available !== false) ? '' : 'unavailable-row';
-          row.innerHTML = `
-            <td class="py-4 px-4">
-              ${p.image ? `<img src="${p.image}" class="w-12 h-12 object-cover rounded-lg">` : '<span class="text-gray-500 text-xs">—</span>'}
-            </td>
-            <td class="py-4 px-4 font-medium">${p.name || '—'}</td>
-            <td class="py-4 px-4">${(p.price || 0).toFixed(2)} €</td>
-            <td class="py-4 px-4">${p.stock ?? '—'}</td>
-            <td class="py-4 px-4">${p.type === 'vape' ? 'Vape' : 'Liquid'}</td>
-            <td class="py-4 px-4 text-center">${p.isNew ? '<i class="fa-solid fa-star text-yellow-400"></i>' : '—'}</td>
-            <td class="py-4 px-4 text-center">
-              <input type="checkbox" ${p.available !== false ? 'checked' : ''}
-                     onchange="toggleAvailable('${p.id}', this.checked)"
-                     class="w-5 h-5 accent-cyan-500" />
-            </td>
-            <td class="py-4 px-4 text-center font-medium">${p.sold || 0}</td>
-            <td class="py-4 px-4 text-right space-x-4">
-              <button onclick="editProduct('${p.id}')" class="text-cyan-400 hover:text-cyan-300">
-                <i class="fa-solid fa-pen-to-square"></i>
-              </button>
-              <button onclick="deleteProduct('${p.id}')" class="text-red-400 hover:text-red-500">
-                <i class="fa-solid fa-trash"></i>
-              </button>
-            </td>
-          `;
-          tbody.appendChild(row);
-        });
-      });
-    }
+        async function toggleAvailable(id, available) {
+            try {
+                await db.collection('products').doc(id).update({ available });
+                showToast(`Produkt ${available ? 'aktiviert' : 'deaktiviert'}`, 'success');
+            } catch (err) {
+                showToast('Fehler beim Umschalten', 'error');
+            }
+        }
 
-    async function toggleAvailable(id, available) {
-      try {
-        await db.collection('products').doc(id).update({ available });
-        showToast(`Produkt ${available ? 'aktiviert' : 'deaktiviert'}`, 'success');
-      } catch (err) {
-        showToast('Fehler: ' + err.message, 'error');
-      }
-    }
+        async function deleteProduct(id) {
+            if (!confirm('⚠️ Produkt IRREVERSIBEL löschen?\n\nDas kann nicht rückgängig gemacht werden!')) return;
+            try {
+                await db.collection('products').doc(id).delete();
+                showToast('✅ Produkt wurde gelöscht', 'success');
+            } catch (err) {
+                showToast('❌ Fehler beim Löschen', 'error');
+            }
+        }
 
-    async function deleteProduct(id) {
-      if (!confirm('Produkt wirklich löschen? Dies kann nicht rückgängig gemacht werden!')) return;
-      try {
-        await db.collection('products').doc(id).delete();
-        showToast('Produkt gelöscht', 'success');
-      } catch (err) {
-        showToast('Fehler beim Löschen: ' + err.message, 'error');
-      }
-    }
+        async function editProduct(id) {
+            const docRef = db.collection('products').doc(id);
+            const docSnap = await docRef.get();
+            if (!docSnap.exists) return showToast('Produkt nicht gefunden', 'error');
+            const p = docSnap.data();
+            const name = prompt('Name:', p.name) || p.name;
+            const price = parseFloat(prompt('Preis (€):', p.price)) || p.price;
+            const stock = parseInt(prompt('Lagerbestand:', p.stock)) || p.stock;
+            const type = prompt('Typ (vape / liquid):', p.type)?.toLowerCase() || p.type;
+            const isNewRaw = prompt('Neue Sorte? (ja/nein):', p.isNew ? 'ja' : 'nein')?.toLowerCase();
+            const isNew = (type === 'liquid') && (isNewRaw === 'ja' || isNewRaw === 'true');
+            let category = type === 'vape' ? 'WaveVapes Tornado 30000' : (isNew ? 'Neue Sorten' : 'Normale Sorten');
+            try {
+                await docRef.update({ name, price, stock, type, isNew, category });
+                showToast('Produkt aktualisiert', 'success');
+            } catch (err) {
+                console.error(err);
+                showToast('Fehler beim Speichern', 'error');
+            }
+        }
 
-    async function editProduct(id) {
-      const docRef = db.collection('products').doc(id);
-      const docSnap = await docRef.get();
-      if (!docSnap.exists) return showToast('Produkt nicht gefunden', 'error');
+        // ====================== LIVE BESTELLUNGEN ======================
+        function loadOrders() {
+            const tbody = document.getElementById('orders-tbody');
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-12 text-gray-400">Lade Bestellungen…</td></tr>';
+            db.collection('orders')
+                .orderBy('date', 'desc')
+                .onSnapshot((snap) => {
+                    tbody.innerHTML = '';
+                    document.getElementById('orders-count').textContent = `${snap.size} Bestellungen`;
+                    if (snap.empty) {
+                        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-12 text-gray-400">Noch keine Bestellungen vorhanden</td></tr>';
+                        return;
+                    }
+                    snap.forEach(doc => {
+                        const order = doc.data();
+                        const row = document.createElement('tr');
+                        const date = order.date ? order.date.toDate().toLocaleString('de-DE') : '—';
+                        const addressShort = order.address ? `${order.address.street}, ${order.address.zip} ${order.address.city}` : '—';
+                        const emailDisplay = order.userEmail || '—';
+                        const currentStatus = order.status || "Zahlung erwartet";
+                        row.innerHTML = `
+                            <td class="py-4 px-4 font-mono text-cyan-300">${order.orderNumber}</td>
+                            <td class="py-4 px-4">${date}</td>
+                            <td class="py-4 px-4">${emailDisplay}</td>
+                            <td class="py-4 px-4 font-bold">${order.total.toFixed(2)} €</td>
+                            <td class="py-4 px-4 text-sm text-gray-400">${addressShort}</td>
+                            <td class="py-4 px-4">
+                                <span class="status-badge ${getStatusClass(currentStatus)}">
+                                    ${currentStatus}
+                                </span>
+                            </td>
+                            <td class="py-4 px-4 text-right">
+                                <button onclick="showOrderDetails('${doc.id}')"
+                                    class="bg-cyan-600 hover:bg-cyan-500 px-4 py-2 rounded-lg text-sm">Details</button>
+                            </td>`;
+                        tbody.appendChild(row);
+                    });
+                });
+        }
 
-      const p = docSnap.data();
+        // ====================== BESTELLDETAILS MODAL (ERWEITERT) ======================
+        async function showOrderDetails(orderId) {
+            try {
+                const doc = await db.collection('orders').doc(orderId).get();
+                if (!doc.exists) return showToast('Bestellung nicht gefunden', 'error');
+                const order = doc.data();
+                const date = order.date ? order.date.toDate().toLocaleString('de-DE') : '—';
+                let itemsHTML = '<div class="space-y-2 mt-4">';
+                order.items.forEach(item => {
+                    itemsHTML += `
+                        <div class="flex justify-between py-2 border-b border-white/10">
+                            <span>${item.name} × ${item.qty} ${item.nicotine ? ` (${item.nicotine})` : ''}</span>
+                            <span>${(item.price * item.qty).toFixed(2)} €</span>
+                        </div>`;
+                });
+                itemsHTML += '</div>';
 
-      const name  = prompt('Name:', p.name) || p.name;
-      const price = parseFloat(prompt('Preis (€):', p.price)) || p.price;
-      const stock = parseInt(prompt('Lagerbestand:', p.stock)) || p.stock;
-      const type  = prompt('Typ (vape / liquid):', p.type)?.toLowerCase() || p.type;
+                const modalContent = `
+                    <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]">
+                        <div class="bg-zinc-900 rounded-3xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+                            <div class="flex justify-between items-center mb-6">
+                                <h3 class="text-3xl font-bold neon">Bestellung #${order.orderNumber}</h3>
+                                <button onclick="closeCurrentModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
+                            </div>
+                            <div class="space-y-6 text-gray-300">
+                                <div class="grid grid-cols-2 gap-6">
+                                    <div><strong>Datum:</strong> ${date}</div>
+                                    <div><strong>Kunde:</strong> <span class="text-emerald-400">${order.userEmail || '—'}</span></div>
+                                </div>
+                                <div><strong>Adresse:</strong><br>${order.address ? `${order.address.street}<br>${order.address.zip} ${order.address.city}` : '—'}</div>
+                                <div class="pt-4 border-t border-white/20">
+                                    <strong>Bestellte Artikel:</strong>
+                                    ${itemsHTML}
+                                </div>
+                                <div><strong>Gesamt:</strong> <span class="text-emerald-400 font-bold">${order.total.toFixed(2)} €</span></div>
 
-      const isNewRaw = prompt('Neue Sorte? (ja/nein):', p.isNew ? 'ja' : 'nein')?.toLowerCase();
-      const isNew = (type === 'liquid') && (isNewRaw === 'ja' || isNewRaw === 'true');
+                                <!-- ADMIN STATUS & VERSAND -->
+                                <div class="pt-8 border-t border-white/20 bg-zinc-950 -mx-8 -mb-8 p-8 rounded-b-3xl">
+                                    <h4 class="font-bold mb-6 flex items-center gap-2 text-cyan-400">
+                                        <i class="fa-solid fa-truck"></i> Admin: Status & Versand
+                                    </h4>
+                                    <div class="grid grid-cols-1 gap-6">
+                                        <div>
+                                            <label class="text-xs text-gray-400 block mb-2">Status</label>
+                                            <select id="modal-status" class="input w-full rounded-2xl px-5 py-4 text-white">
+                                                <option value="Zahlung erwartet" ${order.status === "Zahlung erwartet" || !order.status ? 'selected' : ''}>Zahlung erwartet</option>
+                                                <option value="Wird bearbeitet" ${order.status === "Wird bearbeitet" ? 'selected' : ''}>Wird bearbeitet</option>
+                                                <option value="Versendet" ${order.status === "Versendet" ? 'selected' : ''}>Versendet</option>
+                                                <option value="Zugestellt" ${order.status === "Zugestellt" ? 'selected' : ''}>Zugestellt</option>
+                                                <option value="Storniert" ${order.status === "Storniert" ? 'selected' : ''}>Storniert</option>
+                                            </select>
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label class="text-xs text-gray-400 block mb-2">Versanddienst</label>
+                                                <select id="modal-carrier" class="input w-full rounded-2xl px-5 py-4 text-white">
+                                                    <option value="DHL" ${order.carrier === "DHL" || !order.carrier ? 'selected' : ''}>DHL</option>
+                                                    <option value="Hermes" ${order.carrier === "Hermes" ? 'selected' : ''}>Hermes</option>
+                                                    <option value="DPD" ${order.carrier === "DPD" ? 'selected' : ''}>DPD</option>
+                                                    <option value="UPS" ${order.carrier === "UPS" ? 'selected' : ''}>UPS</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label class="text-xs text-gray-400 block mb-2">Sendungsnummer</label>
+                                                <input id="modal-tracking" type="text" value="${order.trackingNumber || ''}" 
+                                                       placeholder="z.B. 00340433836000000000" 
+                                                       class="input w-full rounded-2xl px-5 py-4">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mt-8 flex gap-3">
+                                        <button onclick="saveAndClose('${orderId}')" 
+                                            class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-5 rounded-3xl transition flex items-center justify-center gap-2">
+                                            <i class="fa-solid fa-save"></i> Speichern
+                                        </button>
+                                        <button onclick="deleteAndClose('${orderId}')" 
+                                            class="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold py-5 rounded-3xl transition flex items-center justify-center gap-2">
+                                            <i class="fa-solid fa-trash"></i> Löschen
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
 
-      let category = type === 'vape' ? 'WaveVapes Tornado 30000' : (isNew ? 'Neue Sorten' : 'Normale Sorten');
+                document.body.insertAdjacentHTML('beforeend', modalContent);
+            } catch (err) {
+                showToast('Fehler beim Laden der Details', 'error');
+            }
+        }
 
-      try {
-        await docRef.update({ name, price, stock, type, isNew, category });
-        showToast('Produkt aktualisiert', 'success');
-      } catch (err) {
-        showToast('Fehler beim Aktualisieren: ' + err.message, 'error');
-      }
-    }
+        // ====================== MODAL HELPER ======================
+        function closeCurrentModal() {
+            const modals = document.querySelectorAll('.fixed.inset-0');
+            modals.forEach(m => m.remove());
+        }
 
-    // ====================== LIVE BESTELLUNGEN ======================
-    function loadOrders() {
-      const tbody = document.getElementById('orders-tbody');
-      const countEl = document.getElementById('orders-count');
+        // ====================== BESTELLUNG SPEICHERN ======================
+        async function saveAndClose(orderId) {
+            const status = document.getElementById("modal-status").value;
+            const tracking = document.getElementById("modal-tracking").value.trim();
+            const carrier = document.getElementById("modal-carrier").value;
 
-      db.collection('orders')
-        .orderBy('date', 'desc')
-        .onSnapshot(snap => {
-          tbody.innerHTML = '';
-          countEl.textContent = `${snap.size} Bestellung${snap.size === 1 ? '' : 'en'}`;
+            try {
+                await db.collection("orders").doc(orderId).update({
+                    status: status,
+                    trackingNumber: tracking,
+                    carrier: carrier
+                });
+                showToast("✅ Bestellung aktualisiert", "success");
+                closeCurrentModal();
+            } catch (e) {
+                showToast("Fehler: " + e.message, "error");
+            }
+        }
 
-          if (snap.empty) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-12 text-gray-400">Noch keine Bestellungen</td></tr>';
-            return;
-          }
+        // ====================== BESTELLUNG LÖSCHEN ======================
+        async function deleteAndClose(orderId) {
+            if (!confirm("⚠️ Bestellung IRREVERSIBEL löschen?\n\nDas kann nicht rückgängig gemacht werden!")) return;
+            try {
+                await db.collection("orders").doc(orderId).delete();
+                showToast("✅ Bestellung gelöscht", "success");
+                closeCurrentModal();
+            } catch (e) {
+                showToast("Fehler beim Löschen", "error");
+            }
+        }
 
-          snap.forEach(doc => {
-            const o = doc.data();
-            const date = o.date ? o.date.toDate().toLocaleString('de-DE') : '—';
-            const email = o.userEmail || '—';
-            const total = (o.total || 0).toFixed(2) + ' €';
-            const statusClass = `status-${(o.status || "Zahlung erwartet").replace(/\s/g, '')}`;
-            const statusText = o.status || "Zahlung erwartet";
+        // ====================== TOAST ======================
+        function showToast(message, type = 'success') {
+            const bg = type === 'error' ? 'bg-red-600' : 'bg-emerald-600';
+            const toast = document.createElement('div');
+            toast.className = `toast ${bg} show`;
+            toast.textContent = message;
+            document.getElementById('toast-container').appendChild(toast);
+            setTimeout(() => toast.remove(), 3200);
+        }
 
-            const row = document.createElement('tr');
-            row.innerHTML = `
-              <td class="py-4 px-4 font-mono text-cyan-300">${o.orderNumber || '—'}</td>
-              <td class="py-4 px-4 text-gray-300">${date}</td>
-              <td class="py-4 px-4">${email}</td>
-              <td class="py-4 px-4 font-bold">${total}</td>
-              <td class="py-4 px-4">
-                <span class="status-badge ${statusClass}">${statusText}</span>
-              </td>
-              <td class="py-4 px-4 text-right">
-                <button onclick="showOrderDetails('${doc.id}')"
-                        class="bg-cyan-600 hover:bg-cyan-500 px-4 py-2 rounded-lg text-sm transition">
-                  Details
-                </button>
-              </td>
-            `;
-            tbody.appendChild(row);
-          });
-        });
-    }
-
-    async function showOrderDetails(orderId) {
-      try {
-        const doc = await db.collection('orders').doc(orderId).get();
-        if (!doc.exists) return showToast('Bestellung nicht gefunden', 'error');
-
-        const o = doc.data();
-        let itemsHTML = o.items?.map(i =>
-          `<div class="flex justify-between py-1.5">
-             <span>${i.qty} × ${i.name}${i.nicotine ? ` (${i.nicotine})` : ''}</span>
-             <span>${(i.price * i.qty).toFixed(2)} €</span>
-           </div>`
-        ).join('') || '<p class="text-gray-400">Keine Artikel</p>';
-
-        const modal = document.createElement('div');
-        modal.className = 'fixed inset-0 bg-black/80 flex items-center justify-center z-[9999] p-4';
-        modal.innerHTML = `
-          <div class="bg-zinc-900 rounded-3xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-6">
-              <h3 class="text-3xl font-bold neon">Bestell-Details</h3>
-              <button onclick="this.closest('.fixed').remove()" class="text-4xl text-gray-400 hover:text-white">✕</button>
-            </div>
-            <div class="space-y-4">
-              <p><strong>Bestellnummer:</strong> <span class="font-mono text-cyan-300">${o.orderNumber}</span></p>
-              <p><strong>Datum:</strong> ${o.date ? o.date.toDate().toLocaleString('de-DE') : '—'}</p>
-              <p><strong>Kunde:</strong> ${o.userEmail || '—'}</p>
-              <p><strong>Gesamt:</strong> <span class="text-emerald-400 font-bold">${o.total.toFixed(2)} €</span></p>
-              <p><strong>Status:</strong> <span class="status-badge status-${(o.status || "Zahlung erwartet").replace(/\s/g, '')}">${o.status || "Zahlung erwartet"}</span></p>
-              ${o.trackingNumber ? `<p><strong>Tracking:</strong> <a href="${getTrackingLink(o.carrier, o.trackingNumber)}" target="_blank" class="text-cyan-400 underline">${o.trackingNumber}</a> (${o.carrier || '—'})</p>` : ''}
-              <div class="pt-4 border-t border-white/20">
-                <strong>Artikel:</strong>
-                <div class="bg-zinc-800 p-4 rounded-xl mt-2">${itemsHTML}</div>
-              </div>
-              <div class="pt-4 border-t border-white/20">
-                <strong>Lieferadresse:</strong><br>
-                ${o.address?.street || '—'}<br>
-                ${o.address?.zip || ''} ${o.address?.city || '—'}
-              </div>
-            </div>
-          </div>
-        `;
-        document.body.appendChild(modal);
-      } catch (err) {
-        showToast('Fehler beim Laden: ' + err.message, 'error');
-      }
-    }
-
-    function getTrackingLink(carrier, number) {
-      const base = {
-        'DHL':    'https://www.dhl.de/de/privatkunden/dhl-sendungsverfolgung.html?piececode=',
-        'Hermes': 'https://www.myhermes.de/paketstatus.html?search=',
-        'DPD':    'https://my.dpd.de/myDPD/tracking.aspx?shipment=',
-        'UPS':    'https://www.ups.com/track?loc=de_DE&tracknum='
-      };
-      return (base[carrier] || '') + number;
-    }
-
-    // ====================== TOAST ======================
-    function showToast(message, type = 'success') {
-      const bg = type === 'error' ? 'bg-red-600' : 'bg-emerald-600';
-      const toast = document.createElement('div');
-      toast.className = `toast ${bg} show`;
-      toast.textContent = message;
-      document.getElementById('toast-container').appendChild(toast);
-      setTimeout(() => toast.remove(), 3200);
-    }
-
-    // ====================== INIT ======================
-    window.onload = () => {
-      updatePreview();
-    };
-  </script>
+        // ====================== INITIALISIERUNG ======================
+        window.onload = () => {
+            updatePreview();
+        };
+    </script>
 </body>
 </html>

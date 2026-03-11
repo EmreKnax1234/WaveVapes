@@ -23,15 +23,7 @@
         .preview-card { background: #18181b; border: 1px solid #27272a; border-radius: 1rem; overflow: hidden; }
         .unavailable-row { text-decoration: line-through; color: #ef4444 !important; background: #1f2937 !important; }
         .tab-active { border-bottom: 4px solid #67e8f9; color: #67e8f9; font-weight: 600; }
-        .status-badge{
-            padding:4px 10px;
-            border-radius:999px;
-            font-size:12px;
-            font-weight:600;
-            display: inline-block;
-            text-align: center;
-            min-width: 118px;
-        }
+        .status-badge{padding:4px 10px;border-radius:999px;font-size:12px;font-weight:600;display:inline-block;text-align:center;min-width:118px;}
         .status-Zahlung{background:#facc15;color:black;}
         .status-Wird{background:#60a5fa;color:black;}
         .status-Versendet{background:#a78bfa;color:black;}
@@ -74,7 +66,7 @@
 
         <!-- ====================== PRODUKTE TAB ====================== -->
         <div id="products-tab">
-            <!-- STATISTIK-BOX (inkl. Top-Seller) -->
+            <!-- STATISTIK-BOX MIT TOP-SELLER -->
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
                 <div class="card text-center">
                     <p class="text-gray-400 mb-1">Gesamtumsatz (verkauft)</p>
@@ -131,7 +123,7 @@
                 </div>
             </div>
 
-            <!-- PRODUKT-TABELLE (mit Umsatz + Top-Seller-Sortierung) -->
+            <!-- PRODUKT-TABELLE -->
             <div class="card overflow-x-auto">
                 <h2 class="text-2xl font-bold mb-6">Produkte verwalten (Live)</h2>
                 <table class="w-full text-left min-w-[1200px]">
@@ -192,8 +184,7 @@
             projectId: "wavevapes-7a960",
             storageBucket: "wavevapes-7a960.firebasestorage.app",
             messagingSenderId: "1093624390275",
-            appId: "1:1093624390275:web:b1b8ae17bcf1b59dffb1b6",
-            measurementId: "G-B8T2B657LL"
+            appId: "1:1093624390275:web:b1b8ae17bcf1b59dffb1b6"
         };
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
@@ -389,8 +380,12 @@
                             <td class="py-4 px-4">${p.stock ?? '—'}</td>
                             <td class="py-4 px-4">${p.type === 'vape' ? 'Vape' : 'Liquid'}</td>
                             <td class="py-4 px-4">${p.category || '—'}</td>
-                            <td class="py-4 px-4 text-center"><input type="checkbox" ${p.isNew ? 'checked' : ''} onchange="toggleIsNew('${p.id}', this.checked)" class="w-5 h-5 accent-lime-500" /></td>
-                            <td class="py-4 px-4 text-center"><input type="checkbox" ${p.available !== false ? 'checked' : ''} onchange="toggleAvailable('${p.id}', this.checked)" class="w-5 h-5 accent-cyan-500" /></td>
+                            <td class="py-4 px-4 text-center">
+                                <input type="checkbox" ${p.isNew ? 'checked' : ''} onchange="toggleIsNew('${p.id}', this.checked)" class="w-5 h-5 accent-lime-500" />
+                            </td>
+                            <td class="py-4 px-4 text-center">
+                                <input type="checkbox" ${p.available !== false ? 'checked' : ''} onchange="toggleAvailable('${p.id}', this.checked)" class="w-5 h-5 accent-cyan-500" />
+                            </td>
                             <td class="py-4 px-4 text-right font-bold text-purple-400">${p.sold || 0}</td>
                             <td class="py-4 px-4 text-right font-medium text-emerald-400">${umsatz} €</td>
                             <td class="py-4 px-4 text-right space-x-4">
@@ -402,7 +397,7 @@
                 });
         }
 
-        // ====================== TOGGLE FUNKTIONEN ======================
+        // ====================== TOGGLE & EDIT ======================
         async function toggleIsNew(id, isNew) {
             try {
                 await db.collection('products').doc(id).update({ isNew });
@@ -473,7 +468,9 @@
                             <td class="py-4 px-4">${order.userEmail || '—'}</td>
                             <td class="py-4 px-4 font-bold">${order.total.toFixed(2)} €</td>
                             <td class="py-4 px-4 text-sm text-gray-400">${addressShort}</td>
-                            <td class="py-4 px-4"><span class="status-badge ${getStatusClass(currentStatus)}">${currentStatus}</span></td>
+                            <td class="py-4 px-4">
+                                <span class="status-badge ${getStatusClass(currentStatus)}">${currentStatus}</span>
+                            </td>
                             <td class="py-4 px-4 text-right">
                                 <button onclick="showOrderDetails('${doc.id}')" class="bg-cyan-600 hover:bg-cyan-500 px-4 py-2 rounded-lg text-sm">Details</button>
                             </td>`;
@@ -491,7 +488,11 @@
                 const date = order.date ? order.date.toDate().toLocaleString('de-DE') : '—';
                 let itemsHTML = '<div class="space-y-2 mt-4">';
                 order.items.forEach(item => {
-                    itemsHTML += `<div class="flex justify-between py-2 border-b border-white/10"><span>${item.name} × ${item.qty} ${item.nicotine ? `(${item.nicotine})` : ''}</span><span>${(item.price * item.qty).toFixed(2)} €</span></div>`;
+                    itemsHTML += `
+                        <div class="flex justify-between py-2 border-b border-white/10">
+                            <span>${item.name} × ${item.qty} ${item.nicotine ? ` (${item.nicotine})` : ''}</span>
+                            <span>${(item.price * item.qty).toFixed(2)} €</span>
+                        </div>`;
                 });
                 itemsHTML += '</div>';
 
@@ -508,10 +509,16 @@
                                     <div><strong>Kunde:</strong> <span class="text-emerald-400">${order.userEmail || '—'}</span></div>
                                 </div>
                                 <div><strong>Adresse:</strong><br>${order.address ? `${order.address.street}<br>${order.address.zip} ${order.address.city}` : '—'}</div>
-                                <div class="pt-4 border-t border-white/20"><strong>Bestellte Artikel:</strong>${itemsHTML}</div>
+                                <div class="pt-4 border-t border-white/20">
+                                    <strong>Bestellte Artikel:</strong>
+                                    ${itemsHTML}
+                                </div>
                                 <div><strong>Gesamt:</strong> <span class="text-emerald-400 font-bold">${order.total.toFixed(2)} €</span></div>
+                                <!-- ADMIN STATUS & VERSAND -->
                                 <div class="pt-8 border-t border-white/20 bg-zinc-950 -mx-8 -mb-8 p-8 rounded-b-3xl">
-                                    <h4 class="font-bold mb-6 flex items-center gap-2 text-cyan-400"><i class="fa-solid fa-truck"></i> Admin: Status & Versand</h4>
+                                    <h4 class="font-bold mb-6 flex items-center gap-2 text-cyan-400">
+                                        <i class="fa-solid fa-truck"></i> Admin: Status & Versand
+                                    </h4>
                                     <div class="grid grid-cols-1 gap-6">
                                         <div>
                                             <label class="text-xs text-gray-400 block mb-2">Status</label>
@@ -540,8 +547,12 @@
                                         </div>
                                     </div>
                                     <div class="mt-8 flex gap-3">
-                                        <button onclick="saveAndClose('${orderId}')" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-5 rounded-3xl transition flex items-center justify-center gap-2"><i class="fa-solid fa-save"></i> Speichern</button>
-                                        <button onclick="deleteAndClose('${orderId}')" class="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold py-5 rounded-3xl transition flex items-center justify-center gap-2"><i class="fa-solid fa-trash"></i> Löschen</button>
+                                        <button onclick="saveAndClose('${orderId}')" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-5 rounded-3xl transition flex items-center justify-center gap-2">
+                                            <i class="fa-solid fa-save"></i> Speichern
+                                        </button>
+                                        <button onclick="deleteAndClose('${orderId}')" class="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold py-5 rounded-3xl transition flex items-center justify-center gap-2">
+                                            <i class="fa-solid fa-trash"></i> Löschen
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -552,21 +563,29 @@
                 showToast('Fehler beim Laden der Details', 'error');
             }
         }
+
         function closeCurrentModal() {
-            document.querySelectorAll('.fixed.inset-0').forEach(m => m.remove());
+            const modals = document.querySelectorAll('.fixed.inset-0');
+            modals.forEach(m => m.remove());
         }
+
         async function saveAndClose(orderId) {
             const status = document.getElementById("modal-status").value;
             const tracking = document.getElementById("modal-tracking").value.trim();
             const carrier = document.getElementById("modal-carrier").value;
             try {
-                await db.collection("orders").doc(orderId).update({ status, trackingNumber: tracking, carrier });
+                await db.collection("orders").doc(orderId).update({
+                    status: status,
+                    trackingNumber: tracking,
+                    carrier: carrier
+                });
                 showToast("✅ Bestellung aktualisiert", "success");
                 closeCurrentModal();
             } catch (e) {
                 showToast("Fehler: " + e.message, "error");
             }
         }
+
         async function deleteAndClose(orderId) {
             if (!confirm("⚠️ Bestellung IRREVERSIBEL löschen?")) return;
             try {
@@ -577,6 +596,7 @@
                 showToast("Fehler beim Löschen", "error");
             }
         }
+
         function getStatusClass(status) {
             switch(status || "Zahlung erwartet") {
                 case "Zahlung erwartet": return "status-Zahlung";

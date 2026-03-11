@@ -78,7 +78,6 @@
         .unavailable-tag { background: rgba(239, 68, 68, 0.3); color: #ef4444; padding: 4px 12px; border-radius: 9999px; font-size: 0.875rem; font-weight: 500; text-align: center; margin-bottom: 12px; }
         .liquid-card .p-5 { padding: 1rem; }
         .liquid-card { min-height: auto; }
-
         /* STATUS BADGES */
         .status-badge{
             padding:4px 10px;
@@ -508,7 +507,6 @@
         let appliedDiscountCode = null;
         let discountPercent = 0;
         let ordersUnsubscribe = null;
-
         // ====================== FIREBASE ======================
         const firebaseConfig = {
             apiKey: "AIzaSyDsIUl-iYmH42MPbusFLhGhj5oGLh01BzI",
@@ -527,7 +525,6 @@
             updateUserDisplay();
             if (user) loadUserOrders();
         });
-
         // ====================== STATUS HELPER ======================
         function getStatusClass(status) {
             switch(status || "Zahlung erwartet") {
@@ -539,7 +536,6 @@
                 default: return "status-Zahlung";
             }
         }
-
         // ====================== AUTH ======================
         function updateAuthUI() {
             const btn = document.getElementById("account-btn");
@@ -604,7 +600,6 @@
             auth.signOut();
             closeAuthModal();
         }
-
         // ====================== USER NAME ======================
         function showNameModal() {
             document.getElementById("name-input-field").value = localStorage.getItem("wavevapes_username") || "";
@@ -638,7 +633,6 @@
                 nav.textContent = "Account";
             }
         }
-
         // ====================== LOYALTY ======================
         function updateLoyaltyDisplay() {
             document.getElementById("loyalty-points").textContent = loyaltyPoints;
@@ -669,7 +663,6 @@
                 }
             }
         }
-
         // ====================== ADDRESS ======================
         function showAddressModal() {
             document.getElementById("addr-street").value = userAddress.street || "";
@@ -692,7 +685,6 @@
             closeAddressModal();
             updateCartDisplay();
         }
-
         // ====================== CART CALCULATIONS ======================
         function getSubtotal() {
             return cart.reduce((sum, item) => item.id === MYSTERY_ID ? sum : sum + item.qty * (item.price || 7.99), 0);
@@ -711,7 +703,6 @@
         function calculateCartTotal() {
             return getProductTotal() + getShippingCost();
         }
-
         // ====================== PRODUCTS FROM FIRESTORE ======================
         async function loadProducts() {
             const container = document.getElementById("products-grid");
@@ -750,8 +741,7 @@
             if (p.isNew) return 2;
             return 1;
         }
-
-        // ====================== PRODUKTE RENDERN – KOMPAKTER NEW-BADGE ======================
+        // ====================== PRODUKTE RENDERN ======================
         function renderProducts() {
             const container = document.getElementById("products-grid");
             let html = "";
@@ -789,10 +779,8 @@
                         <button onclick="changeQuantity('${product.id}', 1)" class="qty-btn w-9 h-9 text-2xl text-cyan-300">+</button>
                     </div>` : '';
                 let stockHTML = (product.available && product.stock > 0) ? `<p class="text-sm text-emerald-400 mt-2">Noch ${product.stock} verfügbar</p>` : '';
-
-                const newBadge = product.isNew ? 
+                const newBadge = product.isNew ?
                     `<span class="ml-auto px-3 py-1 bg-lime-400 text-black text-xs font-black tracking-wider rounded-2xl whitespace-nowrap flex-shrink-0">NEW</span>` : '';
-
                 html += `
                     <div class="product-card bg-zinc-900 border border-white/10 rounded-3xl overflow-hidden ${unavailableClass} ${liquidClass}">
                         <div class="h-1.5 bg-gradient-to-r from-cyan-400 to-purple-500"></div>
@@ -856,7 +844,6 @@
                 showNextNotification();
             }, 5000);
         }
-
         // ====================== CART ======================
         function updateCartDisplay() {
             const countEl = document.getElementById("cart-count-badge");
@@ -941,7 +928,6 @@
                 showNextNotification();
             }, 4800);
         }
-
         // ====================== ORDER ======================
         function generateOrderNumber() {
             const now = new Date();
@@ -989,10 +975,12 @@
                     trackingNumber: "",
                     carrier: ""
                 });
+                // === WICHTIG: JETZT WIRD AUCH "sold" HOCHGEZÄHLT (für Admin-Top-Seller!) ===
                 for (let item of cart) {
                     if (item.id === MYSTERY_ID) continue;
                     await db.collection("products").doc(item.id).update({
-                        stock: firebase.firestore.FieldValue.increment(-item.qty)
+                        stock: firebase.firestore.FieldValue.increment(-item.qty),
+                        sold: firebase.firestore.FieldValue.increment(item.qty)   // ← NEU & ENTSCHEIDEND
                     });
                 }
                 const formData = new FormData();
@@ -1036,15 +1024,12 @@
             const modal = document.getElementById("success-modal");
             modal.classList.add("hidden"); modal.classList.remove("flex");
         }
-
         // ====================== HISTORY – LIVE MIT STATUS + TRACKING ======================
         function loadUserOrders() {
             if (!currentUser) return;
             const container = document.getElementById("history-list");
             container.innerHTML = '<p class="text-center text-gray-400 py-8">Lade Bestellungen live...</p>';
-
             if (ordersUnsubscribe) ordersUnsubscribe();
-
             ordersUnsubscribe = db.collection("orders")
                 .where("userId", "==", currentUser.uid)
                 .orderBy("date", "desc")
@@ -1055,23 +1040,19 @@
                         return;
                     }
                     document.getElementById("no-history").classList.add("hidden");
-
                     snap.forEach(doc => {
                         const order = doc.data();
                         const dateStr = order.date ? order.date.toDate().toLocaleDateString('de-DE') : '—';
                         const status = order.status || "Zahlung erwartet";
                         const statusClass = getStatusClass(status);
-
-                        let itemsHTML = order.items.map(item => 
+                        let itemsHTML = order.items.map(item =>
                             `<div class="flex justify-between text-sm"><span>${item.name} × ${item.qty}</span><span>${item.nicotine ? '(' + item.nicotine + ')' : ''}</span></div>`
                         ).join('');
-
                         let trackingHTML = order.trackingNumber ? `
                             <div class="mt-5 pt-5 border-t border-white/10">
                                 <p class="text-xs text-gray-400">Trackingnummer (${order.carrier || '—'})</p>
                                 <p class="font-mono text-cyan-300 break-all">${order.trackingNumber}</p>
                             </div>` : '';
-
                         let trackButton = '';
                         if (order.carrier === "DHL" && order.trackingNumber) {
                             const url = `https://www.dhl.de/de/privatkunden/dhl-sendungsverfolgung.html?piececode=${encodeURIComponent(order.trackingNumber)}`;
@@ -1082,7 +1063,6 @@
                                     Sendung verfolgen
                                 </a>`;
                         }
-
                         const card = document.createElement("div");
                         card.className = "bg-zinc-900 border border-white/10 rounded-3xl p-6";
                         card.innerHTML = `
@@ -1106,7 +1086,7 @@
                             ${trackingHTML}
                             <div class="flex flex-col gap-3 mt-6">
                                 ${trackButton}
-                                <button onclick="showPaymentInfo('${order.orderNumber}')" 
+                                <button onclick="showPaymentInfo('${order.orderNumber}')"
                                         class="w-full bg-zinc-800 hover:bg-zinc-700 text-cyan-300 py-3 rounded-2xl text-sm font-medium transition-all">
                                     Überweisungsdaten anzeigen
                                 </button>
@@ -1116,29 +1096,26 @@
                     });
                 });
         }
-
         function showOrderHistory() {
-            if (!currentUser) { 
-                alert("Bitte zuerst einloggen!"); 
-                showAuthModal(); 
-                return; 
+            if (!currentUser) {
+                alert("Bitte zuerst einloggen!");
+                showAuthModal();
+                return;
             }
             const modal = document.getElementById("history-modal");
-            modal.classList.remove("hidden"); 
+            modal.classList.remove("hidden");
             modal.classList.add("flex");
             loadUserOrders();
         }
-
         function closeHistoryModal() {
             const modal = document.getElementById("history-modal");
-            modal.classList.add("hidden"); 
+            modal.classList.add("hidden");
             modal.classList.remove("flex");
             if (ordersUnsubscribe) {
                 ordersUnsubscribe();
                 ordersUnsubscribe = null;
             }
         }
-
         // ====================== PAYMENT INFO ======================
         function showPaymentInfo(orderNumber) {
             const infoHTML = `
@@ -1163,7 +1140,6 @@
             const modal = document.getElementById("payment-info-modal");
             modal.classList.add("hidden"); modal.classList.remove("flex");
         }
-
         // ====================== NOTIFICATIONS ======================
         function showToast(msg) {
             const toast = document.getElementById('notification-toast');
@@ -1207,7 +1183,6 @@
             setInterval(showNextNotification, NOTIFICATION_DURATION);
             setInterval(checkAndGenerateNotifications, 60000);
         }
-
         // ====================== DISCOUNT ======================
         function applyDiscountCode() {
             const input = document.getElementById("discount-input").value.trim().toUpperCase();
@@ -1222,7 +1197,6 @@
             }
             status.innerHTML = `<span class="text-red-400">Ungültig</span>`;
         }
-
         // ====================== CATEGORY TABS ======================
         function renderCategoryTabs() {
             const html = `
@@ -1240,7 +1214,6 @@
             renderCategoryTabs();
             renderProducts();
         }
-
         // ====================== REFERRAL & LEGAL ======================
         function shareReferral() {
             showToast("Referral-Link kopiert! (noch in Entwicklung)");
@@ -1284,7 +1257,6 @@
             const modal = document.getElementById("datenschutz-modal");
             modal.classList.add("hidden"); modal.classList.remove("flex");
         }
-
         // ====================== INITIALIZE ======================
         function initialize() {
             if (!localStorage.getItem("age_verified")) showAgeModal();

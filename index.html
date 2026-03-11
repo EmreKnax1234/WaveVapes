@@ -513,13 +513,14 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
-        // ====================== REFERRAL CORE ======================
+        // ====================== REFERRAL CORE (für alte + neue Accounts) ======================
         async function createOrUpdateUserProfile() {
             if (!currentUser) return;
             const userRef = db.collection("users").doc(currentUser.uid);
             const doc = await userRef.get();
 
             if (!doc.exists) {
+                // Neuer Account
                 myReferralCode = "WV-" + Math.random().toString(36).substring(2,8).toUpperCase();
                 const urlParams = new URLSearchParams(window.location.search);
                 const refCode = urlParams.get("ref");
@@ -539,15 +540,24 @@
                     showToast("🎉 +50 Punkte Willkommensbonus durch Referral!");
                 }
             } else {
-                myReferralCode = doc.data().referralCode;
+                const data = doc.data();
+                if (!data.referralCode) {
+                    // ALTER Account ohne Code → jetzt erstellen
+                    myReferralCode = "WV-" + Math.random().toString(36).substring(2,8).toUpperCase();
+                    await userRef.update({ referralCode: myReferralCode });
+                    showToast("✅ Dein Referral-Code wurde nachträglich erstellt!");
+                } else {
+                    myReferralCode = data.referralCode;
+                }
             }
 
+            // Live-Listener
             db.collection("users").doc(currentUser.uid).onSnapshot(doc => {
-                if (doc.exists) myReferralCode = doc.data().referralCode;
+                if (doc.exists) myReferralCode = doc.data().referralCode || "";
             });
         }
 
-        // ====================== FIXED shareReferral() – JETZT 100% STABIL ======================
+        // ====================== shareReferral ======================
         async function shareReferral() {
             if (!currentUser) {
                 showToast("Bitte zuerst einloggen!", "error");
@@ -556,12 +566,12 @@
             }
 
             if (!myReferralCode) {
-                showToast("Referral-Code wird geladen...");
-                await createOrUpdateUserProfile();   // ← WICHTIG: erzwingt Reload
+                showToast("Referral-Code wird erstellt...");
+                await createOrUpdateUserProfile();
             }
 
             if (!myReferralCode) {
-                showToast("Fehler beim Laden des Referral-Codes.<br>Bitte Seite neu laden und erneut versuchen.", "error");
+                showToast("Fehler beim Erstellen des Codes.<br>Bitte Seite neu laden.", "error");
                 return;
             }
 
@@ -570,7 +580,6 @@
             showToast(`✅ Referral-Link kopiert!<br><span class="text-xs">${link}</span>`);
         }
 
-        // ====================== ALLE ANDEREN FUNKTIONEN (komplett) ======================
         async function showMyReferrals() {
             if (!currentUser) {
                 showAuthModal();
@@ -613,6 +622,7 @@
             modal.classList.add("hidden"); modal.classList.remove("flex");
         }
 
+        // ====================== STATUS HELPER ======================
         function getStatusClass(status) {
             switch(status || "Zahlung erwartet") {
                 case "Zahlung erwartet": return "status-Zahlung";
@@ -624,6 +634,7 @@
             }
         }
 
+        // ====================== AUTH ======================
         auth.onAuthStateChanged(async (user) => {
             currentUser = user;
             updateAuthUI();
@@ -704,6 +715,7 @@
             closeAuthModal();
         }
 
+        // ====================== USER NAME ======================
         function showNameModal() {
             document.getElementById("name-input-field").value = localStorage.getItem("wavevapes_username") || "";
             const modal = document.getElementById("name-modal");
@@ -737,6 +749,7 @@
             }
         }
 
+        // ====================== LOYALTY ======================
         function updateLoyaltyDisplay() {
             document.getElementById("loyalty-points").textContent = loyaltyPoints;
             let next = REWARDS.find(r => loyaltyPoints < r.points) || {points:9999};
@@ -768,6 +781,7 @@
             }
         }
 
+        // ====================== ADDRESS ======================
         function showAddressModal() {
             document.getElementById("addr-street").value = userAddress.street || "";
             document.getElementById("addr-zip").value = userAddress.zip || "";
@@ -790,6 +804,7 @@
             updateCartDisplay();
         }
 
+        // ====================== CART CALCULATIONS ======================
         function getSubtotal() {
             return cart.reduce((sum, item) => item.id === MYSTERY_ID ? sum : sum + item.qty * (item.price || 7.99), 0);
         }
@@ -808,6 +823,7 @@
             return getProductTotal() + getShippingCost();
         }
 
+        // ====================== PRODUCTS ======================
         async function loadProducts() {
             const container = document.getElementById("products-grid");
             container.innerHTML = `<p class="col-span-full text-center py-16 text-gray-400 flex items-center justify-center gap-3"><i class="fa-solid fa-spinner animate-spin text-2xl"></i> Produkte werden live aus deinem Admin-Panel geladen...</p>`;
@@ -948,6 +964,7 @@
             }, 5000);
         }
 
+        // ====================== CART ======================
         function updateCartDisplay() {
             const countEl = document.getElementById("cart-count-badge");
             const totalEl = document.getElementById("cart-total-price");
@@ -1037,6 +1054,7 @@
             }, 4800);
         }
 
+        // ====================== ORDER ======================
         function generateOrderNumber() {
             const now = new Date();
             const dateStr = now.getFullYear().toString().slice(2) + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0');
@@ -1139,6 +1157,7 @@
             modal.classList.add("hidden"); modal.classList.remove("flex");
         }
 
+        // ====================== HISTORY ======================
         function loadUserOrders() {
             if (!currentUser) return;
             const container = document.getElementById("history-list");
@@ -1233,6 +1252,7 @@
             }
         }
 
+        // ====================== PAYMENT INFO ======================
         function showPaymentInfo(orderNumber) {
             const infoHTML = `
                 <div class="space-y-4 text-sm">
@@ -1258,6 +1278,7 @@
             modal.classList.add("hidden"); modal.classList.remove("flex");
         }
 
+        // ====================== NOTIFICATIONS ======================
         function showToast(msg) {
             const toast = document.getElementById('notification-toast');
             toast.innerHTML = msg;
@@ -1305,6 +1326,7 @@
             setInterval(checkAndGenerateNotifications, 60000);
         }
 
+        // ====================== DISCOUNT ======================
         function applyDiscountCode() {
             const input = document.getElementById("discount-input").value.trim().toUpperCase();
             const status = document.getElementById("discount-status");
@@ -1319,6 +1341,7 @@
             status.innerHTML = `<span class="text-red-400">Ungültig</span>`;
         }
 
+        // ====================== CATEGORY TABS ======================
         function renderCategoryTabs() {
             const html = `
                 <button onclick="setCategoryFilter('Alle')" class="px-5 py-2 transition ${currentCategoryFilter === 'Alle' ? 'tab-active' : ''}">Alle</button>
@@ -1337,6 +1360,7 @@
             renderProducts();
         }
 
+        // ====================== LEGAL MODALS ======================
         function showImpressumModal() {
             const modal = document.getElementById("impressum-modal");
             modal.classList.remove("hidden"); modal.classList.add("flex");
@@ -1370,6 +1394,7 @@
             alert("Dieser Shop ist nur für Personen ab 18 Jahren.");
         }
 
+        // ====================== SEARCH ======================
         function filterProducts() {
             renderProducts();
         }

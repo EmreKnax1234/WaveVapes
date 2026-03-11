@@ -18,15 +18,7 @@
         @keyframes modalPop { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
         .toast { animation: toastSlide 0.4s ease forwards; }
         .table-row-hover:hover { background: #27272a !important; transition: all 0.2s; }
-        .status-badge {
-            padding:4px 10px;
-            border-radius:999px;
-            font-size:12px;
-            font-weight:600;
-            display:inline-block;
-            text-align:center;
-            min-width:118px;
-        }
+        .status-badge{padding:4px 10px;border-radius:999px;font-size:12px;font-weight:600;display:inline-block;text-align:center;min-width:118px;}
         .status-Zahlung{background:#facc15;color:black;}
         .status-Wird{background:#60a5fa;color:black;}
         .status-Versendet{background:#a78bfa;color:black;}
@@ -35,7 +27,6 @@
     </style>
 </head>
 <body class="min-h-screen">
-
     <!-- HEADER -->
     <header class="bg-zinc-950 border-b border-cyan-400/30 sticky top-0 z-50 backdrop-blur-xl">
         <div class="max-w-7xl mx-auto px-6 py-5 flex justify-between items-center">
@@ -57,7 +48,6 @@
             <p class="text-xl">Prüfe Admin-Rechte...</p>
         </div>
     </div>
-
     <div id="no-admin" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-50">
         <div class="text-center">
             <h2 class="text-6xl font-bold text-red-500 mb-4">Zugriff verweigert</h2>
@@ -68,7 +58,6 @@
 
     <!-- HAUPTINHALT -->
     <main id="admin-content" class="hidden max-w-7xl mx-auto px-6 py-10">
-
         <!-- TABS -->
         <div class="flex border-b border-white/10 mb-10">
             <button onclick="switchTab(0)" id="tab0" class="tab-active flex-1 py-5 text-lg font-semibold">Produkte</button>
@@ -77,7 +66,6 @@
 
         <!-- ====================== PRODUKTE TAB ====================== -->
         <div id="tab-content-0">
-
             <!-- STATS -->
             <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
                 <div class="card p-6">
@@ -261,9 +249,11 @@
         let selectedFile = null;
         let currentOrderId = null;
 
-        // Globale Variablen für Bestellungen (Live-Liste + clientseitiges Filtern)
+        // === NEU: Globale Variablen für Bestellungen ===
         let ordersUnsubscribe = null;
         let allOrders = [];
+
+        let allProducts = [];
 
         // ==================== AUTH ====================
         auth.onAuthStateChanged(async (user) => {
@@ -289,9 +279,8 @@
             document.getElementById('tab-content-0').classList.toggle('hidden', n !== 0);
             document.getElementById('tab-content-1').classList.toggle('hidden', n !== 1);
 
-            if (n === 1) {
-                loadOrders();
-            } else if (ordersUnsubscribe) {
+            if (n === 1) loadOrders();
+            else if (ordersUnsubscribe) {
                 ordersUnsubscribe();
                 ordersUnsubscribe = null;
             }
@@ -326,8 +315,6 @@
         }
 
         // ==================== PRODUKTE ====================
-        let allProducts = [];
-
         function loadProducts() {
             db.collection('products').onSnapshot(snap => {
                 allProducts = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -341,7 +328,6 @@
             const soldTotal = allProducts.reduce((sum, p) => sum + (p.sold || 0), 0);
             const revenue = allProducts.reduce((sum, p) => sum + (p.sold || 0) * (p.price || 0), 0);
             const top = [...allProducts].sort((a, b) => (b.sold || 0) - (a.sold || 0))[0];
-
             document.getElementById('active-products').textContent = active;
             document.getElementById('total-sold').textContent = soldTotal;
             document.getElementById('total-revenue').textContent = revenue.toFixed(0) + ' €';
@@ -354,27 +340,25 @@
             const filtered = allProducts
                 .filter(p => p.name.toLowerCase().includes(filter.toLowerCase()))
                 .sort((a, b) => (b.sold || 0) - (a.sold || 0));
-
             filtered.forEach(p => {
                 html += `
                 <tr class="table-row-hover border-b border-white/10">
                     <td class="py-5 px-6">${p.image ? `<img src="${p.image}" class="w-12 h-12 object-cover rounded-xl">` : '—'}</td>
                     <td class="py-5 px-6 font-medium">${p.name}</td>
-                    <td class="py-5 px-6 text-center">${(p.price || 0).toFixed(2)} €</td>
-                    <td class="py-5 px-6 text-center">${p.stock || 0}</td>
+                    <td class="py-5 px-6 text-center">${p.price.toFixed(2)} €</td>
+                    <td class="py-5 px-6 text-center">${p.stock}</td>
                     <td class="py-5 px-6 text-center">${p.type === 'vape' ? 'Vape' : 'Liquid'}</td>
                     <td class="py-5 px-6 text-center">
                         <input type="checkbox" ${p.available !== false ? 'checked' : ''} onchange="toggleAvailable('${p.id}', this.checked)" class="accent-cyan-400 w-5 h-5">
                     </td>
                     <td class="py-5 px-6 text-right font-bold text-purple-400">${p.sold || 0}</td>
-                    <td class="py-5 px-6 text-right font-medium text-emerald-400">${((p.sold || 0) * (p.price || 0)).toFixed(2)} €</td>
+                    <td class="py-5 px-6 text-right font-medium text-emerald-400">${((p.sold || 0) * p.price).toFixed(2)} €</td>
                     <td class="py-5 px-6 text-right space-x-4">
                         <button onclick="openEditModal('${p.id}')" class="text-cyan-400 hover:text-white"><i class="fa-solid fa-pen"></i></button>
                         <button onclick="deleteProduct('${p.id}')" class="text-red-400 hover:text-white"><i class="fa-solid fa-trash"></i></button>
                     </td>
                 </tr>`;
             });
-
             tbody.innerHTML = html || `<tr><td colspan="9" class="text-center py-16 text-gray-400">Keine Produkte gefunden</td></tr>`;
         }
 
@@ -389,13 +373,12 @@
         async function openEditModal(id) {
             currentEditId = id;
             const doc = await db.collection('products').doc(id).get();
-            const p = doc.data() || {};
-
+            const p = doc.data();
             const html = `
-                <input id="edit-name" value="${p.name || ''}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 text-lg">
+                <input id="edit-name" value="${p.name}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 text-lg">
                 <div class="grid grid-cols-2 gap-6">
-                    <input id="edit-price" type="number" step="0.01" value="${p.price || ''}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
-                    <input id="edit-stock" type="number" value="${p.stock || ''}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
+                    <input id="edit-price" type="number" step="0.01" value="${p.price}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
+                    <input id="edit-stock" type="number" value="${p.stock}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
                 </div>
                 <select id="edit-type" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
                     <option value="vape" ${p.type==='vape'?'selected':''}>Vape</option>
@@ -409,10 +392,8 @@
                     ${p.image ? `<img src="${p.image}" class="mx-auto max-h-48 rounded-2xl">` : `<p class="text-cyan-300">Neues Bild hochladen (klicken)</p>`}
                 </div>
             `;
-
             document.getElementById('edit-form').innerHTML = html;
             document.getElementById('edit-modal').classList.remove('hidden');
-
             const dz = document.getElementById('edit-dropzone');
             dz.onclick = () => {
                 const input = document.createElement('input');
@@ -434,35 +415,20 @@
 
         async function saveEdit() {
             if (!currentEditId) return;
-            const name = document.getElementById('edit-name').value.trim();
+            const name = document.getElementById('edit-name').value;
             const price = parseFloat(document.getElementById('edit-price').value);
             const stock = parseInt(document.getElementById('edit-stock').value);
             const type = document.getElementById('edit-type').value;
             const isNew = document.getElementById('edit-new').checked;
-
-            if (!name || isNaN(price) || isNaN(stock)) {
-                alert("Bitte alle Pflichtfelder ausfüllen");
-                return;
-            }
-
             let data = { name, price, stock, type, isNew };
-
             if (selectedFile) {
                 const formData = new FormData();
                 formData.append("file", selectedFile);
                 formData.append("upload_preset", "wavevapes");
-                try {
-                    const res = await fetch("https://api.cloudinary.com/v1_1/dbbkmjsr5/image/upload", {
-                        method: "POST",
-                        body: formData
-                    });
-                    const json = await res.json();
-                    if (json.secure_url) data.image = json.secure_url;
-                } catch (err) {
-                    console.error("Cloudinary Upload Fehler:", err);
-                }
+                const res = await fetch("https://api.cloudinary.com/v1_1/dbbkmjsr5/image/upload", { method: "POST", body: formData });
+                const json = await res.json();
+                if (json.secure_url) data.image = json.secure_url;
             }
-
             await db.collection('products').doc(currentEditId).update(data);
             closeEditModal();
             showToast('Produkt gespeichert ✅');
@@ -477,56 +443,32 @@
         // ==================== NEUES PRODUKT ====================
         document.getElementById('add-form').addEventListener('submit', async e => {
             e.preventDefault();
-
-            const name        = document.getElementById('prod-name').value.trim();
-            const price       = parseFloat(document.getElementById('prod-price').value);
-            const stock       = parseInt(document.getElementById('prod-stock').value);
-            const type        = document.getElementById('prod-type').value;
-            const isNew       = document.getElementById('prod-new').checked;
+            const name = document.getElementById('prod-name').value.trim();
+            const price = parseFloat(document.getElementById('prod-price').value);
+            const stock = parseInt(document.getElementById('prod-stock').value);
+            const type = document.getElementById('prod-type').value;
+            const isNew = document.getElementById('prod-new').checked;
             const unavailable = document.getElementById('prod-unavailable').checked;
-
-            if (!name || isNaN(price) || isNaN(stock)) {
-                alert("Bitte alle Pflichtfelder ausfüllen");
-                return;
-            }
-
             const category = type === 'vape' ? 'WaveVapes Tornado 30000' : (isNew ? 'Neue Sorten' : 'Normale Sorten');
-
-            try {
-                const docRef = await db.collection('products').add({
-                    name,
-                    price,
-                    stock,
-                    type,
-                    category,
-                    isNew: type === 'liquid' ? isNew : false,
-                    available: !unavailable,
-                    sold: 0,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-
-                if (selectedFile) {
-                    const formData = new FormData();
-                    formData.append("file", selectedFile);
-                    formData.append("upload_preset", "wavevapes");
-                    const res = await fetch("https://api.cloudinary.com/v1_1/dbbkmjsr5/image/upload", {
-                        method: "POST",
-                        body: formData
-                    });
-                    const json = await res.json();
-                    if (json.secure_url) {
-                        await docRef.update({ image: json.secure_url });
-                    }
-                }
-
-                e.target.reset();
-                document.getElementById('preview-thumb').classList.add('hidden');
-                selectedFile = null;
-                showToast('Produkt erfolgreich angelegt! 🎉');
-            } catch (err) {
-                console.error(err);
-                alert("Fehler beim Anlegen: " + err.message);
+            const docRef = await db.collection('products').add({
+                name, price, stock, type, category,
+                isNew: type === 'liquid' ? isNew : false,
+                available: !unavailable,
+                sold: 0,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            if (selectedFile) {
+                const formData = new FormData();
+                formData.append("file", selectedFile);
+                formData.append("upload_preset", "wavevapes");
+                const res = await fetch("https://api.cloudinary.com/v1_1/dbbkmjsr5/image/upload", { method: "POST", body: formData });
+                const json = await res.json();
+                if (json.secure_url) await docRef.update({ image: json.secure_url });
             }
+            e.target.reset();
+            document.getElementById('preview-thumb').classList.add('hidden');
+            selectedFile = null;
+            showToast('Produkt erfolgreich angelegt! 🎉');
         });
 
         const dropzone = document.getElementById('dropzone');
@@ -543,7 +485,7 @@
             input.click();
         });
 
-        // ==================== BESTELLUNGEN ====================
+        // ==================== BESTELLUNGEN – KORRIGIERTE VERSION ====================
         function loadOrders() {
             if (ordersUnsubscribe) ordersUnsubscribe();
 
@@ -552,9 +494,6 @@
                 .onSnapshot(snap => {
                     allOrders = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     renderOrders();
-                }, err => {
-                    console.error("Bestellungen Snapshot Fehler:", err);
-                    showToast("Fehler beim Laden der Bestellungen", "error");
                 });
         }
 
@@ -564,11 +503,12 @@
             const statusVal = document.getElementById('status-filter').value;
 
             let filtered = allOrders.filter(o => {
-                const numMatch  = (o.orderNumber || '').toLowerCase().includes(searchVal);
-                const emailMatch = (o.userEmail || '').toLowerCase().includes(searchVal);
-                const statusMatch = !statusVal || (o.status || 'Zahlung erwartet') === statusVal;
+                const matchesSearch = !searchVal ||
+                    (o.orderNumber && o.orderNumber.toLowerCase().includes(searchVal)) ||
+                    (o.userEmail && o.userEmail.toLowerCase().includes(searchVal));
 
-                return (numMatch || emailMatch) && statusMatch;
+                const matchesStatus = !statusVal || (o.status || 'Zahlung erwartet') === statusVal;
+                return matchesSearch && matchesStatus;
             });
 
             let html = '';
@@ -590,16 +530,12 @@
                 </tr>`;
             });
 
-            tbody.innerHTML = html || `<tr><td colspan="6" class="text-center py-16 text-gray-400">Keine Bestellungen gefunden</td></tr>`;
+            tbody.innerHTML = html || `<tr><td colspan="6" class="text-center py-16 text-gray-400">Noch keine Bestellungen</td></tr>`;
         }
 
         function quickStatus(id, status) {
-            db.collection('orders').doc(id).update({ status })
-                .then(() => showToast(`Status auf „${status}“ gesetzt`))
-                .catch(err => {
-                    console.error(err);
-                    showToast("Fehler beim Status ändern", "error");
-                });
+            db.collection('orders').doc(id).update({ status });
+            showToast(`Status auf „${status}“ gesetzt`);
         }
 
         function getStatusClass(s) {
@@ -616,79 +552,67 @@
         // ==================== BESTELL-DETAIL MODAL ====================
         async function showOrderModal(orderId) {
             currentOrderId = orderId;
-            try {
-                const doc = await db.collection('orders').doc(orderId).get();
-                if (!doc.exists) {
-                    alert("Bestellung nicht gefunden");
-                    return;
-                }
-                const order = doc.data();
-                const date = order.date ? order.date.toDate().toLocaleString('de-DE') : '—';
-
-                let itemsHTML = '';
-                (order.items || []).forEach(item => {
-                    itemsHTML += `
+            const doc = await db.collection('orders').doc(orderId).get();
+            const order = doc.data();
+            const date = order.date ? order.date.toDate().toLocaleString('de-DE') : '—';
+            let itemsHTML = '';
+            order.items.forEach(item => {
+                itemsHTML += `
                     <div class="flex justify-between py-3 border-b border-white/10">
-                        <span>${item.name || '?'} × ${item.qty || 0} ${item.nicotine ? `(${item.nicotine})` : ''}</span>
-                        <span>${((item.price || 0) * (item.qty || 0)).toFixed(2)} €</span>
+                        <span>${item.name} × ${item.qty} ${item.nicotine ? `(${item.nicotine})` : ''}</span>
+                        <span>${(item.price * item.qty).toFixed(2)} €</span>
                     </div>`;
-                });
-
-                const modalHTML = `
-                <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]">
-                    <div class="bg-zinc-900 rounded-3xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto modal">
-                        <div class="flex justify-between items-center mb-8">
-                            <h3 class="text-3xl font-bold neon">Bestellung #${order.orderNumber || '—'}</h3>
-                            <button onclick="closeOrderModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
+            });
+            const modalHTML = `
+            <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]">
+                <div class="bg-zinc-900 rounded-3xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto modal">
+                    <div class="flex justify-between items-center mb-8">
+                        <h3 class="text-3xl font-bold neon">Bestellung #${order.orderNumber}</h3>
+                        <button onclick="closeOrderModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
+                    </div>
+                    <div class="space-y-8">
+                        <div class="grid grid-cols-2 gap-8 text-sm">
+                            <div><strong>Datum:</strong> ${date}</div>
+                            <div><strong>Kunde:</strong> <span class="text-emerald-400">${order.userEmail}</span></div>
                         </div>
-                        <div class="space-y-8">
-                            <div class="grid grid-cols-2 gap-8 text-sm">
-                                <div><strong>Datum:</strong> ${date}</div>
-                                <div><strong>Kunde:</strong> <span class="text-emerald-400">${order.userEmail || '—'}</span></div>
-                            </div>
-                            <div><strong>Adresse:</strong><br>${order.address?.street || '—'}<br>${order.address?.zip || ''} ${order.address?.city || ''}</div>
-                            <div>
-                                <strong>Artikel</strong>
-                                ${itemsHTML || '<p class="text-gray-400">Keine Artikel</p>'}
-                            </div>
-                            <div class="text-2xl font-bold">Gesamt: <span class="text-emerald-400">${(order.total || 0).toFixed(2)} €</span></div>
-                            <div class="bg-zinc-950 -mx-8 -mb-8 p-8 rounded-b-3xl border-t border-white/10">
-                                <h4 class="font-bold mb-6 text-cyan-400 flex items-center gap-2"><i class="fa-solid fa-truck"></i> Admin-Steuerung</h4>
-                                <select id="modal-status" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 mb-6">
-                                    <option value="Zahlung erwartet" ${order.status === "Zahlung erwartet" ? 'selected' : ''}>Zahlung erwartet</option>
-                                    <option value="Wird bearbeitet" ${order.status === "Wird bearbeitet" ? 'selected' : ''}>Wird bearbeitet</option>
-                                    <option value="Versendet" ${order.status === "Versendet" ? 'selected' : ''}>Versendet</option>
-                                    <option value="Zugestellt" ${order.status === "Zugestellt" ? 'selected' : ''}>Zugestellt</option>
-                                    <option value="Storniert" ${order.status === "Storniert" ? 'selected' : ''}>Storniert</option>
-                                </select>
-                                <div class="grid grid-cols-2 gap-6">
-                                    <div>
-                                        <label class="text-xs block mb-2 text-gray-400">Versanddienst</label>
-                                        <select id="modal-carrier" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
-                                            <option value="DHL"     ${order.carrier === "DHL"    ? 'selected' : ''}>DHL</option>
-                                            <option value="Hermes"  ${order.carrier === "Hermes" ? 'selected' : ''}>Hermes</option>
-                                            <option value="DPD"     ${order.carrier === "DPD"    ? 'selected' : ''}>DPD</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label class="text-xs block mb-2 text-gray-400">Tracking-Nummer</label>
-                                        <input id="modal-tracking" value="${order.trackingNumber || ''}" placeholder="Tracking-Nummer" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
-                                    </div>
+                        <div><strong>Adresse:</strong><br>${order.address.street}<br>${order.address.zip} ${order.address.city}</div>
+                        <div>
+                            <strong>Artikel</strong>
+                            ${itemsHTML}
+                        </div>
+                        <div class="text-2xl font-bold">Gesamt: <span class="text-emerald-400">${order.total.toFixed(2)} €</span></div>
+                        <div class="bg-zinc-950 -mx-8 -mb-8 p-8 rounded-b-3xl border-t border-white/10">
+                            <h4 class="font-bold mb-6 text-cyan-400 flex items-center gap-2"><i class="fa-solid fa-truck"></i> Admin-Steuerung</h4>
+                            <select id="modal-status" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 mb-6">
+                                <option value="Zahlung erwartet" ${order.status === "Zahlung erwartet" ? 'selected' : ''}>Zahlung erwartet</option>
+                                <option value="Wird bearbeitet" ${order.status === "Wird bearbeitet" ? 'selected' : ''}>Wird bearbeitet</option>
+                                <option value="Versendet" ${order.status === "Versendet" ? 'selected' : ''}>Versendet</option>
+                                <option value="Zugestellt" ${order.status === "Zugestellt" ? 'selected' : ''}>Zugestellt</option>
+                                <option value="Storniert" ${order.status === "Storniert" ? 'selected' : ''}>Storniert</option>
+                            </select>
+                            <div class="grid grid-cols-2 gap-6">
+                                <div>
+                                    <label class="text-xs block mb-2 text-gray-400">Versanddienst</label>
+                                    <select id="modal-carrier" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
+                                        <option value="DHL" ${order.carrier === "DHL" ? 'selected' : ''}>DHL</option>
+                                        <option value="Hermes" ${order.carrier === "Hermes" ? 'selected' : ''}>Hermes</option>
+                                        <option value="DPD" ${order.carrier === "DPD" ? 'selected' : ''}>DPD</option>
+                                    </select>
                                 </div>
-                                <div class="flex gap-4 mt-8">
-                                    <button onclick="saveOrderChanges()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-5 rounded-3xl font-bold">Änderungen speichern</button>
-                                    <button onclick="deleteOrder()" class="flex-1 bg-red-600 hover:bg-red-500 py-5 rounded-3xl font-bold">Bestellung löschen</button>
+                                <div>
+                                    <label class="text-xs block mb-2 text-gray-400">Tracking-Nummer</label>
+                                    <input id="modal-tracking" value="${order.trackingNumber || ''}" placeholder="Tracking-Nummer" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
                                 </div>
+                            </div>
+                            <div class="flex gap-4 mt-8">
+                                <button onclick="saveOrderChanges()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-5 rounded-3xl font-bold">Änderungen speichern</button>
+                                <button onclick="deleteOrder()" class="flex-1 bg-red-600 hover:bg-red-500 py-5 rounded-3xl font-bold">Bestellung löschen</button>
                             </div>
                         </div>
                     </div>
-                </div>`;
-
-                document.getElementById('order-modal-container').innerHTML = modalHTML;
-            } catch (err) {
-                console.error(err);
-                alert("Fehler beim Laden der Bestelldetails: " + err.message);
-            }
+                </div>
+            </div>`;
+            document.getElementById('order-modal-container').innerHTML = modalHTML;
         }
 
         function closeOrderModal() {
@@ -696,42 +620,26 @@
         }
 
         async function saveOrderChanges() {
-            if (!currentOrderId) return;
-            const status   = document.getElementById('modal-status').value;
-            const carrier  = document.getElementById('modal-carrier').value;
+            const status = document.getElementById('modal-status').value;
+            const carrier = document.getElementById('modal-carrier').value;
             const tracking = document.getElementById('modal-tracking').value.trim();
-
-            try {
-                await db.collection('orders').doc(currentOrderId).update({
-                    status,
-                    carrier,
-                    trackingNumber: tracking
-                });
-                showToast('Bestellung aktualisiert');
-                closeOrderModal();
-            } catch (err) {
-                console.error(err);
-                alert("Fehler beim Speichern: " + err.message);
-            }
+            await db.collection('orders').doc(currentOrderId).update({ status, carrier, trackingNumber: tracking });
+            showToast('Bestellung aktualisiert');
+            closeOrderModal();
         }
 
         async function deleteOrder() {
-            if (!currentOrderId) return;
             if (!confirm('Bestellung IRREVERSIBEL löschen?')) return;
-            try {
-                await db.collection('orders').doc(currentOrderId).delete();
-                showToast('Bestellung gelöscht');
-                closeOrderModal();
-            } catch (err) {
-                console.error(err);
-                alert("Fehler beim Löschen: " + err.message);
-            }
+            await db.collection('orders').doc(currentOrderId).delete();
+            showToast('Bestellung gelöscht');
+            closeOrderModal();
         }
 
         // ==================== START ====================
         window.onload = () => {
             loadProducts();
 
+            // Filter jetzt auf renderOrders (nicht mehr loadOrders!)
             document.getElementById('order-search').addEventListener('input', renderOrders);
             document.getElementById('status-filter').addEventListener('change', renderOrders);
         };

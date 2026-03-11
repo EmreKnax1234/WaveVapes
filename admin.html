@@ -21,6 +21,7 @@
     .dropzone { border: 2px dashed #67e8f9; transition: all 0.3s; }
     .dropzone.dragover { background: rgba(103,232,249,0.1); border-color: #22d3ee; }
     .preview-card { background: #18181b; border: 1px solid #27272a; border-radius: 1rem; overflow: hidden; }
+    .unavailable-row { text-decoration: line-through; color: #ef4444 !important; background: #1f2937 !important; }
     .inactive { opacity: 0.5; background: #111827; }
     .tab-active { border-bottom: 4px solid #67e8f9; color: #67e8f9; font-weight: 600; }
   </style>
@@ -88,9 +89,13 @@
             <option value="vape">Vape (Tornado)</option>
             <option value="liquid">Liquid</option>
           </select>
-          <div class="flex items-center gap-3 md:col-span-1 lg:col-span-1">
+          <div class="flex items-center gap-3">
             <input id="isNew" type="checkbox" class="w-5 h-5 accent-cyan-500" onchange="updatePreview()" />
             <label for="isNew" class="text-sm text-gray-300">Neue Sorte?</label>
+          </div>
+          <div class="flex items-center gap-3">
+            <input id="notAvailable" type="checkbox" class="w-5 h-5 accent-red-500" />
+            <label for="notAvailable" class="text-sm text-gray-300">Momentan nicht verfügbar?</label>
           </div>
           <button type="submit" class="md:col-span-2 lg:col-span-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg transition">Produkt speichern</button>
         </form>
@@ -220,7 +225,7 @@
       if (tab === 1) loadOrders();
     }
 
-    // ====================== LIVE VORSCHAU – HIER DIE ÄNDERUNG ======================
+    // ====================== LIVE VORSCHAU ======================
     function updatePreview() {
       const name = document.getElementById('name').value || 'Produktname';
       const price = parseFloat(document.getElementById('price').value) || 7.99;
@@ -275,7 +280,7 @@
       updatePreview();
     }
 
-    // ====================== NEUES PRODUKT SPEICHERN ======================
+    // ====================== NEUES PRODUKT SPEICHERN (mit "nicht verfügbar") ======================
     document.getElementById('add-form').addEventListener('submit', async e => {
       e.preventDefault();
       const name = document.getElementById('name').value.trim();
@@ -283,6 +288,8 @@
       const stock = parseInt(document.getElementById('stock').value);
       const type = document.getElementById('type').value;
       const isNew = document.getElementById('isNew').checked;
+      const notAvailable = document.getElementById('notAvailable').checked;
+
       if (!name || isNaN(price) || price <= 0 || isNaN(stock) || stock < 0) {
         return showToast('Bitte alle Felder korrekt ausfüllen', 'error');
       }
@@ -291,7 +298,9 @@
         const docRef = await db.collection('products').add({
           name, price, stock, type,
           isNew: type === 'liquid' ? isNew : false,
-          category, available: true, sold: 0,
+          category,
+          available: !notAvailable,           // ← Neue Checkbox
+          sold: 0,
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         let imageUrl = null;
@@ -318,31 +327,26 @@
       }
     });
 
-    // ====================== PRODUKTE LADEN, toggleAvailable, deleteProduct, editProduct ======================
-    // (bleiben unverändert – hier nur der Vorschau-Fix)
-
+    // ====================== PRODUKTE LADEN (mit Sortierung + Rot/Durchgestrichen) ======================
     function loadProducts() {
       const tbody = document.getElementById('products-tbody');
       tbody.innerHTML = '<tr><td colspan="10" class="text-center py-12 text-gray-400">Lade Produkte…</td></tr>';
+
       db.collection('products')
-        .orderBy('name')
         .onSnapshot((snap) => {
+          let products = [];
+          snap.forEach(doc => products.push({ id: doc.id, ...doc.data() }));
+
+          // Sortierung: Verfügbare zuerst, dann nicht verfügbare
+          products.sort((a, b) => {
+            if (a.available === b.available) return a.name.localeCompare(b.name);
+            return a.available ? -1 : 1;
+          });
+
           tbody.innerHTML = '';
-          let revenue = 0;
-          let activeCount = 0;
-          let totalSold = 0;
-          if (snap.empty) {
-            tbody.innerHTML = '<tr><td colspan="10" class="text-center py-12 text-gray-400">Keine Produkte vorhanden</td></tr>';
-            return;
-          }
-          snap.forEach(doc => {
-            const p = doc.data();
-            const id = doc.id;
-            revenue += (p.price || 0) * (p.sold || 0);
-            if (p.available !== false) activeCount++;
-            totalSold += p.sold || 0;
+          products.forEach(p => {
             const row = document.createElement('tr');
-            row.className = (p.available !== false) ? '' : 'inactive';
+            row.className = (p.available !== false) ? '' : 'unavailable-row';
             row.innerHTML = `
               <td class="py-4 px-4">
                 ${p.image ? `<img src="${p.image}" class="w-12 h-12 object-cover rounded-lg">` : '<span class="text-gray-500 text-xs">—</span>'}
@@ -355,24 +359,21 @@
               <td class="py-4 px-4 text-center">${p.isNew ? 'Ja' : '—'}</td>
               <td class="py-4 px-4 text-center">
                 <input type="checkbox" ${p.available !== false ? 'checked' : ''}
-                       onchange="toggleAvailable('${id}', this.checked)"
+                       onchange="toggleAvailable('${p.id}', this.checked)"
                        class="w-5 h-5 accent-cyan-500" />
               </td>
               <td class="py-4 px-4 text-center font-medium">${p.sold || 0}</td>
               <td class="py-4 px-4 text-right space-x-4">
-                <button onclick="editProduct('${id}')" class="text-cyan-400 hover:text-cyan-300">
+                <button onclick="editProduct('${p.id}')" class="text-cyan-400 hover:text-cyan-300">
                   <i class="fa-solid fa-pen-to-square"></i>
                 </button>
-                <button onclick="deleteProduct('${id}')" class="text-red-400 hover:text-red-500">
+                <button onclick="deleteProduct('${p.id}')" class="text-red-400 hover:text-red-500">
                   <i class="fa-solid fa-trash"></i>
                 </button>
               </td>
             `;
             tbody.appendChild(row);
           });
-          document.getElementById('revenue').textContent = revenue.toFixed(2) + ' €';
-          document.getElementById('active-count').textContent = activeCount;
-          document.getElementById('total-sold').textContent = totalSold;
         });
     }
 
@@ -420,6 +421,7 @@
     function loadOrders() {
       const tbody = document.getElementById('orders-tbody');
       tbody.innerHTML = '<tr><td colspan="6" class="text-center py-12 text-gray-400">Lade Bestellungen…</td></tr>';
+
       db.collection('orders')
         .orderBy('date', 'desc')
         .onSnapshot((snap) => {

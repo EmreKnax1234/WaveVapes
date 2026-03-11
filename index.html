@@ -43,8 +43,9 @@
         input, select, button, textarea, .qty-btn, .product-card, .nicotine-select { touch-action: manipulation !important; }
         body { font-family: 'Inter', system-ui, sans-serif; }
         .neon-text { text-shadow: 0 0 15px var(--neon-cyan), 0 0 30px var(--neon-cyan); }
-        .product-card { transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .product-card { transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); display: flex; flex-direction: column; height: 100%; }
         .product-card:hover { transform: translateY(-12px) scale(1.04); box-shadow: 0 25px 50px -12px rgb(103 232 249); }
+        .product-card .content { flex: 1; display: flex; flex-direction: column; }
         .tab-active { border-bottom: 4px solid var(--neon-cyan); color: var(--neon-cyan); font-weight: 600; }
         .wave-bg { background: linear-gradient(135deg, #0a0a0a, #1e1233, #0a0a0a); }
         .qty-btn { transition: all 0.2s ease; }
@@ -81,7 +82,7 @@
         .status-Zugestellt{background:#34d399;color:black;}
         .status-Storniert{background:#ef4444;color:white;}
 
-        /* LAGERBESTAND ANZEIGE */
+        /* LAGERBESTAND + NEUES LAYOUT */
         .stock-info {
             font-size: 0.8rem;
             font-weight: 500;
@@ -93,6 +94,7 @@
         .stock-high { background: rgba(16, 185, 129, 0.15); color: #10b981; }
         .stock-low { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
         .stock-zero { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+        .product-bottom { margin-top: auto; }
     </style>
 </head>
 <body class="wave-bg text-white min-h-screen">
@@ -538,7 +540,7 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
-        // ====================== REFERRAL ======================
+        // ====================== REFERRAL CORE ======================
         async function createOrUpdateUserProfile() {
             if (!currentUser) return;
             const userRef = db.collection("users").doc(currentUser.uid);
@@ -652,7 +654,7 @@
             }
         }
 
-        // ====================== AUTH + LOYALTY ======================
+        // ====================== AUTH + LOYALTY SYNC ======================
         auth.onAuthStateChanged(async (user) => {
             currentUser = user;
             updateAuthUI();
@@ -974,45 +976,58 @@
                 const salePrice = product.price.toFixed(2).replace('.', ',');
                 const unavailableClass = !product.available ? 'unavailable-product' : '';
                 const liquidClass = !isVape ? 'liquid-card' : '';
+                let unavailableTagHTML = !product.available ? `<div class="unavailable-tag">Aktuell NICHT verfügbar</div>` : '';
+
+                // NEUES LAYOUT: Name oben → Lücke → Preis → Plus/Minus → Nikotin → Lager
                 let nicotineHTML = '';
                 if (!isVape && product.available) {
                     nicotineHTML = `<select class="nicotine-select" onchange="updateNicotine('${product.id}', this.value); event.stopImmediatePropagation()">${NICOTINE_OPTIONS.map(opt => `<option value="${opt}" ${nicotine === opt ? 'selected' : ''}>${opt}</option>`).join('')}</select>`;
                 }
-                let unavailableTagHTML = !product.available ? `<div class="unavailable-tag">Aktuell NICHT verfügbar</div>` : '';
 
-                // LAGERBESTAND ANZEIGE
+                let qtyHTML = product.available ? `
+                    <div class="flex items-center bg-zinc-800 rounded-3xl" onclick="event.stopImmediatePropagation()">
+                        <button onclick="changeQuantity('${product.id}', -1); event.stopImmediatePropagation()" class="qty-btn w-9 h-9 text-2xl text-cyan-300">-</button>
+                        <div class="w-10 text-center font-bold text-xl">${qty}</div>
+                        <button onclick="changeQuantity('${product.id}', 1); event.stopImmediatePropagation()" class="qty-btn w-9 h-9 text-2xl text-cyan-300">+</button>
+                    </div>` : '';
+
+                // Lagerbestand
                 let stockHTML = '';
                 if (product.available) {
                     const stock = product.stock || 0;
                     if (stock > 5) stockHTML = `<div class="stock-info stock-high">✅ Noch ${stock} auf Lager</div>`;
                     else if (stock > 0) stockHTML = `<div class="stock-info stock-low">⚠️ Nur noch ${stock} auf Lager</div>`;
                     else stockHTML = `<div class="stock-info stock-zero">❌ Ausverkauft</div>`;
+                } else {
+                    stockHTML = `<div class="stock-info stock-zero">❌ Ausverkauft</div>`;
                 }
-
-                let qtyHTML = product.available ? `
-                    <div class="flex items-center bg-zinc-800 rounded-3xl mt-4" onclick="event.stopImmediatePropagation()">
-                        <button onclick="changeQuantity('${product.id}', -1); event.stopImmediatePropagation()" class="qty-btn w-9 h-9 text-2xl text-cyan-300">-</button>
-                        <div class="w-10 text-center font-bold text-xl">${qty}</div>
-                        <button onclick="changeQuantity('${product.id}', 1); event.stopImmediatePropagation()" class="qty-btn w-9 h-9 text-2xl text-cyan-300">+</button>
-                    </div>` : '';
 
                 html += `
                     <div onclick="showProductDetail('${product.id}')"
                          class="product-card bg-zinc-900 border border-white/10 rounded-3xl overflow-hidden ${unavailableClass} ${liquidClass} cursor-pointer">
                         <div class="h-1.5 bg-gradient-to-r from-cyan-400 to-purple-500"></div>
-                        <div class="p-5">
+                        <div class="p-5 flex flex-col h-full">
                             ${imageHTML}
                             <div class="flex items-start justify-between mb-3">
                                 <h4 class="font-semibold text-lg leading-tight flex-1">${product.name}</h4>
                                 ${product.isNew ? `<span class="ml-auto px-3 py-1 bg-lime-400 text-black text-xs font-black tracking-wider rounded-2xl">NEW</span>` : ''}
                             </div>
                             ${unavailableTagHTML}
+                            
+                            <!-- Lücke zwischen Name und Preis -->
+                            <div class="flex-1"></div>
+                            
+                            <!-- Preis -->
+                            <div class="price-row"><span class="discount-price">${oldPrice}€</span> → <span class="sale-price">${salePrice}€</span></div>
+                            
+                            <!-- Plus / Minus -->
+                            ${qtyHTML}
+                            
+                            <!-- Nikotin (ganz unten vor Lager) -->
+                            ${nicotineHTML}
+                            
+                            <!-- Lagerbestand -->
                             ${stockHTML}
-                            <div class="flex flex-col items-center">
-                                <div class="price-row"><span class="discount-price">${oldPrice}€</span> → <span class="sale-price">${salePrice}€</span></div>
-                                ${qtyHTML}
-                                ${nicotineHTML}
-                            </div>
                         </div>
                     </div>`;
             });
@@ -1566,22 +1581,6 @@
             updateCartDisplay();
             startNotificationCycle();
             checkAndAutoRedeemLoyalty();
-        }
-
-        function showNextNotification() {
-            if (notificationCyclePaused) return;
-            const toast = document.getElementById('notification-toast');
-            toast.textContent = notificationList[currentNotificationIndex];
-            toast.classList.add('visible');
-            setTimeout(() => toast.classList.remove('visible'), NOTIFICATION_DURATION - 700);
-            currentNotificationIndex = (currentNotificationIndex + 1) % notificationList.length;
-        }
-
-        function startNotificationCycle() {
-            checkAndGenerateNotifications();
-            showNextNotification();
-            setInterval(showNextNotification, NOTIFICATION_DURATION);
-            setInterval(checkAndGenerateNotifications, 60000);
         }
 
         window.onload = initialize;

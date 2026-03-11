@@ -63,7 +63,7 @@
             color: white; 
             border: 1px solid rgba(103,232,249,0.5); 
             border-radius: 9999px; 
-            padding: 6px 12px; 
+            padding: 8px 16px; 
             font-size: 0.875rem; 
             margin-top: 8px; 
             width: 112px !important; 
@@ -71,8 +71,9 @@
             margin-right: auto; 
             appearance: none; 
             text-align: center; 
+            box-shadow: 0 0 0 1px rgba(103,232,249,0.3);
         }
-        .nicotine-select:focus { outline: none; border-color: #22d3ee; box-shadow: 0 0 0 3px rgba(34,211,238,0.3); }
+        .nicotine-select:focus { outline: none; border-color: #22d3ee; box-shadow: 0 0 0 3px rgba(34,211,238,0.4); }
         .loyalty-bar { height: 6px; background: linear-gradient(to right, #67e8f9, #a5f3fc); border-radius: 9999px; transition: width 0.6s cubic-bezier(0.34,1.56,0.64,1); }
         .review-card { transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1); }
         .review-card:hover { transform: translateY(-8px); box-shadow: 0 20px 40px -15px rgb(103 232 249); }
@@ -945,13 +946,11 @@
                         <button onclick="changeQuantity('${product.id}', 1); event.stopImmediatePropagation()" class="qty-btn w-9 h-9 text-2xl text-cyan-300 flex-1 flex items-center justify-center">+</button>
                     </div>` : '';
                 let stockHTML = '';
-                if (product.available) {
+                if (!isVape && product.available) {
                     const stock = product.stock || 0;
                     if (stock > 5) stockHTML = `<div class="stock-info stock-high">✅ Noch ${stock} auf Lager</div>`;
                     else if (stock > 0) stockHTML = `<div class="stock-info stock-low">⚠️ Nur noch ${stock} auf Lager</div>`;
                     else stockHTML = `<div class="stock-info stock-zero">❌ Ausverkauft</div>`;
-                } else {
-                    stockHTML = `<div class="stock-info stock-zero">❌ Ausverkauft</div>`;
                 }
                 html += `
                     <div onclick="showProductDetail('${product.id}')"

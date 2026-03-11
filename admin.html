@@ -326,18 +326,32 @@
             }
         });
 
-        // ====================== PRODUKTE LADEN ======================
+        // ====================== PRODUKTE LADEN + LIVE-STATISTIK ======================
         function loadProducts() {
             const tbody = document.getElementById('products-tbody');
             tbody.innerHTML = '<tr><td colspan="10" class="text-center py-12 text-gray-400">Lade Produkte…</td></tr>';
+
             db.collection('products')
                 .onSnapshot((snap) => {
                     let products = [];
                     snap.forEach(doc => products.push({ id: doc.id, ...doc.data() }));
+
+                    // Sortierung: Verfügbare zuerst
                     products.sort((a, b) => {
                         if (a.available === b.available) return a.name.localeCompare(b.name);
                         return a.available ? -1 : 1;
                     });
+
+                    // ====================== STATISTIK BERECHNEN ======================
+                    const activeCount = products.filter(p => p.available !== false).length;
+                    const totalSold = products.reduce((sum, p) => sum + (p.sold || 0), 0);
+                    const potentialRevenue = products.reduce((sum, p) => sum + ((p.price || 0) * (p.sold || 0)), 0);
+
+                    document.getElementById('active-count').textContent = activeCount;
+                    document.getElementById('total-sold').textContent = totalSold;
+                    document.getElementById('revenue').textContent = potentialRevenue.toFixed(0) + ' €';
+                    // ====================== ENDE STATISTIK ======================
+
                     tbody.innerHTML = '';
                     products.forEach(p => {
                         const row = document.createElement('tr');
@@ -379,9 +393,9 @@
         async function toggleIsNew(id, isNew) {
             try {
                 await db.collection('products').doc(id).update({ isNew: isNew });
-                showToast(`✅ "Neu"-Status für das Produkt aktualisiert`, 'success');
+                showToast(`✅ "Neu"-Status aktualisiert`, 'success');
             } catch (err) {
-                showToast('Fehler beim Speichern des Neu-Status', 'error');
+                showToast('Fehler beim Speichern', 'error');
             }
         }
 
@@ -455,8 +469,7 @@
                                 <span class="status-badge ${getStatusClass(currentStatus)}">${currentStatus}</span>
                             </td>
                             <td class="py-4 px-4 text-right">
-                                <button onclick="showOrderDetails('${doc.id}')"
-                                    class="bg-cyan-600 hover:bg-cyan-500 px-4 py-2 rounded-lg text-sm">Details</button>
+                                <button onclick="showOrderDetails('${doc.id}')" class="bg-cyan-600 hover:bg-cyan-500 px-4 py-2 rounded-lg text-sm">Details</button>
                             </td>`;
                         tbody.appendChild(row);
                     });

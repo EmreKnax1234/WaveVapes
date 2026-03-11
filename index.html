@@ -496,6 +496,7 @@
         let appliedDiscountCode = null;
         let discountPercent = 0;
         let ordersUnsubscribe = null;
+        let userSnapshotUnsubscribe = null;
 
         // ====================== REFERRAL SYSTEM ======================
         let myReferralCode = "";
@@ -563,7 +564,6 @@
                     referralCount: firebase.firestore.FieldValue.increment(1),
                     totalBonusPoints: firebase.firestore.FieldValue.increment(100)
                 });
-                showToast("🎉 Dein Freund hat sich registriert – du bekommst +100 Punkte!");
             }
         }
 
@@ -644,7 +644,7 @@
             }
         }
 
-        // ====================== AUTH ======================
+        // ====================== AUTH + LOYALTY SYNC (neu: referrer bekommt jetzt Punkte) ======================
         auth.onAuthStateChanged(async (user) => {
             currentUser = user;
             updateAuthUI();
@@ -652,6 +652,21 @@
             if (user) {
                 await createOrUpdateUserProfile();
                 loadUserOrders();
+
+                // SYNC: Referral-Bonus aus Firestore in lokale Punkte übernehmen
+                if (userSnapshotUnsubscribe) userSnapshotUnsubscribe();
+                userSnapshotUnsubscribe = db.collection("users").doc(user.uid).onSnapshot(doc => {
+                    if (doc.exists) {
+                        const data = doc.data();
+                        const firestoreBonus = data.totalBonusPoints || 0;
+                        const localEarned = parseInt(localStorage.getItem("wavevapes_loyalty_points")) || 0;
+                        loyaltyPoints = localEarned + firestoreBonus;
+                        localStorage.setItem("wavevapes_loyalty_points", loyaltyPoints);
+                        updateLoyaltyDisplay();
+                    }
+                });
+            } else {
+                if (userSnapshotUnsubscribe) userSnapshotUnsubscribe();
             }
         });
 

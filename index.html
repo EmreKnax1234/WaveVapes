@@ -709,7 +709,7 @@
                         image: data.image || null
                     });
                 });
-                allProducts.sort((a, b) => a.name.localeCompare(b.name));
+                // Globale Sortierung bei Load nicht nötig, da per Kategorie sortiert wird
                 renderProducts();
                 showToast("✅ Produkte aus Firestore geladen");
             } catch (e) {
@@ -717,14 +717,35 @@
                 showToast("⚠️ Firestore nicht erreichbar – prüfe Admin-Panel");
             }
         }
+        function getSortPriority(p) {
+            if (currentCategoryFilter !== "Alle") {
+                // Für spezifische Kategorien: Verfügbare zuerst, dann alphabetisch
+                return p.available ? 0 : 1;
+            }
+            // Für "Alle"
+            if (p.category === "WaveVapes Tornado 30000") {
+                return p.available ? 4 : 5; // Vapes verfügbar, dann nicht verfügbar
+            }
+            // Liquids
+            if (!p.available) return 3; // Nicht verfügbar
+            if (p.isNew) return 2; // Neu verfügbar
+            return 1; // Normal verfügbar
+        }
         function renderProducts() {
             const container = document.getElementById("products-grid");
             let html = "";
             const searchTerm = document.getElementById("search-input").value.toLowerCase();
-            const filtered = allProducts.filter(p => {
+            let filtered = allProducts.filter(p => {
                 const catMatch = currentCategoryFilter === "Alle" || p.category === currentCategoryFilter;
                 const searchMatch = !searchTerm || p.name.toLowerCase().includes(searchTerm);
                 return catMatch && searchMatch;
+            });
+            // Sortiere die gefilterte Liste
+            filtered.sort((a, b) => {
+                const prioA = getSortPriority(a);
+                const prioB = getSortPriority(b);
+                if (prioA !== prioB) return prioA - prioB;
+                return a.name.localeCompare(b.name);
             });
             filtered.forEach(product => {
                 const cartItem = cart.find(i => i.id === product.id);

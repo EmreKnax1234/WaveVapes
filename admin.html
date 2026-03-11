@@ -27,6 +27,7 @@
     </style>
 </head>
 <body class="min-h-screen">
+
     <!-- HEADER -->
     <header class="bg-zinc-950 border-b border-cyan-400/30 sticky top-0 z-50 backdrop-blur-xl">
         <div class="max-w-7xl mx-auto px-6 py-5 flex justify-between items-center">
@@ -58,6 +59,7 @@
 
     <!-- HAUPTINHALT -->
     <main id="admin-content" class="hidden max-w-7xl mx-auto px-6 py-10">
+
         <!-- TABS -->
         <div class="flex border-b border-white/10 mb-10">
             <button onclick="switchTab(0)" id="tab0" class="tab-active flex-1 py-5 text-lg font-semibold">Produkte</button>
@@ -66,6 +68,7 @@
 
         <!-- ====================== PRODUKTE TAB ====================== -->
         <div id="tab-content-0">
+
             <!-- STATS -->
             <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
                 <div class="card p-6">
@@ -115,7 +118,7 @@
                         <p class="text-gray-400">Setzt bei ALLEN Produkten das Feld „sold“ auf 0.<br>Umsatz, verkaufte Einheiten und Top-Seller werden neu berechnet.</p>
                     </div>
                 </div>
-                <button onclick="resetAllStatistics()"
+                <button onclick="resetAllStatistics()" 
                         class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-5 rounded-3xl text-xl transition-all flex items-center justify-center gap-3">
                     <i class="fa-solid fa-warning"></i>
                     ALLE STATISTIKEN ZURÜCKSETZEN
@@ -249,12 +252,6 @@
         let selectedFile = null;
         let currentOrderId = null;
 
-        // === NEU: Globale Variablen für Bestellungen ===
-        let ordersUnsubscribe = null;
-        let allOrders = [];
-
-        let allProducts = [];
-
         // ==================== AUTH ====================
         auth.onAuthStateChanged(async (user) => {
             if (!user) return window.location.href = 'index.html';
@@ -278,12 +275,7 @@
             document.getElementById('tab1').classList.toggle('tab-active', n === 1);
             document.getElementById('tab-content-0').classList.toggle('hidden', n !== 0);
             document.getElementById('tab-content-1').classList.toggle('hidden', n !== 1);
-
             if (n === 1) loadOrders();
-            else if (ordersUnsubscribe) {
-                ordersUnsubscribe();
-                ordersUnsubscribe = null;
-            }
         }
 
         // ==================== TOAST ====================
@@ -299,12 +291,15 @@
         async function resetAllStatistics() {
             if (!confirm("⚠️ ALLE STATISTIKEN ZURÜCKSETZEN?\n\nDies setzt bei JEDER Produkt das Feld 'sold' auf 0.\n\nDas kann NICHT rückgängig gemacht werden!")) return;
             if (!confirm("LETZTE WARNUNG!\nWirklich ALLE Verkaufszahlen löschen?")) return;
+
             try {
                 const snapshot = await db.collection("products").get();
                 const batch = db.batch();
+
                 snapshot.forEach(doc => {
                     batch.update(doc.ref, { sold: 0 });
                 });
+
                 await batch.commit();
                 showToast("✅ Alle Statistiken wurden zurückgesetzt!", "success");
                 loadProducts();
@@ -315,6 +310,7 @@
         }
 
         // ==================== PRODUKTE ====================
+        let allProducts = [];
         function loadProducts() {
             db.collection('products').onSnapshot(snap => {
                 allProducts = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -328,6 +324,7 @@
             const soldTotal = allProducts.reduce((sum, p) => sum + (p.sold || 0), 0);
             const revenue = allProducts.reduce((sum, p) => sum + (p.sold || 0) * (p.price || 0), 0);
             const top = [...allProducts].sort((a, b) => (b.sold || 0) - (a.sold || 0))[0];
+
             document.getElementById('active-products').textContent = active;
             document.getElementById('total-sold').textContent = soldTotal;
             document.getElementById('total-revenue').textContent = revenue.toFixed(0) + ' €';
@@ -394,6 +391,7 @@
             `;
             document.getElementById('edit-form').innerHTML = html;
             document.getElementById('edit-modal').classList.remove('hidden');
+
             const dz = document.getElementById('edit-dropzone');
             dz.onclick = () => {
                 const input = document.createElement('input');
@@ -485,52 +483,34 @@
             input.click();
         });
 
-        // ==================== BESTELLUNGEN – KORRIGIERTE VERSION ====================
+        // ==================== BESTELLUNGEN ====================
         function loadOrders() {
-            if (ordersUnsubscribe) ordersUnsubscribe();
-
-            ordersUnsubscribe = db.collection('orders')
-                .orderBy('date', 'desc')
-                .onSnapshot(snap => {
-                    allOrders = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    renderOrders();
-                });
-        }
-
-        function renderOrders() {
             const tbody = document.getElementById('orders-tbody');
-            const searchVal = (document.getElementById('order-search').value || '').trim().toLowerCase();
-            const statusVal = document.getElementById('status-filter').value;
-
-            let filtered = allOrders.filter(o => {
-                const matchesSearch = !searchVal ||
-                    (o.orderNumber && o.orderNumber.toLowerCase().includes(searchVal)) ||
-                    (o.userEmail && o.userEmail.toLowerCase().includes(searchVal));
-
-                const matchesStatus = !statusVal || (o.status || 'Zahlung erwartet') === statusVal;
-                return matchesSearch && matchesStatus;
+            db.collection('orders').orderBy('date', 'desc').onSnapshot(snap => {
+                let html = '';
+                snap.forEach(doc => {
+                    const o = doc.data();
+                    const date = o.date ? o.date.toDate().toLocaleString('de-DE') : '—';
+                    const status = o.status || 'Zahlung erwartet';
+                    if (document.getElementById('order-search').value &&
+                        !o.orderNumber.includes(document.getElementById('order-search').value) &&
+                        !o.userEmail.includes(document.getElementById('order-search').value)) return;
+                    if (document.getElementById('status-filter').value && status !== document.getElementById('status-filter').value) return;
+                    html += `
+                    <tr class="border-b border-white/10 hover:bg-zinc-800/50">
+                        <td class="py-6 px-6 font-mono text-cyan-300">${o.orderNumber}</td>
+                        <td class="py-6 px-6">${date}</td>
+                        <td class="py-6 px-6">${o.userEmail}</td>
+                        <td class="py-6 px-6 font-bold">${o.total.toFixed(2)} €</td>
+                        <td class="py-6 px-6"><span class="status-badge ${getStatusClass(status)}">${status}</span></td>
+                        <td class="py-6 px-6 text-right">
+                            <button onclick="quickStatus('${doc.id}', 'Versendet')" class="text-xs bg-emerald-600 hover:bg-emerald-500 px-5 py-2 rounded-2xl">Versendet</button>
+                            <button onclick="showOrderModal('${doc.id}')" class="ml-3 text-cyan-400 hover:text-white"><i class="fa-solid fa-eye text-xl"></i></button>
+                        </td>
+                    </tr>`;
+                });
+                tbody.innerHTML = html || `<tr><td colspan="6" class="text-center py-16 text-gray-400">Noch keine Bestellungen</td></tr>`;
             });
-
-            let html = '';
-            filtered.forEach(o => {
-                const date = o.date ? o.date.toDate().toLocaleString('de-DE') : '—';
-                const status = o.status || 'Zahlung erwartet';
-
-                html += `
-                <tr class="border-b border-white/10 hover:bg-zinc-800/50">
-                    <td class="py-6 px-6 font-mono text-cyan-300">${o.orderNumber || '—'}</td>
-                    <td class="py-6 px-6">${date}</td>
-                    <td class="py-6 px-6">${o.userEmail || '—'}</td>
-                    <td class="py-6 px-6 font-bold">${(o.total || 0).toFixed(2)} €</td>
-                    <td class="py-6 px-6"><span class="status-badge ${getStatusClass(status)}">${status}</span></td>
-                    <td class="py-6 px-6 text-right">
-                        <button onclick="quickStatus('${o.id}', 'Versendet')" class="text-xs bg-emerald-600 hover:bg-emerald-500 px-5 py-2 rounded-2xl">Versendet</button>
-                        <button onclick="showOrderModal('${o.id}')" class="ml-3 text-cyan-400 hover:text-white"><i class="fa-solid fa-eye text-xl"></i></button>
-                    </td>
-                </tr>`;
-            });
-
-            tbody.innerHTML = html || `<tr><td colspan="6" class="text-center py-16 text-gray-400">Noch keine Bestellungen</td></tr>`;
         }
 
         function quickStatus(id, status) {
@@ -638,10 +618,8 @@
         // ==================== START ====================
         window.onload = () => {
             loadProducts();
-
-            // Filter jetzt auf renderOrders (nicht mehr loadOrders!)
-            document.getElementById('order-search').addEventListener('input', renderOrders);
-            document.getElementById('status-filter').addEventListener('change', renderOrders);
+            document.getElementById('order-search').addEventListener('input', loadOrders);
+            document.getElementById('status-filter').addEventListener('change', loadOrders);
         };
     </script>
 </body>

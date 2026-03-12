@@ -575,7 +575,7 @@
                         tax: "0.00",
                         total: orderData.total.toFixed(2)
                     },
-                    loyalty_earned: Math.floor(getProductTotal())
+                    loyalty_earned: orderData.loyaltyEarned || 0
                 });
                 console.log("✅ E-Mail erfolgreich gesendet!");
                 showToast("✅ Bestellbestätigung per E-Mail versendet!", "success");
@@ -1183,6 +1183,7 @@
             const dateStr = now.getFullYear().toString().slice(2) + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0');
             return `WV-${dateStr}-${Math.floor(1000 + Math.random() * 9000)}`;
         }
+        // ====================== PLACEORDER – LOYALTY ERST BEI "WIRD BEARBEITET" ======================
         async function placeOrder() {
             if (!currentUser) {
                 alert("Bitte melde dich zuerst an!");
@@ -1205,6 +1206,7 @@
             }
             const orderNumber = generateOrderNumber();
             const finalTotal = calculateCartTotal();
+            const loyaltyEarned = Math.floor(getProductTotal());
             try {
                 await db.collection("orders").add({
                     userId: currentUser.uid,
@@ -1222,7 +1224,9 @@
                     date: firebase.firestore.Timestamp.now(),
                     status: "Zahlung erwartet",
                     trackingNumber: "",
-                    carrier: ""
+                    carrier: "",
+                    loyaltyEarned: loyaltyEarned,
+                    loyaltyCredited: false
                 });
                 for (let item of cart) {
                     if (item.id === MYSTERY_ID) continue;
@@ -1231,15 +1235,15 @@
                         sold: firebase.firestore.FieldValue.increment(item.qty)
                     });
                 }
-                addLoyaltyPoints(getProductTotal());
                 await sendOrderConfirmationEmail({
                     userEmail: currentUser.email,
                     orderNumber: orderNumber,
                     total: finalTotal,
                     items: cart,
-                    shipping: getShippingCost()
+                    shipping: getShippingCost(),
+                    loyaltyEarned: loyaltyEarned
                 });
-                showSuccessModal(orderNumber, finalTotal);
+                showSuccessModal(orderNumber, finalTotal, loyaltyEarned);
                 cart = [];
                 appliedDiscount = null;
                 document.getElementById("discount-status").innerHTML = "";
@@ -1247,15 +1251,16 @@
                 updateCartDisplay();
                 renderProducts();
                 toggleCart();
-                checkAndAutoRedeemLoyalty();
             } catch (e) {
                 alert("Fehler beim Speichern: " + e.message);
             }
         }
-        function showSuccessModal(orderNumber, total) {
+        // ====================== SUCCESS MODAL – PUNKTE ERST BEI BEARBEITET ======================
+        function showSuccessModal(orderNumber, total, loyaltyEarned) {
             document.getElementById("success-order-id").textContent = orderNumber;
-            const productPoints = Math.floor(getProductTotal());
-            document.getElementById("success-loyalty-info").innerHTML = `<span class="text-emerald-400">+${productPoints} Punkte!</span><br>Aktuell: <span class="font-bold">${loyaltyPoints}</span>`;
+            document.getElementById("success-loyalty-info").innerHTML = 
+                `<span class="text-emerald-400">+${loyaltyEarned} Punkte!</span><br>
+                 <span class="text-amber-300 text-sm">werden gutgeschrieben, sobald die Bestellung auf „Wird bearbeitet“ steht</span>`;
             document.getElementById("bank-payment-info").innerHTML = `
                 <div class="space-y-3">
                     <div><strong>Bank:</strong> ${BANK_NAME}</div>

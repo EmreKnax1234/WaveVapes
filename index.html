@@ -231,14 +231,14 @@
             <h2 class="hero-title text-5xl sm:text-6xl font-bold tracking-tighter neon-text mb-3">Bestelle deine Liquids und Vapes</h2>
             <p class="hero-subtitle text-xl sm:text-2xl text-cyan-200 max-w-md mx-auto">7,99 € pro Flasche • 10 ml • Nikotin frei wählbar (10 oder 20 mg)</p>
             <p class="text-base sm:text-lg text-gray-300 mt-4">Alle Liquids von ELFLIQ</p>
-            
-            <!-- MYSTERY VAPE BANNER (genau wie gewünscht) -->
+           
+            <!-- MYSTERY VAPE BANNER -->
             <div class="mt-4 inline-flex items-center gap-3 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-400/30 hover:border-emerald-400 px-7 py-3 rounded-3xl text-emerald-300 text-base font-semibold transition-all">
                 <i class="fa-solid fa-gift text-2xl"></i>
                 <span>Ab 100€ Bestellwert gibt's eine <span class="text-white font-bold underline">Mystery Vape gratis</span> dazu! 🎁</span>
             </div>
-            
-            <!-- GRATIS VERSAND BANNER (direkt darunter, genau wie im Beispiel) -->
+           
+            <!-- GRATIS VERSAND BANNER -->
             <div class="mt-4 inline-flex items-center gap-3 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-400/30 px-7 py-3 rounded-3xl text-amber-300 text-base font-semibold transition-all">
                 <i class="fa-solid fa-truck text-2xl"></i>
                 <span>Gratis Versand ab <span class="text-white font-bold">100 €</span> Bestellwert! 🚚</span>
@@ -1653,6 +1653,13 @@
             closeProductDetail();
             showToast(`✅ ${product.name} wurde hinzugefügt!`);
         }
+        // ====================== SETTINGS SYNC (Shop geschlossen) ======================
+        db.collection("settings").doc("main").onSnapshot(doc => {
+            const s = doc.data();
+            if (s && s.shop_closed === true) {
+                document.body.innerHTML = `<div class="fixed inset-0 bg-black flex items-center justify-center text-6xl font-bold text-red-500">🚧<br>Shop in Wartung<br>Bitte später wieder kommen</div>`;
+            }
+        });
         // ====================== INITIALISIERUNG ======================
         function initialize() {
             initEmailJS();

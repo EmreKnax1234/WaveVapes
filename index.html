@@ -1670,7 +1670,7 @@
                 document.body.innerHTML = `<div class="fixed inset-0 bg-black flex items-center justify-center text-6xl font-bold text-red-500">🚧<br>Shop in Wartung<br>Bitte später wieder kommen</div>`;
             }
         });
-        // ====================== FLASH DEAL – SOFORT + LIVE ======================
+        // ====================== FLASH DEAL – ULTRA-ROBUST ======================
         function loadFlashDeal() {
             const docRef = db.collection("settings").doc("flashdeal");
             // Sofort laden
@@ -1679,6 +1679,7 @@
                     const deal = doc.data();
                     window.currentFlashDeal = deal;
                     applyFlashBanner(deal);
+                    console.log("✅ Flash-Deal sofort geladen");
                 }
             });
             // Live Listener
@@ -1687,6 +1688,7 @@
                     const deal = doc.data();
                     window.currentFlashDeal = deal;
                     applyFlashBanner(deal);
+                    console.log("🔄 Flash-Deal live aktualisiert");
                 } else {
                     document.getElementById("flash-banner").classList.add("hidden");
                     document.getElementById("flash-banner").classList.remove("flex");
@@ -1702,6 +1704,7 @@
                 const banner = document.getElementById("flash-banner");
                 banner.classList.remove("hidden");
                 banner.classList.add("flex");
+                console.log("🚀 Banner wird angezeigt!");
             } else {
                 const banner = document.getElementById("flash-banner");
                 banner.classList.add("hidden");
@@ -1739,6 +1742,12 @@
             startNotificationCycle();
             checkAndAutoRedeemLoyalty();
             loadFlashDeal();
+            // Extra Fallback
+            setTimeout(() => {
+                db.collection("settings").doc("flashdeal").get().then(doc => {
+                    if (doc.exists) applyFlashBanner(doc.data());
+                });
+            }, 800);
         }
         window.onload = initialize;
     </script>

@@ -64,29 +64,14 @@
         .product-card { transition: all 0.3s ease; display: flex; flex-direction: column; height: 100%; }
         .product-card:hover { transform: translateY(-12px) scale(1.04); box-shadow: 0 25px 50px -12px rgb(103 232 249); }
 
-        /* ==================== MOBILE OPTIMIERUNGEN (2 SPALTEN AUF HANDY) ==================== */
-        .tornado-image {
-            width: 100%;
-            aspect-ratio: 16 / 10;
-            object-fit: cover;
-            border-radius: 16px;
-            margin-bottom: 12px;
-            background: #1f2937;
-        }
-        #products-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 12px;
-        }
-        @media (min-width: 768px) { 
-            #products-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
-        }
-        @media (min-width: 1024px) { 
-            #products-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-        }
-        @media (min-width: 1280px) { 
-            #products-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-        }
-        @media (max-width: 767px) {
+        /* MOBILE OPTIMIERUNGEN */
+        .tornado-image { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; border-radius: 16px; margin-bottom: 12px; background: #1f2937; }
+        #products-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+        @media (min-width: 768px) { #products-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; } }
+        @media (min-width: 1024px) { #products-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+        @media (min-width: 1280px) { #products-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+
+        @media (max-width: 639px) {
             .product-card { padding: 12px; }
             .product-card h4 { font-size: 1rem; line-height: 1.2; }
             .price-row .sale-price { font-size: 1.35rem; }
@@ -96,6 +81,72 @@
         }
         @media (min-width: 640px) { .hero-title { font-size: 2.75rem; } }
         button, .qty-btn, .product-card { min-height: 44px; }
+
+        /* ACCOUNT-BUTTON FIX – RUNDER KREIS AUF HANDY */
+        #account-btn {
+            width: 42px;
+            height: 42px;
+            border-radius: 9999px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            overflow: hidden;
+        }
+        #account-btn span {
+            max-width: 80px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        @media (min-width: 640px) {
+            #account-btn {
+                width: auto;
+                height: auto;
+                border-radius: 9999px;
+                padding: 8px 20px;
+                gap: 8px;
+            }
+            #account-btn i { display: inline-block; }
+            #account-btn span { max-width: none; }
+        }
+
+        /* PRODUKT-DETAIL-MODAL FIX – KEIN ÜBERLAPPEN MEHR AUF HANDY */
+        #product-detail-modal {
+            padding: 16px;
+        }
+        #product-detail-modal img {
+            max-height: 280px;
+            width: 100%;
+            max-width: 280px;
+            object-fit: contain;
+            margin: 0 auto;
+            display: block;
+            border-radius: 16px;
+        }
+        @media (min-width: 640px) {
+            #product-detail-modal img {
+                max-height: none;
+                max-width: none;
+            }
+        }
+        #product-detail-modal h2 {
+            font-size: 1.75rem;
+            line-height: 1.2;
+        }
+        @media (min-width: 640px) {
+            #product-detail-modal h2 {
+                font-size: 2.25rem;
+            }
+        }
+        #product-detail-modal .sale-price {
+            font-size: 2.5rem;
+        }
+        @media (min-width: 640px) {
+            #product-detail-modal .sale-price {
+                font-size: 3rem;
+            }
+        }
 
         .tab-active { border-bottom: 4px solid var(--neon-cyan); color: var(--neon-cyan); font-weight: 600; }
         .wave-bg { background: linear-gradient(135deg, #0a0a0a, #1e1233, #0a0a0a); }
@@ -163,9 +214,12 @@
                 </div>
             </div>
             <div class="flex items-center gap-3 sm:gap-8">
-                <button onclick="showAuthModal()" id="account-btn" class="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 border border-cyan-400/30 px-4 sm:px-6 py-2 sm:py-3 rounded-3xl text-xs sm:text-sm font-medium transition-all">
-                    <i class="fa-solid fa-user text-cyan-300"></i>
-                    <span id="current-user-display" class="font-medium">Account</span>
+                <button onclick="showAuthModal()" id="account-btn" 
+                        class="flex items-center justify-center bg-zinc-900 hover:bg-zinc-800 border border-cyan-400/30 
+                               w-10 h-10 rounded-full text-xs font-medium transition-all overflow-hidden
+                               sm:w-auto sm:h-auto sm:rounded-3xl sm:px-6 sm:py-3 sm:gap-2">
+                    <i class="fa-solid fa-user text-cyan-300 hidden sm:inline"></i>
+                    <span id="current-user-display" class="font-medium truncate">Account</span>
                 </button>
                 <button onclick="toggleCart()" class="relative flex items-center gap-2 bg-gradient-to-r from-cyan-400 to-purple-500 hover:from-cyan-300 hover:to-purple-400 text-black font-semibold px-5 sm:px-7 py-2 sm:py-3 rounded-3xl transition-all text-sm">
                     <i class="fa-solid fa-cart-shopping text-lg"></i>
@@ -247,7 +301,7 @@
             <i class="fa-solid fa-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-cyan-400"></i>
             <input id="search-input" type="text" placeholder="Flavor suchen..." onkeyup="filterProducts()" class="w-full bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl pl-12 pr-6 py-4 text-base outline-none transition">
         </div>
-        <!-- PRODUCTS GRID – MOBILE OPTIMIERUNG -->
+        <!-- PRODUCTS GRID -->
         <div id="products-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6"></div>
         <!-- REVIEWS -->
         <div class="mt-24 border-t border-white/10 pt-16">
@@ -515,8 +569,8 @@
             </div>
         </div>
     </div>
-    <!-- PRODUKT DETAIL MODAL -->
-    <div id="product-detail-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-[9999] p-4">
+    <!-- PRODUKT DETAIL MODAL – JETZT KORRIGIERT -->
+    <div id="product-detail-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-[9999] p-4 overflow-y-auto">
         <div class="bg-zinc-900 max-w-3xl w-full mx-auto rounded-3xl overflow-hidden">
             <div class="flex justify-end p-6 border-b border-white/10">
                 <button onclick="closeProductDetail()" class="text-4xl text-gray-400 hover:text-white">✕</button>
@@ -1224,7 +1278,7 @@
             const dateStr = now.getFullYear().toString().slice(2) + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0');
             return `WV-${dateStr}-${Math.floor(1000 + Math.random() * 9000)}`;
         }
-        // ====================== PLACEORDER – Stock erst bei „Wird bearbeitet“ ======================
+        // ====================== PLACEORDER ======================
         async function placeOrder() {
             if (!currentUser) {
                 alert("Bitte melde dich zuerst an!");
@@ -1519,6 +1573,7 @@
         function filterProducts() {
             renderProducts();
         }
+        // ====================== KORRIGIERTES PRODUKT DETAIL ======================
         function showProductDetail(id) {
             const product = allProducts.find(p => p.id === id);
             if (!product) return;
@@ -1531,9 +1586,9 @@
                     </select>
                 </div>` : '';
             const html = `
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                    <div>
-                        ${product.image ? `<img src="${product.image}" class="w-full rounded-3xl shadow-2xl" alt="${product.name} – WaveVapes Premium Vape oder Liquid" loading="eager" decoding="async" width="600" height="400">` : ''}
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="flex justify-center">
+                        ${product.image ? `<img src="${product.image}" class="rounded-3xl shadow-2xl" alt="${product.name}" loading="eager" decoding="async">` : ''}
                     </div>
                     <div>
                         <h2 class="text-4xl font-bold tracking-tighter neon-text">${product.name}</h2>
@@ -1593,11 +1648,6 @@
                 try {
                     await navigator.serviceWorker.register('/sw.js');
                     messaging = firebase.messaging();
-                    let deferredPrompt;
-                    window.addEventListener('beforeinstallprompt', e => {
-                        e.preventDefault();
-                        deferredPrompt = e;
-                    });
                     setTimeout(() => {
                         if (Notification.permission === 'default') {
                             document.getElementById('push-btn').classList.remove('hidden');

@@ -231,13 +231,13 @@
             <h2 class="hero-title text-5xl sm:text-6xl font-bold tracking-tighter neon-text mb-3">Bestelle deine Liquids und Vapes</h2>
             <p class="hero-subtitle text-xl sm:text-2xl text-cyan-200 max-w-md mx-auto">7,99 € pro Flasche • 10 ml • Nikotin frei wählbar (10 oder 20 mg)</p>
             <p class="text-base sm:text-lg text-gray-300 mt-4">Alle Liquids von ELFLIQ</p>
-         
+          
             <!-- MYSTERY VAPE BANNER -->
             <div class="mt-4 inline-flex items-center gap-3 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-400/30 hover:border-emerald-400 px-7 py-3 rounded-3xl text-emerald-300 text-base font-semibold transition-all">
                 <i class="fa-solid fa-gift text-2xl"></i>
                 <span>Ab 100€ Bestellwert gibt's eine <span class="text-white font-bold underline">Mystery Vape gratis</span> dazu! 🎁</span>
             </div>
-         
+          
             <!-- GRATIS VERSAND BANNER -->
             <div class="mt-4 inline-flex items-center gap-3 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-400/30 px-7 py-3 rounded-3xl text-amber-300 text-base font-semibold transition-all">
                 <i class="fa-solid fa-truck text-2xl"></i>
@@ -510,18 +510,6 @@
             <p class="text-[10px] text-gray-500 mt-10">Diese Altersverifikation wird gespeichert. Du wirst nicht erneut gefragt.</p>
         </div>
     </div>
-
-    <!-- FLASH DEAL BANNER -->
-    <div id="flash-banner" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center z-[10001] p-6">
-        <div class="bg-zinc-900 max-w-2xl w-full rounded-3xl p-12 text-center border-4 border-amber-400 relative shadow-2xl">
-            <button onclick="closeFlashBanner()" class="absolute -top-5 -right-5 bg-red-500 hover:bg-red-600 w-12 h-12 rounded-full flex items-center justify-center text-3xl shadow-xl">✕</button>
-            <div class="text-7xl mb-6 animate-bolt">⚡</div>
-            <h2 id="flash-banner-title" class="text-6xl font-bold tracking-tighter neon-text mb-6"></h2>
-            <p id="flash-banner-subtitle" class="text-2xl text-cyan-200 mb-10 leading-relaxed"></p>
-            <button id="flash-banner-btn" onclick="flashBannerAction()" class="bg-gradient-to-r from-amber-400 to-orange-500 text-black font-black py-6 px-16 rounded-3xl text-3xl hover:scale-110 transition-all"></button>
-        </div>
-    </div>
-
     <!-- IMPRESSUM MODAL -->
     <div id="impressum-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]">
         <div class="bg-zinc-900 rounded-3xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
@@ -1300,7 +1288,7 @@
             const dateStr = now.getFullYear().toString().slice(2) + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0');
             return `WV-${dateStr}-${Math.floor(1000 + Math.random() * 9000)}`;
         }
-        // ====================== PLACEORDER ======================
+        // ====================== PLACEORDER – MIT LAGER-REDUKTION ======================
         async function placeOrder() {
             if (!currentUser) {
                 alert("Bitte melde dich zuerst an!");
@@ -1337,6 +1325,16 @@
                     loyaltyEarned: loyaltyEarned,
                     loyaltyCredited: false
                 });
+
+                // 🔥 SOFORT Lager reduzieren + sold erhöhen (genau das, was du vermisst hast!)
+                for (const item of cart) {
+                    if (item.id === MYSTERY_ID) continue;
+                    await db.collection("products").doc(item.id).update({
+                        stock: firebase.firestore.FieldValue.increment(-item.qty),
+                        sold: firebase.firestore.FieldValue.increment(item.qty)
+                    });
+                }
+
                 await sendOrderConfirmationEmail({
                     userEmail: currentUser.email,
                     orderNumber: orderNumber,
@@ -1345,6 +1343,7 @@
                     shipping: getShippingCost(),
                     loyaltyEarned: loyaltyEarned
                 });
+
                 showSuccessModal(orderNumber, finalTotal, loyaltyEarned);
                 cart = [];
                 appliedDiscount = null;
@@ -1670,63 +1669,6 @@
                 document.body.innerHTML = `<div class="fixed inset-0 bg-black flex items-center justify-center text-6xl font-bold text-red-500">🚧<br>Shop in Wartung<br>Bitte später wieder kommen</div>`;
             }
         });
-        // ====================== FLASH DEAL – ULTRA-ROBUST ======================
-        function loadFlashDeal() {
-            const docRef = db.collection("settings").doc("flashdeal");
-            // Sofort laden
-            docRef.get().then(doc => {
-                if (doc.exists) {
-                    const deal = doc.data();
-                    window.currentFlashDeal = deal;
-                    applyFlashBanner(deal);
-                    console.log("✅ Flash-Deal sofort geladen");
-                }
-            });
-            // Live Listener
-            docRef.onSnapshot(doc => {
-                if (doc.exists) {
-                    const deal = doc.data();
-                    window.currentFlashDeal = deal;
-                    applyFlashBanner(deal);
-                    console.log("🔄 Flash-Deal live aktualisiert");
-                } else {
-                    document.getElementById("flash-banner").classList.add("hidden");
-                    document.getElementById("flash-banner").classList.remove("flex");
-                }
-            });
-        }
-        function applyFlashBanner(deal) {
-            if (deal.active === true) {
-                document.getElementById("flash-banner-title").textContent = deal.title || "FLASH DEAL!";
-                document.getElementById("flash-banner-subtitle").innerHTML = deal.subtitle || "";
-                const btn = document.getElementById("flash-banner-btn");
-                btn.textContent = deal.buttonText || "Jetzt sichern!";
-                const banner = document.getElementById("flash-banner");
-                banner.classList.remove("hidden");
-                banner.classList.add("flex");
-                console.log("🚀 Banner wird angezeigt!");
-            } else {
-                const banner = document.getElementById("flash-banner");
-                banner.classList.add("hidden");
-                banner.classList.remove("flex");
-            }
-        }
-        function closeFlashBanner() {
-            document.getElementById("flash-banner").classList.add("hidden");
-            document.getElementById("flash-banner").classList.remove("flex");
-        }
-        function flashBannerAction() {
-            const link = window.currentFlashDeal?.buttonLink;
-            if (link) {
-                if (link.startsWith("#")) {
-                    document.getElementById("flash-banner").classList.add("hidden");
-                    document.querySelector(link).scrollIntoView({ behavior: "smooth" });
-                } else {
-                    window.open(link, "_blank");
-                }
-            }
-            closeFlashBanner();
-        }
         // ====================== INITIALISIERUNG ======================
         function initialize() {
             initEmailJS();
@@ -1741,13 +1683,6 @@
             updateCartDisplay();
             startNotificationCycle();
             checkAndAutoRedeemLoyalty();
-            loadFlashDeal();
-            // Extra Fallback
-            setTimeout(() => {
-                db.collection("settings").doc("flashdeal").get().then(doc => {
-                    if (doc.exists) applyFlashBanner(doc.data());
-                });
-            }, 800);
         }
         window.onload = initialize;
     </script>

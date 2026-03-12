@@ -71,6 +71,7 @@
             <button onclick="switchTab(0)" id="tab0" class="tab-active flex-1 py-5 text-lg font-semibold">Produkte</button>
             <button onclick="switchTab(1)" id="tab1" class="flex-1 py-5 text-lg font-semibold">Bestellungen</button>
             <button onclick="switchTab(2)" id="tab2" class="flex-1 py-5 text-lg font-semibold">Benutzer</button>
+            <button onclick="switchTab(3)" id="tab3" class="flex-1 py-5 text-lg font-semibold">Kategorien</button>
         </div>
 
         <!-- ====================== PRODUKTE TAB ====================== -->
@@ -151,10 +152,7 @@
                     <input id="prod-name" placeholder="Produktname" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4 text-lg" required>
                     <input id="prod-price" type="number" step="0.01" placeholder="Preis (€)" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4" required>
                     <input id="prod-stock" type="number" placeholder="Lagerbestand" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4" required>
-                    <select id="prod-type" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4">
-                        <option value="vape">Vape (Tornado 30000)</option>
-                        <option value="liquid">Liquid</option>
-                    </select>
+                    <select id="prod-category" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4 text-lg"></select>
                     <div class="flex items-center gap-3">
                         <input id="prod-new" type="checkbox" class="w-5 h-5 accent-lime-400">
                         <label class="text-sm">Neue Sorte</label>
@@ -188,9 +186,9 @@
                             <tr>
                                 <th class="py-5 px-6 text-left">Bild</th>
                                 <th class="py-5 px-6 text-left">Name</th>
+                                <th class="py-5 px-6 text-left">Kategorie</th>
                                 <th class="py-5 px-6 text-center">Preis</th>
                                 <th class="py-5 px-6 text-center">Lager</th>
-                                <th class="py-5 px-6 text-center">Typ</th>
                                 <th class="py-5 px-6 text-center">Verfügbar</th>
                                 <th class="py-5 px-6 text-right">Verkauft</th>
                                 <th class="py-5 px-6 text-right">Umsatz</th>
@@ -209,6 +207,9 @@
                 <div class="p-6 border-b border-white/10 flex items-center justify-between">
                     <h2 class="text-2xl font-bold flex items-center gap-3"><i class="fa-solid fa-receipt"></i> Live Bestellungen</h2>
                     <div class="flex gap-3">
+                        <button onclick="exportOrdersToCSV()" class="bg-emerald-600 hover:bg-emerald-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2">
+                            <i class="fa-solid fa-file-csv"></i> CSV Export
+                        </button>
                         <input id="order-search" placeholder="Bestellnr. oder E-Mail" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-3 w-80">
                         <select id="status-filter" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-3">
                             <option value="">Alle Status</option>
@@ -256,6 +257,9 @@
             <div class="card overflow-hidden">
                 <div class="p-6 border-b border-white/10 flex items-center justify-between">
                     <h2 class="text-2xl font-bold flex items-center gap-3"><i class="fa-solid fa-users"></i> Benutzer verwalten</h2>
+                    <button onclick="exportUsersToCSV()" class="bg-emerald-600 hover:bg-emerald-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2">
+                        <i class="fa-solid fa-file-csv"></i> CSV Export
+                    </button>
                     <input id="user-search" placeholder="E-Mail oder Username suchen..." class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-3 w-96">
                 </div>
                 <div class="overflow-x-auto">
@@ -275,22 +279,48 @@
                 </div>
             </div>
         </div>
-    </main>
 
-    <!-- EDIT MODAL -->
-    <div id="edit-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]">
-        <div class="bg-zinc-900 rounded-3xl p-8 max-w-6xl w-full mx-4 modal max-h-[95vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-8">
-                <h3 class="text-3xl font-bold neon">Produkt bearbeiten</h3>
-                <button onclick="closeEditModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
+        <!-- ====================== KATEGORIEN TAB ====================== -->
+        <div id="tab-content-3" class="hidden">
+            <!-- NEUE KATEGORIE -->
+            <div class="card p-8 mb-12">
+                <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><i class="fa-solid fa-tags"></i> Neue Kategorie hinzufügen</h2>
+                <form id="add-category-form" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <input id="cat-name" placeholder="Kategoriename (z.B. Sommer Specials)" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4 text-lg" required>
+                    <input id="cat-order" type="number" placeholder="Sortierreihenfolge" value="10" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4" required>
+                    <div class="flex items-center gap-3">
+                        <input id="cat-special" type="checkbox" class="w-5 h-5 accent-amber-400">
+                        <label class="text-sm">Special (zeigt 4-für-3-Bolt im Shop)</label>
+                    </div>
+                    <button type="submit" class="bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-5 rounded-3xl text-xl hover:scale-105 transition">Kategorie speichern</button>
+                </form>
             </div>
-            <div id="edit-form" class="space-y-6"></div>
-            <div class="flex gap-4 mt-10">
-                <button onclick="saveEdit()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-5 rounded-3xl font-bold text-lg">Speichern</button>
-                <button onclick="closeEditModal()" class="flex-1 bg-zinc-700 hover:bg-zinc-600 py-5 rounded-3xl text-lg">Abbrechen</button>
+
+            <!-- KATEGORIEN TABELLE -->
+            <div class="card overflow-hidden">
+                <div class="p-6 border-b border-white/10 flex items-center justify-between">
+                    <h2 class="text-2xl font-bold">Alle Kategorien</h2>
+                    <button onclick="seedDefaultCategories()" class="bg-amber-600 hover:bg-amber-500 px-6 py-3 rounded-3xl text-sm font-medium">Initial-Kategorien laden</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-zinc-950">
+                            <tr>
+                                <th class="py-5 px-6 text-left">Name</th>
+                                <th class="py-5 px-6 text-center">Order</th>
+                                <th class="py-5 px-6 text-center">Special</th>
+                                <th class="py-5 px-6 text-right">Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody id="categories-tbody" class="text-sm"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
-    </div>
+    </main>
+
+    <!-- EDIT MODAL (wird dynamisch gefüllt) -->
+    <div id="edit-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]"></div>
 
     <!-- BESTELL-DETAIL MODAL CONTAINER -->
     <div id="order-modal-container"></div>
@@ -315,6 +345,7 @@
         let selectedFile = null;
         let currentOrderId = null;
         let removeCurrentImage = false;
+        let allCategories = [];
 
         // ==================== AUTH ====================
         auth.onAuthStateChanged(async (user) => {
@@ -337,14 +368,17 @@
             document.getElementById('tab0').classList.toggle('tab-active', n === 0);
             document.getElementById('tab1').classList.toggle('tab-active', n === 1);
             document.getElementById('tab2').classList.toggle('tab-active', n === 2);
+            document.getElementById('tab3').classList.toggle('tab-active', n === 3);
             document.getElementById('tab-content-0').classList.toggle('hidden', n !== 0);
             document.getElementById('tab-content-1').classList.toggle('hidden', n !== 1);
             document.getElementById('tab-content-2').classList.toggle('hidden', n !== 2);
+            document.getElementById('tab-content-3').classList.toggle('hidden', n !== 3);
             if (n === 1) {
                 loadOrders();
-                checkAndAutoCancelOldOrders();   // ← AUTOMATISCHE STORNO
+                checkAndAutoCancelOldOrders();
             }
             if (n === 2) loadUsers();
+            if (n === 3) loadCategories();
         }
 
         // ==================== TOAST ====================
@@ -387,11 +421,9 @@
             const doc = await db.collection('orders').doc(orderId).get();
             const order = doc.data();
             const oldStatus = order.status || "Zahlung erwartet";
-
-            // Nur bei Wechsel zu „Wird bearbeitet“ abziehen
             if (newStatus === "Wird bearbeitet" && oldStatus !== "Wird bearbeitet") {
                 for (let item of order.items) {
-                    if (item.id === 999) continue; // Mystery Vape
+                    if (item.id === 999) continue;
                     await db.collection("products").doc(item.id).update({
                         stock: firebase.firestore.FieldValue.increment(-item.qty),
                         sold: firebase.firestore.FieldValue.increment(item.qty)
@@ -399,8 +431,6 @@
                 }
                 showToast("✅ Lagerbestand abgezogen", "success");
             }
-
-            // Bei Stornierung nach Bearbeitung wiederherstellen
             if (newStatus === "Storniert" && oldStatus === "Wird bearbeitet") {
                 for (let item of order.items) {
                     if (item.id === 999) continue;
@@ -415,26 +445,17 @@
 
         // ====================== AUTOMATISCHE STORNO NACH 7 TAGEN ======================
         async function checkAndAutoCancelOldOrders() {
-            const sevenDaysAgo = firebase.firestore.Timestamp.fromDate(
-                new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-            );
-
-            const snapshot = await db.collection('orders')
-                .where('status', '==', 'Zahlung erwartet')
-                .where('date', '<', sevenDaysAgo)
-                .get();
-
+            const sevenDaysAgo = firebase.firestore.Timestamp.fromDate(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
+            const snapshot = await db.collection('orders').where('status', '==', 'Zahlung erwartet').where('date', '<', sevenDaysAgo).get();
             if (snapshot.empty) return;
-
             const batch = db.batch();
             snapshot.forEach(doc => {
-                batch.update(doc.ref, { 
+                batch.update(doc.ref, {
                     status: 'Storniert',
                     autoCancelled: true,
                     cancelledAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
             });
-
             await batch.commit();
             showToast(`🚨 ${snapshot.size} Bestellung(en) automatisch storniert (7 Tage ohne Zahlung)`, "success");
         }
@@ -456,6 +477,106 @@
             }
         }
 
+        // ==================== KATEGORIEN ====================
+        function loadCategories() {
+            db.collection('categories').orderBy('order').onSnapshot(snap => {
+                allCategories = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderCategoryTable();
+                populateCategorySelects();
+            });
+        }
+
+        function renderCategoryTable() {
+            const tbody = document.getElementById('categories-tbody');
+            let html = '';
+            allCategories.forEach(c => {
+                html += `
+                <tr class="table-row-hover border-b border-white/10">
+                    <td class="py-5 px-6 font-medium">${c.name}</td>
+                    <td class="py-5 px-6 text-center">${c.order}</td>
+                    <td class="py-5 px-6 text-center">${c.special ? '✅' : '—'}</td>
+                    <td class="py-5 px-6 text-right space-x-4">
+                        <button onclick="openEditCategoryModal('${c.id}')" class="text-cyan-400 hover:text-white"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="deleteCategory('${c.id}')" class="text-red-400 hover:text-white"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                </tr>`;
+            });
+            tbody.innerHTML = html || `<tr><td colspan="4" class="text-center py-16 text-gray-400">Noch keine Kategorien</td></tr>`;
+        }
+
+        document.getElementById('add-category-form').addEventListener('submit', async e => {
+            e.preventDefault();
+            const name = document.getElementById('cat-name').value.trim();
+            const order = parseInt(document.getElementById('cat-order').value) || 999;
+            const special = document.getElementById('cat-special').checked;
+            if (!name) return alert("Name erforderlich");
+            await db.collection('categories').add({ name, order, special });
+            e.target.reset();
+            showToast('✅ Kategorie erstellt!');
+        });
+
+        async function openEditCategoryModal(id) {
+            const doc = await db.collection('categories').doc(id).get();
+            const c = doc.data();
+            const html = `
+                <div class="bg-zinc-900 rounded-3xl p-8 max-w-md w-full mx-4 modal">
+                    <h3 class="text-3xl font-bold neon mb-6">Kategorie bearbeiten</h3>
+                    <input id="edit-cat-name" value="${c.name}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 mb-4">
+                    <input id="edit-cat-order" type="number" value="${c.order}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 mb-4">
+                    <div class="flex items-center gap-3 mb-8">
+                        <input id="edit-cat-special" type="checkbox" ${c.special ? 'checked' : ''} class="w-5 h-5 accent-amber-400">
+                        <label>Special (4-für-3-Bolt)</label>
+                    </div>
+                    <div class="flex gap-4">
+                        <button onclick="saveEditCategory('${id}')" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-5 rounded-3xl font-bold">Speichern</button>
+                        <button onclick="closeEditModal()" class="flex-1 bg-zinc-700 hover:bg-zinc-600 py-5 rounded-3xl">Abbrechen</button>
+                    </div>
+                </div>`;
+            document.getElementById('edit-modal').innerHTML = html;
+            document.getElementById('edit-modal').classList.remove('hidden');
+        }
+
+        async function saveEditCategory(id) {
+            const name = document.getElementById('edit-cat-name').value.trim();
+            const order = parseInt(document.getElementById('edit-cat-order').value) || 999;
+            const special = document.getElementById('edit-cat-special').checked;
+            await db.collection('categories').doc(id).update({ name, order, special });
+            document.getElementById('edit-modal').classList.add('hidden');
+            showToast('✅ Kategorie gespeichert');
+        }
+
+        async function deleteCategory(id) {
+            if (!confirm('Kategorie wirklich löschen? Produkte bleiben erhalten.')) return;
+            await db.collection('categories').doc(id).delete();
+            showToast('✅ Kategorie gelöscht');
+        }
+
+        function seedDefaultCategories() {
+            if (allCategories.length > 0 && !confirm('Es existieren bereits Kategorien. Trotzdem Standard-Kategorien laden?')) return;
+            const defaults = [
+                { name: "WaveVapes Tornado 30000", order: 1, special: true },
+                { name: "Normale Sorten", order: 2, special: false },
+                { name: "Neue Sorten", order: 3, special: false }
+            ];
+            defaults.forEach(d => db.collection('categories').add(d));
+            showToast('✅ Standard-Kategorien angelegt!');
+        }
+
+        // ==================== DYNAMISCHE KATEGORIE SELECTS ====================
+        function populateCategorySelects() {
+            const selects = document.querySelectorAll('#prod-category, #edit-category-select');
+            selects.forEach(select => {
+                if (!select) return;
+                select.innerHTML = '<option value="">Kategorie wählen...</option>';
+                allCategories.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c.name;
+                    opt.textContent = c.name;
+                    select.appendChild(opt);
+                });
+            });
+        }
+
         // ==================== PRODUKTE ====================
         let allProducts = [];
         function loadProducts() {
@@ -465,6 +586,7 @@
                 renderProductTable();
             });
         }
+
         function updateStats() {
             const active = allProducts.filter(p => p.available !== false).length;
             const soldTotal = allProducts.reduce((sum, p) => sum + (p.sold || 0), 0);
@@ -475,6 +597,7 @@
             document.getElementById('total-revenue').textContent = revenue.toFixed(0) + ' €';
             document.getElementById('top-seller').textContent = top ? `${top.name} (${top.sold || 0}×)` : '—';
         }
+
         function renderProductTable(filter = '') {
             const tbody = document.getElementById('products-tbody');
             let html = '';
@@ -486,9 +609,9 @@
                 <tr class="table-row-hover border-b border-white/10">
                     <td class="py-5 px-6">${p.image ? `<img src="${p.image}" class="w-12 h-12 object-cover rounded-xl" loading="lazy" decoding="async" alt="${p.name}">` : '—'}</td>
                     <td class="py-5 px-6 font-medium">${p.name}</td>
+                    <td class="py-5 px-6">${p.category || '—'}</td>
                     <td class="py-5 px-6 text-center">${p.price.toFixed(2)} €</td>
                     <td class="py-5 px-6 text-center">${p.stock}</td>
-                    <td class="py-5 px-6 text-center">${p.type === 'vape' ? 'Vape' : 'Liquid'}</td>
                     <td class="py-5 px-6 text-center">
                         <input type="checkbox" ${p.available !== false ? 'checked' : ''} onchange="toggleAvailable('${p.id}', this.checked)" class="accent-cyan-400 w-5 h-5">
                     </td>
@@ -503,10 +626,12 @@
             tbody.innerHTML = html || `<tr><td colspan="9" class="text-center py-16 text-gray-400">Keine Produkte gefunden</td></tr>`;
         }
         document.getElementById('product-search').addEventListener('input', e => renderProductTable(e.target.value));
+
         async function toggleAvailable(id, val) {
             await db.collection('products').doc(id).update({ available: val });
             showToast('Verfügbarkeit aktualisiert');
         }
+
         async function deleteProduct(id) {
             if (!confirm('Produkt wirklich endgültig löschen?')) return;
             await db.collection('products').doc(id).delete();
@@ -520,52 +645,58 @@
             const doc = await db.collection('products').doc(id).get();
             const p = doc.data();
             const html = `
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div>
-                        <h3 class="text-xl font-bold mb-4">Vorschau (wie im Shop)</h3>
-                        <div id="preview-image" class="bg-zinc-950 border border-white/10 rounded-3xl overflow-hidden h-96 flex items-center justify-center">
-                            ${p.image ? `<img src="${p.image}" class="max-h-full w-full object-contain" loading="lazy" decoding="async" alt="${p.name}">` : `<div class="text-center text-gray-500"><i class="fa-solid fa-image text-6xl mb-4"></i><br>Kein Bild hochgeladen</div>`}
-                        </div>
-                        ${p.image ? `
-                        <button onclick="removeImageInEdit()" class="mt-4 w-full bg-red-600/80 hover:bg-red-600 text-white py-3 rounded-2xl text-sm font-medium flex items-center justify-center gap-2 transition">
-                            <i class="fa-solid fa-trash"></i>
-                            Aktuelles Bild entfernen
-                        </button>` : ''}
-                        <p class="text-xs text-gray-400 mt-4 text-center">Das sehen deine Kunden im Detail-Modal</p>
+                <div class="bg-zinc-900 rounded-3xl p-8 max-w-6xl w-full mx-4 modal max-h-[95vh] overflow-y-auto">
+                    <div class="flex justify-between items-center mb-8">
+                        <h3 class="text-3xl font-bold neon">Produkt bearbeiten</h3>
+                        <button onclick="closeEditModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
                     </div>
-                    <div class="space-y-6">
-                        <input id="edit-name" value="${p.name}" placeholder="Produktname" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 text-lg">
-                        <div class="grid grid-cols-2 gap-4">
-                            <input id="edit-price" type="number" step="0.01" value="${p.price}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
-                            <input id="edit-stock" type="number" value="${p.stock}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
-                        </div>
-                        <select id="edit-type" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
-                            <option value="vape" ${p.type==='vape'?'selected':''}>Vape (Tornado 30000)</option>
-                            <option value="liquid" ${p.type==='liquid'?'selected':''}>Liquid</option>
-                        </select>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                         <div>
-                            <label class="text-xs text-gray-400 block mb-2">Produktbeschreibung</label>
-                            <textarea id="edit-description" rows="8" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-3xl px-6 py-4">${p.description || ''}</textarea>
-                        </div>
-                        <div class="flex items-center gap-6">
-                            <div class="flex items-center gap-3">
-                                <input id="edit-new" type="checkbox" ${p.isNew?'checked':''}>
-                                <label>Neue Sorte</label>
+                            <h3 class="text-xl font-bold mb-4">Vorschau (wie im Shop)</h3>
+                            <div id="preview-image" class="bg-zinc-950 border border-white/10 rounded-3xl overflow-hidden h-96 flex items-center justify-center">
+                                ${p.image ? `<img src="${p.image}" class="max-h-full w-full object-contain" loading="lazy" decoding="async" alt="${p.name}">` : `<div class="text-center text-gray-500"><i class="fa-solid fa-image text-6xl mb-4"></i><br>Kein Bild hochgeladen</div>`}
                             </div>
-                            <div class="flex items-center gap-3">
-                                <input id="edit-unavailable" type="checkbox" ${p.available === false ? 'checked' : ''}>
-                                <label>Nicht verfügbar</label>
-                            </div>
+                            ${p.image ? `
+                            <button onclick="removeImageInEdit()" class="mt-4 w-full bg-red-600/80 hover:bg-red-600 text-white py-3 rounded-2xl text-sm font-medium flex items-center justify-center gap-2 transition">
+                                <i class="fa-solid fa-trash"></i>
+                                Aktuelles Bild entfernen
+                            </button>` : ''}
                         </div>
-                        <div id="edit-dropzone" class="border-2 border-dashed border-cyan-400/50 hover:border-cyan-400 rounded-3xl p-8 text-center cursor-pointer">
-                            <i class="fa-solid fa-cloud-arrow-up text-4xl mb-3 text-cyan-400"></i>
-                            <p class="text-cyan-300">Neues Bild hochladen (klicken oder Drag & Drop)</p>
+                        <div class="space-y-6">
+                            <input id="edit-name" value="${p.name}" placeholder="Produktname" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 text-lg">
+                            <div class="grid grid-cols-2 gap-4">
+                                <input id="edit-price" type="number" step="0.01" value="${p.price}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
+                                <input id="edit-stock" type="number" value="${p.stock}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
+                            </div>
+                            <select id="edit-category-select" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4"></select>
+                            <div>
+                                <label class="text-xs text-gray-400 block mb-2">Produktbeschreibung</label>
+                                <textarea id="edit-description" rows="8" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-3xl px-6 py-4">${p.description || ''}</textarea>
+                            </div>
+                            <div class="flex items-center gap-6">
+                                <div class="flex items-center gap-3">
+                                    <input id="edit-new" type="checkbox" ${p.isNew?'checked':''}>
+                                    <label>Neue Sorte</label>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <input id="edit-unavailable" type="checkbox" ${p.available === false ? 'checked' : ''}>
+                                    <label>Nicht verfügbar</label>
+                                </div>
+                            </div>
+                            <div id="edit-dropzone" class="border-2 border-dashed border-cyan-400/50 hover:border-cyan-400 rounded-3xl p-8 text-center cursor-pointer">
+                                <i class="fa-solid fa-cloud-arrow-up text-4xl mb-3 text-cyan-400"></i>
+                                <p class="text-cyan-300">Neues Bild hochladen (klicken oder Drag & Drop)</p>
+                            </div>
                         </div>
                     </div>
-                </div>
-            `;
-            document.getElementById('edit-form').innerHTML = html;
+                    <div class="flex gap-4 mt-10">
+                        <button onclick="saveEdit()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-5 rounded-3xl font-bold text-lg">Speichern</button>
+                        <button onclick="closeEditModal()" class="flex-1 bg-zinc-700 hover:bg-zinc-600 py-5 rounded-3xl text-lg">Abbrechen</button>
+                    </div>
+                </div>`;
+            document.getElementById('edit-modal').innerHTML = html;
             document.getElementById('edit-modal').classList.remove('hidden');
+            populateCategorySelects();
             const dropzone = document.getElementById('edit-dropzone');
             dropzone.onclick = () => {
                 const input = document.createElement('input');
@@ -580,6 +711,7 @@
                 input.click();
             };
         }
+
         function removeImageInEdit() {
             removeCurrentImage = true;
             document.getElementById('preview-image').innerHTML = `
@@ -589,17 +721,19 @@
                 </div>`;
             showToast('Bild wird entfernt – speichern nicht vergessen!', 'success');
         }
+
         function closeEditModal() {
             document.getElementById('edit-modal').classList.add('hidden');
             selectedFile = null;
             removeCurrentImage = false;
         }
+
         async function saveEdit() {
             if (!currentEditId) return;
             const name = document.getElementById('edit-name').value;
             const price = parseFloat(document.getElementById('edit-price').value);
             const stock = parseInt(document.getElementById('edit-stock').value);
-            const type = document.getElementById('edit-type').value;
+            const category = document.getElementById('edit-category-select').value;
             const description = document.getElementById('edit-description').value;
             const isNew = document.getElementById('edit-new').checked;
             const unavailable = document.getElementById('edit-unavailable').checked;
@@ -607,7 +741,7 @@
                 name,
                 price,
                 stock,
-                type,
+                category,
                 description: description || "",
                 isNew,
                 available: !unavailable
@@ -633,18 +767,16 @@
             const name = document.getElementById('prod-name').value.trim();
             const price = parseFloat(document.getElementById('prod-price').value);
             const stock = parseInt(document.getElementById('prod-stock').value);
-            const type = document.getElementById('prod-type').value;
+            const category = document.getElementById('prod-category').value;
             const isNew = document.getElementById('prod-new').checked;
             const unavailable = document.getElementById('prod-unavailable').checked;
             const description = document.getElementById('prod-description').value.trim();
-            const category = type === 'vape' ? 'WaveVapes Tornado 30000' : (isNew ? 'Neue Sorten' : 'Normale Sorten');
             const docRef = await db.collection('products').add({
                 name,
                 price,
                 stock,
-                type,
                 category,
-                isNew: type === 'liquid' ? isNew : false,
+                isNew: isNew || false,
                 available: !unavailable,
                 description: description || "",
                 sold: 0,
@@ -663,6 +795,7 @@
             selectedFile = null;
             showToast('✅ Produkt erfolgreich angelegt! 🎉');
         });
+
         const dropzone = document.getElementById('dropzone');
         dropzone.addEventListener('click', () => {
             const input = document.createElement('input');
@@ -681,7 +814,7 @@
         async function exportProductsToCSV() {
             const snapshot = await db.collection("products").get();
             if (snapshot.empty) return alert("Keine Produkte vorhanden!");
-            let csv = "id,name,price,stock,type,category,isNew,available,description,image,sold\n";
+            let csv = "id,name,price,stock,category,isNew,available,description,image,sold\n";
             snapshot.forEach(doc => {
                 const p = doc.data();
                 const row = [
@@ -689,7 +822,6 @@
                     `"${(p.name || "").replace(/"/g, '""')}"`,
                     p.price || 0,
                     p.stock || 0,
-                    `"${p.type || ""}"`,
                     `"${p.category || ""}"`,
                     p.isNew === true ? "true" : "false",
                     p.available !== false ? "true" : "false",
@@ -732,13 +864,12 @@
                         name: values[1],
                         price: parseFloat(values[2]),
                         stock: parseInt(values[3]),
-                        type: values[4],
-                        category: values[5],
-                        isNew: values[6] === "true",
-                        available: values[7] === "true",
-                        description: values[8],
-                        image: values[9] || null,
-                        sold: parseInt(values[10]) || 0
+                        category: values[4],
+                        isNew: values[5] === "true",
+                        available: values[6] === "true",
+                        description: values[7],
+                        image: values[8] || null,
+                        sold: parseInt(values[9]) || 0
                     };
                     const docRef = db.collection("products").doc(values[0]);
                     batch.set(docRef, data);
@@ -786,7 +917,6 @@
             });
         }
 
-        // ==================== UPDATED QUICK STATUS (STOCK + LOYALTY) ====================
         async function quickStatus(id, status) {
             await handleStockOnStatusChange(id, status);
             await db.collection('orders').doc(id).update({ status });
@@ -861,30 +991,28 @@
             </div>`;
             document.getElementById('order-modal-container').innerHTML = modalHTML;
         }
+
         function closeOrderModal() {
             document.getElementById('order-modal-container').innerHTML = '';
         }
 
-        // ==================== UPDATED SAVE ORDER CHANGES (STOCK + LOYALTY) ====================
         async function saveOrderChanges() {
             const status = document.getElementById('modal-status').value;
             const carrier = document.getElementById('modal-carrier').value;
             const tracking = document.getElementById('modal-tracking').value.trim();
-
             await handleStockOnStatusChange(currentOrderId, status);
-
-            await db.collection('orders').doc(currentOrderId).update({ 
-                status, 
-                carrier, 
-                trackingNumber: tracking 
+            await db.collection('orders').doc(currentOrderId).update({
+                status,
+                carrier,
+                trackingNumber: tracking
             });
-
             if (status === "Wird bearbeitet") {
                 await awardLoyaltyIfProcessed(currentOrderId);
             }
             showToast('Bestellung aktualisiert');
             closeOrderModal();
         }
+
         async function deleteOrder() {
             if (!confirm('Bestellung IRREVERSIBEL löschen?')) return;
             await db.collection('orders').doc(currentOrderId).delete();
@@ -935,6 +1063,7 @@
             });
         }
         document.getElementById('user-search').addEventListener('input', loadUsers);
+
         async function resetPassword(email) {
             if (!confirm(`Passwort-Zurücksetzen-E-Mail an ${email} senden?`)) return;
             try {
@@ -952,10 +1081,12 @@
                 showToast("Fehler: " + e.message, "error");
             }
         }
+
         async function toggleDisable(uid, disable) {
             await db.collection('users').doc(uid).update({ disabled: disable });
             showToast(disable ? '✅ Benutzer gesperrt' : '✅ Benutzer entsperrt');
         }
+
         async function deleteUser(uid, email) {
             if (!confirm(`⚠️ Account von ${email} WIRKLICH LÖSCHEN?\n\nAlle Bestellungen werden ebenfalls gelöscht!`)) return;
             if (!confirm('LETZTE WARNUNG – unwiderruflich!')) return;
@@ -970,6 +1101,7 @@
                 showToast("Fehler: " + e.message, "error");
             }
         }
+
         async function resetAllLoyaltyPoints() {
             if (!confirm("⚠️ WIRKLICH ALLE Loyalty-Punkte auf 0 setzen?\n\nDas betrifft JEDEN Benutzer und ist unwiderruflich!")) return;
             if (!confirm("LETZTE WARNUNG – alle Punkte werden gelöscht!")) return;
@@ -986,6 +1118,7 @@
                 showToast("Fehler: " + e.message, "error");
             }
         }
+
         async function resetUserPoints(uid) {
             if (!confirm("Punkte dieses Benutzers auf 0 setzen?")) return;
             try {
@@ -995,6 +1128,56 @@
             } catch (e) {
                 showToast("Fehler: " + e.message, "error");
             }
+        }
+
+        // ==================== CSV EXPORTS BENUTZER & BESTELLUNGEN ====================
+        async function exportOrdersToCSV() {
+            const snapshot = await db.collection("orders").get();
+            if (snapshot.empty) return alert("Keine Bestellungen!");
+            let csv = "orderNumber,date,userEmail,total,status,items\n";
+            snapshot.forEach(doc => {
+                const o = doc.data();
+                const dateStr = o.date ? o.date.toDate().toISOString() : '';
+                const itemsStr = o.items.map(i => `${i.name} x${i.qty}`).join('; ');
+                const row = [
+                    `"${o.orderNumber}"`,
+                    `"${dateStr}"`,
+                    `"${o.userEmail}"`,
+                    o.total,
+                    `"${o.status}"`,
+                    `"${itemsStr}"`
+                ].join(",");
+                csv += row + "\n";
+            });
+            const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `wavevapes_orders_${new Date().toISOString().slice(0,10)}.csv`;
+            link.click();
+            showToast("✅ Bestellungen exportiert!", "success");
+        }
+
+        async function exportUsersToCSV() {
+            const snapshot = await db.collection("users").get();
+            if (snapshot.empty) return alert("Keine Benutzer!");
+            let csv = "email,username,referralCode,totalBonusPoints,disabled\n";
+            snapshot.forEach(doc => {
+                const u = doc.data();
+                const row = [
+                    `"${u.email}"`,
+                    `"${u.username || ''}"`,
+                    `"${u.referralCode || ''}"`,
+                    u.totalBonusPoints || 0,
+                    u.disabled === true ? "true" : "false"
+                ].join(",");
+                csv += row + "\n";
+            });
+            const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `wavevapes_users_${new Date().toISOString().slice(0,10)}.csv`;
+            link.click();
+            showToast("✅ Benutzer exportiert!", "success");
         }
 
         // ==================== START ====================

@@ -60,7 +60,6 @@
         .neon-text { text-shadow: 0 0 15px var(--neon-cyan), 0 0 30px var(--neon-cyan); }
         .product-card { transition: all 0.3s ease; display: flex; flex-direction: column; height: 100%; }
         .product-card:hover { transform: translateY(-12px) scale(1.04); box-shadow: 0 25px 50px -12px rgb(103 232 249); }
-        /* MOBILE OPTIMIERUNGEN */
         .tornado-image { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; border-radius: 16px; margin-bottom: 12px; background: #1f2937; }
         #products-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
         @media (min-width: 768px) { #products-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; } }
@@ -76,7 +75,6 @@
         }
         @media (min-width: 640px) { .hero-title { font-size: 2.75rem; } }
         button, .qty-btn, .product-card { min-height: 44px; }
-        /* ACCOUNT-BUTTON FIX – RUNDER KREIS AUF HANDY */
         #account-btn {
             width: 42px;
             height: 42px;
@@ -104,7 +102,6 @@
             #account-btn i { display: inline-block; }
             #account-btn span { max-width: none; }
         }
-        /* PRODUKT-DETAIL-MODAL FIX – KEIN ÜBERLAPPEN MEHR AUF HANDY */
         #product-detail-modal {
             padding: 16px;
         }
@@ -234,10 +231,6 @@
             <h2 class="hero-title text-5xl sm:text-6xl font-bold tracking-tighter neon-text mb-3">Bestelle deine Liquids und Vapes</h2>
             <p class="hero-subtitle text-xl sm:text-2xl text-cyan-200 max-w-md mx-auto">7,99 € pro Flasche • 10 ml • Nikotin frei wählbar (10 oder 20 mg)</p>
             <p class="text-base sm:text-lg text-gray-300 mt-4">Alle Liquids von ELFLIQ</p>
-            <div class="mt-4 inline-flex items-center gap-3 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-400/30 hover:border-emerald-400 px-7 py-3 rounded-3xl text-emerald-300 text-base font-semibold transition-all">
-                <i class="fa-solid fa-gift text-2xl"></i>
-                <span>Ab 100€ Bestellwert gibt's eine <span class="text-white font-bold underline">Mystery Vape gratis</span> dazu! 🎁</span>
-            </div>
             <div class="mt-4 inline-flex items-center gap-3 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-400/30 px-7 py-3 rounded-3xl text-amber-300 text-base font-semibold transition-all">
                 <i class="fa-solid fa-truck text-2xl"></i>
                 <span>Gratis Versand ab <span class="text-white font-bold">100 €</span> Bestellwert! 🚚</span>
@@ -336,6 +329,14 @@
             <div class="text-center mt-12 text-xs text-gray-400 flex items-center justify-center gap-2">
                 <i class="fa-solid fa-shield-halved text-emerald-400"></i>
                 Alle Bewertungen sind echt und werden regelmäßig auf Trustpilot & Google verifiziert
+            </div>
+        </div>
+        <!-- NEWSLETTER FORM -->
+        <div class="mt-16 bg-zinc-900/50 border border-cyan-400/20 rounded-3xl p-8 text-center">
+            <p class="text-emerald-400 font-medium mb-2">Bleib up-to-date – Newsletter</p>
+            <div class="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
+                <input id="newsletter-email" type="email" placeholder="Deine E-Mail" class="flex-1 bg-zinc-800 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-4 outline-none">
+                <button onclick="subscribeNewsletter()" class="bg-emerald-500 hover:bg-emerald-400 px-8 py-4 rounded-3xl font-bold text-sm">ABONNIEREN</button>
             </div>
         </div>
         <!-- FOOTER -->
@@ -921,6 +922,7 @@
             });
             showToast(`🎉 +${pointsToAdd} Loyalty-Punkte gutgeschrieben!`);
         }
+        // ====================== GUTSCHEIN-SYSTEM ======================
         async function applyDiscountCode() {
             const input = document.getElementById("discount-input").value.trim().toUpperCase();
             const status = document.getElementById("discount-status");
@@ -931,6 +933,29 @@
             if (!currentUser) {
                 status.innerHTML = `<span class="text-red-400">Bitte zuerst einloggen</span>`;
                 showAuthModal();
+                return;
+            }
+            const couponSnap = await db.collection("coupons").where("code", "==", input).limit(1).get();
+            if (!couponSnap.empty) {
+                const coupon = couponSnap.docs[0].data();
+                const now = new Date();
+                if (coupon.expiresAt && coupon.expiresAt.toDate() < now) {
+                    status.innerHTML = `<span class="text-red-400">Gutschein abgelaufen</span>`;
+                    return;
+                }
+                if (coupon.oneTimeUse && coupon.usedBy && coupon.usedBy.includes(currentUser.uid)) {
+                    status.innerHTML = `<span class="text-red-400">Bereits verwendet</span>`;
+                    return;
+                }
+                appliedDiscount = { code: input, type: coupon.type, value: coupon.value, couponId: couponSnap.docs[0].id };
+                const display = coupon.type === "percent" ? `${coupon.value}%` : `${coupon.value}€`;
+                status.innerHTML = `<span class="text-emerald-400">✓ ${input} (${display}) eingelöst!</span>`;
+                updateCartDisplay();
+                if (coupon.oneTimeUse) {
+                    await db.collection("coupons").doc(couponSnap.docs[0].id).update({
+                        usedBy: firebase.firestore.FieldValue.arrayUnion(currentUser.uid)
+                    });
+                }
                 return;
             }
             const d = VALID_DISCOUNTS[input];
@@ -1561,7 +1586,7 @@
         function filterProducts() {
             renderProducts();
         }
-        // ====================== KORRIGIERTES PRODUKT DETAIL ======================
+        // ====================== PRODUKT DETAIL ======================
         function showProductDetail(id) {
             const product = allProducts.find(p => p.id === id);
             if (!product) return;
@@ -1627,6 +1652,24 @@
             renderProducts();
             closeProductDetail();
             showToast(`✅ ${product.name} wurde hinzugefügt!`);
+        }
+        // ====================== NEWSLETTER ======================
+        async function subscribeNewsletter() {
+            const email = document.getElementById("newsletter-email").value.trim().toLowerCase();
+            if (!email || !email.includes("@")) {
+                showToast("Bitte gültige E-Mail eingeben", "error");
+                return;
+            }
+            try {
+                await db.collection("newsletter_subscribers").doc(email).set({
+                    email: email,
+                    subscribedAt: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+                showToast("✅ Du wurdest in den Newsletter aufgenommen! 🎉", "success");
+                document.getElementById("newsletter-email").value = "";
+            } catch (e) {
+                showToast("Fehler beim Speichern", "error");
+            }
         }
         // ====================== INITIALISIERUNG ======================
         function initialize() {

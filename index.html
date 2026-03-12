@@ -309,7 +309,6 @@
             </div>
             <button onclick="placeOrder()" class="mt-8 w-full py-6 bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 text-black font-bold text-xl rounded-3xl transition-all">BESTELLUNG ABSCHICKEN</button>
             <button onclick="clearCart()" class="mt-4 text-red-400 text-sm w-full py-3">Warenkorb leeren</button>
-            <button onclick="sendAbandonedCartEmail()" class="mt-2 text-cyan-400 text-sm w-full py-3 border border-cyan-400/30 rounded-2xl">Test: „Was im Warenkorb vergessen“ E-Mail senden</button>
         </div>
     </div>
     <!-- SUCCESS MODAL -->
@@ -491,7 +490,6 @@
         const EMAILJS_SERVICE_ID = "service_lzvte0x";
         const EMAILJS_PUBLIC_KEY = "t19pJAHgBpbKpZFGU";
         const EMAILJS_ORDER_TEMPLATE = "template_cgcu1m8";
-        const EMAILJS_ABANDONED_TEMPLATE = "template_oduqaqd";   // ← DEIN ECHTER TEMPLATE-ID FÜR „Was im Warenkorb vergessen“
         // ====================== KONFIGURATION ======================
         const VALID_DISCOUNTS = {
             "WAVE5": { type: "percent", value: 5 },
@@ -535,7 +533,6 @@
         let ordersUnsubscribe = null;
         let userSnapshotUnsubscribe = null;
         let myReferralCode = "";
-        let productsUnsubscribe = null;
         // ====================== FIREBASE ======================
         const firebaseConfig = {
             apiKey: "AIzaSyDsIUl-iYmH42MPbusFLhGhj5oGLh01BzI",
@@ -555,10 +552,10 @@
                 console.log("✅ EmailJS initialisiert");
             }
         }
-        // ====================== ORDER CONFIRMATION EMAIL ======================
+        // ====================== E-MAIL SENDEN ======================
         async function sendOrderConfirmationEmail(orderData) {
-            console.log("📧 Versuche Order-Confirmation zu senden...");
-            showToast("📧 Bestellbestätigung wird gesendet...", "success");
+            console.log("📧 Versuche E-Mail zu senden...");
+            showToast("📧 E-Mail wird gesendet...", "success");
             try {
                 const orderItems = orderData.items.map(item => {
                     const prod = allProducts.find(p => p.id === item.id);
@@ -580,68 +577,12 @@
                     },
                     loyalty_earned: orderData.loyaltyEarned || 0
                 });
-                console.log("✅ Order-Confirmation erfolgreich gesendet!");
+                console.log("✅ E-Mail erfolgreich gesendet!");
                 showToast("✅ Bestellbestätigung per E-Mail versendet!", "success");
             } catch (e) {
-                console.error("❌ Order-Confirmation Fehler:", e);
-                showToast("❌ Bestell-E-Mail konnte nicht gesendet werden", "error");
+                console.error("❌ E-Mail Fehler:", e);
+                showToast("❌ E-Mail konnte nicht gesendet werden: " + (e.text || e.message), "error");
             }
-        }
-        // ====================== ABANDONED CART EMAIL („Was im Warenkorb vergessen“) ======================
-        async function sendAbandonedCartEmail() {
-            if (!currentUser || cart.length === 0) {
-                showToast("Kein User oder leerer Warenkorb", "error");
-                return;
-            }
-            const userName = localStorage.getItem("wavevapes_username") || currentUser.email.split('@')[0];
-            const cartData = cart.map(item => {
-                const prod = allProducts.find(p => p.id === item.id);
-                return {
-                    name: item.name,
-                    qty: item.qty,
-                    price: (item.price || 7.99).toFixed(2),
-                    itemTotal: (item.qty * (item.price || 7.99)).toFixed(2),
-                    image_url: prod && prod.image ? prod.image : "https://wavevapes.de/logo.png",
-                    nicotine: item.nicotine || ""
-                };
-            });
-            const subtotal = getSubtotal().toFixed(2);
-            const total = calculateCartTotal().toFixed(2);
-            const freeShippingMissing = Math.max(0, FREE_SHIPPING_THRESHOLD - getProductTotal());
-            const mysteryMissing = Math.max(0, 100 - getSubtotal());
-            const loyaltyPointsEarned = Math.floor(getProductTotal());
-            const tornadoQty = getTornadoQuantity();
-            const hasTornado = tornadoQty > 0;
-            const freeTornados = Math.floor(tornadoQty / 4);
-            try {
-                await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_ABANDONED_TEMPLATE, {
-                    userName: userName,
-                    subtotal: subtotal,
-                    total: total,
-                    freeShippingMissing: freeShippingMissing > 0 ? freeShippingMissing.toFixed(2) : undefined,
-                    mysteryMissing: mysteryMissing > 0 ? mysteryMissing.toFixed(2) : undefined,
-                    loyaltyPoints: loyaltyPointsEarned,
-                    hasTornado: hasTornado,
-                    freeTornados: freeTornados,
-                    cartItems: cartData
-                });
-                showToast("✅ „Was im Warenkorb vergessen“ E-Mail gesendet!");
-                localStorage.setItem("abandoned_reminder_sent", Date.now());
-            } catch (e) {
-                console.error("Abandoned Email Fehler:", e);
-                showToast("❌ Abandoned-Cart-E-Mail konnte nicht gesendet werden", "error");
-            }
-        }
-        function checkAbandonedCart() {
-            const lastSent = parseInt(localStorage.getItem("abandoned_reminder_sent") || "0");
-            const timeSinceLast = Date.now() - lastSent;
-            if (cart.length > 0 && timeSinceLast > 1800000) {
-                sendAbandonedCartEmail();
-            }
-        }
-        function saveAbandonedCartToLocal() {
-            localStorage.setItem("wavevapes_abandoned_cart", JSON.stringify(cart));
-            localStorage.setItem("wavevapes_abandoned_timestamp", Date.now());
         }
         // ====================== REFERRAL CORE ======================
         async function createOrUpdateUserProfile() {
@@ -755,7 +696,7 @@
                 default: return "status-Zahlung";
             }
         }
-        // ====================== AUTH + LOYALTY SYNC ======================
+        // ====================== AUTH + LOYALTY SYNC (SERVER-ONLY) ======================
         auth.onAuthStateChanged(async (user) => {
             currentUser = user;
             updateAuthUI();
@@ -768,7 +709,9 @@
                     return;
                 }
                 if (userDoc.exists && userDoc.data().passwordResetRequested === true) {
-                    await db.collection("users").doc(user.uid).update({ passwordResetRequested: false });
+                    await db.collection("users").doc(user.uid).update({
+                        passwordResetRequested: false
+                    });
                     showToast("🔑 Dein Passwort wurde zurückgesetzt, bitte gib ein neues ein.", "success");
                 }
                 await createOrUpdateUserProfile();
@@ -1003,14 +946,14 @@
         function calculateCartTotal() {
             return getProductTotal() + getShippingCost();
         }
-        // ====================== LIVE STOCK + PRODUCTS ======================
+        // ====================== PRODUCTS & CART ======================
         async function loadProducts() {
             const container = document.getElementById("products-grid");
-            container.innerHTML = `<p class="col-span-full text-center py-16 text-gray-400 flex items-center justify-center gap-3"><i class="fa-solid fa-spinner animate-spin text-2xl"></i> Live-Stock wird geladen...</p>`;
-            if (productsUnsubscribe) productsUnsubscribe();
-            productsUnsubscribe = db.collection("products").onSnapshot(snap => {
+            container.innerHTML = `<p class="col-span-full text-center py-16 text-gray-400 flex items-center justify-center gap-3"><i class="fa-solid fa-spinner animate-spin text-2xl"></i> Produkte werden live aus deinem Admin-Panel geladen...</p>`;
+            try {
+                const snapshot = await db.collection("products").get();
                 allProducts = [];
-                snap.forEach(doc => {
+                snapshot.forEach(doc => {
                     const data = doc.data();
                     allProducts.push({
                         id: doc.id,
@@ -1025,7 +968,11 @@
                     });
                 });
                 renderProducts();
-            });
+                showToast("✅ Produkte aus Firestore geladen");
+            } catch (e) {
+                console.error(e);
+                showToast("⚠️ Firestore nicht erreichbar – prüfe Admin-Panel");
+            }
         }
         function getSortPriority(p) {
             if (currentCategoryFilter !== "Alle") return p.available ? 0 : 1;
@@ -1062,15 +1009,6 @@
                 const unavailableClass = !product.available ? 'unavailable-product' : '';
                 const liquidClass = !isVape ? 'liquid-card' : '';
                 let unavailableTagHTML = !product.available ? `<div class="unavailable-tag">Aktuell NICHT verfügbar</div>` : '';
-                let stockHTML = '';
-                const stock = product.stock || 0;
-                if (stock === 0 || !product.available) {
-                    stockHTML = `<div class="stock-info stock-zero">❌ Ausverkauft</div>`;
-                } else if (stock <= 5) {
-                    stockHTML = `<div class="stock-info stock-low">⚠️ Nur noch ${stock} Stück!</div>`;
-                } else {
-                    stockHTML = `<div class="stock-info stock-high">✅ Noch ${stock} auf Lager</div>`;
-                }
                 let nicotineHTML = '';
                 if (!isVape && product.available) {
                     nicotineHTML = `<select class="nicotine-select" onclick="event.stopImmediatePropagation()" onchange="updateNicotine('${product.id}', this.value); event.stopImmediatePropagation()">${NICOTINE_OPTIONS.map(opt => `<option value="${opt}" ${nicotine === opt ? 'selected' : ''}>${opt}</option>`).join('')}</select>`;
@@ -1081,6 +1019,15 @@
                         <div class="w-10 text-center font-bold text-xl flex items-center justify-center">${qty}</div>
                         <button onclick="changeQuantity('${product.id}', 1); event.stopImmediatePropagation()" class="qty-btn w-9 h-9 text-2xl text-cyan-300 flex-1 flex items-center justify-center">+</button>
                     </div>` : '';
+                let stockHTML = '';
+                if (product.available) {
+                    const stock = product.stock || 0;
+                    if (stock > 5) stockHTML = `<div class="stock-info stock-high">✅ Noch ${stock} auf Lager</div>`;
+                    else if (stock > 0) stockHTML = `<div class="stock-info stock-low">⚠️ Nur noch ${stock} auf Lager</div>`;
+                    else stockHTML = `<div class="stock-info stock-zero">❌ Ausverkauft</div>`;
+                } else {
+                    stockHTML = `<div class="stock-info stock-zero">❌ Ausverkauft</div>`;
+                }
                 html += `
                     <div onclick="showProductDetail('${product.id}')"
                          class="product-card bg-zinc-900 border border-white/10 rounded-3xl overflow-hidden ${unavailableClass} ${liquidClass} cursor-pointer">
@@ -1122,7 +1069,6 @@
             existing.qty = Math.max(0, existing.qty + delta);
             if (existing.qty === 0) cart = cart.filter(item => item.id !== id);
             manageMysteryVape();
-            saveAbandonedCartToLocal();
             const newTornadoQty = getTornadoQuantity();
             if (newTornadoQty >= 4 && newTornadoQty % 4 === 0) showDealToast();
             updateCartDisplay();
@@ -1195,7 +1141,6 @@
             if (id === MYSTERY_ID) return;
             cart = cart.filter(item => item.id !== id);
             manageMysteryVape();
-            saveAbandonedCartToLocal();
             updateCartDisplay();
             renderProducts();
         }
@@ -1204,8 +1149,6 @@
                 cart = [];
                 appliedDiscount = null;
                 document.getElementById("discount-status").innerHTML = "";
-                localStorage.removeItem("abandoned_reminder_sent");
-                saveAbandonedCartToLocal();
                 updateCartDisplay();
                 renderProducts();
                 toggleCart();
@@ -1223,7 +1166,6 @@
             } else if (subtotal < 100 && hasMystery) {
                 cart = cart.filter(item => item.id !== MYSTERY_ID);
             }
-            saveAbandonedCartToLocal();
         }
         function showMysteryToast() {
             const toast = document.getElementById('notification-toast');
@@ -1241,6 +1183,7 @@
             const dateStr = now.getFullYear().toString().slice(2) + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0');
             return `WV-${dateStr}-${Math.floor(1000 + Math.random() * 9000)}`;
         }
+        // ====================== PLACEORDER – LOYALTY ERST BEI "WIRD BEARBEITET" ======================
         async function placeOrder() {
             if (!currentUser) {
                 alert("Bitte melde dich zuerst an!");
@@ -1304,8 +1247,6 @@
                 cart = [];
                 appliedDiscount = null;
                 document.getElementById("discount-status").innerHTML = "";
-                localStorage.removeItem("abandoned_reminder_sent");
-                saveAbandonedCartToLocal();
                 await loadProducts();
                 updateCartDisplay();
                 renderProducts();
@@ -1314,6 +1255,7 @@
                 alert("Fehler beim Speichern: " + e.message);
             }
         }
+        // ====================== SUCCESS MODAL – PUNKTE ERST BEI BEARBEITET ======================
         function showSuccessModal(orderNumber, total, loyaltyEarned) {
             document.getElementById("success-order-id").textContent = orderNumber;
             document.getElementById("success-loyalty-info").innerHTML = 
@@ -1630,8 +1572,6 @@
             updateCartDisplay();
             startNotificationCycle();
             checkAndAutoRedeemLoyalty();
-            checkAbandonedCart();
-            saveAbandonedCartToLocal();
         }
         window.onload = initialize;
     </script>

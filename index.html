@@ -8,7 +8,6 @@
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="https://wavevapes.de">
     <meta name="theme-color" content="#0a0a0a">
-
     <!-- SEO + Social Media -->
     <meta property="og:title" content="WaveVapes – Tornado 30000 & Premium Liquids">
     <meta property="og:description" content="4 für 3 Aktion + Mystery Vape gratis ab 100 €. Schnell & diskret per DHL. Nur für Volljährige.">
@@ -19,15 +18,12 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:site" content="@WaveVapes">
     <meta name="twitter:creator" content="@WaveVapes">
-
     <!-- Preconnect -->
     <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
-
     <!-- EMAILJS -->
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-
     <!-- JSON-LD -->
     <script type="application/ld+json">
     {
@@ -48,7 +44,6 @@
       }
     }
     </script>
-
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -491,12 +486,12 @@
         </div>
     </div>
     <div id="notification-toast"></div>
+
     <script>
         // ====================== EMAILJS KONFIGURATION ======================
         const EMAILJS_SERVICE_ID = "service_lzvte0x";
         const EMAILJS_PUBLIC_KEY = "t19pJAHgBpbKpZFGU";
         const EMAILJS_ORDER_TEMPLATE = "template_cgcu1m8";
-
         // ====================== KONFIGURATION ======================
         const VALID_DISCOUNTS = {
             "WAVE5": { type: "percent", value: 5 },
@@ -517,7 +512,6 @@
             { points: 300, code: "LOYAL5", discount: 5, text: "5 € Gutschein" },
             { points: 600, code: "LOYAL10", discount: 10, text: "10 € Gutschein" }
         ];
-
         let allProducts = [];
         let cart = [];
         let currentUser = null;
@@ -533,7 +527,6 @@
         let ordersUnsubscribe = null;
         let userSnapshotUnsubscribe = null;
         let myReferralCode = "";
-
         // ====================== FIREBASE ======================
         const firebaseConfig = {
             apiKey: "AIzaSyDsIUl-iYmH42MPbusFLhGhj5oGLh01BzI",
@@ -546,7 +539,6 @@
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
-
         // ====================== EMAILJS INIT ======================
         function initEmailJS() {
             if (typeof emailjs !== "undefined") {
@@ -554,12 +546,12 @@
                 console.log("✅ EmailJS initialisiert");
             }
         }
-
-        // ====================== E-MAIL SENDEN – EXAKT FÜR DEIN TEMPLATE ======================
+        // ====================== E-MAIL SENDEN – FIX + LOYALTY + MYSTERY ======================
         async function sendOrderConfirmationEmail(orderData) {
             console.log("📧 Versuche E-Mail zu senden...");
             showToast("📧 E-Mail wird gesendet...", "success");
-
+            const loyaltyEarned = Math.floor(getProductTotal());
+            const hasMystery = orderData.items.some(item => item.id === MYSTERY_ID);
             try {
                 const orderItems = orderData.items.map(item => {
                     const prod = allProducts.find(p => p.id === item.id);
@@ -570,18 +562,19 @@
                         image_url: prod && prod.image ? prod.image : "https://wavevapes.de/logo.png"
                     };
                 });
-
                 await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_ORDER_TEMPLATE, {
                     order_id: orderData.orderNumber,
                     email: orderData.userEmail,
+                    greeting_name: orderData.userEmail.split('@')[0],
                     orders: orderItems,
                     cost: {
                         shipping: orderData.shipping.toFixed(2),
                         tax: "0.00",
                         total: orderData.total.toFixed(2)
-                    }
+                    },
+                    loyalty_earned: loyaltyEarned,
+                    mystery_included: hasMystery ? "Ja" : "Nein"
                 });
-
                 console.log("✅ E-Mail erfolgreich gesendet!");
                 showToast("✅ Bestellbestätigung per E-Mail versendet!", "success");
             } catch (e) {
@@ -589,7 +582,6 @@
                 showToast("❌ E-Mail konnte nicht gesendet werden: " + (e.text || e.message), "error");
             }
         }
-
         // ====================== REFERRAL CORE ======================
         async function createOrUpdateUserProfile() {
             if (!currentUser) return;

@@ -3,15 +3,16 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>WaveVapes – Admin Panel Pro v2.0</title>
+    <title>WaveVapes – Admin Panel</title>
     <meta name="robots" content="noindex, nofollow">
     <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
+    <!-- EMAILJS für Newsletter (nur noch für Bestellungen verwendet) -->
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     <style>
@@ -19,77 +20,136 @@
         :root { --neon-cyan: #67e8f9; }
         body { font-family: 'Inter', system-ui, sans-serif; background: linear-gradient(135deg, #0a0a0a, #1e1233, #0a0a0a); color: white; }
         .neon { text-shadow: 0 0 20px #67e8f9, 0 0 40px #67e8f9; }
-        .sidebar { transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1); }
         .card { background: #18181b; border: 1px solid #27272a; border-radius: 1.5rem; }
-        .modal { animation: modalPop 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+        .modal { animation: modalPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
         @keyframes modalPop { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-        .table-row-hover:hover { background: #27272a !important; }
+        .toast { animation: toastSlide 0.4s ease forwards; }
+        .table-row-hover:hover { background: #27272a !important; transition: all 0.2s; }
         .status-badge { padding:4px 10px; border-radius:999px; font-size:12px; font-weight:600; display:inline-block; text-align:center; min-width:118px; }
-        .status-Zahlung{background:#facc15;color:black;} .status-Wird{background:#60a5fa;color:black;}
-        .status-Versendet{background:#a78bfa;color:black;} .status-Zugestellt{background:#34d399;color:black;}
+        .status-Zahlung{background:#facc15;color:black;}
+        .status-Wird{background:#60a5fa;color:black;}
+        .status-Versendet{background:#a78bfa;color:black;}
+        .status-Zugestellt{background:#34d399;color:black;}
         .status-Storniert{background:#ef4444;color:white;}
-        .sidebar-item { transition: all 0.2s; }
-        .sidebar-item:hover { background: #27272a; }
-        .tab-active { background: #27272a; color: var(--neon-cyan); border-left: 4px solid var(--neon-cyan); }
+        .disabled { background: #7f1d1d !important; color: #fca5a5; }
+        .tab-active { border-bottom: 4px solid var(--neon-cyan); color: var(--neon-cyan); font-weight: 600; }
+        .coupon-row { transition: all 0.2s; }
+        .coupon-row.used { opacity: 0.6; }
     </style>
 </head>
 <body class="min-h-screen">
-
-<header class="bg-zinc-950 border-b border-cyan-400/30 sticky top-0 z-50 backdrop-blur-xl">
-    <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-        <div class="flex items-center gap-4">
-            <img src="logo.png" alt="Logo" class="h-9 w-auto" loading="eager">
-            <h1 class="text-3xl font-bold tracking-tighter neon">ADMIN PRO v2.0</h1>
+    <!-- HEADER -->
+    <header class="bg-zinc-950 border-b border-cyan-400/30 sticky top-0 z-50 backdrop-blur-xl">
+        <div class="max-w-7xl mx-auto px-6 py-5 flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <img src="logo.png" alt="Logo" class="h-9 w-auto" loading="eager">
+                <h1 class="text-3xl font-bold tracking-tighter neon">ADMIN PANEL</h1>
+            </div>
+            <div class="flex items-center gap-6">
+                <span id="admin-email" class="text-cyan-300 font-medium"></span>
+                <button onclick="logout()" class="bg-red-600 hover:bg-red-500 px-6 py-2.5 rounded-2xl font-semibold text-sm transition">Logout</button>
+            </div>
         </div>
-        <div class="flex items-center gap-6">
-            <span id="admin-email" class="text-cyan-300 font-medium"></span>
-            <button onclick="logout()" class="bg-red-600 hover:bg-red-500 px-6 py-2.5 rounded-2xl font-semibold text-sm transition">Logout</button>
-            <button onclick="toggleSidebar()" class="md:hidden text-3xl text-white"><i class="fa-solid fa-bars"></i></button>
-        </div>
-    </div>
-</header>
+    </header>
 
-<div class="flex h-[calc(100vh-73px)] overflow-hidden">
-    <!-- SIDEBAR -->
-    <div id="sidebar" class="w-72 bg-zinc-950 border-r border-white/10 flex-shrink-0 overflow-y-auto sidebar md:translate-x-0 -translate-x-full transition-transform">
-        <div class="p-6 space-y-1">
-            <div onclick="switchTab(0)" id="sidebar-0" class="sidebar-item flex items-center gap-3 px-6 py-4 rounded-2xl cursor-pointer tab-active"><i class="fa-solid fa-box"></i><span>Produkte</span></div>
-            <div onclick="switchTab(1)" id="sidebar-1" class="sidebar-item flex items-center gap-3 px-6 py-4 rounded-2xl cursor-pointer"><i class="fa-solid fa-receipt"></i><span>Bestellungen</span></div>
-            <div onclick="switchTab(2)" id="sidebar-2" class="sidebar-item flex items-center gap-3 px-6 py-4 rounded-2xl cursor-pointer"><i class="fa-solid fa-users"></i><span>Benutzer</span></div>
-            <div onclick="switchTab(3)" id="sidebar-3" class="sidebar-item flex items-center gap-3 px-6 py-4 rounded-2xl cursor-pointer"><i class="fa-solid fa-tags"></i><span>Kategorien</span></div>
-            <div onclick="switchTab(4)" id="sidebar-4" class="sidebar-item flex items-center gap-3 px-6 py-4 rounded-2xl cursor-pointer"><i class="fa-solid fa-ticket"></i><span>Gutscheine</span></div>
-            <div onclick="switchTab(5)" id="sidebar-5" class="sidebar-item flex items-center gap-3 px-6 py-4 rounded-2xl cursor-pointer"><i class="fa-solid fa-chart-line"></i><span>Analytics</span></div>
-            <div onclick="switchTab(6)" id="sidebar-6" class="sidebar-item flex items-center gap-3 px-6 py-4 rounded-2xl cursor-pointer"><i class="fa-solid fa-list-check"></i><span>Admin Logs</span></div>
-            <div onclick="switchTab(7)" id="sidebar-7" class="sidebar-item flex items-center gap-3 px-6 py-4 rounded-2xl cursor-pointer"><i class="fa-solid fa-cog"></i><span>Settings</span></div>
+    <!-- AUTH CHECK -->
+    <div id="auth-loading" class="fixed inset-0 bg-black/90 flex items-center justify-center z-50">
+        <div class="text-center">
+            <i class="fa-solid fa-spinner animate-spin text-5xl text-cyan-400 mb-6"></i>
+            <p class="text-xl">Prüfe Admin-Rechte...</p>
         </div>
     </div>
+    <div id="no-admin" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-50">
+        <div class="text-center">
+            <h2 class="text-6xl font-bold text-red-500 mb-4">Zugriff verweigert</h2>
+            <p class="text-xl mb-8">Du bist kein Administrator.</p>
+            <a href="index.html" class="bg-cyan-500 hover:bg-cyan-400 text-black px-10 py-5 rounded-3xl font-bold text-xl">Zurück zum Shop</a>
+        </div>
+    </div>
 
-    <!-- MAIN CONTENT -->
-    <div class="flex-1 overflow-y-auto p-6 max-w-7xl mx-auto">
+    <!-- HAUPTINHALT -->
+    <main id="admin-content" class="hidden max-w-7xl mx-auto px-6 py-10">
+        <!-- TABS -->
+        <div class="flex border-b border-white/10 mb-10">
+            <button onclick="switchTab(0)" id="tab0" class="tab-active flex-1 py-5 text-lg font-semibold">Produkte</button>
+            <button onclick="switchTab(1)" id="tab1" class="flex-1 py-5 text-lg font-semibold">Bestellungen</button>
+            <button onclick="switchTab(2)" id="tab2" class="flex-1 py-5 text-lg font-semibold">Benutzer</button>
+            <button onclick="switchTab(3)" id="tab3" class="flex-1 py-5 text-lg font-semibold">Kategorien</button>
+            <button onclick="switchTab(4)" id="tab4" class="flex-1 py-5 text-lg font-semibold bg-gradient-to-r from-amber-400 to-orange-400 text-black">🎟️ Gutschein-Manager</button>
+        </div>
 
-        <!-- TAB 0: PRODUKTE -->
+        <!-- ====================== PRODUKTE TAB ====================== -->
         <div id="tab-content-0">
+            <!-- BACKUP & RESTORE -->
             <div class="card p-8 mb-12 bg-gradient-to-br from-emerald-950 to-cyan-950 border border-emerald-400/30">
                 <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><i class="fa-solid fa-download"></i> Backup & Restore</h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <button onclick="exportProductsToCSV()" class="bg-emerald-600 hover:bg-emerald-500 py-6 rounded-3xl font-bold text-xl flex items-center justify-center gap-3">📤 Alle Produkte als CSV exportieren</button>
-                    <button onclick="document.getElementById('csv-upload').click()" class="bg-orange-600 hover:bg-orange-500 py-6 rounded-3xl font-bold text-xl flex items-center justify-center gap-3">📥 CSV importieren & Produkte wiederherstellen</button>
+                    <button onclick="exportProductsToCSV()" class="bg-emerald-600 hover:bg-emerald-500 py-6 rounded-3xl font-bold text-xl flex items-center justify-center gap-3 transition">
+                        <i class="fa-solid fa-file-csv text-3xl"></i> Alle Produkte als CSV exportieren
+                    </button>
+                    <button onclick="document.getElementById('csv-upload').click()" class="bg-orange-600 hover:bg-orange-500 py-6 rounded-3xl font-bold text-xl flex items-center justify-center gap-3 transition">
+                        <i class="fa-solid fa-upload text-3xl"></i> CSV importieren & Produkte wiederherstellen
+                    </button>
                 </div>
                 <input type="file" id="csv-upload" accept=".csv" class="hidden" onchange="importProductsFromCSV(event)">
-                <p class="text-xs text-amber-400 mt-4 text-center">⚠️ Beim Import werden ALLE aktuellen Produkte gelöscht!</p>
+                <p class="text-xs text-amber-400 mt-4 text-center">⚠️ Beim Import werden ALLE aktuellen Produkte gelöscht und durch die CSV ersetzt!</p>
             </div>
 
+            <!-- STATS -->
             <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
-                <div class="card p-6"><p class="text-gray-400 text-sm">Gesamtumsatz</p><p id="total-revenue" class="text-4xl font-bold text-emerald-400">0 €</p></div>
-                <div class="card p-6"><p class="text-gray-400 text-sm">Aktive Produkte</p><p id="active-products" class="text-4xl font-bold text-cyan-400">0</p></div>
-                <div class="card p-6"><p class="text-gray-400 text-sm">Verkaufte Einheiten</p><p id="total-sold" class="text-4xl font-bold text-purple-400">0</p></div>
-                <div class="card p-6 bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-400/30"><p class="text-gray-400 text-sm">Top-Seller</p><p id="top-seller" class="text-2xl font-bold text-amber-400">—</p></div>
+                <div class="card p-6">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-gray-400 text-sm">Gesamtumsatz</p>
+                            <p id="total-revenue" class="text-4xl font-bold text-emerald-400">0 €</p>
+                        </div>
+                        <i class="fa-solid fa-euro-sign text-5xl text-emerald-500/20"></i>
+                    </div>
+                </div>
+                <div class="card p-6">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-gray-400 text-sm">Aktive Produkte</p>
+                            <p id="active-products" class="text-4xl font-bold text-cyan-400">0</p>
+                        </div>
+                        <i class="fa-solid fa-box text-5xl text-cyan-500/20"></i>
+                    </div>
+                </div>
+                <div class="card p-6">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-gray-400 text-sm">Verkaufte Einheiten</p>
+                            <p id="total-sold" class="text-4xl font-bold text-purple-400">0</p>
+                        </div>
+                        <i class="fa-solid fa-cart-shopping text-5xl text-purple-500/20"></i>
+                    </div>
+                </div>
+                <div class="card p-6 bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-400/30">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-gray-400 text-sm">Top-Seller</p>
+                            <p id="top-seller" class="text-2xl font-bold text-amber-400">—</p>
+                        </div>
+                        <i class="fa-solid fa-trophy text-5xl text-amber-500/20"></i>
+                    </div>
+                </div>
             </div>
 
+            <!-- RESET BUTTON -->
             <div class="card p-8 mb-12 bg-red-950/30 border border-red-500/50">
-                <button onclick="resetAllStatistics()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-5 rounded-3xl text-xl flex items-center justify-center gap-3"><i class="fa-solid fa-warning"></i> ALLE STATISTIKEN ZURÜCKSETZEN</button>
+                <div class="flex items-center gap-4 mb-6">
+                    <i class="fa-solid fa-trash-can text-3xl text-red-500"></i>
+                    <div>
+                        <h2 class="text-2xl font-bold text-red-400">Statistiken komplett zurücksetzen</h2>
+                        <p class="text-gray-400">Setzt bei ALLEN Produkten das Feld „sold“ auf 0.<br>Umsatz, verkaufte Einheiten und Top-Seller werden neu berechnet.</p>
+                    </div>
+                </div>
+                <button onclick="resetAllStatistics()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-5 rounded-3xl text-xl transition-all flex items-center justify-center gap-3">
+                    <i class="fa-solid fa-warning"></i> ALLE STATISTIKEN ZURÜCKSETZEN
+                </button>
             </div>
 
+            <!-- NEUES PRODUKT -->
             <div class="card p-8 mb-12">
                 <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><i class="fa-solid fa-plus"></i> Neues Produkt hinzufügen</h2>
                 <form id="add-form" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -97,17 +157,28 @@
                     <input id="prod-price" type="number" step="0.01" placeholder="Preis (€)" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4" required>
                     <input id="prod-stock" type="number" placeholder="Lagerbestand" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4" required>
                     <select id="prod-category" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4 text-lg"></select>
-                    <div class="flex items-center gap-3"><input id="prod-new" type="checkbox" class="w-5 h-5 accent-lime-400"><label>Neue Sorte</label></div>
-                    <div class="flex items-center gap-3"><input id="prod-unavailable" type="checkbox" class="w-5 h-5 accent-red-400"><label>Nicht verfügbar</label></div>
-                    <div class="col-span-full"><label class="text-xs text-gray-400 block mb-2">Produktbeschreibung</label><textarea id="prod-description" rows="4" placeholder="Intensiver Blue Raspberry Geschmack..." class="w-full bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-4"></textarea></div>
-                    <div id="dropzone" class="col-span-full border-2 border-dashed border-cyan-400/50 hover:border-cyan-400 rounded-3xl p-10 text-center cursor-pointer">
-                        <i class="fa-solid fa-cloud-arrow-up text-5xl mb-4 text-cyan-400"></i><p class="text-cyan-300">Bild per Drag & Drop oder klicken</p>
-                        <img id="preview-thumb" class="hidden mx-auto mt-6 max-h-48 rounded-2xl border border-cyan-400/30">
+                    <div class="flex items-center gap-3">
+                        <input id="prod-new" type="checkbox" class="w-5 h-5 accent-lime-400">
+                        <label class="text-sm">Neue Sorte</label>
                     </div>
-                    <button type="submit" class="lg:col-span-3 bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-5 rounded-3xl text-xl">Produkt speichern</button>
+                    <div class="flex items-center gap-3">
+                        <input id="prod-unavailable" type="checkbox" class="w-5 h-5 accent-red-400">
+                        <label class="text-sm">Nicht verfügbar</label>
+                    </div>
+                    <div class="col-span-full">
+                        <label class="text-xs text-gray-400 block mb-2">Produktbeschreibung (erscheint im Detail-Modal)</label>
+                        <textarea id="prod-description" rows="4" placeholder="Intensiver Blue Raspberry Geschmack mit eiskalter Frische..." class="w-full bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-4 resize-y"></textarea>
+                    </div>
+                    <div id="dropzone" class="col-span-full border-2 border-dashed border-cyan-400/50 hover:border-cyan-400 rounded-3xl p-10 text-center cursor-pointer">
+                        <i class="fa-solid fa-cloud-arrow-up text-5xl mb-4 text-cyan-400"></i>
+                        <p class="text-cyan-300 text-lg">Bild per Drag & Drop oder klicken</p>
+                        <img id="preview-thumb" class="hidden mx-auto mt-6 max-h-48 rounded-2xl border border-cyan-400/30 shadow-xl">
+                    </div>
+                    <button type="submit" class="lg:col-span-1 bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-5 rounded-3xl text-xl hover:scale-105 transition">Produkt speichern</button>
                 </form>
             </div>
 
+            <!-- PRODUKT-TABELLE -->
             <div class="card overflow-hidden">
                 <div class="p-6 border-b border-white/10 flex items-center justify-between">
                     <h2 class="text-2xl font-bold">Alle Produkte</h2>
@@ -116,7 +187,17 @@
                 <div class="overflow-x-auto">
                     <table class="w-full">
                         <thead class="bg-zinc-950">
-                            <tr><th class="py-5 px-6 text-left">Bild</th><th class="py-5 px-6 text-left">Name</th><th class="py-5 px-6 text-left">Kategorie</th><th class="py-5 px-6 text-center">Preis</th><th class="py-5 px-6 text-center">Lager</th><th class="py-5 px-6 text-center">Verfügbar</th><th class="py-5 px-6 text-right">Verkauft</th><th class="py-5 px-6 text-right">Umsatz</th><th class="py-5 px-6 text-right">Aktionen</th></tr>
+                            <tr>
+                                <th class="py-5 px-6 text-left">Bild</th>
+                                <th class="py-5 px-6 text-left">Name</th>
+                                <th class="py-5 px-6 text-left">Kategorie</th>
+                                <th class="py-5 px-6 text-center">Preis</th>
+                                <th class="py-5 px-6 text-center">Lager</th>
+                                <th class="py-5 px-6 text-center">Verfügbar</th>
+                                <th class="py-5 px-6 text-right">Verkauft</th>
+                                <th class="py-5 px-6 text-right">Umsatz</th>
+                                <th class="py-5 px-6 text-right">Aktionen</th>
+                            </tr>
                         </thead>
                         <tbody id="products-tbody" class="text-sm"></tbody>
                     </table>
@@ -124,13 +205,15 @@
             </div>
         </div>
 
-        <!-- TAB 1: BESTELLUNGEN -->
+        <!-- BESTELLUNGEN TAB -->
         <div id="tab-content-1" class="hidden">
             <div class="card overflow-hidden">
                 <div class="p-6 border-b border-white/10 flex items-center justify-between">
                     <h2 class="text-2xl font-bold flex items-center gap-3"><i class="fa-solid fa-receipt"></i> Live Bestellungen</h2>
                     <div class="flex gap-3">
-                        <button onclick="exportOrdersToCSV()" class="bg-emerald-600 hover:bg-emerald-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2"><i class="fa-solid fa-file-csv"></i> CSV Export</button>
+                        <button onclick="exportOrdersToCSV()" class="bg-emerald-600 hover:bg-emerald-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2">
+                            <i class="fa-solid fa-file-csv"></i> CSV Export
+                        </button>
                         <input id="order-search" placeholder="Bestellnr. oder E-Mail" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-3 w-80">
                         <select id="status-filter" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-3">
                             <option value="">Alle Status</option>
@@ -145,7 +228,14 @@
                 <div class="overflow-x-auto">
                     <table class="w-full">
                         <thead class="bg-zinc-950">
-                            <tr><th class="py-5 px-6 text-left">Bestellnr.</th><th class="py-5 px-6">Datum</th><th class="py-5 px-6">Kunde</th><th class="py-5 px-6">Gesamt</th><th class="py-5 px-6">Status</th><th class="py-5 px-6 text-right">Aktionen</th></tr>
+                            <tr>
+                                <th class="py-5 px-6 text-left">Bestellnr.</th>
+                                <th class="py-5 px-6">Datum</th>
+                                <th class="py-5 px-6">Kunde</th>
+                                <th class="py-5 px-6">Gesamt</th>
+                                <th class="py-5 px-6">Status</th>
+                                <th class="py-5 px-6 text-right">Aktionen</th>
+                            </tr>
                         </thead>
                         <tbody id="orders-tbody" class="text-sm"></tbody>
                     </table>
@@ -153,21 +243,40 @@
             </div>
         </div>
 
-        <!-- TAB 2: BENUTZER -->
+        <!-- BENUTZER TAB -->
         <div id="tab-content-2" class="hidden">
+            <!-- GLOBALER LOYALTY-RESET -->
             <div class="card p-8 mb-12 bg-red-950/30 border border-red-500/50">
-                <button onclick="resetAllLoyaltyPoints()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-5 rounded-3xl text-xl transition-all flex items-center justify-center gap-3"><i class="fa-solid fa-warning"></i> ALLE LOYALTY-PUNKTE AUF 0 SETZEN</button>
+                <div class="flex items-center gap-4 mb-6">
+                    <i class="fa-solid fa-star text-3xl text-red-500"></i>
+                    <div>
+                        <h2 class="text-2xl font-bold text-red-400">Alle Loyalty-Punkte zurücksetzen</h2>
+                        <p class="text-gray-400">Setzt bei <strong>ALLEN Benutzern</strong> das Feld <code>totalBonusPoints</code> auf 0.<br>Dies kann nicht rückgängig gemacht werden!</p>
+                    </div>
+                </div>
+                <button onclick="resetAllLoyaltyPoints()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-5 rounded-3xl text-xl transition-all flex items-center justify-center gap-3">
+                    <i class="fa-solid fa-warning"></i> ALLE LOYALTY-PUNKTE AUF 0 SETZEN
+                </button>
             </div>
             <div class="card overflow-hidden">
                 <div class="p-6 border-b border-white/10 flex items-center justify-between">
                     <h2 class="text-2xl font-bold flex items-center gap-3"><i class="fa-solid fa-users"></i> Benutzer verwalten</h2>
-                    <button onclick="exportUsersToCSV()" class="bg-emerald-600 hover:bg-emerald-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2"><i class="fa-solid fa-file-csv"></i> CSV Export</button>
+                    <button onclick="exportUsersToCSV()" class="bg-emerald-600 hover:bg-emerald-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2">
+                        <i class="fa-solid fa-file-csv"></i> CSV Export
+                    </button>
                     <input id="user-search" placeholder="E-Mail oder Username suchen..." class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-3 w-96">
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full">
                         <thead class="bg-zinc-950">
-                            <tr><th class="py-5 px-6 text-left">E-Mail</th><th class="py-5 px-6 text-left">Benutzername</th><th class="py-5 px-6 text-center">Referral-Code</th><th class="py-5 px-6 text-center">Loyalty-Punkte</th><th class="py-5 px-6 text-center">Status</th><th class="py-5 px-6 text-right">Aktionen</th></tr>
+                            <tr>
+                                <th class="py-5 px-6 text-left">E-Mail</th>
+                                <th class="py-5 px-6 text-left">Benutzername</th>
+                                <th class="py-5 px-6 text-center">Referral-Code</th>
+                                <th class="py-5 px-6 text-center">Loyalty-Punkte</th>
+                                <th class="py-5 px-6 text-center">Status</th>
+                                <th class="py-5 px-6 text-right">Aktionen</th>
+                            </tr>
                         </thead>
                         <tbody id="users-tbody" class="text-sm"></tbody>
                     </table>
@@ -175,17 +284,22 @@
             </div>
         </div>
 
-        <!-- TAB 3: KATEGORIEN -->
+        <!-- ====================== KATEGORIEN TAB ====================== -->
         <div id="tab-content-3" class="hidden">
+            <!-- NEUE KATEGORIE -->
             <div class="card p-8 mb-12">
                 <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><i class="fa-solid fa-tags"></i> Neue Kategorie hinzufügen</h2>
                 <form id="add-category-form" class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <input id="cat-name" placeholder="Kategoriename (z.B. Sommer Specials)" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4 text-lg" required>
                     <input id="cat-order" type="number" placeholder="Sortierreihenfolge" value="10" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4" required>
-                    <div class="flex items-center gap-3"><input id="cat-special" type="checkbox" class="w-5 h-5 accent-amber-400"><label class="text-sm">Special (zeigt 4-für-3-Bolt im Shop)</label></div>
+                    <div class="flex items-center gap-3">
+                        <input id="cat-special" type="checkbox" class="w-5 h-5 accent-amber-400">
+                        <label class="text-sm">Special (zeigt 4-für-3-Bolt im Shop)</label>
+                    </div>
                     <button type="submit" class="bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-5 rounded-3xl text-xl hover:scale-105 transition">Kategorie speichern</button>
                 </form>
             </div>
+            <!-- KATEGORIEN TABELLE -->
             <div class="card overflow-hidden">
                 <div class="p-6 border-b border-white/10 flex items-center justify-between">
                     <h2 class="text-2xl font-bold">Alle Kategorien</h2>
@@ -194,7 +308,12 @@
                 <div class="overflow-x-auto">
                     <table class="w-full">
                         <thead class="bg-zinc-950">
-                            <tr><th class="py-5 px-6 text-left">Name</th><th class="py-5 px-6 text-center">Order</th><th class="py-5 px-6 text-center">Special</th><th class="py-5 px-6 text-right">Aktionen</th></tr>
+                            <tr>
+                                <th class="py-5 px-6 text-left">Name</th>
+                                <th class="py-5 px-6 text-center">Order</th>
+                                <th class="py-5 px-6 text-center">Special</th>
+                                <th class="py-5 px-6 text-right">Aktionen</th>
+                            </tr>
                         </thead>
                         <tbody id="categories-tbody" class="text-sm"></tbody>
                     </table>
@@ -202,7 +321,7 @@
             </div>
         </div>
 
-        <!-- TAB 4: GUTSCHEINE -->
+        <!-- ====================== GUTSCHEIN-MANAGER TAB ====================== -->
         <div id="tab-content-4" class="hidden">
             <div class="card p-8">
                 <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><i class="fa-solid fa-ticket"></i> Gutschein-Manager</h2>
@@ -223,963 +342,930 @@
                 <div class="overflow-x-auto">
                     <table class="w-full">
                         <thead class="bg-zinc-950">
-                            <tr><th class="py-4 px-6 text-left">Code</th><th class="py-4 px-6 text-center">Typ/Wert</th><th class="py-4 px-6 text-center">Ablauf</th><th class="py-4 px-6 text-center">Status</th><th class="py-4 px-6 text-right">Aktionen</th></tr>
+                            <tr>
+                                <th class="py-4 px-6 text-left">Code</th>
+                                <th class="py-4 px-6 text-center">Typ/Wert</th>
+                                <th class="py-4 px-6 text-center">Ablauf</th>
+                                <th class="py-4 px-6 text-center">Status</th>
+                                <th class="py-4 px-6 text-right">Aktionen</th>
+                            </tr>
                         </thead>
                         <tbody id="coupons-tbody" class="text-sm"></tbody>
                     </table>
                 </div>
             </div>
         </div>
+    </main>
 
-        <!-- TAB 5: ANALYTICS -->
-        <div id="tab-content-5" class="hidden">
-            <h2 class="text-3xl font-bold mb-8">Analytics – Live Dashboard</h2>
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div class="card p-8">
-                    <h3 class="text-xl font-bold mb-4">Umsatz letzte 30 Tage</h3>
-                    <canvas id="revenueChart" height="140"></canvas>
-                </div>
-                <div class="card p-8">
-                    <h3 class="text-xl font-bold mb-4">Top 10 Produkte</h3>
-                    <canvas id="topProductsChart" height="140"></canvas>
-                </div>
-            </div>
-            <div class="card p-8 mt-8">
-                <h3 class="text-xl font-bold mb-4">Top Referrer (Freunde geworben)</h3>
-                <canvas id="referralChart" height="140"></canvas>
-            </div>
-            <button onclick="generatePDFReport()" class="mt-8 w-full bg-gradient-to-r from-amber-400 to-orange-500 text-black font-bold py-6 rounded-3xl text-xl">📄 Monatsbericht als PDF herunterladen</button>
-        </div>
+    <!-- EDIT MODAL -->
+    <div id="edit-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]"></div>
 
-        <!-- TAB 6: ADMIN LOGS -->
-        <div id="tab-content-6" class="hidden">
-            <h2 class="text-3xl font-bold mb-6">Admin Activity Log (Live)</h2>
-            <div id="logs-container" class="space-y-4 max-h-[70vh] overflow-y-auto"></div>
-        </div>
+    <!-- BESTELL-DETAIL MODAL CONTAINER -->
+    <div id="order-modal-container"></div>
 
-        <!-- TAB 7: SETTINGS -->
-        <div id="tab-content-7" class="hidden">
-            <h2 class="text-3xl font-bold mb-8">Shop Settings</h2>
-            <div class="card p-8 max-w-2xl mx-auto">
-                <div class="space-y-8">
-                    <div>
-                        <label class="block text-sm text-gray-400 mb-2">Bank Empfänger</label>
-                        <input id="set-bank-owner" class="w-full bg-zinc-900 rounded-2xl px-6 py-4">
-                    </div>
-                    <div>
-                        <label class="block text-sm text-gray-400 mb-2">IBAN</label>
-                        <input id="set-iban" class="w-full bg-zinc-900 rounded-2xl px-6 py-4">
-                    </div>
-                    <div>
-                        <label class="block text-sm text-gray-400 mb-2">BIC</label>
-                        <input id="set-bic" class="w-full bg-zinc-900 rounded-2xl px-6 py-4">
-                    </div>
-                    <div class="grid grid-cols-2 gap-6">
-                        <div>
-                            <label class="block text-sm text-gray-400 mb-2">Versandkosten (€)</label>
-                            <input id="set-shipping" type="number" step="0.01" class="w-full bg-zinc-900 rounded-2xl px-6 py-4">
-                        </div>
-                        <div>
-                            <label class="block text-sm text-gray-400 mb-2">Gratis Versand ab (€)</label>
-                            <input id="set-free-threshold" type="number" class="w-full bg-zinc-900 rounded-2xl px-6 py-4">
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-4">
-                        <input id="set-closed" type="checkbox" class="w-6 h-6 accent-red-500">
-                        <label class="text-lg">Shop vorübergehend geschlossen (Wartung)</label>
-                    </div>
-                    <div>
-                        <label class="block text-sm text-gray-400 mb-2">Bestellbestätigung Template (HTML)</label>
-                        <textarea id="set-email-template" rows="6" class="w-full bg-zinc-900 rounded-3xl px-6 py-4 text-xs"></textarea>
-                    </div>
-                    <button onclick="saveSettings()" class="w-full bg-emerald-600 hover:bg-emerald-500 py-6 rounded-3xl font-bold text-xl">ALLE EINSTELLUNGEN SPEICHERN</button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+    <!-- TOAST -->
+    <div id="toast-container" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[99999] flex flex-col gap-3"></div>
 
-<!-- EDIT MODAL -->
-<div id="edit-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]"></div>
-<!-- ORDER MODAL -->
-<div id="order-modal-container"></div>
-<!-- TOAST -->
-<div id="toast-container" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[99999] flex flex-col gap-3"></div>
-
-<script>
-// ====================== FIREBASE CONFIG ======================
-const firebaseConfig = {
-    apiKey: "AIzaSyDsIUl-iYmH42MPbusFLhGhj5oGLh01BzI",
-    authDomain: "wavevapes-7a960.firebaseapp.com",
-    projectId: "wavevapes-7a960",
-    storageBucket: "wavevapes-7a960.firebasestorage.app",
-    messagingSenderId: "1093624390275",
-    appId: "1:1093624390275:web:b1b8ae17bcf1b59dffb1b6"
-};
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.firestore();
-
-// ====================== GLOBALE VARIABLEN ======================
-let currentEditId = null;
-let selectedFile = null;
-let currentOrderId = null;
-let removeCurrentImage = false;
-let allCategories = [];
-let allCoupons = [];
-let revenueChart = null;
-let topProductsChart = null;
-let referralChart = null;
-let logsUnsubscribe = null;
-let allProducts = [];
-
-// ====================== LOG ACTION ======================
-async function logAction(action, target = "", details = {}) {
-    if (!auth.currentUser) return;
-    await db.collection("admin_logs").add({
-        action: action,
-        target: target,
-        adminEmail: auth.currentUser.email,
-        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-        details: details || {}
-    });
-}
-
-// ====================== STATS UPDATE (JETZT DOPPELT ABGESICHERT) ======================
-function updateStats() {
-    console.log("updateStats wurde aufgerufen – Produkte:", allProducts.length);
-    const active = allProducts.filter(p => p.available !== false).length;
-    const soldTotal = allProducts.reduce((sum, p) => sum + (p.sold || 0), 0);
-    const revenue = allProducts.reduce((sum, p) => sum + (p.sold || 0) * (p.price || 0), 0);
-    const top = [...allProducts].sort((a, b) => (b.sold || 0) - (a.sold || 0))[0];
-
-    document.getElementById('active-products').textContent = active;
-    document.getElementById('total-sold').textContent = soldTotal;
-    document.getElementById('total-revenue').textContent = revenue.toFixed(0) + ' €';
-    document.getElementById('top-seller').textContent = top ? `${top.name} (${top.sold || 0}×)` : '—';
-}
-
-// ====================== PRODUKTE ======================
-function loadProducts() {
-    db.collection('products').onSnapshot(snap => {
-        allProducts = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        updateStats();
-        renderProductTable();
-    });
-}
-function renderProductTable(filter = '') {
-    const tbody = document.getElementById('products-tbody');
-    let html = '';
-    const filtered = allProducts.filter(p => p.name.toLowerCase().includes(filter.toLowerCase()));
-    filtered.forEach(p => {
-        html += `
-        <tr class="table-row-hover border-b border-white/10">
-            <td class="py-5 px-6">${p.image ? `<img src="${p.image}" class="w-12 h-12 object-cover rounded-xl" loading="lazy">` : '—'}</td>
-            <td class="py-5 px-6 font-medium">${p.name}</td>
-            <td class="py-5 px-6">${p.category || '—'}</td>
-            <td class="py-5 px-6 text-center">${p.price.toFixed(2)} €</td>
-            <td class="py-5 px-6 text-center">${p.stock}</td>
-            <td class="py-5 px-6 text-center"><input type="checkbox" ${p.available !== false ? 'checked' : ''} onchange="toggleAvailable('${p.id}', this.checked)" class="accent-cyan-400 w-5 h-5"></td>
-            <td class="py-5 px-6 text-right font-bold text-purple-400">${p.sold || 0}</td>
-            <td class="py-5 px-6 text-right font-medium text-emerald-400">${((p.sold || 0) * p.price).toFixed(2)} €</td>
-            <td class="py-5 px-6 text-right space-x-4">
-                <button onclick="openEditModal('${p.id}')" class="text-cyan-400 hover:text-white"><i class="fa-solid fa-pen"></i></button>
-                <button onclick="deleteProduct('${p.id}')" class="text-red-400 hover:text-white"><i class="fa-solid fa-trash"></i></button>
-            </td>
-        </tr>`;
-    });
-    tbody.innerHTML = html || `<tr><td colspan="9" class="text-center py-16 text-gray-400">Keine Produkte gefunden</td></tr>`;
-}
-document.getElementById('product-search').addEventListener('input', e => renderProductTable(e.target.value));
-
-async function toggleAvailable(id, val) {
-    await db.collection('products').doc(id).update({ available: val });
-    await logAction("product_availability_changed", id, { available: val });
-    showToast('Verfügbarkeit aktualisiert');
-}
-async function deleteProduct(id) {
-    if (!confirm('Produkt wirklich endgültig löschen?')) return;
-    await db.collection('products').doc(id).delete();
-    await logAction("product_deleted", id);
-    showToast('✅ Produkt gelöscht');
-}
-
-// ====================== EDIT MODAL ======================
-async function openEditModal(id) {
-    currentEditId = id;
-    removeCurrentImage = false;
-    const doc = await db.collection('products').doc(id).get();
-    const p = doc.data();
-    const html = `
-    <div class="bg-zinc-900 rounded-3xl p-8 max-w-6xl w-full mx-4 modal max-h-[95vh] overflow-y-auto">
-        <div class="flex justify-between items-center mb-8">
-            <h3 class="text-3xl font-bold neon">Produkt bearbeiten</h3>
-            <button onclick="closeEditModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
-        </div>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div>
-                <div id="preview-image" class="bg-zinc-950 border border-white/10 rounded-3xl overflow-hidden h-96 flex items-center justify-center">
-                    ${p.image ? `<img src="${p.image}" class="max-h-full w-full object-contain" loading="lazy">` : `<div class="text-center text-gray-500"><i class="fa-solid fa-image text-6xl mb-4"></i><br>Kein Bild</div>`}
-                </div>
-                ${p.image ? `<button onclick="removeImageInEdit()" class="mt-4 w-full bg-red-600/80 hover:bg-red-600 text-white py-3 rounded-2xl text-sm font-medium flex items-center justify-center gap-2">Bild entfernen</button>` : ''}
-            </div>
-            <div class="space-y-6">
-                <input id="edit-name" value="${p.name}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 text-lg">
-                <div class="grid grid-cols-2 gap-4">
-                    <input id="edit-price" type="number" step="0.01" value="${p.price}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
-                    <input id="edit-stock" type="number" value="${p.stock}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
-                </div>
-                <select id="edit-category-select" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4"></select>
-                <div><label class="text-xs text-gray-400 block mb-2">Produktbeschreibung</label><textarea id="edit-description" rows="8" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-3xl px-6 py-4">${p.description || ''}</textarea></div>
-                <div class="flex items-center gap-6">
-                    <div class="flex items-center gap-3"><input id="edit-new" type="checkbox" ${p.isNew ? 'checked' : ''}><label>Neue Sorte</label></div>
-                    <div class="flex items-center gap-3"><input id="edit-unavailable" type="checkbox" ${p.available === false ? 'checked' : ''}><label>Nicht verfügbar</label></div>
-                </div>
-                <div id="edit-dropzone" class="border-2 border-dashed border-cyan-400/50 hover:border-cyan-400 rounded-3xl p-8 text-center cursor-pointer">
-                    <i class="fa-solid fa-cloud-arrow-up text-4xl mb-3 text-cyan-400"></i>
-                    <p class="text-cyan-300">Neues Bild hochladen (klicken oder Drag & Drop)</p>
-                </div>
-            </div>
-        </div>
-        <div class="flex gap-4 mt-10">
-            <button onclick="saveEdit()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-5 rounded-3xl font-bold text-lg">Speichern</button>
-            <button onclick="closeEditModal()" class="flex-1 bg-zinc-700 hover:bg-zinc-600 py-5 rounded-3xl text-lg">Abbrechen</button>
-        </div>
-    </div>`;
-    document.getElementById('edit-modal').innerHTML = html;
-    document.getElementById('edit-modal').classList.remove('hidden');
-    populateCategorySelects();
-    const dropzone = document.getElementById('edit-dropzone');
-    dropzone.onclick = () => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'image/*';
-        input.onchange = e => {
-            selectedFile = e.target.files[0];
-            removeCurrentImage = false;
-            const url = URL.createObjectURL(selectedFile);
-            document.getElementById('preview-image').innerHTML = `<img src="${url}" class="max-h-full w-full object-contain">`;
+    <script>
+        // ==================== FIREBASE CONFIG ====================
+        const firebaseConfig = {
+            apiKey: "AIzaSyDsIUl-iYmH42MPbusFLhGhj5oGLh01BzI",
+            authDomain: "wavevapes-7a960.firebaseapp.com",
+            projectId: "wavevapes-7a960",
+            storageBucket: "wavevapes-7a960.firebasestorage.app",
+            messagingSenderId: "1093624390275",
+            appId: "1:1093624390275:web:b1b8ae17bcf1b59dffb1b6"
         };
-        input.click();
-    };
-}
-function removeImageInEdit() {
-    removeCurrentImage = true;
-    document.getElementById('preview-image').innerHTML = `<div class="text-center text-red-400"><i class="fa-solid fa-trash text-6xl mb-4"></i><br>Bild wird beim Speichern entfernt</div>`;
-}
-function closeEditModal() {
-    document.getElementById('edit-modal').classList.add('hidden');
-    selectedFile = null;
-    removeCurrentImage = false;
-}
-async function saveEdit() {
-    if (!currentEditId) return;
-    const name = document.getElementById('edit-name').value;
-    const price = parseFloat(document.getElementById('edit-price').value);
-    const stock = parseInt(document.getElementById('edit-stock').value);
-    const category = document.getElementById('edit-category-select').value;
-    const description = document.getElementById('edit-description').value;
-    const isNew = document.getElementById('edit-new').checked;
-    const unavailable = document.getElementById('edit-unavailable').checked;
-    let data = { name, price, stock, category, description: description || "", isNew, available: !unavailable };
-    if (removeCurrentImage && !selectedFile) data.image = null;
-    else if (selectedFile) {
-        const formData = new FormData();
-        formData.append("file", selectedFile);
-        formData.append("upload_preset", "wavevapes");
-        const res = await fetch("https://api.cloudinary.com/v1_1/dbbkmjsr5/image/upload", { method: "POST", body: formData });
-        const json = await res.json();
-        if (json.secure_url) data.image = json.secure_url;
-    }
-    await db.collection('products').doc(currentEditId).update(data);
-    await logAction("product_updated", currentEditId, { name });
-    closeEditModal();
-    showToast('✅ Produkt gespeichert!');
-}
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
 
-// ====================== NEUES PRODUKT ======================
-document.getElementById('add-form').addEventListener('submit', async e => {
-    e.preventDefault();
-    const name = document.getElementById('prod-name').value.trim();
-    const price = parseFloat(document.getElementById('prod-price').value);
-    const stock = parseInt(document.getElementById('prod-stock').value);
-    const category = document.getElementById('prod-category').value;
-    const isNew = document.getElementById('prod-new').checked;
-    const unavailable = document.getElementById('prod-unavailable').checked;
-    const description = document.getElementById('prod-description').value.trim();
-    const docRef = await db.collection('products').add({
-        name, price, stock, category, isNew: isNew || false, available: !unavailable, description: description || "", sold: 0
-    });
-    if (selectedFile) {
-        const formData = new FormData();
-        formData.append("file", selectedFile);
-        formData.append("upload_preset", "wavevapes");
-        const res = await fetch("https://api.cloudinary.com/v1_1/dbbkmjsr5/image/upload", { method: "POST", body: formData });
-        const json = await res.json();
-        if (json.secure_url) await docRef.update({ image: json.secure_url });
-    }
-    await logAction("product_created", docRef.id, { name });
-    e.target.reset();
-    document.getElementById('preview-thumb').classList.add('hidden');
-    selectedFile = null;
-    showToast('✅ Produkt erfolgreich angelegt!');
-});
-const dropzone = document.getElementById('dropzone');
-dropzone.addEventListener('click', () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = e => {
-        selectedFile = e.target.files[0];
-        const url = URL.createObjectURL(selectedFile);
-        document.getElementById('preview-thumb').src = url;
-        document.getElementById('preview-thumb').classList.remove('hidden');
-    };
-    input.click();
-});
+        // ==================== EMAILJS CONFIG ====================
+        const EMAILJS_SERVICE_ID = "service_lzvte0x";
+        const EMAILJS_PUBLIC_KEY = "t19pJAHgBpbKpZFGU";
 
-// ====================== CSV ======================
-async function exportProductsToCSV() {
-    const snapshot = await db.collection("products").get();
-    if (snapshot.empty) return alert("Keine Produkte vorhanden!");
-    let csv = "id,name,price,stock,category,isNew,available,description,image,sold\n";
-    snapshot.forEach(doc => {
-        const p = doc.data();
-        const row = [
-            `"${doc.id}"`,
-            `"${(p.name || "").replace(/"/g, '""')}"`,
-            p.price || 0,
-            p.stock || 0,
-            `"${p.category || ""}"`,
-            p.isNew === true ? "true" : "false",
-            p.available !== false ? "true" : "false",
-            `"${(p.description || "").replace(/"/g, '""').replace(/\n/g, "\\n")}"`,
-            `"${p.image || ""}"`,
-            p.sold || 0
-        ].join(",");
-        csv += row + "\n";
-    });
-    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    const date = new Date().toISOString().slice(0,10);
-    link.href = URL.createObjectURL(blob);
-    link.download = `wavevapes_products_backup_${date}.csv`;
-    link.click();
-    showToast("✅ CSV-Datei wurde heruntergeladen!", "success");
-}
-async function importProductsFromCSV(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    if (!confirm("⚠️ WARNUNG!\n\nAlle aktuellen Produkte werden GELÖSCHT und durch die CSV ersetzt.\n\nWirklich fortfahren?")) {
-        e.target.value = "";
-        return;
-    }
-    const reader = new FileReader();
-    reader.onload = async function(event) {
-        const text = event.target.result;
-        const rows = text.trim().split("\n");
-        const deleteSnapshot = await db.collection("products").get();
-        const batchDelete = db.batch();
-        deleteSnapshot.forEach(doc => batchDelete.delete(doc.ref));
-        await batchDelete.commit();
-        const batch = db.batch();
-        for (let i = 1; i < rows.length; i++) {
-            if (!rows[i].trim()) continue;
-            const values = parseCSVLine(rows[i]);
-            const data = {
-                name: values[1],
-                price: parseFloat(values[2]),
-                stock: parseInt(values[3]),
-                category: values[4],
-                isNew: values[5] === "true",
-                available: values[6] === "true",
-                description: values[7],
-                image: values[8] || null,
-                sold: parseInt(values[9]) || 0
+        let currentEditId = null;
+        let selectedFile = null;
+        let currentOrderId = null;
+        let removeCurrentImage = false;
+        let allCategories = [];
+        let allCoupons = [];
+
+        // ==================== AUTH ====================
+        auth.onAuthStateChanged(async (user) => {
+            if (!user) return window.location.href = 'index.html';
+            document.getElementById('admin-email').textContent = user.email;
+            const userDoc = await db.collection('users').doc(user.uid).get();
+            if (!userDoc.exists || userDoc.data().role !== 'admin') {
+                document.getElementById('auth-loading').classList.add('hidden');
+                document.getElementById('no-admin').classList.remove('hidden');
+                return;
+            }
+            document.getElementById('auth-loading').classList.add('hidden');
+            document.getElementById('admin-content').classList.remove('hidden');
+            emailjs.init(EMAILJS_PUBLIC_KEY);
+            switchTab(0);
+        });
+        function logout() { auth.signOut().then(() => location.href = 'index.html'); }
+
+        // ==================== TABS ====================
+        function switchTab(n) {
+            document.getElementById('tab0').classList.toggle('tab-active', n === 0);
+            document.getElementById('tab1').classList.toggle('tab-active', n === 1);
+            document.getElementById('tab2').classList.toggle('tab-active', n === 2);
+            document.getElementById('tab3').classList.toggle('tab-active', n === 3);
+            document.getElementById('tab4').classList.toggle('tab-active', n === 4);
+
+            document.getElementById('tab-content-0').classList.toggle('hidden', n !== 0);
+            document.getElementById('tab-content-1').classList.toggle('hidden', n !== 1);
+            document.getElementById('tab-content-2').classList.toggle('hidden', n !== 2);
+            document.getElementById('tab-content-3').classList.toggle('hidden', n !== 3);
+            document.getElementById('tab-content-4').classList.toggle('hidden', n !== 4);
+
+            if (n === 1) {
+                loadOrders();
+                checkAndAutoCancelOldOrders();
+            }
+            if (n === 2) loadUsers();
+            if (n === 3) loadCategories();
+            if (n === 4) {
+                loadCoupons();
+            }
+        }
+
+        // ==================== TOAST ====================
+        function showToast(msg, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast flex items-center gap-3 px-8 py-4 rounded-3xl shadow-2xl text-sm font-medium ${type === 'error' ? 'bg-red-600' : 'bg-emerald-600'}`;
+            toast.innerHTML = `<i class="fa-solid ${type === 'error' ? 'fa-xmark' : 'fa-check'}"></i> ${msg}`;
+            document.getElementById('toast-container').appendChild(toast);
+            setTimeout(() => toast.remove(), 3500);
+        }
+
+        // ==================== STATUS CLASS ====================
+        function getStatusClass(s) {
+            const map = {
+                "Zahlung erwartet": "status-Zahlung",
+                "Wird bearbeitet": "status-Wird",
+                "Versendet": "status-Versendet",
+                "Zugestellt": "status-Zugestellt",
+                "Storniert": "status-Storniert"
             };
-            const docRef = db.collection("products").doc(values[0]);
-            batch.set(docRef, data);
+            return map[s] || "status-Zahlung";
         }
-        await batch.commit();
-        showToast("✅ Alle Produkte wurden erfolgreich wiederhergestellt!", "success");
-        loadProducts();
-    };
-    reader.readAsText(file);
-    e.target.value = "";
-}
-function parseCSVLine(line) {
-    return line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(field => field.replace(/^"|"$/g, '').replace(/""/g, '"'));
-}
 
-// ====================== KATEGORIEN ======================
-function loadCategories() {
-    db.collection('categories').orderBy('order').onSnapshot(snap => {
-        allCategories = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        renderCategoryTable();
-        populateCategorySelects();
-    });
-}
-function renderCategoryTable() {
-    const tbody = document.getElementById('categories-tbody');
-    let html = '';
-    allCategories.forEach(c => {
-        html += `
-        <tr class="table-row-hover border-b border-white/10">
-            <td class="py-5 px-6 font-medium">${c.name}</td>
-            <td class="py-5 px-6 text-center">${c.order}</td>
-            <td class="py-5 px-6 text-center">${c.special ? '✅' : '—'}</td>
-            <td class="py-5 px-6 text-right space-x-4">
-                <button onclick="openEditCategoryModal('${c.id}')" class="text-cyan-400 hover:text-white"><i class="fa-solid fa-pen"></i></button>
-                <button onclick="deleteCategory('${c.id}')" class="text-red-400 hover:text-white"><i class="fa-solid fa-trash"></i></button>
-            </td>
-        </tr>`;
-    });
-    tbody.innerHTML = html || `<tr><td colspan="4" class="text-center py-16 text-gray-400">Noch keine Kategorien</td></tr>`;
-}
-document.getElementById('add-category-form').addEventListener('submit', async e => {
-    e.preventDefault();
-    const name = document.getElementById('cat-name').value.trim();
-    const order = parseInt(document.getElementById('cat-order').value) || 999;
-    const special = document.getElementById('cat-special').checked;
-    if (!name) return alert("Name erforderlich");
-    await db.collection('categories').add({ name, order, special });
-    await logAction("category_created", "", { name });
-    e.target.reset();
-    showToast('✅ Kategorie erstellt!');
-});
-async function openEditCategoryModal(id) {
-    const doc = await db.collection('categories').doc(id).get();
-    const c = doc.data();
-    const html = `
-        <div class="bg-zinc-900 rounded-3xl p-8 max-w-md w-full mx-4 modal">
-            <h3 class="text-3xl font-bold neon mb-6">Kategorie bearbeiten</h3>
-            <input id="edit-cat-name" value="${c.name}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 mb-4">
-            <input id="edit-cat-order" type="number" value="${c.order}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 mb-4">
-            <div class="flex items-center gap-3 mb-8">
-                <input id="edit-cat-special" type="checkbox" ${c.special ? 'checked' : ''} class="w-5 h-5 accent-amber-400">
-                <label>Special (4-für-3-Bolt)</label>
-            </div>
-            <div class="flex gap-4">
-                <button onclick="saveEditCategory('${id}')" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-5 rounded-3xl font-bold">Speichern</button>
-                <button onclick="closeEditModal()" class="flex-1 bg-zinc-700 hover:bg-zinc-600 py-5 rounded-3xl">Abbrechen</button>
-            </div>
-        </div>`;
-    document.getElementById('edit-modal').innerHTML = html;
-    document.getElementById('edit-modal').classList.remove('hidden');
-}
-async function saveEditCategory(id) {
-    const name = document.getElementById('edit-cat-name').value.trim();
-    const order = parseInt(document.getElementById('edit-cat-order').value) || 999;
-    const special = document.getElementById('edit-cat-special').checked;
-    await db.collection('categories').doc(id).update({ name, order, special });
-    await logAction("category_updated", id, { name });
-    document.getElementById('edit-modal').classList.add('hidden');
-    showToast('✅ Kategorie gespeichert');
-}
-async function deleteCategory(id) {
-    if (!confirm('Kategorie wirklich löschen? Produkte bleiben erhalten.')) return;
-    await db.collection('categories').doc(id).delete();
-    await logAction("category_deleted", id);
-    showToast('✅ Kategorie gelöscht');
-}
-function seedDefaultCategories() {
-    if (allCategories.length > 0 && !confirm('Es existieren bereits Kategorien. Trotzdem Standard-Kategorien laden?')) return;
-    const defaults = [
-        { name: "WaveVapes Tornado 30000", order: 1, special: true },
-        { name: "Normale Sorten", order: 2, special: false },
-        { name: "Neue Sorten", order: 3, special: false }
-    ];
-    defaults.forEach(d => db.collection('categories').add(d));
-    showToast('✅ Standard-Kategorien angelegt!');
-}
-function populateCategorySelects() {
-    const selects = document.querySelectorAll('#prod-category, #edit-category-select');
-    selects.forEach(select => {
-        if (!select) return;
-        select.innerHTML = '<option value="">Kategorie wählen...</option>';
-        allCategories.forEach(c => {
-            const opt = document.createElement('option');
-            opt.value = c.name;
-            opt.textContent = c.name;
-            select.appendChild(opt);
+        // ==================== LOYALTY GUTSCHRIFT NUR BEI "WIRD BEARBEITET" ====================
+        async function awardLoyaltyIfProcessed(orderId) {
+            const doc = await db.collection('orders').doc(orderId).get();
+            const order = doc.data();
+            if (!order || order.status !== "Wird bearbeitet" || order.loyaltyCredited === true) return;
+            const points = order.loyaltyEarned || 0;
+            if (points <= 0) return;
+            await db.collection('users').doc(order.userId).update({
+                totalBonusPoints: firebase.firestore.FieldValue.increment(points)
+            });
+            await db.collection('orders').doc(orderId).update({ loyaltyCredited: true });
+            showToast(`🎉 +${points} Loyalty-Punkte an Kunden gutgeschrieben!`, 'success');
+        }
+
+        // ====================== STOCK & STORNO LOGIC ======================
+        async function handleStockOnStatusChange(orderId, newStatus) {
+            const doc = await db.collection('orders').doc(orderId).get();
+            const order = doc.data();
+            const oldStatus = order.status || "Zahlung erwartet";
+            if (newStatus === "Wird bearbeitet" && oldStatus !== "Wird bearbeitet") {
+                for (let item of order.items) {
+                    if (item.id === 999) continue;
+                    await db.collection("products").doc(item.id).update({
+                        stock: firebase.firestore.FieldValue.increment(-item.qty),
+                        sold: firebase.firestore.FieldValue.increment(item.qty)
+                    });
+                }
+                showToast("✅ Lagerbestand abgezogen", "success");
+            }
+            if (newStatus === "Storniert" && oldStatus === "Wird bearbeitet") {
+                for (let item of order.items) {
+                    if (item.id === 999) continue;
+                    await db.collection("products").doc(item.id).update({
+                        stock: firebase.firestore.FieldValue.increment(item.qty),
+                        sold: firebase.firestore.FieldValue.increment(-item.qty)
+                    });
+                }
+                showToast("✅ Lagerbestand wiederhergestellt", "success");
+            }
+        }
+
+        // ====================== AUTOMATISCHE STORNO NACH 7 TAGEN ======================
+        async function checkAndAutoCancelOldOrders() {
+            const sevenDaysAgo = firebase.firestore.Timestamp.fromDate(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
+            const snapshot = await db.collection('orders').where('status', '==', 'Zahlung erwartet').where('date', '<', sevenDaysAgo).get();
+            if (snapshot.empty) return;
+            const batch = db.batch();
+            snapshot.forEach(doc => {
+                batch.update(doc.ref, {
+                    status: 'Storniert',
+                    autoCancelled: true,
+                    cancelledAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            });
+            await batch.commit();
+            showToast(`🚨 ${snapshot.size} Bestellung(en) automatisch storniert (7 Tage ohne Zahlung)`, "success");
+        }
+
+        // ==================== RESET ALL STATISTICS ====================
+        async function resetAllStatistics() {
+            if (!confirm("⚠️ ALLE STATISTIKEN ZURÜCKSETZEN?\n\nDies setzt bei JEDER Produkt das Feld 'sold' auf 0.\n\nDas kann NICHT rückgängig gemacht werden!")) return;
+            if (!confirm("LETZTE WARNUNG!\nWirklich ALLE Verkaufszahlen löschen?")) return;
+            try {
+                const snapshot = await db.collection("products").get();
+                const batch = db.batch();
+                snapshot.forEach(doc => batch.update(doc.ref, { sold: 0 }));
+                await batch.commit();
+                showToast("✅ Alle Statistiken wurden zurückgesetzt!", "success");
+                loadProducts();
+            } catch (e) {
+                console.error(e);
+                alert("Fehler beim Zurücksetzen: " + e.message);
+            }
+        }
+
+        // ==================== KATEGORIEN ====================
+        function loadCategories() {
+            db.collection('categories').orderBy('order').onSnapshot(snap => {
+                allCategories = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderCategoryTable();
+                populateCategorySelects();
+            });
+        }
+        function renderCategoryTable() {
+            const tbody = document.getElementById('categories-tbody');
+            let html = '';
+            allCategories.forEach(c => {
+                html += `
+                <tr class="table-row-hover border-b border-white/10">
+                    <td class="py-5 px-6 font-medium">${c.name}</td>
+                    <td class="py-5 px-6 text-center">${c.order}</td>
+                    <td class="py-5 px-6 text-center">${c.special ? '✅' : '—'}</td>
+                    <td class="py-5 px-6 text-right space-x-4">
+                        <button onclick="openEditCategoryModal('${c.id}')" class="text-cyan-400 hover:text-white"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="deleteCategory('${c.id}')" class="text-red-400 hover:text-white"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                </tr>`;
+            });
+            tbody.innerHTML = html || `<tr><td colspan="4" class="text-center py-16 text-gray-400">Noch keine Kategorien</td></tr>`;
+        }
+        document.getElementById('add-category-form').addEventListener('submit', async e => {
+            e.preventDefault();
+            const name = document.getElementById('cat-name').value.trim();
+            const order = parseInt(document.getElementById('cat-order').value) || 999;
+            const special = document.getElementById('cat-special').checked;
+            if (!name) return alert("Name erforderlich");
+            await db.collection('categories').add({ name, order, special });
+            e.target.reset();
+            showToast('✅ Kategorie erstellt!');
         });
-    });
-}
+        async function openEditCategoryModal(id) {
+            const doc = await db.collection('categories').doc(id).get();
+            const c = doc.data();
+            const html = `
+                <div class="bg-zinc-900 rounded-3xl p-8 max-w-md w-full mx-4 modal">
+                    <h3 class="text-3xl font-bold neon mb-6">Kategorie bearbeiten</h3>
+                    <input id="edit-cat-name" value="${c.name}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 mb-4">
+                    <input id="edit-cat-order" type="number" value="${c.order}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 mb-4">
+                    <div class="flex items-center gap-3 mb-8">
+                        <input id="edit-cat-special" type="checkbox" ${c.special ? 'checked' : ''} class="w-5 h-5 accent-amber-400">
+                        <label>Special (4-für-3-Bolt)</label>
+                    </div>
+                    <div class="flex gap-4">
+                        <button onclick="saveEditCategory('${id}')" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-5 rounded-3xl font-bold">Speichern</button>
+                        <button onclick="closeEditModal()" class="flex-1 bg-zinc-700 hover:bg-zinc-600 py-5 rounded-3xl">Abbrechen</button>
+                    </div>
+                </div>`;
+            document.getElementById('edit-modal').innerHTML = html;
+            document.getElementById('edit-modal').classList.remove('hidden');
+        }
+        async function saveEditCategory(id) {
+            const name = document.getElementById('edit-cat-name').value.trim();
+            const order = parseInt(document.getElementById('edit-cat-order').value) || 999;
+            const special = document.getElementById('edit-cat-special').checked;
+            await db.collection('categories').doc(id).update({ name, order, special });
+            document.getElementById('edit-modal').classList.add('hidden');
+            showToast('✅ Kategorie gespeichert');
+        }
+        async function deleteCategory(id) {
+            if (!confirm('Kategorie wirklich löschen? Produkte bleiben erhalten.')) return;
+            await db.collection('categories').doc(id).delete();
+            showToast('✅ Kategorie gelöscht');
+        }
+        function seedDefaultCategories() {
+            if (allCategories.length > 0 && !confirm('Es existieren bereits Kategorien. Trotzdem Standard-Kategorien laden?')) return;
+            const defaults = [
+                { name: "WaveVapes Tornado 30000", order: 1, special: true },
+                { name: "Normale Sorten", order: 2, special: false },
+                { name: "Neue Sorten", order: 3, special: false }
+            ];
+            defaults.forEach(d => db.collection('categories').add(d));
+            showToast('✅ Standard-Kategorien angelegt!');
+        }
 
-// ====================== GUTSCHEINE ======================
-document.getElementById('add-coupon-form').addEventListener('submit', async e => {
-    e.preventDefault();
-    const code = document.getElementById('coupon-code').value.trim().toUpperCase();
-    const type = document.getElementById('coupon-type').value;
-    const value = parseFloat(document.getElementById('coupon-value').value);
-    const expiry = new Date(document.getElementById('coupon-expiry').value);
-    const oneTime = document.getElementById('coupon-onetime').checked;
-    await db.collection('coupons').add({
-        code, type, value, expiresAt: firebase.firestore.Timestamp.fromDate(expiry),
-        oneTimeUse: oneTime, usedBy: [], createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    await logAction("coupon_created", code);
-    e.target.reset();
-    showToast('✅ Gutschein erstellt!');
-    loadCoupons();
-});
-async function loadCoupons() {
-    const snap = await db.collection('coupons').orderBy('createdAt', 'desc').get();
-    allCoupons = snap.docs.map(d => ({id: d.id, ...d.data()}));
-    renderCouponsTable();
-}
-function renderCouponsTable() {
-    const tbody = document.getElementById('coupons-tbody');
-    let html = '';
-    allCoupons.forEach(c => {
-        const expired = c.expiresAt.toDate() < new Date();
-        html += `
-        <tr class="coupon-row ${c.usedBy.length > 0 ? 'used' : ''}">
-            <td class="py-4 px-6 font-mono font-bold">${c.code}</td>
-            <td class="py-4 px-6 text-center">${c.type === 'percent' ? c.value + '%' : c.value + '€'}</td>
-            <td class="py-4 px-6 text-center ${expired ? 'text-red-400' : ''}">${c.expiresAt.toDate().toLocaleDateString('de-DE')}</td>
-            <td class="py-4 px-6 text-center">${c.usedBy.length}/${c.oneTimeUse ? '1' : '∞'}</td>
-            <td class="py-4 px-6 text-right">
-                <button onclick="deleteCoupon('${c.id}')" class="text-red-400 hover:text-white"><i class="fa-solid fa-trash"></i></button>
-            </td>
-        </tr>`;
-    });
-    tbody.innerHTML = html || `<tr><td colspan="5" class="text-center py-16 text-gray-400">Noch keine Gutscheine</td></tr>`;
-}
-async function deleteCoupon(id) {
-    if (confirm('Gutschein löschen?')) {
-        await db.collection('coupons').doc(id).delete();
-        await logAction("coupon_deleted", id);
-        loadCoupons();
-    }
-}
+        // ==================== DYNAMISCHE KATEGORIE SELECTS ====================
+        function populateCategorySelects() {
+            const selects = document.querySelectorAll('#prod-category, #edit-category-select');
+            selects.forEach(select => {
+                if (!select) return;
+                select.innerHTML = '<option value="">Kategorie wählen...</option>';
+                allCategories.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c.name;
+                    opt.textContent = c.name;
+                    select.appendChild(opt);
+                });
+            });
+        }
 
-// ====================== BESTELLUNGEN ======================
-function loadOrders() {
-    const tbody = document.getElementById('orders-tbody');
-    db.collection('orders').orderBy('date', 'desc').onSnapshot(snap => {
-        let html = '';
-        snap.forEach(doc => {
-            const o = doc.data();
-            const date = o.date ? o.date.toDate().toLocaleString('de-DE') : '—';
-            const status = o.status || 'Zahlung erwartet';
-            if (document.getElementById('order-search').value && !o.orderNumber.includes(document.getElementById('order-search').value) && !o.userEmail.includes(document.getElementById('order-search').value)) return;
-            if (document.getElementById('status-filter').value && status !== document.getElementById('status-filter').value) return;
-            html += `
-            <tr class="border-b border-white/10 hover:bg-zinc-800/50">
-                <td class="py-6 px-6 font-mono text-cyan-300">${o.orderNumber}</td>
-                <td class="py-6 px-6">${date}</td>
-                <td class="py-6 px-6">${o.userEmail}</td>
-                <td class="py-6 px-6 font-bold">${o.total.toFixed(2)} €</td>
-                <td class="py-6 px-6"><span class="status-badge ${getStatusClass(status)}">${status}</span></td>
-                <td class="py-6 px-6 text-right">
-                    <button onclick="quickStatus('${doc.id}', 'Versendet')" class="text-xs bg-emerald-600 hover:bg-emerald-500 px-5 py-2 rounded-2xl">Versendet</button>
-                    <button onclick="showOrderModal('${doc.id}')" class="ml-3 text-cyan-400 hover:text-white"><i class="fa-solid fa-eye text-xl"></i></button>
-                </td>
-            </tr>`;
+        // ==================== PRODUKTE ====================
+        let allProducts = [];
+        function loadProducts() {
+            db.collection('products').onSnapshot(snap => {
+                allProducts = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                updateStats();
+                renderProductTable();
+            });
+        }
+        function updateStats() {
+            const active = allProducts.filter(p => p.available !== false).length;
+            const soldTotal = allProducts.reduce((sum, p) => sum + (p.sold || 0), 0);
+            const revenue = allProducts.reduce((sum, p) => sum + (p.sold || 0) * (p.price || 0), 0);
+            const top = [...allProducts].sort((a, b) => (b.sold || 0) - (a.sold || 0))[0];
+            document.getElementById('active-products').textContent = active;
+            document.getElementById('total-sold').textContent = soldTotal;
+            document.getElementById('total-revenue').textContent = revenue.toFixed(0) + ' €';
+            document.getElementById('top-seller').textContent = top ? `${top.name} (${top.sold || 0}×)` : '—';
+        }
+        function renderProductTable(filter = '') {
+            const tbody = document.getElementById('products-tbody');
+            let html = '';
+            const filtered = allProducts
+                .filter(p => p.name.toLowerCase().includes(filter.toLowerCase()))
+                .sort((a, b) => (b.sold || 0) - (a.sold || 0));
+            filtered.forEach(p => {
+                html += `
+                <tr class="table-row-hover border-b border-white/10">
+                    <td class="py-5 px-6">${p.image ? `<img src="${p.image}" class="w-12 h-12 object-cover rounded-xl" loading="lazy" decoding="async" alt="${p.name}">` : '—'}</td>
+                    <td class="py-5 px-6 font-medium">${p.name}</td>
+                    <td class="py-5 px-6">${p.category || '—'}</td>
+                    <td class="py-5 px-6 text-center">${p.price.toFixed(2)} €</td>
+                    <td class="py-5 px-6 text-center">${p.stock}</td>
+                    <td class="py-5 px-6 text-center">
+                        <input type="checkbox" ${p.available !== false ? 'checked' : ''} onchange="toggleAvailable('${p.id}', this.checked)" class="accent-cyan-400 w-5 h-5">
+                    </td>
+                    <td class="py-5 px-6 text-right font-bold text-purple-400">${p.sold || 0}</td>
+                    <td class="py-5 px-6 text-right font-medium text-emerald-400">${((p.sold || 0) * p.price).toFixed(2)} €</td>
+                    <td class="py-5 px-6 text-right space-x-4">
+                        <button onclick="openEditModal('${p.id}')" class="text-cyan-400 hover:text-white"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="deleteProduct('${p.id}')" class="text-red-400 hover:text-white"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                </tr>`;
+            });
+            tbody.innerHTML = html || `<tr><td colspan="9" class="text-center py-16 text-gray-400">Keine Produkte gefunden</td></tr>`;
+        }
+        document.getElementById('product-search').addEventListener('input', e => renderProductTable(e.target.value));
+        async function toggleAvailable(id, val) {
+            await db.collection('products').doc(id).update({ available: val });
+            showToast('Verfügbarkeit aktualisiert');
+        }
+        async function deleteProduct(id) {
+            if (!confirm('Produkt wirklich endgültig löschen?')) return;
+            await db.collection('products').doc(id).delete();
+            showToast('✅ Produkt gelöscht');
+        }
+
+        // ==================== EDIT MODAL ====================
+        async function openEditModal(id) {
+            currentEditId = id;
+            removeCurrentImage = false;
+            const doc = await db.collection('products').doc(id).get();
+            const p = doc.data();
+            const html = `
+                <div class="bg-zinc-900 rounded-3xl p-8 max-w-6xl w-full mx-4 modal max-h-[95vh] overflow-y-auto">
+                    <div class="flex justify-between items-center mb-8">
+                        <h3 class="text-3xl font-bold neon">Produkt bearbeiten</h3>
+                        <button onclick="closeEditModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div>
+                            <h3 class="text-xl font-bold mb-4">Vorschau (wie im Shop)</h3>
+                            <div id="preview-image" class="bg-zinc-950 border border-white/10 rounded-3xl overflow-hidden h-96 flex items-center justify-center">
+                                ${p.image ? `<img src="${p.image}" class="max-h-full w-full object-contain" loading="lazy" decoding="async" alt="${p.name}">` : `<div class="text-center text-gray-500"><i class="fa-solid fa-image text-6xl mb-4"></i><br>Kein Bild hochgeladen</div>`}
+                            </div>
+                            ${p.image ? `
+                            <button onclick="removeImageInEdit()" class="mt-4 w-full bg-red-600/80 hover:bg-red-600 text-white py-3 rounded-2xl text-sm font-medium flex items-center justify-center gap-2 transition">
+                                <i class="fa-solid fa-trash"></i>
+                                Aktuelles Bild entfernen
+                            </button>` : ''}
+                        </div>
+                        <div class="space-y-6">
+                            <input id="edit-name" value="${p.name}" placeholder="Produktname" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 text-lg">
+                            <div class="grid grid-cols-2 gap-4">
+                                <input id="edit-price" type="number" step="0.01" value="${p.price}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
+                                <input id="edit-stock" type="number" value="${p.stock}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
+                            </div>
+                            <select id="edit-category-select" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4"></select>
+                            <div>
+                                <label class="text-xs text-gray-400 block mb-2">Produktbeschreibung</label>
+                                <textarea id="edit-description" rows="8" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-3xl px-6 py-4">${p.description || ''}</textarea>
+                            </div>
+                            <div class="flex items-center gap-6">
+                                <div class="flex items-center gap-3">
+                                    <input id="edit-new" type="checkbox" ${p.isNew?'checked':''}>
+                                    <label>Neue Sorte</label>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <input id="edit-unavailable" type="checkbox" ${p.available === false ? 'checked' : ''}>
+                                    <label>Nicht verfügbar</label>
+                                </div>
+                            </div>
+                            <div id="edit-dropzone" class="border-2 border-dashed border-cyan-400/50 hover:border-cyan-400 rounded-3xl p-8 text-center cursor-pointer">
+                                <i class="fa-solid fa-cloud-arrow-up text-4xl mb-3 text-cyan-400"></i>
+                                <p class="text-cyan-300">Neues Bild hochladen (klicken oder Drag & Drop)</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex gap-4 mt-10">
+                        <button onclick="saveEdit()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-5 rounded-3xl font-bold text-lg">Speichern</button>
+                        <button onclick="closeEditModal()" class="flex-1 bg-zinc-700 hover:bg-zinc-600 py-5 rounded-3xl text-lg">Abbrechen</button>
+                    </div>
+                </div>`;
+            document.getElementById('edit-modal').innerHTML = html;
+            document.getElementById('edit-modal').classList.remove('hidden');
+            populateCategorySelects();
+            const dropzone = document.getElementById('edit-dropzone');
+            dropzone.onclick = () => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'image/*';
+                input.onchange = e => {
+                    selectedFile = e.target.files[0];
+                    removeCurrentImage = false;
+                    const url = URL.createObjectURL(selectedFile);
+                    document.getElementById('preview-image').innerHTML = `<img src="${url}" class="max-h-full w-full object-contain" loading="lazy" decoding="async">`;
+                };
+                input.click();
+            };
+        }
+        function removeImageInEdit() {
+            removeCurrentImage = true;
+            document.getElementById('preview-image').innerHTML = `
+                <div class="text-center text-red-400">
+                    <i class="fa-solid fa-trash text-6xl mb-4"></i><br>
+                    Bild wird beim Speichern entfernt
+                </div>`;
+            showToast('Bild wird entfernt – speichern nicht vergessen!', 'success');
+        }
+        function closeEditModal() {
+            document.getElementById('edit-modal').classList.add('hidden');
+            selectedFile = null;
+            removeCurrentImage = false;
+        }
+        async function saveEdit() {
+            if (!currentEditId) return;
+            const name = document.getElementById('edit-name').value;
+            const price = parseFloat(document.getElementById('edit-price').value);
+            const stock = parseInt(document.getElementById('edit-stock').value);
+            const category = document.getElementById('edit-category-select').value;
+            const description = document.getElementById('edit-description').value;
+            const isNew = document.getElementById('edit-new').checked;
+            const unavailable = document.getElementById('edit-unavailable').checked;
+            let data = {
+                name,
+                price,
+                stock,
+                category,
+                description: description || "",
+                isNew,
+                available: !unavailable
+            };
+            if (removeCurrentImage && !selectedFile) {
+                data.image = null;
+            } else if (selectedFile) {
+                const formData = new FormData();
+                formData.append("file", selectedFile);
+                formData.append("upload_preset", "wavevapes");
+                const res = await fetch("https://api.cloudinary.com/v1_1/dbbkmjsr5/image/upload", { method: "POST", body: formData });
+                const json = await res.json();
+                if (json.secure_url) data.image = json.secure_url;
+            }
+            await db.collection('products').doc(currentEditId).update(data);
+            closeEditModal();
+            showToast('✅ Produkt gespeichert!');
+        }
+
+        // ==================== NEUES PRODUKT ====================
+        document.getElementById('add-form').addEventListener('submit', async e => {
+            e.preventDefault();
+            const name = document.getElementById('prod-name').value.trim();
+            const price = parseFloat(document.getElementById('prod-price').value);
+            const stock = parseInt(document.getElementById('prod-stock').value);
+            const category = document.getElementById('prod-category').value;
+            const isNew = document.getElementById('prod-new').checked;
+            const unavailable = document.getElementById('prod-unavailable').checked;
+            const description = document.getElementById('prod-description').value.trim();
+            const docRef = await db.collection('products').add({
+                name,
+                price,
+                stock,
+                category,
+                isNew: isNew || false,
+                available: !unavailable,
+                description: description || "",
+                sold: 0,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            if (selectedFile) {
+                const formData = new FormData();
+                formData.append("file", selectedFile);
+                formData.append("upload_preset", "wavevapes");
+                const res = await fetch("https://api.cloudinary.com/v1_1/dbbkmjsr5/image/upload", { method: "POST", body: formData });
+                const json = await res.json();
+                if (json.secure_url) await docRef.update({ image: json.secure_url });
+            }
+            e.target.reset();
+            document.getElementById('preview-thumb').classList.add('hidden');
+            selectedFile = null;
+            showToast('✅ Produkt erfolgreich angelegt! 🎉');
         });
-        tbody.innerHTML = html || `<tr><td colspan="6" class="text-center py-16 text-gray-400">Noch keine Bestellungen</td></tr>`;
-    });
-}
-document.getElementById('order-search').addEventListener('input', loadOrders);
-document.getElementById('status-filter').addEventListener('change', loadOrders);
+        const dropzone = document.getElementById('dropzone');
+        dropzone.addEventListener('click', () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = e => {
+                selectedFile = e.target.files[0];
+                const url = URL.createObjectURL(selectedFile);
+                document.getElementById('preview-thumb').src = url;
+                document.getElementById('preview-thumb').classList.remove('hidden');
+            };
+            input.click();
+        });
 
-async function quickStatus(id, status) {
-    await handleStockOnStatusChange(id, status);
-    await db.collection('orders').doc(id).update({ status });
-    if (status === "Wird bearbeitet") await awardLoyaltyIfProcessed(id);
-    await logAction("order_status_changed", id, { status });
-    showToast(`Status auf „${status}“ gesetzt`);
-}
+        // ==================== CSV EXPORT ====================
+        async function exportProductsToCSV() {
+            const snapshot = await db.collection("products").get();
+            if (snapshot.empty) return alert("Keine Produkte vorhanden!");
+            let csv = "id,name,price,stock,category,isNew,available,description,image,sold\n";
+            snapshot.forEach(doc => {
+                const p = doc.data();
+                const row = [
+                    `"${doc.id}"`,
+                    `"${(p.name || "").replace(/"/g, '""')}"`,
+                    p.price || 0,
+                    p.stock || 0,
+                    `"${p.category || ""}"`,
+                    p.isNew === true ? "true" : "false",
+                    p.available !== false ? "true" : "false",
+                    `"${(p.description || "").replace(/"/g, '""').replace(/\n/g, "\\n")}"`,
+                    `"${p.image || ""}"`,
+                    p.sold || 0
+                ].join(",");
+                csv += row + "\n";
+            });
+            const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+            const link = document.createElement("a");
+            const date = new Date().toISOString().slice(0,10);
+            link.href = URL.createObjectURL(blob);
+            link.download = `wavevapes_products_backup_${date}.csv`;
+            link.click();
+            showToast("✅ CSV-Datei wurde heruntergeladen!", "success");
+        }
 
-// ====================== ORDER DETAIL MODAL ======================
-async function showOrderModal(orderId) {
-    currentOrderId = orderId;
-    const doc = await db.collection('orders').doc(orderId).get();
-    const order = doc.data();
-    const date = order.date ? order.date.toDate().toLocaleString('de-DE') : '—';
-    let itemsHTML = '';
-    order.items.forEach(item => {
-        itemsHTML += `
-            <div class="flex justify-between py-3 border-b border-white/10">
-                <span>${item.name} × ${item.qty} ${item.nicotine ? `(${item.nicotine})` : ''}</span>
-                <span>${(item.price * item.qty).toFixed(2)} €</span>
-            </div>`;
-    });
-    const modalHTML = `
-    <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]">
-        <div class="bg-zinc-900 rounded-3xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto modal">
-            <div class="flex justify-between items-center mb-8">
-                <h3 class="text-3xl font-bold neon">Bestellung #${order.orderNumber}</h3>
-                <button onclick="closeOrderModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
-            </div>
-            <div class="space-y-8">
-                <div class="grid grid-cols-2 gap-8 text-sm">
-                    <div><strong>Datum:</strong> ${date}</div>
-                    <div><strong>Kunde:</strong> <span class="text-emerald-400">${order.userEmail}</span></div>
-                </div>
-                <div><strong>Adresse:</strong><br>${order.address.street}<br>${order.address.zip} ${order.address.city}</div>
-                <div><strong>Artikel</strong>${itemsHTML}</div>
-                <div class="text-2xl font-bold">Gesamt: <span class="text-emerald-400">${order.total.toFixed(2)} €</span></div>
-                <div class="bg-zinc-950 -mx-8 -mb-8 p-8 rounded-b-3xl border-t border-white/10">
-                    <h4 class="font-bold mb-6 text-cyan-400 flex items-center gap-2"><i class="fa-solid fa-truck"></i> Admin-Steuerung</h4>
-                    <select id="modal-status" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 mb-6">
-                        <option value="Zahlung erwartet" ${order.status === "Zahlung erwartet" ? 'selected' : ''}>Zahlung erwartet</option>
-                        <option value="Wird bearbeitet" ${order.status === "Wird bearbeitet" ? 'selected' : ''}>Wird bearbeitet</option>
-                        <option value="Versendet" ${order.status === "Versendet" ? 'selected' : ''}>Versendet</option>
-                        <option value="Zugestellt" ${order.status === "Zugestellt" ? 'selected' : ''}>Zugestellt</option>
-                        <option value="Storniert" ${order.status === "Storniert" ? 'selected' : ''}>Storniert</option>
-                    </select>
-                    <div class="grid grid-cols-2 gap-6">
-                        <div><label class="text-xs block mb-2 text-gray-400">Versanddienst</label>
-                            <select id="modal-carrier" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
-                                <option value="DHL" ${order.carrier === "DHL" ? 'selected' : ''}>DHL</option>
-                                <option value="Hermes" ${order.carrier === "Hermes" ? 'selected' : ''}>Hermes</option>
-                                <option value="DPD" ${order.carrier === "DPD" ? 'selected' : ''}>DPD</option>
+        // ==================== CSV IMPORT ====================
+        async function importProductsFromCSV(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            if (!confirm("⚠️ WARNUNG!\n\nAlle aktuellen Produkte werden GELÖSCHT und durch die CSV ersetzt.\n\nWirklich fortfahren?")) {
+                e.target.value = "";
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = async function(event) {
+                const text = event.target.result;
+                const rows = text.trim().split("\n");
+                const deleteSnapshot = await db.collection("products").get();
+                const batchDelete = db.batch();
+                deleteSnapshot.forEach(doc => batchDelete.delete(doc.ref));
+                await batchDelete.commit();
+                const batch = db.batch();
+                for (let i = 1; i < rows.length; i++) {
+                    if (!rows[i].trim()) continue;
+                    const values = parseCSVLine(rows[i]);
+                    const data = {
+                        name: values[1],
+                        price: parseFloat(values[2]),
+                        stock: parseInt(values[3]),
+                        category: values[4],
+                        isNew: values[5] === "true",
+                        available: values[6] === "true",
+                        description: values[7],
+                        image: values[8] || null,
+                        sold: parseInt(values[9]) || 0
+                    };
+                    const docRef = db.collection("products").doc(values[0]);
+                    batch.set(docRef, data);
+                }
+                await batch.commit();
+                showToast("✅ Alle Produkte wurden erfolgreich wiederhergestellt!", "success");
+                loadProducts();
+            };
+            reader.readAsText(file);
+            e.target.value = "";
+        }
+        function parseCSVLine(line) {
+            return line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(field =>
+                field.replace(/^"|"$/g, '').replace(/""/g, '"')
+            );
+        }
+
+        // ==================== BESTELLUNGEN ====================
+        function loadOrders() {
+            const tbody = document.getElementById('orders-tbody');
+            db.collection('orders').orderBy('date', 'desc').onSnapshot(snap => {
+                let html = '';
+                snap.forEach(doc => {
+                    const o = doc.data();
+                    const date = o.date ? o.date.toDate().toLocaleString('de-DE') : '—';
+                    const status = o.status || 'Zahlung erwartet';
+                    if (document.getElementById('order-search').value &&
+                        !o.orderNumber.includes(document.getElementById('order-search').value) &&
+                        !o.userEmail.includes(document.getElementById('order-search').value)) return;
+                    if (document.getElementById('status-filter').value && status !== document.getElementById('status-filter').value) return;
+                    html += `
+                    <tr class="border-b border-white/10 hover:bg-zinc-800/50">
+                        <td class="py-6 px-6 font-mono text-cyan-300">${o.orderNumber}</td>
+                        <td class="py-6 px-6">${date}</td>
+                        <td class="py-6 px-6">${o.userEmail}</td>
+                        <td class="py-6 px-6 font-bold">${o.total.toFixed(2)} €</td>
+                        <td class="py-6 px-6"><span class="status-badge ${getStatusClass(status)}">${status}</span></td>
+                        <td class="py-6 px-6 text-right">
+                            <button onclick="quickStatus('${doc.id}', 'Versendet')" class="text-xs bg-emerald-600 hover:bg-emerald-500 px-5 py-2 rounded-2xl">Versendet</button>
+                            <button onclick="showOrderModal('${doc.id}')" class="ml-3 text-cyan-400 hover:text-white"><i class="fa-solid fa-eye text-xl"></i></button>
+                        </td>
+                    </tr>`;
+                });
+                tbody.innerHTML = html || `<tr><td colspan="6" class="text-center py-16 text-gray-400">Noch keine Bestellungen</td></tr>`;
+            });
+        }
+        async function quickStatus(id, status) {
+            await handleStockOnStatusChange(id, status);
+            await db.collection('orders').doc(id).update({ status });
+            if (status === "Wird bearbeitet") {
+                await awardLoyaltyIfProcessed(id);
+            }
+            showToast(`Status auf „${status}“ gesetzt`);
+        }
+
+        // ==================== BESTELL-DETAIL MODAL ====================
+        async function showOrderModal(orderId) {
+            currentOrderId = orderId;
+            const doc = await db.collection('orders').doc(orderId).get();
+            const order = doc.data();
+            const date = order.date ? order.date.toDate().toLocaleString('de-DE') : '—';
+            let itemsHTML = '';
+            order.items.forEach(item => {
+                itemsHTML += `
+                    <div class="flex justify-between py-3 border-b border-white/10">
+                        <span>${item.name} × ${item.qty} ${item.nicotine ? `(${item.nicotine})` : ''}</span>
+                        <span>${(item.price * item.qty).toFixed(2)} €</span>
+                    </div>`;
+            });
+            const modalHTML = `
+            <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]">
+                <div class="bg-zinc-900 rounded-3xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto modal">
+                    <div class="flex justify-between items-center mb-8">
+                        <h3 class="text-3xl font-bold neon">Bestellung #${order.orderNumber}</h3>
+                        <button onclick="closeOrderModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
+                    </div>
+                    <div class="space-y-8">
+                        <div class="grid grid-cols-2 gap-8 text-sm">
+                            <div><strong>Datum:</strong> ${date}</div>
+                            <div><strong>Kunde:</strong> <span class="text-emerald-400">${order.userEmail}</span></div>
+                        </div>
+                        <div><strong>Adresse:</strong><br>${order.address.street}<br>${order.address.zip} ${order.address.city}</div>
+                        <div>
+                            <strong>Artikel</strong>
+                            ${itemsHTML}
+                        </div>
+                        <div class="text-2xl font-bold">Gesamt: <span class="text-emerald-400">${order.total.toFixed(2)} €</span></div>
+                        <div class="bg-zinc-950 -mx-8 -mb-8 p-8 rounded-b-3xl border-t border-white/10">
+                            <h4 class="font-bold mb-6 text-cyan-400 flex items-center gap-2"><i class="fa-solid fa-truck"></i> Admin-Steuerung</h4>
+                            <select id="modal-status" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 mb-6">
+                                <option value="Zahlung erwartet" ${order.status === "Zahlung erwartet" ? 'selected' : ''}>Zahlung erwartet</option>
+                                <option value="Wird bearbeitet" ${order.status === "Wird bearbeitet" ? 'selected' : ''}>Wird bearbeitet</option>
+                                <option value="Versendet" ${order.status === "Versendet" ? 'selected' : ''}>Versendet</option>
+                                <option value="Zugestellt" ${order.status === "Zugestellt" ? 'selected' : ''}>Zugestellt</option>
+                                <option value="Storniert" ${order.status === "Storniert" ? 'selected' : ''}>Storniert</option>
                             </select>
-                        </div>
-                        <div><label class="text-xs block mb-2 text-gray-400">Tracking-Nummer</label>
-                            <input id="modal-tracking" value="${order.trackingNumber || ''}" placeholder="Tracking-Nummer" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
+                            <div class="grid grid-cols-2 gap-6">
+                                <div>
+                                    <label class="text-xs block mb-2 text-gray-400">Versanddienst</label>
+                                    <select id="modal-carrier" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
+                                        <option value="DHL" ${order.carrier === "DHL" ? 'selected' : ''}>DHL</option>
+                                        <option value="Hermes" ${order.carrier === "Hermes" ? 'selected' : ''}>Hermes</option>
+                                        <option value="DPD" ${order.carrier === "DPD" ? 'selected' : ''}>DPD</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="text-xs block mb-2 text-gray-400">Tracking-Nummer</label>
+                                    <input id="modal-tracking" value="${order.trackingNumber || ''}" placeholder="Tracking-Nummer" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
+                                </div>
+                            </div>
+                            <div class="flex gap-4 mt-8">
+                                <button onclick="saveOrderChanges()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-5 rounded-3xl font-bold">Änderungen speichern</button>
+                                <button onclick="deleteOrder()" class="flex-1 bg-red-600 hover:bg-red-500 py-5 rounded-3xl font-bold">Bestellung löschen</button>
+                            </div>
                         </div>
                     </div>
-                    <div class="flex gap-4 mt-8">
-                        <button onclick="saveOrderChanges()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-5 rounded-3xl font-bold">Änderungen speichern</button>
-                        <button onclick="deleteOrder()" class="flex-1 bg-red-600 hover:bg-red-500 py-5 rounded-3xl font-bold">Bestellung löschen</button>
-                    </div>
                 </div>
-            </div>
-        </div>
-    </div>`;
-    document.getElementById('order-modal-container').innerHTML = modalHTML;
-}
-function closeOrderModal() {
-    document.getElementById('order-modal-container').innerHTML = '';
-}
-async function saveOrderChanges() {
-    const status = document.getElementById('modal-status').value;
-    const carrier = document.getElementById('modal-carrier').value;
-    const tracking = document.getElementById('modal-tracking').value.trim();
-    await handleStockOnStatusChange(currentOrderId, status);
-    await db.collection('orders').doc(currentOrderId).update({ status, carrier, trackingNumber: tracking });
-    if (status === "Wird bearbeitet") await awardLoyaltyIfProcessed(currentOrderId);
-    await logAction("order_updated", currentOrderId, { status });
-    showToast('Bestellung aktualisiert');
-    closeOrderModal();
-}
-async function deleteOrder() {
-    if (!confirm('Bestellung IRREVERSIBEL löschen?')) return;
-    await db.collection('orders').doc(currentOrderId).delete();
-    await logAction("order_deleted", currentOrderId);
-    showToast('Bestellung gelöscht');
-    closeOrderModal();
-}
-
-// ====================== BENUTZER ======================
-function loadUsers() {
-    const tbody = document.getElementById('users-tbody');
-    db.collection('users').onSnapshot(snapshot => {
-        let html = '';
-        const search = (document.getElementById('user-search').value || '').toLowerCase();
-        snapshot.forEach(doc => {
-            const u = doc.data();
-            const email = u.email || '—';
-            const username = u.username || '—';
-            const refCode = u.referralCode || '—';
-            const points = u.totalBonusPoints || 0;
-            const disabled = u.disabled === true;
-            if (search && !email.toLowerCase().includes(search) && !username.toLowerCase().includes(search)) return;
-            html += `
-            <tr class="table-row-hover border-b border-white/10">
-                <td class="py-5 px-6 font-medium">${email}</td>
-                <td class="py-5 px-6">${username}</td>
-                <td class="py-5 px-6 text-center font-mono text-cyan-300">${refCode}</td>
-                <td class="py-5 px-6 text-center font-bold text-emerald-400">${points}</td>
-                <td class="py-5 px-6 text-center">
-                    <span class="status-badge ${disabled ? 'disabled' : 'bg-emerald-600 text-white'}">${disabled ? 'GESPERRT' : 'AKTIV'}</span>
-                </td>
-                <td class="py-5 px-6 text-right space-x-3">
-                    <button onclick="resetPassword('${email}')" class="text-amber-400 hover:text-amber-300 text-sm font-medium">PW zurücksetzen</button>
-                    <button onclick="resetUserPoints('${doc.id}')" class="text-red-400 hover:text-red-300 text-sm font-medium">Punkte resetten</button>
-                    <button onclick="toggleDisable('${doc.id}', ${!disabled})" class="text-red-400 hover:text-red-300 text-sm font-medium">${disabled ? 'Entsperren' : 'Sperren'}</button>
-                    <button onclick="deleteUser('${doc.id}', '${email}')" class="text-red-500 hover:text-red-400 text-sm font-medium">Löschen</button>
-                </td>
-            </tr>`;
-        });
-        tbody.innerHTML = html || `<tr><td colspan="6" class="text-center py-16 text-gray-400">Keine Benutzer gefunden</td></tr>`;
-    });
-}
-document.getElementById('user-search').addEventListener('input', loadUsers);
-
-async function resetPassword(email) {
-    if (!confirm(`Passwort-Zurücksetzen-E-Mail an ${email} senden?`)) return;
-    try {
-        const userSnapshot = await db.collection('users').where('email', '==', email).limit(1).get();
-        if (!userSnapshot.empty) {
-            const uid = userSnapshot.docs[0].id;
-            await db.collection('users').doc(uid).update({ passwordResetRequested: true, passwordResetTimestamp: firebase.firestore.FieldValue.serverTimestamp() });
-        }
-        await auth.sendPasswordResetEmail(email);
-        showToast(`✅ Reset-E-Mail wurde an ${email} gesendet!`);
-        await logAction("password_reset_requested", email);
-    } catch (e) {
-        showToast("Fehler: " + e.message, "error");
-    }
-}
-async function toggleDisable(uid, disable) {
-    await db.collection('users').doc(uid).update({ disabled: disable });
-    await logAction(disable ? "user_disabled" : "user_enabled", uid);
-    showToast(disable ? '✅ Benutzer gesperrt' : '✅ Benutzer entsperrt');
-}
-async function deleteUser(uid, email) {
-    if (!confirm(`⚠️ Account von ${email} WIRKLICH LÖSCHEN?\n\nAlle Bestellungen werden ebenfalls gelöscht!`)) return;
-    if (!confirm('LETZTE WARNUNG – unwiderruflich!')) return;
-    try {
-        await db.collection('users').doc(uid).delete();
-        const orders = await db.collection('orders').where('userId', '==', uid).get();
-        const batch = db.batch();
-        orders.forEach(doc => batch.delete(doc.ref));
-        await batch.commit();
-        showToast(`✅ Account ${email} komplett gelöscht`);
-        await logAction("user_deleted", uid);
-    } catch (e) {
-        showToast("Fehler: " + e.message, "error");
-    }
-}
-async function resetAllLoyaltyPoints() {
-    if (!confirm("⚠️ WIRKLICH ALLE Loyalty-Punkte auf 0 setzen?\n\nDas betrifft JEDEN Benutzer und ist unwiderruflich!")) return;
-    if (!confirm("LETZTE WARNUNG – alle Punkte werden gelöscht!")) return;
-    try {
-        const snapshot = await db.collection("users").get();
-        const batch = db.batch();
-        snapshot.forEach(doc => batch.update(doc.ref, { totalBonusPoints: 0 }));
-        await batch.commit();
-        showToast("✅ Alle Loyalty-Punkte wurden auf 0 zurückgesetzt!", "success");
-        await logAction("all_loyalty_reset");
-        loadUsers();
-    } catch (e) {
-        showToast("Fehler: " + e.message, "error");
-    }
-}
-async function resetUserPoints(uid) {
-    if (!confirm("Punkte dieses Benutzers auf 0 setzen?")) return;
-    try {
-        await db.collection("users").doc(uid).update({ totalBonusPoints: 0 });
-        showToast("✅ Punkte auf 0 gesetzt");
-        await logAction("user_loyalty_reset", uid);
-        loadUsers();
-    } catch (e) {
-        showToast("Fehler: " + e.message, "error");
-    }
-}
-
-// ====================== ANALYTICS ======================
-async function loadAnalytics() {
-    const thirtyDaysAgo = firebase.firestore.Timestamp.fromDate(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
-    const ordersSnap = await db.collection("orders").where("date", ">=", thirtyDaysAgo).get();
-    let dailyRevenue = {};
-    ordersSnap.forEach(doc => {
-        const d = doc.data();
-        const day = d.date.toDate().toISOString().slice(0,10);
-        dailyRevenue[day] = (dailyRevenue[day] || 0) + d.total;
-    });
-    const labels = Object.keys(dailyRevenue).sort();
-    const data = labels.map(d => dailyRevenue[d]);
-    if (revenueChart) revenueChart.destroy();
-    revenueChart = new Chart(document.getElementById("revenueChart"), {
-        type: "line",
-        data: { labels, datasets: [{ label: "Umsatz €", data, borderColor: "#67e8f9", tension: 0.4 }] },
-        options: { responsive: true, plugins: { legend: { display: false } } }
-    });
-
-    const productsSnap = await db.collection("products").orderBy("sold", "desc").limit(10).get();
-    const prodLabels = [], prodData = [];
-    productsSnap.forEach(doc => {
-        const p = doc.data();
-        prodLabels.push(p.name);
-        prodData.push(p.sold || 0);
-    });
-    if (topProductsChart) topProductsChart.destroy();
-    topProductsChart = new Chart(document.getElementById("topProductsChart"), {
-        type: "pie",
-        data: { labels: prodLabels, datasets: [{ data: prodData, backgroundColor: ["#67e8f9","#a78bfa","#f472b6","#fb923c","#4ade80"] }] }
-    });
-
-    const usersSnap = await db.collection("users").orderBy("referralCount", "desc").limit(10).get();
-    const refLabels = [], refData = [];
-    usersSnap.forEach(doc => {
-        const u = doc.data();
-        refLabels.push(u.username || u.email.split("@")[0]);
-        refData.push(u.referralCount || 0);
-    });
-    if (referralChart) referralChart.destroy();
-    referralChart = new Chart(document.getElementById("referralChart"), {
-        type: "bar",
-        data: { labels: refLabels, datasets: [{ label: "Geworbene Freunde", data: refData, backgroundColor: "#a78bfa" }] }
-    });
-}
-async function generatePDFReport() {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    doc.setFontSize(20);
-    doc.text("WaveVapes Monatsbericht", 20, 20);
-    doc.setFontSize(12);
-    doc.text(`Erstellt: ${new Date().toLocaleDateString("de-DE")}`, 20, 35);
-    doc.save("wavevapes-monatsbericht.pdf");
-    await logAction("monthly_report_generated");
-}
-
-// ====================== ADMIN LOGS ======================
-function loadAdminLogs() {
-    if (logsUnsubscribe) logsUnsubscribe();
-    logsUnsubscribe = db.collection("admin_logs").orderBy("timestamp", "desc").limit(50).onSnapshot(snap => {
-        const container = document.getElementById("logs-container");
-        container.innerHTML = "";
-        snap.forEach(doc => {
-            const l = doc.data();
-            const time = l.timestamp ? l.timestamp.toDate().toLocaleString("de-DE") : "—";
-            container.innerHTML += `
-            <div class="card p-6 flex justify-between items-start">
-                <div>
-                    <div class="font-mono text-xs text-cyan-300">${l.adminEmail}</div>
-                    <div class="text-lg font-semibold">${l.action}</div>
-                    <div class="text-sm text-gray-400">${l.target}</div>
-                </div>
-                <div class="text-right text-xs text-gray-500">${time}</div>
             </div>`;
+            document.getElementById('order-modal-container').innerHTML = modalHTML;
+        }
+        function closeOrderModal() {
+            document.getElementById('order-modal-container').innerHTML = '';
+        }
+        async function saveOrderChanges() {
+            const status = document.getElementById('modal-status').value;
+            const carrier = document.getElementById('modal-carrier').value;
+            const tracking = document.getElementById('modal-tracking').value.trim();
+            await handleStockOnStatusChange(currentOrderId, status);
+            await db.collection('orders').doc(currentOrderId).update({
+                status,
+                carrier,
+                trackingNumber: tracking
+            });
+            if (status === "Wird bearbeitet") {
+                await awardLoyaltyIfProcessed(currentOrderId);
+            }
+            showToast('Bestellung aktualisiert');
+            closeOrderModal();
+        }
+        async function deleteOrder() {
+            if (!confirm('Bestellung IRREVERSIBEL löschen?')) return;
+            await db.collection('orders').doc(currentOrderId).delete();
+            showToast('Bestellung gelöscht');
+            closeOrderModal();
+        }
+
+        // ==================== BENUTZER TAB ====================
+        function loadUsers() {
+            const tbody = document.getElementById('users-tbody');
+            db.collection('users').onSnapshot(snapshot => {
+                let html = '';
+                const search = (document.getElementById('user-search').value || '').toLowerCase();
+                snapshot.forEach(doc => {
+                    const u = doc.data();
+                    const email = u.email || '—';
+                    const username = u.username || '—';
+                    const refCode = u.referralCode || '—';
+                    const points = u.totalBonusPoints || 0;
+                    const disabled = u.disabled === true;
+                    if (search && !email.toLowerCase().includes(search) && !username.toLowerCase().includes(search)) return;
+                    html += `
+                    <tr class="table-row-hover border-b border-white/10">
+                        <td class="py-5 px-6 font-medium">${email}</td>
+                        <td class="py-5 px-6">${username}</td>
+                        <td class="py-5 px-6 text-center font-mono text-cyan-300">${refCode}</td>
+                        <td class="py-5 px-6 text-center font-bold text-emerald-400">${points}</td>
+                        <td class="py-5 px-6 text-center">
+                            <span class="status-badge ${disabled ? 'disabled' : 'bg-emerald-600 text-white'}">
+                                ${disabled ? 'GESPERRT' : 'AKTIV'}
+                            </span>
+                        </td>
+                        <td class="py-5 px-6 text-right space-x-3">
+                            <button onclick="resetPassword('${email}')"
+                                    class="text-amber-400 hover:text-amber-300 text-sm font-medium">PW zurücksetzen</button>
+                            <button onclick="resetUserPoints('${doc.id}')"
+                                    class="text-red-400 hover:text-red-300 text-sm font-medium">Punkte resetten</button>
+                            <button onclick="toggleDisable('${doc.id}', ${!disabled})"
+                                    class="text-red-400 hover:text-red-300 text-sm font-medium">
+                                ${disabled ? 'Entsperren' : 'Sperren'}
+                            </button>
+                            <button onclick="deleteUser('${doc.id}', '${email}')"
+                                    class="text-red-500 hover:text-red-400 text-sm font-medium">Löschen</button>
+                        </td>
+                    </tr>`;
+                });
+                tbody.innerHTML = html || `<tr><td colspan="6" class="text-center py-16 text-gray-400">Keine Benutzer gefunden</td></tr>`;
+            });
+        }
+        document.getElementById('user-search').addEventListener('input', loadUsers);
+        async function resetPassword(email) {
+            if (!confirm(`Passwort-Zurücksetzen-E-Mail an ${email} senden?`)) return;
+            try {
+                const userSnapshot = await db.collection('users').where('email', '==', email).limit(1).get();
+                if (!userSnapshot.empty) {
+                    const uid = userSnapshot.docs[0].id;
+                    await db.collection('users').doc(uid).update({
+                        passwordResetRequested: true,
+                        passwordResetTimestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                }
+                await auth.sendPasswordResetEmail(email);
+                showToast(`✅ Reset-E-Mail wurde an ${email} gesendet!`);
+            } catch (e) {
+                showToast("Fehler: " + e.message, "error");
+            }
+        }
+        async function toggleDisable(uid, disable) {
+            await db.collection('users').doc(uid).update({ disabled: disable });
+            showToast(disable ? '✅ Benutzer gesperrt' : '✅ Benutzer entsperrt');
+        }
+        async function deleteUser(uid, email) {
+            if (!confirm(`⚠️ Account von ${email} WIRKLICH LÖSCHEN?\n\nAlle Bestellungen werden ebenfalls gelöscht!`)) return;
+            if (!confirm('LETZTE WARNUNG – unwiderruflich!')) return;
+            try {
+                await db.collection('users').doc(uid).delete();
+                const orders = await db.collection('orders').where('userId', '==', uid).get();
+                const batch = db.batch();
+                orders.forEach(doc => batch.delete(doc.ref));
+                await batch.commit();
+                showToast(`✅ Account ${email} komplett gelöscht`);
+            } catch (e) {
+                showToast("Fehler: " + e.message, "error");
+            }
+        }
+        async function resetAllLoyaltyPoints() {
+            if (!confirm("⚠️ WIRKLICH ALLE Loyalty-Punkte auf 0 setzen?\n\nDas betrifft JEDEN Benutzer und ist unwiderruflich!")) return;
+            if (!confirm("LETZTE WARNUNG – alle Punkte werden gelöscht!")) return;
+            try {
+                const snapshot = await db.collection("users").get();
+                const batch = db.batch();
+                snapshot.forEach(doc => {
+                    batch.update(doc.ref, { totalBonusPoints: 0 });
+                });
+                await batch.commit();
+                showToast("✅ Alle Loyalty-Punkte wurden auf 0 zurückgesetzt!", "success");
+                loadUsers();
+            } catch (e) {
+                showToast("Fehler: " + e.message, "error");
+            }
+        }
+        async function resetUserPoints(uid) {
+            if (!confirm("Punkte dieses Benutzers auf 0 setzen?")) return;
+            try {
+                await db.collection("users").doc(uid).update({ totalBonusPoints: 0 });
+                showToast("✅ Punkte auf 0 gesetzt");
+                loadUsers();
+            } catch (e) {
+                showToast("Fehler: " + e.message, "error");
+            }
+        }
+
+        // ==================== CSV EXPORTS BENUTZER & BESTELLUNGEN ====================
+        async function exportOrdersToCSV() {
+            const snapshot = await db.collection("orders").get();
+            if (snapshot.empty) return alert("Keine Bestellungen!");
+            let csv = "orderNumber,date,userEmail,total,status,items\n";
+            snapshot.forEach(doc => {
+                const o = doc.data();
+                const dateStr = o.date ? o.date.toDate().toISOString() : '';
+                const itemsStr = o.items.map(i => `${i.name} x${i.qty}`).join('; ');
+                const row = [
+                    `"${o.orderNumber}"`,
+                    `"${dateStr}"`,
+                    `"${o.userEmail}"`,
+                    o.total,
+                    `"${o.status}"`,
+                    `"${itemsStr}"`
+                ].join(",");
+                csv += row + "\n";
+            });
+            const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `wavevapes_orders_${new Date().toISOString().slice(0,10)}.csv`;
+            link.click();
+            showToast("✅ Bestellungen exportiert!", "success");
+        }
+        async function exportUsersToCSV() {
+            const snapshot = await db.collection("users").get();
+            if (snapshot.empty) return alert("Keine Benutzer!");
+            let csv = "email,username,referralCode,totalBonusPoints,disabled\n";
+            snapshot.forEach(doc => {
+                const u = doc.data();
+                const row = [
+                    `"${u.email}"`,
+                    `"${u.username || ''}"`,
+                    `"${u.referralCode || ''}"`,
+                    u.totalBonusPoints || 0,
+                    u.disabled === true ? "true" : "false"
+                ].join(",");
+                csv += row + "\n";
+            });
+            const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `wavevapes_users_${new Date().toISOString().slice(0,10)}.csv`;
+            link.click();
+            showToast("✅ Benutzer exportiert!", "success");
+        }
+
+        // ====================== GUTSCHEIN-MANAGER ======================
+        document.getElementById('add-coupon-form').addEventListener('submit', async e => {
+            e.preventDefault();
+            const code = document.getElementById('coupon-code').value.trim().toUpperCase();
+            const type = document.getElementById('coupon-type').value;
+            const value = parseFloat(document.getElementById('coupon-value').value);
+            const expiry = new Date(document.getElementById('coupon-expiry').value);
+            const oneTime = document.getElementById('coupon-onetime').checked;
+            await db.collection('coupons').add({
+                code,
+                type,
+                value,
+                expiresAt: firebase.firestore.Timestamp.fromDate(expiry),
+                oneTimeUse: oneTime,
+                usedBy: [],
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            e.target.reset();
+            showToast('✅ Gutschein erstellt!');
+            loadCoupons();
         });
-    });
-}
-
-// ====================== SETTINGS ======================
-async function loadSettings() {
-    const doc = await db.collection("settings").doc("main").get();
-    let data = doc.exists ? doc.data() : {
-        bank_owner: "Jakob David Hellrung",
-        iban: "DE38360200300003395812",
-        bic: "NBAGDE3EXXX",
-        shipping_cost: 4.99,
-        free_shipping_threshold: 100,
-        shop_closed: false,
-        email_template: "Deine Bestellung wurde bestätigt..."
-    };
-    if (!doc.exists) await db.collection("settings").doc("main").set(data);
-    document.getElementById("set-bank-owner").value = data.bank_owner || "";
-    document.getElementById("set-iban").value = data.iban || "";
-    document.getElementById("set-bic").value = data.bic || "";
-    document.getElementById("set-shipping").value = data.shipping_cost || 4.99;
-    document.getElementById("set-free-threshold").value = data.free_shipping_threshold || 100;
-    document.getElementById("set-closed").checked = data.shop_closed || false;
-    document.getElementById("set-email-template").value = data.email_template || "";
-}
-async function saveSettings() {
-    const data = {
-        bank_owner: document.getElementById("set-bank-owner").value,
-        iban: document.getElementById("set-iban").value,
-        bic: document.getElementById("set-bic").value,
-        shipping_cost: parseFloat(document.getElementById("set-shipping").value),
-        free_shipping_threshold: parseFloat(document.getElementById("set-free-threshold").value),
-        shop_closed: document.getElementById("set-closed").checked,
-        email_template: document.getElementById("set-email-template").value
-    };
-    await db.collection("settings").doc("main").set(data, {merge: true});
-    await logAction("settings_updated");
-    showToast("✅ Einstellungen gespeichert", "success");
-}
-
-// ====================== STATUS & STOCK & LOYALTY ======================
-function getStatusClass(s) {
-    switch(s || "Zahlung erwartet") {
-        case "Zahlung erwartet": return "status-Zahlung";
-        case "Wird bearbeitet": return "status-Wird";
-        case "Versendet": return "status-Versendet";
-        case "Zugestellt": return "status-Zugestellt";
-        case "Storniert": return "status-Storniert";
-        default: return "status-Zahlung";
-    }
-}
-async function awardLoyaltyIfProcessed(orderId) {
-    const doc = await db.collection('orders').doc(orderId).get();
-    const order = doc.data();
-    if (!order || order.status !== "Wird bearbeitet" || order.loyaltyCredited === true) return;
-    const points = order.loyaltyEarned || 0;
-    if (points <= 0) return;
-    await db.collection('users').doc(order.userId).update({ totalBonusPoints: firebase.firestore.FieldValue.increment(points) });
-    await db.collection('orders').doc(orderId).update({ loyaltyCredited: true });
-    showToast(`🎉 +${points} Loyalty-Punkte gutgeschrieben!`, 'success');
-}
-async function handleStockOnStatusChange(orderId, newStatus) {
-    const doc = await db.collection('orders').doc(orderId).get();
-    const order = doc.data();
-    const oldStatus = order.status || "Zahlung erwartet";
-    if (newStatus === "Wird bearbeitet" && oldStatus !== "Wird bearbeitet") {
-        for (let item of order.items) {
-            if (item.id === 999) continue;
-            await db.collection("products").doc(item.id).update({
-                stock: firebase.firestore.FieldValue.increment(-item.qty),
-                sold: firebase.firestore.FieldValue.increment(item.qty)
-            });
+        async function loadCoupons() {
+            const snap = await db.collection('coupons').orderBy('createdAt', 'desc').get();
+            allCoupons = snap.docs.map(d => ({id: d.id, ...d.data()}));
+            renderCouponsTable();
         }
-        showToast("✅ Lagerbestand abgezogen", "success");
-    }
-    if (newStatus === "Storniert" && oldStatus === "Wird bearbeitet") {
-        for (let item of order.items) {
-            if (item.id === 999) continue;
-            await db.collection("products").doc(item.id).update({
-                stock: firebase.firestore.FieldValue.increment(item.qty),
-                sold: firebase.firestore.FieldValue.increment(-item.qty)
+        function renderCouponsTable() {
+            const tbody = document.getElementById('coupons-tbody');
+            let html = '';
+            allCoupons.forEach(c => {
+                const expired = c.expiresAt.toDate() < new Date();
+                html += `
+                <tr class="coupon-row ${c.usedBy.length > 0 ? 'used' : ''}">
+                    <td class="py-4 px-6 font-mono font-bold">${c.code}</td>
+                    <td class="py-4 px-6 text-center">${c.type === 'percent' ? c.value + '%' : c.value + '€'}</td>
+                    <td class="py-4 px-6 text-center ${expired ? 'text-red-400' : ''}">${c.expiresAt.toDate().toLocaleDateString('de-DE')}</td>
+                    <td class="py-4 px-6 text-center">${c.usedBy.length}/${c.oneTimeUse ? '1' : '∞'}</td>
+                    <td class="py-4 px-6 text-right">
+                        <button onclick="deleteCoupon('${c.id}')" class="text-red-400 hover:text-white"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                </tr>`;
             });
+            tbody.innerHTML = html || `<tr><td colspan="5" class="text-center py-16 text-gray-400">Noch keine Gutscheine</td></tr>`;
         }
-        showToast("✅ Lagerbestand wiederhergestellt", "success");
-    }
-}
+        async function deleteCoupon(id) {
+            if (confirm('Gutschein löschen?')) {
+                await db.collection('coupons').doc(id).delete();
+                loadCoupons();
+            }
+        }
 
-// ====================== TOAST ======================
-function showToast(msg, type = 'success') {
-    const toast = document.createElement('div');
-    toast.className = `toast flex items-center gap-3 px-8 py-4 rounded-3xl shadow-2xl text-sm font-medium ${type === 'error' ? 'bg-red-600' : 'bg-emerald-600'}`;
-    toast.innerHTML = `<i class="fa-solid ${type === 'error' ? 'fa-xmark' : 'fa-check'}"></i> ${msg}`;
-    document.getElementById('toast-container').appendChild(toast);
-    setTimeout(() => toast.remove(), 3500);
-}
-
-// ====================== SIDEBAR & TABS ======================
-function switchTab(n) {
-    document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('tab-active'));
-    document.getElementById('sidebar-' + n).classList.add('tab-active');
-    document.querySelectorAll('[id^="tab-content-"]').forEach(el => el.classList.add('hidden'));
-    document.getElementById('tab-content-' + n).classList.remove('hidden');
-
-    if (n === 5) loadAnalytics();
-    if (n === 6) loadAdminLogs();
-}
-function toggleSidebar() {
-    document.getElementById("sidebar").classList.toggle("-translate-x-full");
-}
-
-// ====================== AUTH ======================
-auth.onAuthStateChanged(async (user) => {
-    if (!user) return window.location.href = 'index.html';
-    document.getElementById('admin-email').textContent = user.email;
-    const userDoc = await db.collection('users').doc(user.uid).get();
-    if (!userDoc.exists || userDoc.data().role !== 'admin') {
-        alert("Zugriff verweigert – du bist kein Administrator.");
-        window.location.href = 'index.html';
-        return;
-    }
-    loadSettings();
-    switchTab(0);
-});
-
-// ====================== INIT ======================
-window.onload = () => {
-    loadProducts();
-    loadCategories();
-    loadCoupons();
-    loadOrders();
-    loadUsers();
-    // Extra Sicherheit: Stats nach 500ms nochmal erzwingen
-    setTimeout(updateStats, 500);
-};
-</script>
+        // ==================== START ====================
+        window.onload = () => {
+            loadProducts();
+            document.getElementById('order-search').addEventListener('input', loadOrders);
+            document.getElementById('status-filter').addEventListener('change', loadOrders);
+            document.getElementById('user-search').addEventListener('input', loadUsers);
+        };
+    </script>
 </body>
 </html>

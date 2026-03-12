@@ -85,6 +85,7 @@
             </div>
         </div>
     </header>
+
     <!-- AUTH CHECK -->
     <div id="auth-loading" class="fixed inset-0 bg-black/90 flex items-center justify-center z-50">
         <div class="text-center">
@@ -99,6 +100,7 @@
             <a href="index.html" class="bg-cyan-500 hover:bg-cyan-400 text-black px-10 py-5 rounded-3xl font-bold text-xl">Zurück zum Shop</a>
         </div>
     </div>
+
     <!-- HAUPTINHALT -->
     <main id="admin-content" class="hidden max-w-7xl mx-auto px-6 py-10">
         <!-- TABS -->
@@ -107,6 +109,7 @@
             <button onclick="switchTab(1)" id="tab1" class="flex-1 py-5 text-lg font-semibold">Bestellungen</button>
             <button onclick="switchTab(2)" id="tab2" class="flex-1 py-5 text-lg font-semibold">Benutzer</button>
         </div>
+
         <!-- ====================== PRODUKTE TAB ====================== -->
         <div id="tab-content-0">
             <!-- BACKUP & RESTORE -->
@@ -129,6 +132,7 @@
                     ⚠️ Beim Import werden ALLE aktuellen Produkte gelöscht und durch die CSV ersetzt!
                 </p>
             </div>
+
             <!-- STATS -->
             <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
                 <div class="card p-6">
@@ -168,6 +172,7 @@
                     </div>
                 </div>
             </div>
+
             <!-- RESET BUTTON -->
             <div class="card p-8 mb-12 bg-red-950/30 border border-red-500/50">
                 <div class="flex items-center gap-4 mb-6">
@@ -183,6 +188,7 @@
                     ALLE STATISTIKEN ZURÜCKSETZEN
                 </button>
             </div>
+
             <!-- NEUES PRODUKT -->
             <div class="card p-8 mb-12">
                 <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><i class="fa-solid fa-plus"></i> Neues Produkt hinzufügen</h2>
@@ -215,6 +221,7 @@
                     <button type="submit" class="lg:col-span-1 bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-5 rounded-3xl text-xl hover:scale-105 transition">Produkt speichern</button>
                 </form>
             </div>
+
             <!-- PRODUKT-TABELLE -->
             <div class="card overflow-hidden">
                 <div class="p-6 border-b border-white/10 flex items-center justify-between">
@@ -241,6 +248,7 @@
                 </div>
             </div>
         </div>
+
         <!-- BESTELLUNGEN TAB -->
         <div id="tab-content-1" class="hidden">
             <div class="card overflow-hidden">
@@ -275,7 +283,8 @@
                 </div>
             </div>
         </div>
-        <!-- ====================== BENUTZER TAB ====================== -->
+
+        <!-- BENUTZER TAB -->
         <div id="tab-content-2" class="hidden">
             <div class="card overflow-hidden">
                 <div class="p-6 border-b border-white/10 flex items-center justify-between">
@@ -301,6 +310,7 @@
             </div>
         </div>
     </main>
+
     <!-- EDIT MODAL -->
     <div id="edit-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]">
         <div class="bg-zinc-900 rounded-3xl p-8 max-w-6xl w-full mx-4 modal max-h-[95vh] overflow-y-auto">
@@ -315,10 +325,13 @@
             </div>
         </div>
     </div>
+
     <!-- BESTELL-DETAIL MODAL -->
     <div id="order-modal-container"></div>
+
     <!-- TOAST -->
     <div id="toast-container" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[99999] flex flex-col gap-3"></div>
+
     <script>
         // ==================== FIREBASE CONFIG ====================
         const firebaseConfig = {
@@ -332,10 +345,12 @@
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
+
         let currentEditId = null;
         let selectedFile = null;
         let currentOrderId = null;
         let removeCurrentImage = false;
+
         // ==================== AUTH ====================
         auth.onAuthStateChanged(async (user) => {
             if (!user) return window.location.href = 'index.html';
@@ -351,6 +366,7 @@
             switchTab(0);
         });
         function logout() { auth.signOut().then(() => location.href = 'index.html'); }
+
         // ==================== TABS ====================
         function switchTab(n) {
             document.getElementById('tab0').classList.toggle('tab-active', n === 0);
@@ -362,6 +378,7 @@
             if (n === 1) loadOrders();
             if (n === 2) loadUsers();
         }
+
         // ==================== TOAST ====================
         function showToast(msg, type = 'success') {
             const toast = document.createElement('div');
@@ -370,6 +387,7 @@
             document.getElementById('toast-container').appendChild(toast);
             setTimeout(() => toast.remove(), 3500);
         }
+
         // ==================== RESET ALL STATISTICS ====================
         async function resetAllStatistics() {
             if (!confirm("⚠️ ALLE STATISTIKEN ZURÜCKSETZEN?\n\nDies setzt bei JEDER Produkt das Feld 'sold' auf 0.\n\nDas kann NICHT rückgängig gemacht werden!")) return;
@@ -386,6 +404,7 @@
                 alert("Fehler beim Zurücksetzen: " + e.message);
             }
         }
+
         // ==================== PRODUKTE ====================
         let allProducts = [];
         function loadProducts() {
@@ -433,6 +452,7 @@
             tbody.innerHTML = html || `<tr><td colspan="9" class="text-center py-16 text-gray-400">Keine Produkte gefunden</td></tr>`;
         }
         document.getElementById('product-search').addEventListener('input', e => renderProductTable(e.target.value));
+
         async function toggleAvailable(id, val) {
             await db.collection('products').doc(id).update({ available: val });
             showToast('Verfügbarkeit aktualisiert');
@@ -442,6 +462,7 @@
             await db.collection('products').doc(id).delete();
             showToast('✅ Produkt gelöscht');
         }
+
         // ==================== EDIT MODAL ====================
         async function openEditModal(id) {
             currentEditId = id;
@@ -495,6 +516,7 @@
             `;
             document.getElementById('edit-form').innerHTML = html;
             document.getElementById('edit-modal').classList.remove('hidden');
+
             const dropzone = document.getElementById('edit-dropzone');
             dropzone.onclick = () => {
                 const input = document.createElement('input');
@@ -509,6 +531,7 @@
                 input.click();
             };
         }
+
         function removeImageInEdit() {
             removeCurrentImage = true;
             document.getElementById('preview-image').innerHTML = `
@@ -518,11 +541,13 @@
                 </div>`;
             showToast('Bild wird entfernt – speichern nicht vergessen!', 'success');
         }
+
         function closeEditModal() {
             document.getElementById('edit-modal').classList.add('hidden');
             selectedFile = null;
             removeCurrentImage = false;
         }
+
         async function saveEdit() {
             if (!currentEditId) return;
             const name = document.getElementById('edit-name').value;
@@ -532,6 +557,7 @@
             const description = document.getElementById('edit-description').value;
             const isNew = document.getElementById('edit-new').checked;
             const unavailable = document.getElementById('edit-unavailable').checked;
+
             let data = {
                 name,
                 price,
@@ -541,6 +567,7 @@
                 isNew,
                 available: !unavailable
             };
+
             if (removeCurrentImage && !selectedFile) {
                 data.image = null;
             } else if (selectedFile) {
@@ -551,10 +578,12 @@
                 const json = await res.json();
                 if (json.secure_url) data.image = json.secure_url;
             }
+
             await db.collection('products').doc(currentEditId).update(data);
             closeEditModal();
-            showToast('✅ Produkt gespeichert! Bild wurde entfernt (falls gewünscht).');
+            showToast('✅ Produkt gespeichert!');
         }
+
         // ==================== NEUES PRODUKT ====================
         document.getElementById('add-form').addEventListener('submit', async e => {
             e.preventDefault();
@@ -566,6 +595,7 @@
             const unavailable = document.getElementById('prod-unavailable').checked;
             const description = document.getElementById('prod-description').value.trim();
             const category = type === 'vape' ? 'WaveVapes Tornado 30000' : (isNew ? 'Neue Sorten' : 'Normale Sorten');
+
             const docRef = await db.collection('products').add({
                 name,
                 price,
@@ -578,6 +608,7 @@
                 sold: 0,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
+
             if (selectedFile) {
                 const formData = new FormData();
                 formData.append("file", selectedFile);
@@ -586,11 +617,13 @@
                 const json = await res.json();
                 if (json.secure_url) await docRef.update({ image: json.secure_url });
             }
+
             e.target.reset();
             document.getElementById('preview-thumb').classList.add('hidden');
             selectedFile = null;
             showToast('✅ Produkt erfolgreich angelegt! 🎉');
         });
+
         const dropzone = document.getElementById('dropzone');
         dropzone.addEventListener('click', () => {
             const input = document.createElement('input');
@@ -604,6 +637,7 @@
             };
             input.click();
         });
+
         // ==================== CSV EXPORT ====================
         async function exportProductsToCSV() {
             const snapshot = await db.collection("products").get();
@@ -634,7 +668,8 @@
             link.click();
             showToast("✅ CSV-Datei wurde heruntergeladen!", "success");
         }
-        // ==================== CSV IMPORT ====================
+
+        // ==================== CSV IMPORT (ROBUSTER PARSER) ====================
         async function importProductsFromCSV(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -650,6 +685,7 @@
                 const batchDelete = db.batch();
                 deleteSnapshot.forEach(doc => batchDelete.delete(doc.ref));
                 await batchDelete.commit();
+
                 const batch = db.batch();
                 for (let i = 1; i < rows.length; i++) {
                     if (!rows[i].trim()) continue;
@@ -676,23 +712,14 @@
             reader.readAsText(file);
             e.target.value = "";
         }
+
+        // ROBUSTER CSV PARSER (fix für Kommas in Beschreibungen + Quotes)
         function parseCSVLine(line) {
-            const result = [];
-            let current = "";
-            let inQuotes = false;
-            for (let char of line) {
-                if (char === '"' && !inQuotes) { inQuotes = true; continue; }
-                if (char === '"' && inQuotes) { inQuotes = false; continue; }
-                if (char === ',' && !inQuotes) {
-                    result.push(current);
-                    current = "";
-                    continue;
-                }
-                current += char;
-            }
-            result.push(current);
-            return result;
+            return line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(field => 
+                field.replace(/^"|"$/g, '').replace(/""/g, '"')
+            );
         }
+
         // ==================== BESTELLUNGEN ====================
         function loadOrders() {
             const tbody = document.getElementById('orders-tbody');
@@ -736,6 +763,7 @@
             };
             return map[s] || "status-Zahlung";
         }
+
         // ==================== BESTELL-DETAIL MODAL ====================
         async function showOrderModal(orderId) {
             currentOrderId = orderId;
@@ -818,6 +846,7 @@
             showToast('Bestellung gelöscht');
             closeOrderModal();
         }
+
         // ==================== BENUTZER TAB ====================
         function loadUsers() {
             const tbody = document.getElementById('users-tbody');
@@ -859,6 +888,7 @@
             });
         }
         document.getElementById('user-search').addEventListener('input', loadUsers);
+
         async function resetPassword(email) {
             if (!confirm(`Passwort-Zurücksetzen-E-Mail an ${email} senden?`)) return;
             try {
@@ -871,7 +901,7 @@
                     });
                 }
                 await auth.sendPasswordResetEmail(email);
-                showToast(`✅ Reset-E-Mail wurde an ${email} gesendet!<br>Der User sieht jetzt die Meldung beim nächsten Login.`);
+                showToast(`✅ Reset-E-Mail wurde an ${email} gesendet!`);
             } catch (e) {
                 showToast("Fehler: " + e.message, "error");
             }
@@ -894,6 +924,7 @@
                 showToast("Fehler: " + e.message, "error");
             }
         }
+
         // ==================== START ====================
         window.onload = () => {
             loadProducts();

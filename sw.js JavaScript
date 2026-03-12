@@ -1,0 +1,13 @@
+importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js');
+const CACHE_NAME = 'wavevapes-v1';
+self.addEventListener('install', event => {
+  event.waitUntil(caches.open(CACHE_NAME));
+});
+self.addEventListener('fetch', event => {
+  event.respondWith(caches.match(event.request).then(r => r || fetch(event.request)));
+});
+firebase.initializeApp({ /* dein firebaseConfig wie oben */ });
+const messaging = firebase.messaging();
+messaging.onBackgroundMessage(payload => {
+  self.registration.showNotification(payload.notification.title, { body: payload.notification.body, icon: "logo.png" });
+});

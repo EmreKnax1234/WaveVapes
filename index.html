@@ -486,7 +486,6 @@
         </div>
     </div>
     <div id="notification-toast"></div>
-
     <script>
         // ====================== EMAILJS KONFIGURATION ======================
         const EMAILJS_SERVICE_ID = "service_lzvte0x";
@@ -497,7 +496,11 @@
             "WAVE5": { type: "percent", value: 5 },
             "Freund10": { type: "percent", value: 10 },
             "LOYAL5": { type: "fixed", value: 5, points: 300 },
-            "LOYAL10": { type: "fixed", value: 10, points: 600 }
+            "LOYAL10": { type: "fixed", value: 10, points: 600 },
+            "LOYAL15": { type: "fixed", value: 15, points: 1000 },
+            "LOYAL20": { type: "fixed", value: 20, points: 2000 },
+            "LOYAL25": { type: "fixed", value: 25, points: 2500 },
+            "LOYAL50": { type: "fixed", value: 50, points: 5000 }
         };
         const MYSTERY_ID = 999;
         const fakeNames = ["Tim","Anna","Max","Sophie","Luca","Mia","Felix","Emma","Noah","Lena","Leon","Julia","Paul","Laura","Ben","Sarah","David","Hannah","Jonas","Lea"];
@@ -510,7 +513,11 @@
         const FREE_SHIPPING_THRESHOLD = 100;
         const REWARDS = [
             { points: 300, code: "LOYAL5", discount: 5, text: "5 € Gutschein" },
-            { points: 600, code: "LOYAL10", discount: 10, text: "10 € Gutschein" }
+            { points: 600, code: "LOYAL10", discount: 10, text: "10 € Gutschein" },
+            { points: 1000, code: "LOYAL15", discount: 15, text: "15 € Gutschein" },
+            { points: 2000, code: "LOYAL20", discount: 20, text: "20 € Gutschein" },
+            { points: 2500, code: "LOYAL25", discount: 25, text: "25 € Gutschein" },
+            { points: 5000, code: "LOYAL50", discount: 50, text: "50 € Gutschein" }
         ];
         let allProducts = [];
         let cart = [];
@@ -546,12 +553,10 @@
                 console.log("✅ EmailJS initialisiert");
             }
         }
-        // ====================== E-MAIL SENDEN – FIX + LOYALTY + MYSTERY ======================
+        // ====================== E-MAIL SENDEN ======================
         async function sendOrderConfirmationEmail(orderData) {
             console.log("📧 Versuche E-Mail zu senden...");
             showToast("📧 E-Mail wird gesendet...", "success");
-            const loyaltyEarned = Math.floor(getProductTotal());
-            const hasMystery = orderData.items.some(item => item.id === MYSTERY_ID);
             try {
                 const orderItems = orderData.items.map(item => {
                     const prod = allProducts.find(p => p.id === item.id);
@@ -565,15 +570,13 @@
                 await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_ORDER_TEMPLATE, {
                     order_id: orderData.orderNumber,
                     email: orderData.userEmail,
-                    greeting_name: orderData.userEmail.split('@')[0],
                     orders: orderItems,
                     cost: {
                         shipping: orderData.shipping.toFixed(2),
                         tax: "0.00",
                         total: orderData.total.toFixed(2)
                     },
-                    loyalty_earned: loyaltyEarned,
-                    mystery_included: hasMystery ? "Ja" : "Nein"
+                    loyalty_earned: Math.floor(getProductTotal())
                 });
                 console.log("✅ E-Mail erfolgreich gesendet!");
                 showToast("✅ Bestellbestätigung per E-Mail versendet!", "success");
@@ -826,10 +829,10 @@
         }
         function updateLoyaltyDisplay() {
             document.getElementById("loyalty-points").textContent = loyaltyPoints;
-            let next = REWARDS.find(r => loyaltyPoints < r.points) || {points:9999};
-            const needed = Math.max(0, next.points - loyaltyPoints);
-            document.getElementById("loyalty-progress-text").innerHTML = `Nächster Bonus in <span class="font-bold">${needed}</span> Punkten`;
-            const percent = Math.min(100, Math.floor((loyaltyPoints / next.points) * 100));
+            const nextReward = REWARDS.find(r => loyaltyPoints < r.points) || REWARDS[REWARDS.length - 1];
+            const needed = Math.max(0, nextReward.points - loyaltyPoints);
+            document.getElementById("loyalty-progress-text").innerHTML = `Nächster Bonus in <span class="font-bold">${needed}</span> Punkten (${nextReward.text})`;
+            const percent = Math.min(100, Math.floor((loyaltyPoints / nextReward.points) * 100));
             document.getElementById("loyalty-progress-bar").style.width = percent + "%";
         }
         function addLoyaltyPoints(amount) {
@@ -890,10 +893,13 @@
         function checkAndAutoRedeemLoyalty() {
             for (let r of REWARDS) {
                 if (loyaltyPoints >= r.points && !appliedDiscount) {
-                    if (confirm(`🎉 Du hast genug Punkte für ${r.text}!\nJetzt einlösen?`)) {
-                        document.getElementById("discount-input").value = r.code;
-                        applyDiscountCode();
-                        return;
+                    const alreadyRedeemed = currentUser ? (localStorage.getItem(`redeemed_${r.code}`) === "true") : false;
+                    if (!alreadyRedeemed) {
+                        if (confirm(`🎉 Du hast genug Punkte für ${r.text}!\nJetzt einlösen?`)) {
+                            document.getElementById("discount-input").value = r.code;
+                            applyDiscountCode();
+                            return;
+                        }
                     }
                 }
             }

@@ -1510,15 +1510,16 @@
             setInterval(showNextNotification, NOTIFICATION_DURATION);
             setInterval(checkAndGenerateNotifications, 60000);
         }
-        function renderCategoryTabs() {
-            const html = `
-                <button onclick="setCategoryFilter('Alle')" class="px-5 py-2 transition ${currentCategoryFilter === 'Alle' ? 'tab-active' : ''}">Alle</button>
-                <button onclick="setCategoryFilter('WaveVapes Tornado 30000')" class="px-5 py-2 transition flex items-center gap-x-3 ${currentCategoryFilter === 'WaveVapes Tornado 30000' ? 'tab-active' : ''}">
-                    Tornado 30000 <span class="bg-amber-400 text-black text-xs font-black px-4 py-1 rounded-2xl">4 FÜR 3</span> <i class="fa-solid fa-bolt animate-bolt text-2xl"></i>
-                </button>
-                <button onclick="setCategoryFilter('Normale Sorten')" class="px-5 py-2 transition ${currentCategoryFilter === 'Normale Sorten' ? 'tab-active' : ''}">Normale Sorten</button>
-                <button onclick="setCategoryFilter('Neue Sorten')" class="px-5 py-2 transition ${currentCategoryFilter === 'Neue Sorten' ? 'tab-active' : ''}">Neue Sorten</button>
-            `;
+        // ====================== DYNAMISCHE KATEGORIEN ======================
+        async function renderCategoryTabs() {
+            const snap = await db.collection("categories").orderBy("order").get();
+            let html = `<button onclick="setCategoryFilter('Alle')" class="px-5 py-2 transition ${currentCategoryFilter === 'Alle' ? 'tab-active' : ''}">Alle</button>`;
+            snap.forEach(doc => {
+                const c = doc.data();
+                const active = currentCategoryFilter === c.name ? 'tab-active' : '';
+                let extra = c.special ? ` <span class="bg-amber-400 text-black text-xs font-black px-4 py-1 rounded-2xl">4 FÜR 3</span> <i class="fa-solid fa-bolt animate-bolt text-2xl"></i>` : '';
+                html += `<button onclick="setCategoryFilter('${c.name}')" class="px-5 py-2 transition ${active}">${c.name}${extra}</button>`;
+            });
             document.getElementById("category-tabs").innerHTML = html;
         }
         function setCategoryFilter(cat) {

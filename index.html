@@ -491,7 +491,7 @@
         const EMAILJS_SERVICE_ID = "service_lzvte0x";
         const EMAILJS_PUBLIC_KEY = "t19pJAHgBpbKpZFGU";
         const EMAILJS_ORDER_TEMPLATE = "template_cgcu1m8";
-        const EMAILJS_ABANDONED_TEMPLATE = "template_oduqaqd";
+        const EMAILJS_ABANDONED_TEMPLATE = "template_oduqaqd";   // ← DEIN ECHTER TEMPLATE-ID FÜR „Was im Warenkorb vergessen“
         // ====================== KONFIGURATION ======================
         const VALID_DISCOUNTS = {
             "WAVE5": { type: "percent", value: 5 },
@@ -587,7 +587,7 @@
                 showToast("❌ Bestell-E-Mail konnte nicht gesendet werden", "error");
             }
         }
-        // ====================== ABANDONED CART EMAIL (mit vollem Debugging) ======================
+        // ====================== ABANDONED CART EMAIL („Was im Warenkorb vergessen“) ======================
         async function sendAbandonedCartEmail() {
             if (!currentUser || cart.length === 0) {
                 showToast("Kein User oder leerer Warenkorb", "error");
@@ -613,27 +613,23 @@
             const tornadoQty = getTornadoQuantity();
             const hasTornado = tornadoQty > 0;
             const freeTornados = Math.floor(tornadoQty / 4);
-            const payload = {
-                userName: userName,
-                subtotal: subtotal,
-                total: total,
-                freeShippingMissing: freeShippingMissing > 0 ? freeShippingMissing.toFixed(2) : "",
-                mysteryMissing: mysteryMissing > 0 ? mysteryMissing.toFixed(2) : "",
-                loyaltyPoints: loyaltyPointsEarned.toString(),
-                hasTornado: hasTornado,
-                freeTornados: freeTornados.toString(),
-                cartItems: cartData
-            };
-            console.log("📧 Sende Abandoned-Cart mit Payload:", JSON.stringify(payload, null, 2));
             try {
-                const response = await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_ABANDONED_TEMPLATE, payload);
-                console.log("✅ EmailJS Response:", response);
-                showToast("✅ „Was im Warenkorb vergessen“ E-Mail erfolgreich gesendet!", "success");
+                await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_ABANDONED_TEMPLATE, {
+                    userName: userName,
+                    subtotal: subtotal,
+                    total: total,
+                    freeShippingMissing: freeShippingMissing > 0 ? freeShippingMissing.toFixed(2) : undefined,
+                    mysteryMissing: mysteryMissing > 0 ? mysteryMissing.toFixed(2) : undefined,
+                    loyaltyPoints: loyaltyPointsEarned,
+                    hasTornado: hasTornado,
+                    freeTornados: freeTornados,
+                    cartItems: cartData
+                });
+                showToast("✅ „Was im Warenkorb vergessen“ E-Mail gesendet!");
                 localStorage.setItem("abandoned_reminder_sent", Date.now());
             } catch (e) {
-                console.error("❌ FULL EmailJS Abandoned Error:", e);
-                const errorMsg = e.text ? e.text : (e.message ? e.message : JSON.stringify(e));
-                showToast(`❌ Abandoned-Cart-E-Mail Fehler:<br>${errorMsg}<br><small>Öffne F12 → Console für Details</small>`, "error");
+                console.error("Abandoned Email Fehler:", e);
+                showToast("❌ Abandoned-Cart-E-Mail konnte nicht gesendet werden", "error");
             }
         }
         function checkAbandonedCart() {
@@ -1467,7 +1463,7 @@
             }
             toast.innerHTML = msg;
             toast.classList.add('visible');
-            setTimeout(() => toast.classList.remove('visible'), 6000);
+            setTimeout(() => toast.classList.remove('visible'), 4000);
         }
         function generateNotificationList() {
             notificationList = [];

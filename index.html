@@ -485,6 +485,7 @@
         </div>
     </div>
     <div id="notification-toast"></div>
+
     <script>
         // ====================== EMAILJS KONFIGURATION ======================
         const EMAILJS_SERVICE_ID = "service_lzvte0x";
@@ -1183,7 +1184,7 @@
             const dateStr = now.getFullYear().toString().slice(2) + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0');
             return `WV-${dateStr}-${Math.floor(1000 + Math.random() * 9000)}`;
         }
-        // ====================== PLACEORDER – LOYALTY ERST BEI "WIRD BEARBEITET" ======================
+        // ====================== PLACEORDER – Stock erst bei „Wird bearbeitet“ ======================
         async function placeOrder() {
             if (!currentUser) {
                 alert("Bitte melde dich zuerst an!");
@@ -1196,17 +1197,11 @@
                 showAddressModal();
                 return;
             }
-            for (let item of cart) {
-                if (item.id === MYSTERY_ID) continue;
-                const product = allProducts.find(p => p.id === item.id);
-                if (product.stock < item.qty) {
-                    alert(`Nicht genug Vorrat für ${item.name}! Verfügbar: ${product.stock}`);
-                    return;
-                }
-            }
+
             const orderNumber = generateOrderNumber();
             const finalTotal = calculateCartTotal();
             const loyaltyEarned = Math.floor(getProductTotal());
+
             try {
                 await db.collection("orders").add({
                     userId: currentUser.uid,
@@ -1228,13 +1223,7 @@
                     loyaltyEarned: loyaltyEarned,
                     loyaltyCredited: false
                 });
-                for (let item of cart) {
-                    if (item.id === MYSTERY_ID) continue;
-                    await db.collection("products").doc(item.id).update({
-                        stock: firebase.firestore.FieldValue.increment(-item.qty),
-                        sold: firebase.firestore.FieldValue.increment(item.qty)
-                    });
-                }
+
                 await sendOrderConfirmationEmail({
                     userEmail: currentUser.email,
                     orderNumber: orderNumber,
@@ -1243,6 +1232,7 @@
                     shipping: getShippingCost(),
                     loyaltyEarned: loyaltyEarned
                 });
+
                 showSuccessModal(orderNumber, finalTotal, loyaltyEarned);
                 cart = [];
                 appliedDiscount = null;
@@ -1258,7 +1248,7 @@
         // ====================== SUCCESS MODAL – PUNKTE ERST BEI BEARBEITET ======================
         function showSuccessModal(orderNumber, total, loyaltyEarned) {
             document.getElementById("success-order-id").textContent = orderNumber;
-            document.getElementById("success-loyalty-info").innerHTML = 
+            document.getElementById("success-loyalty-info").innerHTML =
                 `<span class="text-emerald-400">+${loyaltyEarned} Punkte!</span><br>
                  <span class="text-amber-300 text-sm">werden gutgeschrieben, sobald die Bestellung auf „Wird bearbeitet“ steht</span>`;
             document.getElementById("bank-payment-info").innerHTML = `

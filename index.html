@@ -515,15 +515,10 @@
     <div id="flash-banner" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center z-[10001] p-6">
         <div class="bg-zinc-900 max-w-2xl w-full rounded-3xl p-12 text-center border-4 border-amber-400 relative shadow-2xl">
             <button onclick="closeFlashBanner()" class="absolute -top-5 -right-5 bg-red-500 hover:bg-red-600 w-12 h-12 rounded-full flex items-center justify-center text-3xl shadow-xl">✕</button>
-            
             <div class="text-7xl mb-6 animate-bolt">⚡</div>
             <h2 id="flash-banner-title" class="text-6xl font-bold tracking-tighter neon-text mb-6"></h2>
             <p id="flash-banner-subtitle" class="text-2xl text-cyan-200 mb-10 leading-relaxed"></p>
-            
-            <button id="flash-banner-btn" 
-                    onclick="flashBannerAction()" 
-                    class="bg-gradient-to-r from-amber-400 to-orange-500 text-black font-black py-6 px-16 rounded-3xl text-3xl hover:scale-110 transition-all">
-            </button>
+            <button id="flash-banner-btn" onclick="flashBannerAction()" class="bg-gradient-to-r from-amber-400 to-orange-500 text-black font-black py-6 px-16 rounded-3xl text-3xl hover:scale-110 transition-all"></button>
         </div>
     </div>
 
@@ -1305,7 +1300,7 @@
             const dateStr = now.getFullYear().toString().slice(2) + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0');
             return `WV-${dateStr}-${Math.floor(1000 + Math.random() * 9000)}`;
         }
-        // ====================== PLACEORDER – MIT LAGER-REDUKTION ======================
+        // ====================== PLACEORDER ======================
         async function placeOrder() {
             if (!currentUser) {
                 alert("Bitte melde dich zuerst an!");
@@ -1675,33 +1670,48 @@
                 document.body.innerHTML = `<div class="fixed inset-0 bg-black flex items-center justify-center text-6xl font-bold text-red-500">🚧<br>Shop in Wartung<br>Bitte später wieder kommen</div>`;
             }
         });
-        // ====================== FLASH DEAL ======================
+        // ====================== FLASH DEAL – SOFORT + LIVE ======================
         function loadFlashDeal() {
-            db.collection("settings").doc("flashdeal").onSnapshot(doc => {
-                if (!doc.exists) return;
-                const deal = doc.data();
-                window.currentFlashDeal = deal;
-
-                if (deal.active === true) {
-                    document.getElementById("flash-banner-title").textContent = deal.title || "FLASH DEAL!";
-                    document.getElementById("flash-banner-subtitle").innerHTML = deal.subtitle || "";
-                    const btn = document.getElementById("flash-banner-btn");
-                    btn.textContent = deal.buttonText || "Jetzt sichern!";
-                    btn.style.display = "inline-block";
-                    document.getElementById("flash-banner").classList.remove("hidden");
-                    document.getElementById("flash-banner").classList.add("flex");
+            const docRef = db.collection("settings").doc("flashdeal");
+            // Sofort laden
+            docRef.get().then(doc => {
+                if (doc.exists) {
+                    const deal = doc.data();
+                    window.currentFlashDeal = deal;
+                    applyFlashBanner(deal);
+                }
+            });
+            // Live Listener
+            docRef.onSnapshot(doc => {
+                if (doc.exists) {
+                    const deal = doc.data();
+                    window.currentFlashDeal = deal;
+                    applyFlashBanner(deal);
                 } else {
                     document.getElementById("flash-banner").classList.add("hidden");
                     document.getElementById("flash-banner").classList.remove("flex");
                 }
             });
         }
-
+        function applyFlashBanner(deal) {
+            if (deal.active === true) {
+                document.getElementById("flash-banner-title").textContent = deal.title || "FLASH DEAL!";
+                document.getElementById("flash-banner-subtitle").innerHTML = deal.subtitle || "";
+                const btn = document.getElementById("flash-banner-btn");
+                btn.textContent = deal.buttonText || "Jetzt sichern!";
+                const banner = document.getElementById("flash-banner");
+                banner.classList.remove("hidden");
+                banner.classList.add("flex");
+            } else {
+                const banner = document.getElementById("flash-banner");
+                banner.classList.add("hidden");
+                banner.classList.remove("flex");
+            }
+        }
         function closeFlashBanner() {
             document.getElementById("flash-banner").classList.add("hidden");
             document.getElementById("flash-banner").classList.remove("flex");
         }
-
         function flashBannerAction() {
             const link = window.currentFlashDeal?.buttonLink;
             if (link) {

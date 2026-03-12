@@ -289,6 +289,7 @@
 <div id="order-modal-container"></div>
 <!-- TOAST -->
 <div id="toast-container" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[99999] flex flex-col gap-3"></div>
+
 <script>
 // ====================== FIREBASE CONFIG ======================
 const firebaseConfig = {
@@ -1067,29 +1068,20 @@ async function awardLoyaltyIfProcessed(orderId) {
     await db.collection('orders').doc(orderId).update({ loyaltyCredited: true });
     showToast(`🎉 +${points} Loyalty-Punkte gutgeschrieben!`, 'success');
 }
-// ====================== FIX: handleStockOnStatusChange (JETZT OHNE DOPPELTES SOLD) ======================
+// ====================== FIX: handleStockOnStatusChange (Lager wird jetzt im Shop reduziert) ======================
 async function handleStockOnStatusChange(orderId, newStatus) {
     const doc = await db.collection('orders').doc(orderId).get();
     const order = doc.data();
     const oldStatus = order.status || "Zahlung erwartet";
-
     if (newStatus === "Wird bearbeitet" && oldStatus !== "Wird bearbeitet") {
-        for (let item of order.items) {
-            if (item.id === 999) continue;
-            await db.collection("products").doc(item.id).update({
-                stock: firebase.firestore.FieldValue.increment(-item.qty)
-                // sold wird bereits im Shop bei Bestellung erhöht → kein Doppel-Update
-            });
-        }
-        showToast("✅ Lagerbestand abgezogen", "success");
+        // Stock wird bereits im Shop bei Bestellung reduziert → hier nur Info
+        showToast("✅ Bestellung bearbeitet (Lager bereits reserviert)", "success");
     }
-
     if (newStatus === "Storniert" && oldStatus === "Wird bearbeitet") {
         for (let item of order.items) {
             if (item.id === 999) continue;
             await db.collection("products").doc(item.id).update({
                 stock: firebase.firestore.FieldValue.increment(item.qty)
-                // sold bleibt erhalten (stornierte Bestellung zählt weiter für Statistik)
             });
         }
         showToast("✅ Lagerbestand wiederhergestellt", "success");
@@ -1135,7 +1127,6 @@ window.onload = () => {
     loadCoupons();
     loadOrders();
     loadUsers();
-    // Extra Sicherheit: Stats nach 500ms nochmal erzwingen
     setTimeout(updateStats, 500);
 };
 </script>

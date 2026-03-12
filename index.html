@@ -192,7 +192,7 @@
         .stock-low { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
         .stock-zero { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
         img { max-width: 100%; height: auto; display: block; }
-        /* MARKETING BANNER STYLES */
+        /* PROMO BANNER STYLES */
         .promo-banner { position: relative; border-radius: 24px; overflow: hidden; box-shadow: 0 25px 50px -12px rgb(103 232 249 / 0.4); cursor: pointer; }
         .promo-banner img { width: 100%; height: auto; display: block; }
         .promo-banner .overlay { position: absolute; inset: 0; background: linear-gradient(to bottom, transparent, rgba(0,0,0,0.75)); display: flex; align-items: center; justify-content: center; text-align: center; padding: 20px; }
@@ -239,7 +239,7 @@
             <h2 class="hero-title text-5xl sm:text-6xl font-bold tracking-tighter neon-text mb-3">Bestelle deine Liquids und Vapes</h2>
             <p class="hero-subtitle text-xl sm:text-2xl text-cyan-200 max-w-md mx-auto">7,99 € pro Flasche • 10 ml • Nikotin frei wählbar (10 oder 20 mg)</p>
             <p class="text-base sm:text-lg text-gray-300 mt-4">Alle Liquids von ELFLIQ</p>
-            <!-- DYNAMISCHER MARKETING BANNER (wird live aus Firestore geladen) -->
+            <!-- LIVE PROMO BANNER -->
             <div id="hero-promo" class="mt-8"></div>
             <div class="mt-4 inline-flex items-center gap-3 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-400/30 px-7 py-3 rounded-3xl text-amber-300 text-base font-semibold transition-all">
                 <i class="fa-solid fa-truck text-2xl"></i>
@@ -341,7 +341,7 @@
                 Alle Bewertungen sind echt und werden regelmäßig auf Trustpilot & Google verifiziert
             </div>
         </div>
-        <!-- NEWSLETTER FORM (Marketing-Integration) -->
+        <!-- NEWSLETTER FORM -->
         <div class="mt-16 bg-zinc-900/50 border border-cyan-400/20 rounded-3xl p-8 text-center">
             <p class="text-emerald-400 font-medium mb-2">Bleib up-to-date – Newsletter</p>
             <div class="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
@@ -626,6 +626,7 @@
         let ordersUnsubscribe = null;
         let userSnapshotUnsubscribe = null;
         let myReferralCode = "";
+        let bannerUnsubscribe = null;
         // ====================== FIREBASE ======================
         const firebaseConfig = {
             apiKey: "AIzaSyDsIUl-iYmH42MPbusFLhGhj5oGLh01BzI",
@@ -932,7 +933,7 @@
             });
             showToast(`🎉 +${pointsToAdd} Loyalty-Punkte gutgeschrieben!`);
         }
-        // ====================== ERWEITERTES GUTSCHEIN-SYSTEM (Marketing) ======================
+        // ====================== ERWEITERTES GUTSCHEIN-SYSTEM ======================
         async function applyDiscountCode() {
             const input = document.getElementById("discount-input").value.trim().toUpperCase();
             const status = document.getElementById("discount-status");
@@ -945,7 +946,6 @@
                 showAuthModal();
                 return;
             }
-            // === NEU: Firestore-Gutscheine zuerst prüfen ===
             const couponSnap = await db.collection("coupons").where("code", "==", input).limit(1).get();
             if (!couponSnap.empty) {
                 const coupon = couponSnap.docs[0].data();
@@ -958,16 +958,10 @@
                     status.innerHTML = `<span class="text-red-400">Bereits verwendet</span>`;
                     return;
                 }
-                appliedDiscount = { 
-                    code: input, 
-                    type: coupon.type, 
-                    value: coupon.value,
-                    couponId: couponSnap.docs[0].id 
-                };
+                appliedDiscount = { code: input, type: coupon.type, value: coupon.value, couponId: couponSnap.docs[0].id };
                 const display = coupon.type === "percent" ? `${coupon.value}%` : `${coupon.value}€`;
                 status.innerHTML = `<span class="text-emerald-400">✓ ${input} (${display}) eingelöst!</span>`;
                 updateCartDisplay();
-                // Einmalnutzung markieren
                 if (coupon.oneTimeUse) {
                     await db.collection("coupons").doc(couponSnap.docs[0].id).update({
                         usedBy: firebase.firestore.FieldValue.arrayUnion(currentUser.uid)
@@ -975,7 +969,6 @@
                 }
                 return;
             }
-            // === ALTER CODE (für WAVE5 etc.) ===
             const d = VALID_DISCOUNTS[input];
             if (!d) {
                 status.innerHTML = `<span class="text-red-400">Ungültiger Code</span>`;
@@ -1671,39 +1664,44 @@
             closeProductDetail();
             showToast(`✅ ${product.name} wurde hinzugefügt!`);
         }
-        // ====================== MARKETING INTEGRATION – DYNAMISCHER BANNER ======================
-        async function loadPromoBanner() {
+        // ====================== MARKETING: NEWSLETTER & LIVE BANNER ======================
+        async function subscribeNewsletter() {
+            const email = document.getElementById("newsletter-email").value.trim().toLowerCase();
+            if (!email || !email.includes("@")) {
+                showToast("Bitte gültige E-Mail eingeben", "error");
+                return;
+            }
             try {
-                const doc = await db.collection("banners").doc("hero").get();
+                await db.collection("newsletter_subscribers").doc(email).set({
+                    email: email,
+                    subscribedAt: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+                showToast("✅ Du wurdest in den Newsletter aufgenommen! 🎉", "success");
+                document.getElementById("newsletter-email").value = "";
+            } catch (e) {
+                showToast("Fehler beim Speichern – versuche es später nochmal", "error");
+            }
+        }
+
+        function startLiveBanner() {
+            if (bannerUnsubscribe) bannerUnsubscribe();
+            bannerUnsubscribe = db.collection("banners").doc("hero").onSnapshot(doc => {
                 if (doc.exists) {
                     const b = doc.data();
+                    const promoDiv = document.getElementById("hero-promo");
                     if (b.active !== false && b.image) {
-                        const promoHTML = `
-                            <div onclick="${b.link ? `window.location.href='${b.link}'` : ''}" class="promo-banner mx-auto max-w-2xl">
+                        promoDiv.innerHTML = `
+                            <div onclick="${b.link ? `window.open('${b.link}', '_blank')` : ''}" class="promo-banner mx-auto max-w-2xl">
                                 <img src="${b.image}" alt="Promo Banner" loading="lazy">
                                 <div class="overlay">
                                     <span>${b.text || 'Jetzt bestellen!'}</span>
                                 </div>
                             </div>`;
-                        document.getElementById("hero-promo").innerHTML = promoHTML;
                     } else {
-                        document.getElementById("hero-promo").innerHTML = '';
+                        promoDiv.innerHTML = '';
                     }
                 }
-            } catch (e) {
-                console.log("Banner noch nicht konfiguriert");
-            }
-        }
-        // ====================== NEWSLETTER SUBSCRIBE (einfache lokale Speicherung) ======================
-        async function subscribeNewsletter() {
-            const email = document.getElementById("newsletter-email").value.trim();
-            if (!email || !email.includes("@")) {
-                showToast("Bitte gültige E-Mail eingeben", "error");
-                return;
-            }
-            showToast("✅ Du wurdest in den Newsletter aufgenommen! 🎉");
-            document.getElementById("newsletter-email").value = "";
-            // Optional: hier könnte man eine Firestore-Collection "newsletter" anlegen – aktuell nur Toast
+            });
         }
         // ====================== INITIALISIERUNG ======================
         function initialize() {
@@ -1719,8 +1717,7 @@
             updateCartDisplay();
             startNotificationCycle();
             checkAndAutoRedeemLoyalty();
-            // MARKETING: Banner live laden
-            loadPromoBanner();
+            startLiveBanner();
         }
         window.onload = initialize;
     </script>

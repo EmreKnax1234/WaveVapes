@@ -331,6 +331,7 @@ let revenueChart = null;
 let topProductsChart = null;
 let referralChart = null;
 let logsUnsubscribe = null;
+let allProducts = [];
 
 // ====================== LOG ACTION ======================
 async function logAction(action, target = "", details = {}) {
@@ -344,66 +345,27 @@ async function logAction(action, target = "", details = {}) {
     });
 }
 
-// ====================== AUTH ======================
-auth.onAuthStateChanged(async (user) => {
-    if (!user) return window.location.href = 'index.html';
-    document.getElementById('admin-email').textContent = user.email;
-    const userDoc = await db.collection('users').doc(user.uid).get();
-    if (!userDoc.exists || userDoc.data().role !== 'admin') {
-        alert("Zugriff verweigert – du bist kein Administrator.");
-        window.location.href = 'index.html';
-        return;
-    }
-    loadSettings();
-    switchTab(0);
-});
+// ====================== STATS UPDATE (JETZT DOPPELT ABGESICHERT) ======================
+function updateStats() {
+    console.log("updateStats wurde aufgerufen – Produkte:", allProducts.length);
+    const active = allProducts.filter(p => p.available !== false).length;
+    const soldTotal = allProducts.reduce((sum, p) => sum + (p.sold || 0), 0);
+    const revenue = allProducts.reduce((sum, p) => sum + (p.sold || 0) * (p.price || 0), 0);
+    const top = [...allProducts].sort((a, b) => (b.sold || 0) - (a.sold || 0))[0];
 
-// ====================== SIDEBAR & TABS ======================
-function switchTab(n) {
-    document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('tab-active'));
-    document.getElementById('sidebar-' + n).classList.add('tab-active');
-    document.querySelectorAll('[id^="tab-content-"]').forEach(el => el.classList.add('hidden'));
-    document.getElementById('tab-content-' + n).classList.remove('hidden');
-
-    if (n === 5) loadAnalytics();
-    if (n === 6) loadAdminLogs();
-}
-function toggleSidebar() {
-    document.getElementById("sidebar").classList.toggle("-translate-x-full");
-}
-
-// ====================== TOAST ======================
-function showToast(msg, type = 'success') {
-    const toast = document.createElement('div');
-    toast.className = `toast flex items-center gap-3 px-8 py-4 rounded-3xl shadow-2xl text-sm font-medium ${type === 'error' ? 'bg-red-600' : 'bg-emerald-600'}`;
-    toast.innerHTML = `<i class="fa-solid ${type === 'error' ? 'fa-xmark' : 'fa-check'}"></i> ${msg}`;
-    document.getElementById('toast-container').appendChild(toast);
-    setTimeout(() => toast.remove(), 3500);
-}
-
-// ====================== LOGOUT ======================
-function logout() {
-    auth.signOut().then(() => location.href = 'index.html');
+    document.getElementById('active-products').textContent = active;
+    document.getElementById('total-sold').textContent = soldTotal;
+    document.getElementById('total-revenue').textContent = revenue.toFixed(0) + ' €';
+    document.getElementById('top-seller').textContent = top ? `${top.name} (${top.sold || 0}×)` : '—';
 }
 
 // ====================== PRODUKTE ======================
-let allProducts = [];
 function loadProducts() {
     db.collection('products').onSnapshot(snap => {
         allProducts = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         updateStats();
         renderProductTable();
     });
-}
-function updateStats() {
-    const active = allProducts.filter(p => p.available !== false).length;
-    const soldTotal = allProducts.reduce((sum, p) => sum + (p.sold || 0), 0);
-    const revenue = allProducts.reduce((sum, p) => sum + (p.sold || 0) * (p.price || 0), 0);
-    const top = [...allProducts].sort((a, b) => (b.sold || 0) - (a.sold || 0))[0];
-    document.getElementById('active-products').textContent = active;
-    document.getElementById('total-sold').textContent = soldTotal;
-    document.getElementById('total-revenue').textContent = revenue.toFixed(0) + ' €';
-    document.getElementById('top-seller').textContent = top ? `${top.name} (${top.sold || 0}×)` : '—';
 }
 function renderProductTable(filter = '') {
     const tbody = document.getElementById('products-tbody');
@@ -1171,6 +1133,43 @@ async function handleStockOnStatusChange(orderId, newStatus) {
     }
 }
 
+// ====================== TOAST ======================
+function showToast(msg, type = 'success') {
+    const toast = document.createElement('div');
+    toast.className = `toast flex items-center gap-3 px-8 py-4 rounded-3xl shadow-2xl text-sm font-medium ${type === 'error' ? 'bg-red-600' : 'bg-emerald-600'}`;
+    toast.innerHTML = `<i class="fa-solid ${type === 'error' ? 'fa-xmark' : 'fa-check'}"></i> ${msg}`;
+    document.getElementById('toast-container').appendChild(toast);
+    setTimeout(() => toast.remove(), 3500);
+}
+
+// ====================== SIDEBAR & TABS ======================
+function switchTab(n) {
+    document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('tab-active'));
+    document.getElementById('sidebar-' + n).classList.add('tab-active');
+    document.querySelectorAll('[id^="tab-content-"]').forEach(el => el.classList.add('hidden'));
+    document.getElementById('tab-content-' + n).classList.remove('hidden');
+
+    if (n === 5) loadAnalytics();
+    if (n === 6) loadAdminLogs();
+}
+function toggleSidebar() {
+    document.getElementById("sidebar").classList.toggle("-translate-x-full");
+}
+
+// ====================== AUTH ======================
+auth.onAuthStateChanged(async (user) => {
+    if (!user) return window.location.href = 'index.html';
+    document.getElementById('admin-email').textContent = user.email;
+    const userDoc = await db.collection('users').doc(user.uid).get();
+    if (!userDoc.exists || userDoc.data().role !== 'admin') {
+        alert("Zugriff verweigert – du bist kein Administrator.");
+        window.location.href = 'index.html';
+        return;
+    }
+    loadSettings();
+    switchTab(0);
+});
+
 // ====================== INIT ======================
 window.onload = () => {
     loadProducts();
@@ -1178,6 +1177,8 @@ window.onload = () => {
     loadCoupons();
     loadOrders();
     loadUsers();
+    // Extra Sicherheit: Stats nach 500ms nochmal erzwingen
+    setTimeout(updateStats, 500);
 };
 </script>
 </body>

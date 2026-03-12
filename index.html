@@ -192,11 +192,6 @@
         .stock-low { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
         .stock-zero { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
         img { max-width: 100%; height: auto; display: block; }
-        /* MARKETING BANNER STYLES */
-        .promo-banner { position: relative; border-radius: 24px; overflow: hidden; box-shadow: 0 25px 50px -12px rgb(103 232 249 / 0.4); cursor: pointer; }
-        .promo-banner img { width: 100%; height: auto; display: block; }
-        .promo-banner .overlay { position: absolute; inset: 0; background: linear-gradient(to bottom, transparent, rgba(0,0,0,0.75)); display: flex; align-items: center; justify-content: center; text-align: center; padding: 20px; }
-        .promo-banner .overlay span { font-size: 1.75rem; font-weight: 700; text-shadow: 0 0 20px rgba(103,232,249,0.8); }
     </style>
 </head>
 <body class="wave-bg text-white min-h-screen">
@@ -239,8 +234,10 @@
             <h2 class="hero-title text-5xl sm:text-6xl font-bold tracking-tighter neon-text mb-3">Bestelle deine Liquids und Vapes</h2>
             <p class="hero-subtitle text-xl sm:text-2xl text-cyan-200 max-w-md mx-auto">7,99 € pro Flasche • 10 ml • Nikotin frei wählbar (10 oder 20 mg)</p>
             <p class="text-base sm:text-lg text-gray-300 mt-4">Alle Liquids von ELFLIQ</p>
-            <!-- DYNAMISCHER MARKETING BANNER (wird live aus Firestore geladen) -->
-            <div id="hero-promo" class="mt-8"></div>
+            <div class="mt-4 inline-flex items-center gap-3 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-400/30 hover:border-emerald-400 px-7 py-3 rounded-3xl text-emerald-300 text-base font-semibold transition-all">
+                <i class="fa-solid fa-gift text-2xl"></i>
+                <span>Ab 100€ Bestellwert gibt's eine <span class="text-white font-bold underline">Mystery Vape gratis</span> dazu! 🎁</span>
+            </div>
             <div class="mt-4 inline-flex items-center gap-3 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-400/30 px-7 py-3 rounded-3xl text-amber-300 text-base font-semibold transition-all">
                 <i class="fa-solid fa-truck text-2xl"></i>
                 <span>Gratis Versand ab <span class="text-white font-bold">100 €</span> Bestellwert! 🚚</span>
@@ -339,14 +336,6 @@
             <div class="text-center mt-12 text-xs text-gray-400 flex items-center justify-center gap-2">
                 <i class="fa-solid fa-shield-halved text-emerald-400"></i>
                 Alle Bewertungen sind echt und werden regelmäßig auf Trustpilot & Google verifiziert
-            </div>
-        </div>
-        <!-- NEWSLETTER FORM (Marketing-Integration) -->
-        <div class="mt-16 bg-zinc-900/50 border border-cyan-400/20 rounded-3xl p-8 text-center">
-            <p class="text-emerald-400 font-medium mb-2">Bleib up-to-date – Newsletter</p>
-            <div class="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
-                <input id="newsletter-email" type="email" placeholder="Deine E-Mail" class="flex-1 bg-zinc-800 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-4 outline-none">
-                <button onclick="subscribeNewsletter()" class="bg-emerald-500 hover:bg-emerald-400 px-8 py-4 rounded-3xl font-bold text-sm">ABONNIEREN</button>
             </div>
         </div>
         <!-- FOOTER -->
@@ -932,7 +921,6 @@
             });
             showToast(`🎉 +${pointsToAdd} Loyalty-Punkte gutgeschrieben!`);
         }
-        // ====================== ERWEITERTES GUTSCHEIN-SYSTEM (Marketing) ======================
         async function applyDiscountCode() {
             const input = document.getElementById("discount-input").value.trim().toUpperCase();
             const status = document.getElementById("discount-status");
@@ -945,37 +933,6 @@
                 showAuthModal();
                 return;
             }
-            // === NEU: Firestore-Gutscheine zuerst prüfen ===
-            const couponSnap = await db.collection("coupons").where("code", "==", input).limit(1).get();
-            if (!couponSnap.empty) {
-                const coupon = couponSnap.docs[0].data();
-                const now = new Date();
-                if (coupon.expiresAt && coupon.expiresAt.toDate() < now) {
-                    status.innerHTML = `<span class="text-red-400">Gutschein abgelaufen</span>`;
-                    return;
-                }
-                if (coupon.oneTimeUse && coupon.usedBy && coupon.usedBy.includes(currentUser.uid)) {
-                    status.innerHTML = `<span class="text-red-400">Bereits verwendet</span>`;
-                    return;
-                }
-                appliedDiscount = { 
-                    code: input, 
-                    type: coupon.type, 
-                    value: coupon.value,
-                    couponId: couponSnap.docs[0].id 
-                };
-                const display = coupon.type === "percent" ? `${coupon.value}%` : `${coupon.value}€`;
-                status.innerHTML = `<span class="text-emerald-400">✓ ${input} (${display}) eingelöst!</span>`;
-                updateCartDisplay();
-                // Einmalnutzung markieren
-                if (coupon.oneTimeUse) {
-                    await db.collection("coupons").doc(couponSnap.docs[0].id).update({
-                        usedBy: firebase.firestore.FieldValue.arrayUnion(currentUser.uid)
-                    });
-                }
-                return;
-            }
-            // === ALTER CODE (für WAVE5 etc.) ===
             const d = VALID_DISCOUNTS[input];
             if (!d) {
                 status.innerHTML = `<span class="text-red-400">Ungültiger Code</span>`;
@@ -1671,40 +1628,6 @@
             closeProductDetail();
             showToast(`✅ ${product.name} wurde hinzugefügt!`);
         }
-        // ====================== MARKETING INTEGRATION – DYNAMISCHER BANNER ======================
-        async function loadPromoBanner() {
-            try {
-                const doc = await db.collection("banners").doc("hero").get();
-                if (doc.exists) {
-                    const b = doc.data();
-                    if (b.active !== false && b.image) {
-                        const promoHTML = `
-                            <div onclick="${b.link ? `window.location.href='${b.link}'` : ''}" class="promo-banner mx-auto max-w-2xl">
-                                <img src="${b.image}" alt="Promo Banner" loading="lazy">
-                                <div class="overlay">
-                                    <span>${b.text || 'Jetzt bestellen!'}</span>
-                                </div>
-                            </div>`;
-                        document.getElementById("hero-promo").innerHTML = promoHTML;
-                    } else {
-                        document.getElementById("hero-promo").innerHTML = '';
-                    }
-                }
-            } catch (e) {
-                console.log("Banner noch nicht konfiguriert");
-            }
-        }
-        // ====================== NEWSLETTER SUBSCRIBE (einfache lokale Speicherung) ======================
-        async function subscribeNewsletter() {
-            const email = document.getElementById("newsletter-email").value.trim();
-            if (!email || !email.includes("@")) {
-                showToast("Bitte gültige E-Mail eingeben", "error");
-                return;
-            }
-            showToast("✅ Du wurdest in den Newsletter aufgenommen! 🎉");
-            document.getElementById("newsletter-email").value = "";
-            // Optional: hier könnte man eine Firestore-Collection "newsletter" anlegen – aktuell nur Toast
-        }
         // ====================== INITIALISIERUNG ======================
         function initialize() {
             initEmailJS();
@@ -1719,8 +1642,6 @@
             updateCartDisplay();
             startNotificationCycle();
             checkAndAutoRedeemLoyalty();
-            // MARKETING: Banner live laden
-            loadPromoBanner();
         }
         window.onload = initialize;
     </script>

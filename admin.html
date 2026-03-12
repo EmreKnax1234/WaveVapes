@@ -85,7 +85,6 @@
             </div>
         </div>
     </header>
-
     <!-- AUTH CHECK -->
     <div id="auth-loading" class="fixed inset-0 bg-black/90 flex items-center justify-center z-50">
         <div class="text-center">
@@ -100,7 +99,6 @@
             <a href="index.html" class="bg-cyan-500 hover:bg-cyan-400 text-black px-10 py-5 rounded-3xl font-bold text-xl">Zurück zum Shop</a>
         </div>
     </div>
-
     <!-- HAUPTINHALT -->
     <main id="admin-content" class="hidden max-w-7xl mx-auto px-6 py-10">
         <!-- TABS -->
@@ -109,7 +107,6 @@
             <button onclick="switchTab(1)" id="tab1" class="flex-1 py-5 text-lg font-semibold">Bestellungen</button>
             <button onclick="switchTab(2)" id="tab2" class="flex-1 py-5 text-lg font-semibold">Benutzer</button>
         </div>
-
         <!-- ====================== PRODUKTE TAB ====================== -->
         <div id="tab-content-0">
             <!-- BACKUP & RESTORE -->
@@ -132,7 +129,6 @@
                     ⚠️ Beim Import werden ALLE aktuellen Produkte gelöscht und durch die CSV ersetzt!
                 </p>
             </div>
-
             <!-- STATS -->
             <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
                 <div class="card p-6">
@@ -172,7 +168,6 @@
                     </div>
                 </div>
             </div>
-
             <!-- RESET BUTTON -->
             <div class="card p-8 mb-12 bg-red-950/30 border border-red-500/50">
                 <div class="flex items-center gap-4 mb-6">
@@ -188,7 +183,6 @@
                     ALLE STATISTIKEN ZURÜCKSETZEN
                 </button>
             </div>
-
             <!-- NEUES PRODUKT -->
             <div class="card p-8 mb-12">
                 <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><i class="fa-solid fa-plus"></i> Neues Produkt hinzufügen</h2>
@@ -221,7 +215,6 @@
                     <button type="submit" class="lg:col-span-1 bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-5 rounded-3xl text-xl hover:scale-105 transition">Produkt speichern</button>
                 </form>
             </div>
-
             <!-- PRODUKT-TABELLE -->
             <div class="card overflow-hidden">
                 <div class="p-6 border-b border-white/10 flex items-center justify-between">
@@ -248,7 +241,6 @@
                 </div>
             </div>
         </div>
-
         <!-- BESTELLUNGEN TAB -->
         <div id="tab-content-1" class="hidden">
             <div class="card overflow-hidden">
@@ -283,7 +275,6 @@
                 </div>
             </div>
         </div>
-
         <!-- BENUTZER TAB -->
         <div id="tab-content-2" class="hidden">
             <!-- GLOBALER LOYALTY-RESET -->
@@ -295,13 +286,12 @@
                         <p class="text-gray-400">Setzt bei <strong>ALLEN Benutzern</strong> das Feld <code>totalBonusPoints</code> auf 0.<br>Dies kann nicht rückgängig gemacht werden!</p>
                     </div>
                 </div>
-                <button onclick="resetAllLoyaltyPoints()" 
+                <button onclick="resetAllLoyaltyPoints()"
                         class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-5 rounded-3xl text-xl transition-all flex items-center justify-center gap-3">
                     <i class="fa-solid fa-warning"></i>
                     ALLE LOYALTY-PUNKTE AUF 0 SETZEN
                 </button>
             </div>
-
             <div class="card overflow-hidden">
                 <div class="p-6 border-b border-white/10 flex items-center justify-between">
                     <h2 class="text-2xl font-bold flex items-center gap-3"><i class="fa-solid fa-users"></i> Benutzer verwalten</h2>
@@ -326,7 +316,6 @@
             </div>
         </div>
     </main>
-
     <!-- EDIT MODAL -->
     <div id="edit-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]">
         <div class="bg-zinc-900 rounded-3xl p-8 max-w-6xl w-full mx-4 modal max-h-[95vh] overflow-y-auto">
@@ -341,10 +330,8 @@
             </div>
         </div>
     </div>
-
-    <!-- BESTELL-DETAIL MODAL -->
+    <!-- BESTELL-DETAIL MODAL CONTAINER -->
     <div id="order-modal-container"></div>
-
     <!-- TOAST -->
     <div id="toast-container" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[99999] flex flex-col gap-3"></div>
 
@@ -401,6 +388,32 @@
             toast.innerHTML = `<i class="fa-solid ${type === 'error' ? 'fa-xmark' : 'fa-check'}"></i> ${msg}`;
             document.getElementById('toast-container').appendChild(toast);
             setTimeout(() => toast.remove(), 3500);
+        }
+
+        // ==================== STATUS CLASS ====================
+        function getStatusClass(s) {
+            const map = {
+                "Zahlung erwartet": "status-Zahlung",
+                "Wird bearbeitet": "status-Wird",
+                "Versendet": "status-Versendet",
+                "Zugestellt": "status-Zugestellt",
+                "Storniert": "status-Storniert"
+            };
+            return map[s] || "status-Zahlung";
+        }
+
+        // ==================== LOYALTY GUTSCHRIFT NUR BEI "WIRD BEARBEITET" ====================
+        async function awardLoyaltyIfProcessed(orderId) {
+            const doc = await db.collection('orders').doc(orderId).get();
+            const order = doc.data();
+            if (!order || order.status !== "Wird bearbeitet" || order.loyaltyCredited === true) return;
+            const points = order.loyaltyEarned || 0;
+            if (points <= 0) return;
+            await db.collection('users').doc(order.userId).update({
+                totalBonusPoints: firebase.firestore.FieldValue.increment(points)
+            });
+            await db.collection('orders').doc(orderId).update({ loyaltyCredited: true });
+            showToast(`🎉 +${points} Loyalty-Punkte an Kunden gutgeschrieben!`, 'success');
         }
 
         // ==================== RESET ALL STATISTICS ====================
@@ -749,19 +762,14 @@
                 tbody.innerHTML = html || `<tr><td colspan="6" class="text-center py-16 text-gray-400">Noch keine Bestellungen</td></tr>`;
             });
         }
-        function quickStatus(id, status) {
-            db.collection('orders').doc(id).update({ status });
+
+        // ==================== UPDATED QUICK STATUS (LOYALTY) ====================
+        async function quickStatus(id, status) {
+            await db.collection('orders').doc(id).update({ status });
             showToast(`Status auf „${status}“ gesetzt`);
-        }
-        function getStatusClass(s) {
-            const map = {
-                "Zahlung erwartet": "status-Zahlung",
-                "Wird bearbeitet": "status-Wird",
-                "Versendet": "status-Versendet",
-                "Zugestellt": "status-Zugestellt",
-                "Storniert": "status-Storniert"
-            };
-            return map[s] || "status-Zahlung";
+            if (status === "Wird bearbeitet") {
+                await awardLoyaltyIfProcessed(id);
+            }
         }
 
         // ==================== BESTELL-DETAIL MODAL ====================
@@ -832,12 +840,17 @@
         function closeOrderModal() {
             document.getElementById('order-modal-container').innerHTML = '';
         }
+
+        // ==================== UPDATED SAVE ORDER CHANGES (LOYALTY) ====================
         async function saveOrderChanges() {
             const status = document.getElementById('modal-status').value;
             const carrier = document.getElementById('modal-carrier').value;
             const tracking = document.getElementById('modal-tracking').value.trim();
             await db.collection('orders').doc(currentOrderId).update({ status, carrier, trackingNumber: tracking });
             showToast('Bestellung aktualisiert');
+            if (status === "Wird bearbeitet") {
+                await awardLoyaltyIfProcessed(currentOrderId);
+            }
             closeOrderModal();
         }
         async function deleteOrder() {
@@ -890,7 +903,6 @@
             });
         }
         document.getElementById('user-search').addEventListener('input', loadUsers);
-
         async function resetPassword(email) {
             if (!confirm(`Passwort-Zurücksetzen-E-Mail an ${email} senden?`)) return;
             try {
@@ -926,12 +938,9 @@
                 showToast("Fehler: " + e.message, "error");
             }
         }
-
-        // ====================== LOYALTY RESET FUNKTIONEN ======================
         async function resetAllLoyaltyPoints() {
             if (!confirm("⚠️ WIRKLICH ALLE Loyalty-Punkte auf 0 setzen?\n\nDas betrifft JEDEN Benutzer und ist unwiderruflich!")) return;
             if (!confirm("LETZTE WARNUNG – alle Punkte werden gelöscht!")) return;
-
             try {
                 const snapshot = await db.collection("users").get();
                 const batch = db.batch();
@@ -945,10 +954,8 @@
                 showToast("Fehler: " + e.message, "error");
             }
         }
-
         async function resetUserPoints(uid) {
             if (!confirm("Punkte dieses Benutzers auf 0 setzen?")) return;
-
             try {
                 await db.collection("users").doc(uid).update({ totalBonusPoints: 0 });
                 showToast("✅ Punkte auf 0 gesetzt");

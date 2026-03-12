@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
-    <!-- EMAILJS für Newsletter -->
+    <!-- EMAILJS für Newsletter (nur noch für Bestellungen verwendet) -->
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -35,8 +35,6 @@
         .tab-active { border-bottom: 4px solid var(--neon-cyan); color: var(--neon-cyan); font-weight: 600; }
         .coupon-row { transition: all 0.2s; }
         .coupon-row.used { opacity: 0.6; }
-        .promo-preview { border: 2px dashed #67e8f9; border-radius: 16px; overflow: hidden; }
-        img { max-width: 100%; height: auto; display: block; }
     </style>
 </head>
 <body class="min-h-screen">
@@ -53,6 +51,7 @@
             </div>
         </div>
     </header>
+
     <!-- AUTH CHECK -->
     <div id="auth-loading" class="fixed inset-0 bg-black/90 flex items-center justify-center z-50">
         <div class="text-center">
@@ -67,6 +66,7 @@
             <a href="index.html" class="bg-cyan-500 hover:bg-cyan-400 text-black px-10 py-5 rounded-3xl font-bold text-xl">Zurück zum Shop</a>
         </div>
     </div>
+
     <!-- HAUPTINHALT -->
     <main id="admin-content" class="hidden max-w-7xl mx-auto px-6 py-10">
         <!-- TABS -->
@@ -75,8 +75,9 @@
             <button onclick="switchTab(1)" id="tab1" class="flex-1 py-5 text-lg font-semibold">Bestellungen</button>
             <button onclick="switchTab(2)" id="tab2" class="flex-1 py-5 text-lg font-semibold">Benutzer</button>
             <button onclick="switchTab(3)" id="tab3" class="flex-1 py-5 text-lg font-semibold">Kategorien</button>
-            <button onclick="switchTab(4)" id="tab4" class="flex-1 py-5 text-lg font-semibold bg-gradient-to-r from-amber-400 to-orange-400 text-black">📣 Marketing</button>
+            <button onclick="switchTab(4)" id="tab4" class="flex-1 py-5 text-lg font-semibold bg-gradient-to-r from-amber-400 to-orange-400 text-black">🎟️ Gutschein-Manager</button>
         </div>
+
         <!-- ====================== PRODUKTE TAB ====================== -->
         <div id="tab-content-0">
             <!-- BACKUP & RESTORE -->
@@ -93,6 +94,7 @@
                 <input type="file" id="csv-upload" accept=".csv" class="hidden" onchange="importProductsFromCSV(event)">
                 <p class="text-xs text-amber-400 mt-4 text-center">⚠️ Beim Import werden ALLE aktuellen Produkte gelöscht und durch die CSV ersetzt!</p>
             </div>
+
             <!-- STATS -->
             <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
                 <div class="card p-6">
@@ -132,6 +134,7 @@
                     </div>
                 </div>
             </div>
+
             <!-- RESET BUTTON -->
             <div class="card p-8 mb-12 bg-red-950/30 border border-red-500/50">
                 <div class="flex items-center gap-4 mb-6">
@@ -145,6 +148,7 @@
                     <i class="fa-solid fa-warning"></i> ALLE STATISTIKEN ZURÜCKSETZEN
                 </button>
             </div>
+
             <!-- NEUES PRODUKT -->
             <div class="card p-8 mb-12">
                 <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><i class="fa-solid fa-plus"></i> Neues Produkt hinzufügen</h2>
@@ -173,6 +177,7 @@
                     <button type="submit" class="lg:col-span-1 bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-5 rounded-3xl text-xl hover:scale-105 transition">Produkt speichern</button>
                 </form>
             </div>
+
             <!-- PRODUKT-TABELLE -->
             <div class="card overflow-hidden">
                 <div class="p-6 border-b border-white/10 flex items-center justify-between">
@@ -199,6 +204,7 @@
                 </div>
             </div>
         </div>
+
         <!-- BESTELLUNGEN TAB -->
         <div id="tab-content-1" class="hidden">
             <div class="card overflow-hidden">
@@ -236,6 +242,7 @@
                 </div>
             </div>
         </div>
+
         <!-- BENUTZER TAB -->
         <div id="tab-content-2" class="hidden">
             <!-- GLOBALER LOYALTY-RESET -->
@@ -276,6 +283,7 @@
                 </div>
             </div>
         </div>
+
         <!-- ====================== KATEGORIEN TAB ====================== -->
         <div id="tab-content-3" class="hidden">
             <!-- NEUE KATEGORIE -->
@@ -312,97 +320,52 @@
                 </div>
             </div>
         </div>
-        <!-- ====================== MARKETING TAB ====================== -->
+
+        <!-- ====================== GUTSCHEIN-MANAGER TAB ====================== -->
         <div id="tab-content-4" class="hidden">
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <!-- GUTSCHEIN-MANAGER -->
-                <div class="card p-8">
-                    <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><i class="fa-solid fa-ticket"></i> Gutschein-Manager</h2>
-                    <form id="add-coupon-form" class="grid grid-cols-2 gap-4 mb-8">
-                        <input id="coupon-code" placeholder="CODE (z.B. SUMMER25)" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4" required>
-                        <select id="coupon-type" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4">
-                            <option value="percent">Prozent</option>
-                            <option value="fixed">Festbetrag €</option>
-                        </select>
-                        <input id="coupon-value" type="number" step="0.01" placeholder="Wert" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4" required>
-                        <input id="coupon-expiry" type="date" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4" required>
-                        <div class="col-span-2 flex items-center gap-3">
-                            <input id="coupon-onetime" type="checkbox" class="w-5 h-5 accent-amber-400">
-                            <label class="text-sm">Einmalnutzung pro User</label>
-                        </div>
-                        <button type="submit" class="col-span-2 bg-gradient-to-r from-amber-400 to-orange-500 text-black font-bold py-5 rounded-3xl">Gutschein erstellen</button>
-                    </form>
-                    <div class="overflow-x-auto">
-                        <table class="w-full">
-                            <thead class="bg-zinc-950">
-                                <tr>
-                                    <th class="py-4 px-6 text-left">Code</th>
-                                    <th class="py-4 px-6 text-center">Typ/Wert</th>
-                                    <th class="py-4 px-6 text-center">Ablauf</th>
-                                    <th class="py-4 px-6 text-center">Status</th>
-                                    <th class="py-4 px-6 text-right">Aktionen</th>
-                                </tr>
-                            </thead>
-                            <tbody id="coupons-tbody" class="text-sm"></tbody>
-                        </table>
+            <div class="card p-8">
+                <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><i class="fa-solid fa-ticket"></i> Gutschein-Manager</h2>
+                <form id="add-coupon-form" class="grid grid-cols-2 gap-4 mb-8">
+                    <input id="coupon-code" placeholder="CODE (z.B. SUMMER25)" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4" required>
+                    <select id="coupon-type" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4">
+                        <option value="percent">Prozent</option>
+                        <option value="fixed">Festbetrag €</option>
+                    </select>
+                    <input id="coupon-value" type="number" step="0.01" placeholder="Wert" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4" required>
+                    <input id="coupon-expiry" type="date" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4" required>
+                    <div class="col-span-2 flex items-center gap-3">
+                        <input id="coupon-onetime" type="checkbox" class="w-5 h-5 accent-amber-400">
+                        <label class="text-sm">Einmalnutzung pro User</label>
                     </div>
-                </div>
-                <!-- BANNER-EDITOR -->
-                <div class="card p-8">
-                    <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><i class="fa-solid fa-image"></i> Hero-Banner Editor</h2>
-                    <form id="banner-form" class="space-y-6">
-                        <div>
-                            <label class="text-xs text-gray-400 block mb-2">Banner-Text (HTML erlaubt)</label>
-                            <textarea id="banner-text" rows="3" class="w-full bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-4">4 für 3 Aktion + Mystery Vape gratis ab 100 €</textarea>
-                        </div>
-                        <div>
-                            <label class="text-xs text-gray-400 block mb-2">Bild-URL (Cloudinary)</label>
-                            <div id="banner-dropzone" class="border-2 border-dashed border-cyan-400/50 hover:border-cyan-400 rounded-3xl p-8 text-center cursor-pointer">
-                                <i class="fa-solid fa-cloud-arrow-up text-5xl mb-4 text-cyan-400"></i>
-                                <p class="text-cyan-300">Bild hochladen</p>
-                                <img id="banner-preview" class="hidden mx-auto mt-4 max-h-32 rounded-2xl">
-                            </div>
-                        </div>
-                        <div>
-                            <label class="text-xs text-gray-400 block mb-2">Link (optional)</label>
-                            <input id="banner-link" placeholder="https://wavevapes.de/..." class="w-full bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4">
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <input id="banner-active" type="checkbox" checked class="w-5 h-5 accent-emerald-400">
-                            <label>Aktiv (wird im Shop angezeigt)</label>
-                        </div>
-                        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 py-5 rounded-3xl font-bold text-xl">Banner speichern & live schalten</button>
-                    </form>
-                    <div id="banner-preview-live" class="promo-preview mt-6 p-4 text-center text-sm bg-zinc-950"></div>
-                </div>
-                <!-- NEWSLETTER -->
-                <div class="card p-8 lg:col-span-2">
-                    <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><i class="fa-solid fa-envelope"></i> Newsletter an alle User</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div>
-                            <label class="text-xs text-gray-400 block mb-2">Betreff</label>
-                            <input id="newsletter-subject" value="Neue Tornado 30000 Sorten 🔥" class="w-full bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4">
-                            <label class="text-xs text-gray-400 block mt-6 mb-2">HTML-Inhalt (kann Bilder enthalten)</label>
-                            <textarea id="newsletter-body" rows="12" class="w-full bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-4 font-mono text-sm">Hallo {{name}}!<br><br>Die neuen Sorten sind da...</textarea>
-                        </div>
-                        <div>
-                            <button onclick="sendNewsletter()" class="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-black font-bold py-8 rounded-3xl text-2xl hover:scale-105 transition flex items-center justify-center gap-3">
-                                <i class="fa-solid fa-paper-plane"></i> JETZT AN ALLE VERSENDEN
-                            </button>
-                            <p class="text-xs text-amber-400 mt-4 text-center">⚠️ Versendet an <span id="user-count" class="font-bold">0</span> User • EmailJS-Limit beachten!</p>
-                            <div id="newsletter-preview" class="mt-6 bg-black/50 p-6 rounded-3xl text-sm max-h-64 overflow-auto font-mono"></div>
-                        </div>
-                    </div>
+                    <button type="submit" class="col-span-2 bg-gradient-to-r from-amber-400 to-orange-500 text-black font-bold py-5 rounded-3xl">Gutschein erstellen</button>
+                </form>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-zinc-950">
+                            <tr>
+                                <th class="py-4 px-6 text-left">Code</th>
+                                <th class="py-4 px-6 text-center">Typ/Wert</th>
+                                <th class="py-4 px-6 text-center">Ablauf</th>
+                                <th class="py-4 px-6 text-center">Status</th>
+                                <th class="py-4 px-6 text-right">Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody id="coupons-tbody" class="text-sm"></tbody>
+                    </table>
                 </div>
             </div>
         </div>
     </main>
+
     <!-- EDIT MODAL -->
     <div id="edit-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]"></div>
+
     <!-- BESTELL-DETAIL MODAL CONTAINER -->
     <div id="order-modal-container"></div>
+
     <!-- TOAST -->
     <div id="toast-container" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[99999] flex flex-col gap-3"></div>
+
     <script>
         // ==================== FIREBASE CONFIG ====================
         const firebaseConfig = {
@@ -416,17 +379,18 @@
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
+
         // ==================== EMAILJS CONFIG ====================
         const EMAILJS_SERVICE_ID = "service_lzvte0x";
         const EMAILJS_PUBLIC_KEY = "t19pJAHgBpbKpZFGU";
-        const EMAILJS_NEWSLETTER_TEMPLATE = "template_newsletter";
+
         let currentEditId = null;
         let selectedFile = null;
         let currentOrderId = null;
         let removeCurrentImage = false;
         let allCategories = [];
         let allCoupons = [];
-        let currentBannerImage = null;
+
         // ==================== AUTH ====================
         auth.onAuthStateChanged(async (user) => {
             if (!user) return window.location.href = 'index.html';
@@ -443,6 +407,7 @@
             switchTab(0);
         });
         function logout() { auth.signOut().then(() => location.href = 'index.html'); }
+
         // ==================== TABS ====================
         function switchTab(n) {
             document.getElementById('tab0').classList.toggle('tab-active', n === 0);
@@ -450,11 +415,13 @@
             document.getElementById('tab2').classList.toggle('tab-active', n === 2);
             document.getElementById('tab3').classList.toggle('tab-active', n === 3);
             document.getElementById('tab4').classList.toggle('tab-active', n === 4);
+
             document.getElementById('tab-content-0').classList.toggle('hidden', n !== 0);
             document.getElementById('tab-content-1').classList.toggle('hidden', n !== 1);
             document.getElementById('tab-content-2').classList.toggle('hidden', n !== 2);
             document.getElementById('tab-content-3').classList.toggle('hidden', n !== 3);
             document.getElementById('tab-content-4').classList.toggle('hidden', n !== 4);
+
             if (n === 1) {
                 loadOrders();
                 checkAndAutoCancelOldOrders();
@@ -463,10 +430,9 @@
             if (n === 3) loadCategories();
             if (n === 4) {
                 loadCoupons();
-                loadBanner();
-                updateUserCountForNewsletter();
             }
         }
+
         // ==================== TOAST ====================
         function showToast(msg, type = 'success') {
             const toast = document.createElement('div');
@@ -475,6 +441,7 @@
             document.getElementById('toast-container').appendChild(toast);
             setTimeout(() => toast.remove(), 3500);
         }
+
         // ==================== STATUS CLASS ====================
         function getStatusClass(s) {
             const map = {
@@ -486,6 +453,7 @@
             };
             return map[s] || "status-Zahlung";
         }
+
         // ==================== LOYALTY GUTSCHRIFT NUR BEI "WIRD BEARBEITET" ====================
         async function awardLoyaltyIfProcessed(orderId) {
             const doc = await db.collection('orders').doc(orderId).get();
@@ -499,6 +467,7 @@
             await db.collection('orders').doc(orderId).update({ loyaltyCredited: true });
             showToast(`🎉 +${points} Loyalty-Punkte an Kunden gutgeschrieben!`, 'success');
         }
+
         // ====================== STOCK & STORNO LOGIC ======================
         async function handleStockOnStatusChange(orderId, newStatus) {
             const doc = await db.collection('orders').doc(orderId).get();
@@ -525,6 +494,7 @@
                 showToast("✅ Lagerbestand wiederhergestellt", "success");
             }
         }
+
         // ====================== AUTOMATISCHE STORNO NACH 7 TAGEN ======================
         async function checkAndAutoCancelOldOrders() {
             const sevenDaysAgo = firebase.firestore.Timestamp.fromDate(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
@@ -541,6 +511,7 @@
             await batch.commit();
             showToast(`🚨 ${snapshot.size} Bestellung(en) automatisch storniert (7 Tage ohne Zahlung)`, "success");
         }
+
         // ==================== RESET ALL STATISTICS ====================
         async function resetAllStatistics() {
             if (!confirm("⚠️ ALLE STATISTIKEN ZURÜCKSETZEN?\n\nDies setzt bei JEDER Produkt das Feld 'sold' auf 0.\n\nDas kann NICHT rückgängig gemacht werden!")) return;
@@ -557,6 +528,7 @@
                 alert("Fehler beim Zurücksetzen: " + e.message);
             }
         }
+
         // ==================== KATEGORIEN ====================
         function loadCategories() {
             db.collection('categories').orderBy('order').onSnapshot(snap => {
@@ -635,6 +607,7 @@
             defaults.forEach(d => db.collection('categories').add(d));
             showToast('✅ Standard-Kategorien angelegt!');
         }
+
         // ==================== DYNAMISCHE KATEGORIE SELECTS ====================
         function populateCategorySelects() {
             const selects = document.querySelectorAll('#prod-category, #edit-category-select');
@@ -649,6 +622,7 @@
                 });
             });
         }
+
         // ==================== PRODUKTE ====================
         let allProducts = [];
         function loadProducts() {
@@ -705,6 +679,7 @@
             await db.collection('products').doc(id).delete();
             showToast('✅ Produkt gelöscht');
         }
+
         // ==================== EDIT MODAL ====================
         async function openEditModal(id) {
             currentEditId = id;
@@ -824,6 +799,7 @@
             closeEditModal();
             showToast('✅ Produkt gespeichert!');
         }
+
         // ==================== NEUES PRODUKT ====================
         document.getElementById('add-form').addEventListener('submit', async e => {
             e.preventDefault();
@@ -871,6 +847,7 @@
             };
             input.click();
         });
+
         // ==================== CSV EXPORT ====================
         async function exportProductsToCSV() {
             const snapshot = await db.collection("products").get();
@@ -900,6 +877,7 @@
             link.click();
             showToast("✅ CSV-Datei wurde heruntergeladen!", "success");
         }
+
         // ==================== CSV IMPORT ====================
         async function importProductsFromCSV(e) {
             const file = e.target.files[0];
@@ -946,6 +924,7 @@
                 field.replace(/^"|"$/g, '').replace(/""/g, '"')
             );
         }
+
         // ==================== BESTELLUNGEN ====================
         function loadOrders() {
             const tbody = document.getElementById('orders-tbody');
@@ -983,6 +962,7 @@
             }
             showToast(`Status auf „${status}“ gesetzt`);
         }
+
         // ==================== BESTELL-DETAIL MODAL ====================
         async function showOrderModal(orderId) {
             currentOrderId = orderId;
@@ -1073,6 +1053,7 @@
             showToast('Bestellung gelöscht');
             closeOrderModal();
         }
+
         // ==================== BENUTZER TAB ====================
         function loadUsers() {
             const tbody = document.getElementById('users-tbody');
@@ -1177,6 +1158,7 @@
                 showToast("Fehler: " + e.message, "error");
             }
         }
+
         // ==================== CSV EXPORTS BENUTZER & BESTELLUNGEN ====================
         async function exportOrdersToCSV() {
             const snapshot = await db.collection("orders").get();
@@ -1225,8 +1207,8 @@
             link.click();
             showToast("✅ Benutzer exportiert!", "success");
         }
-        // ====================== MARKETING FUNCTIONS ======================
-        // GUTSCHEIN-MANAGER
+
+        // ====================== GUTSCHEIN-MANAGER ======================
         document.getElementById('add-coupon-form').addEventListener('submit', async e => {
             e.preventDefault();
             const code = document.getElementById('coupon-code').value.trim().toUpperCase();
@@ -1276,111 +1258,7 @@
                 loadCoupons();
             }
         }
-        // BANNER-EDITOR (KORRIGIERT – JETZT FUNKTIONIERT ES!)
-        async function loadBanner() {
-            const doc = await db.collection('banners').doc('hero').get();
-            if (doc.exists) {
-                const b = doc.data();
-                document.getElementById('banner-text').value = b.text || '';
-                document.getElementById('banner-link').value = b.link || '';
-                document.getElementById('banner-active').checked = b.active !== false;
-                if (b.image) {
-                    currentBannerImage = b.image;
-                    document.getElementById('banner-preview').src = b.image;
-                    document.getElementById('banner-preview').classList.remove('hidden');
-                }
-            }
-        }
-        const bannerDropzone = document.getElementById('banner-dropzone');
-        bannerDropzone.addEventListener('click', () => {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = 'image/*';
-            input.onchange = e => {
-                const file = e.target.files[0];
-                const url = URL.createObjectURL(file);
-                document.getElementById('banner-preview').src = url;
-                document.getElementById('banner-preview').classList.remove('hidden');
-                currentBannerImage = file;
-            };
-            input.click();
-        });
-        // === KORRIGIERTER BANNER-SAVE (DER FIX!) ===
-        document.getElementById('banner-form').addEventListener('submit', async e => {
-            e.preventDefault();
 
-            let finalImageUrl = null;
-
-            // 1. Falls vorher schon ein Bild existiert
-            if (currentBannerImage && typeof currentBannerImage === 'string') {
-                finalImageUrl = currentBannerImage;
-            }
-
-            // 2. Falls gerade ein neues Bild hochgeladen wurde
-            if (currentBannerImage && typeof currentBannerImage !== 'string') {
-                const formData = new FormData();
-                formData.append("file", currentBannerImage);
-                formData.append("upload_preset", "wavevapes");
-
-                try {
-                    const res = await fetch("https://api.cloudinary.com/v1_1/dbbkmjsr5/image/upload", {
-                        method: "POST",
-                        body: formData
-                    });
-                    const json = await res.json();
-                    if (json.secure_url) finalImageUrl = json.secure_url;
-                    else throw new Error("Cloudinary Fehler");
-                } catch (err) {
-                    alert("❌ Bild-Upload fehlgeschlagen: " + err.message);
-                    return;
-                }
-            }
-
-            // 3. Pflicht: Bild muss vorhanden sein
-            if (!finalImageUrl) {
-                alert("⚠️ Du musst ein Banner-Bild hochladen!");
-                return;
-            }
-
-            // 4. Speichern
-            await db.collection('banners').doc('hero').set({
-                text: document.getElementById('banner-text').value.trim(),
-                image: finalImageUrl,
-                link: document.getElementById('banner-link').value.trim(),
-                active: document.getElementById('banner-active').checked,
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            }, { merge: true });
-
-            showToast('✅ Banner live geschaltet! (Bild jetzt korrekt gespeichert)');
-            loadBanner(); // Vorschau aktualisieren
-        });
-        // NEWSLETTER
-        async function updateUserCountForNewsletter() {
-            const snap = await db.collection('users').get();
-            document.getElementById('user-count').textContent = snap.size;
-        }
-        async function sendNewsletter() {
-            const subject = document.getElementById('newsletter-subject').value;
-            const body = document.getElementById('newsletter-body').value;
-            if (!subject || !body) return alert('Betreff + Inhalt ausfüllen!');
-            if (!confirm(`Newsletter an ALLE User senden? (${document.getElementById('user-count').textContent} Empfänger)`)) return;
-            const snap = await db.collection('users').get();
-            let sent = 0;
-            for (let doc of snap.docs) {
-                const user = doc.data();
-                if (user.email) {
-                    try {
-                        await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_NEWSLETTER_TEMPLATE, {
-                            to_email: user.email,
-                            subject: subject,
-                            message: body.replace('{{name}}', user.username || 'Vaper')
-                        });
-                        sent++;
-                    } catch (e) { console.error(e); }
-                }
-            }
-            showToast(`✅ Newsletter an ${sent} User versendet!`);
-        }
         // ==================== START ====================
         window.onload = () => {
             loadProducts();

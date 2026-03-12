@@ -20,15 +20,16 @@
     <meta name="twitter:site" content="@WaveVapes">
     <meta name="twitter:creator" content="@WaveVapes">
 
-    <!-- Preconnect -->
+    <!-- Preconnect für maximale Performance -->
     <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
 
     <!-- EMAILJS -->
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 
-    <!-- JSON-LD -->
+    <!-- JSON-LD Structured Data -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -500,10 +501,10 @@
     </div>
     <div id="notification-toast"></div>
     <script>
-        // ====================== EMAILJS KONFIGURATION (DEINE ECHTEN DATEN) ======================
+        // ====================== EMAILJS KONFIGURATION ======================
         const EMAILJS_SERVICE_ID = "service_lzvte0x";
         const EMAILJS_PUBLIC_KEY = "t19pJAHgBpbKpZFGU";
-        const EMAILJS_ORDER_TEMPLATE = "template_60ckddy";
+        const EMAILJS_ORDER_TEMPLATE = "template_cgcu1m8";
 
         // ====================== KONFIGURATION ======================
         const VALID_DISCOUNTS = {
@@ -916,37 +917,44 @@
         function initEmailJS() {
             if (typeof emailjs !== "undefined") {
                 emailjs.init(EMAILJS_PUBLIC_KEY);
-                console.log("%c✅ EmailJS erfolgreich initialisiert mit Public Key", "color: lime; font-weight: bold");
             }
         }
         async function sendOrderConfirmationEmail(orderData) {
-            console.log("%c📧 Versuche E-Mail zu senden an " + orderData.userEmail, "color: orange; font-weight: bold");
-            showToast("📧 E-Mail wird gesendet...", "success");
             try {
-                const orderItems = orderData.items.map(item => {
+                let itemsHtml = "";
+                orderData.items.forEach(item => {
                     const prod = allProducts.find(p => p.id === item.id);
-                    return {
-                        name: item.name,
-                        units: item.qty,
-                        price: (item.price * item.qty).toFixed(2),
-                        image_url: prod && prod.image ? prod.image : "https://wavevapes.de/logo.png"
-                    };
+                    const img = prod && prod.image ? prod.image : "https://wavevapes.de/logo.png";
+                    itemsHtml += `
+                        <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">
+                            <tr style="vertical-align:top;">
+                                <td style="padding:24px 8px 0 4px;width:80px;">
+                                    <img style="height:64px;width:64px;object-fit:cover;border-radius:6px;" src="${img}" alt="${item.name}">
+                                </td>
+                                <td style="padding:24px 8px 0 8px;">
+                                    <div style="font-weight:600;">${item.name}</div>
+                                    <div style="color:#666;font-size:13px;margin-top:4px;">Menge: ${item.qty}</div>
+                                </td>
+                                <td style="padding:24px 4px 0 0;white-space:nowrap;text-align:right;">
+                                    <strong>${(item.price * item.qty).toFixed(2)} €</strong>
+                                </td>
+                            </tr>
+                        </table>`;
                 });
-                await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_ORDER_TEMPLATE, {
+                const payload = {
                     order_id: orderData.orderNumber,
                     email: orderData.userEmail,
-                    orders: orderItems,
-                    cost: {
-                        shipping: orderData.shipping.toFixed(2),
-                        tax: "0.00",
-                        total: orderData.total.toFixed(2)
-                    }
-                });
-                console.log("%c✅ E-Mail erfolgreich gesendet!", "color: lime; font-weight: bold");
+                    items_html: itemsHtml,
+                    shipping: orderData.shipping.toFixed(2) + " €",
+                    tax: "0.00 €",
+                    total: orderData.total.toFixed(2) + " €"
+                };
+                await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_ORDER_TEMPLATE, payload);
+                console.log("✅ E-Mail gesendet");
                 showToast("✅ Bestellbestätigung per E-Mail versendet!", "success");
             } catch (e) {
-                console.error("%c❌ E-Mail Fehler:", "color: red; font-weight: bold", e);
-                showToast("❌ E-Mail konnte nicht gesendet werden: " + (e.text || e.message), "error");
+                console.error(e);
+                showToast("❌ E-Mail Fehler: " + (e.text || e.message), "error");
             }
         }
         async function loadProducts() {
@@ -1574,4 +1582,3 @@
     </script>
 </body>
 </html>
-

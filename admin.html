@@ -59,8 +59,6 @@
             <div onclick="switchTab(5)" id="sidebar-5" class="sidebar-item flex items-center gap-3 px-6 py-4 rounded-2xl cursor-pointer"><i class="fa-solid fa-chart-line"></i><span>Analytics</span></div>
             <div onclick="switchTab(6)" id="sidebar-6" class="sidebar-item flex items-center gap-3 px-6 py-4 rounded-2xl cursor-pointer"><i class="fa-solid fa-list-check"></i><span>Admin Logs</span></div>
             <div onclick="switchTab(7)" id="sidebar-7" class="sidebar-item flex items-center gap-3 px-6 py-4 rounded-2xl cursor-pointer"><i class="fa-solid fa-cog"></i><span>Settings</span></div>
-            <!-- NEUER FLASH-DEALS TAB -->
-            <div onclick="switchTab(8)" id="sidebar-8" class="sidebar-item flex items-center gap-3 px-6 py-4 rounded-2xl cursor-pointer"><i class="fa-solid fa-bolt"></i><span>Flash-Deals</span></div>
         </div>
     </div>
     <!-- MAIN CONTENT -->
@@ -281,37 +279,6 @@
                     </div>
                     <button onclick="saveSettings()" class="w-full bg-emerald-600 hover:bg-emerald-500 py-6 rounded-3xl font-bold text-xl">ALLE EINSTELLUNGEN SPEICHERN</button>
                 </div>
-            </div>
-        </div>
-        <!-- TAB 8: FLASH-DEALS (NEU) -->
-        <div id="tab-content-8" class="hidden">
-            <div class="card p-8">
-                <h2 class="text-3xl font-bold mb-8 flex items-center gap-3 neon"><i class="fa-solid fa-bolt"></i> Flash-Deal Banner</h2>
-                <form id="flash-form" class="space-y-8">
-                    <div>
-                        <label class="block text-sm text-gray-400 mb-2">Überschrift (groß & neon)</label>
-                        <input id="flash-title" type="text" class="w-full bg-zinc-900 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-5 text-2xl" placeholder="FLASH DEAL!">
-                    </div>
-                    <div>
-                        <label class="block text-sm text-gray-400 mb-2">Untertext / Beschreibung</label>
-                        <textarea id="flash-subtitle" rows="4" class="w-full bg-zinc-900 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-5" placeholder="Nur heute: Tornado 30000 für 19,99 € statt 35,99 €!"></textarea>
-                    </div>
-                    <div class="grid grid-cols-2 gap-6">
-                        <div>
-                            <label class="block text-sm text-gray-400 mb-2">Button-Text</label>
-                            <input id="flash-buttontext" type="text" class="w-full bg-zinc-900 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-5" value="Jetzt sichern!">
-                        </div>
-                        <div>
-                            <label class="block text-sm text-gray-400 mb-2">Button-Link (optional)</label>
-                            <input id="flash-link" type="text" class="w-full bg-zinc-900 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-5" placeholder="#products-grid oder https://...">
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-4 bg-emerald-950/50 p-6 rounded-3xl">
-                        <input id="flash-active" type="checkbox" class="w-7 h-7 accent-emerald-400">
-                        <label class="text-xl font-medium">Banner aktivieren (wird sofort im Shop angezeigt)</label>
-                    </div>
-                    <button type="submit" class="w-full bg-gradient-to-r from-amber-400 via-orange-500 to-red-500 text-black font-bold py-7 rounded-3xl text-2xl hover:scale-105 transition">FLASH-DEAL SPEICHERN</button>
-                </form>
             </div>
         </div>
     </div>
@@ -1123,7 +1090,7 @@ async function handleStockOnStatusChange(orderId, newStatus) {
         showToast("✅ Lagerbestand wiederhergestellt", "success");
     }
 }
-// ====================== ALLE STATISTIKEN ZURÜCKSETZEN ======================
+// ====================== ALLE STATISTIKEN ZURÜCKSETZEN – JETZT FUNKTIONIERT! ======================
 async function resetAllStatistics() {
     if (!confirm("⚠️ WIRKLICH ALLE STATISTIKEN ZURÜCKSETZEN?\n\nsold wird bei ALLEN Produkten auf 0 gesetzt.\nUmsatz und Top-Seller gehen auf Null.\nDas ist UNWIDERRUFLICH!")) {
         return;
@@ -1159,36 +1126,6 @@ function switchTab(n) {
     if (n === 5) loadAnalytics();
     if (n === 6) loadAdminLogs();
 }
-// ====================== FLASH-DEALS ======================
-let currentFlashDeal = {};
-
-function loadFlashDeal() {
-    db.collection("settings").doc("flashdeal").onSnapshot(doc => {
-        if (doc.exists) {
-            currentFlashDeal = doc.data();
-            document.getElementById("flash-title").value = currentFlashDeal.title || "";
-            document.getElementById("flash-subtitle").value = currentFlashDeal.subtitle || "";
-            document.getElementById("flash-buttontext").value = currentFlashDeal.buttonText || "Jetzt sichern!";
-            document.getElementById("flash-link").value = currentFlashDeal.buttonLink || "";
-            document.getElementById("flash-active").checked = currentFlashDeal.active || false;
-        }
-    });
-}
-
-document.getElementById("flash-form").addEventListener("submit", async e => {
-    e.preventDefault();
-    const data = {
-        title: document.getElementById("flash-title").value.trim(),
-        subtitle: document.getElementById("flash-subtitle").value.trim(),
-        buttonText: document.getElementById("flash-buttontext").value.trim(),
-        buttonLink: document.getElementById("flash-link").value.trim(),
-        active: document.getElementById("flash-active").checked
-    };
-    await db.collection("settings").doc("flashdeal").set(data, { merge: true });
-    await logAction("flash_deal_updated");
-    showToast("⚡ Flash-Deal gespeichert – Banner ist live!");
-});
-// ====================== TOGGLE SIDEBAR ======================
 function toggleSidebar() {
     document.getElementById("sidebar").classList.toggle("-translate-x-full");
 }
@@ -1212,7 +1149,6 @@ window.onload = () => {
     loadCoupons();
     loadOrders();
     loadUsers();
-    loadFlashDeal();
     setTimeout(updateStats, 500);
 };
 </script>

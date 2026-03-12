@@ -697,7 +697,7 @@
                 default: return "status-Zahlung";
             }
         }
-        // ====================== AUTH + LOYALTY SYNC ======================
+        // ====================== AUTH + LOYALTY SYNC (MIT RESET-FIX) ======================
         auth.onAuthStateChanged(async (user) => {
             currentUser = user;
             updateAuthUI();
@@ -722,8 +722,17 @@
                     if (doc.exists) {
                         const data = doc.data();
                         const firestoreBonus = data.totalBonusPoints || 0;
-                        const localEarned = parseInt(localStorage.getItem("wavevapes_loyalty_points")) || 0;
-                        loyaltyPoints = localEarned + firestoreBonus;
+                        // NEUER RESET-MECHANISMUS – synchronisiert Admin-Reset mit Shop
+                        const resetTime = data.loyaltyResetAt ? data.loyaltyResetAt.toDate().getTime() : 0;
+                        const lastReset = parseInt(localStorage.getItem("wavevapes_last_reset")) || 0;
+                        if (resetTime > lastReset) {
+                            localStorage.setItem("wavevapes_loyalty_points", "0");
+                            localStorage.setItem("wavevapes_last_reset", resetTime.toString());
+                            loyaltyPoints = 0;
+                        } else {
+                            const localEarned = parseInt(localStorage.getItem("wavevapes_loyalty_points")) || 0;
+                            loyaltyPoints = localEarned + firestoreBonus;
+                        }
                         localStorage.setItem("wavevapes_loyalty_points", loyaltyPoints);
                         updateLoyaltyDisplay();
                     }

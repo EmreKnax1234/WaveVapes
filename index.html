@@ -231,13 +231,13 @@
             <h2 class="hero-title text-5xl sm:text-6xl font-bold tracking-tighter neon-text mb-3">Bestelle deine Liquids und Vapes</h2>
             <p class="hero-subtitle text-xl sm:text-2xl text-cyan-200 max-w-md mx-auto">7,99 € pro Flasche • 10 ml • Nikotin frei wählbar (10 oder 20 mg)</p>
             <p class="text-base sm:text-lg text-gray-300 mt-4">Alle Liquids von ELFLIQ</p>
-           
+          
             <!-- MYSTERY VAPE BANNER -->
             <div class="mt-4 inline-flex items-center gap-3 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-400/30 hover:border-emerald-400 px-7 py-3 rounded-3xl text-emerald-300 text-base font-semibold transition-all">
                 <i class="fa-solid fa-gift text-2xl"></i>
                 <span>Ab 100€ Bestellwert gibt's eine <span class="text-white font-bold underline">Mystery Vape gratis</span> dazu! 🎁</span>
             </div>
-           
+          
             <!-- GRATIS VERSAND BANNER -->
             <div class="mt-4 inline-flex items-center gap-3 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-400/30 px-7 py-3 rounded-3xl text-amber-300 text-base font-semibold transition-all">
                 <i class="fa-solid fa-truck text-2xl"></i>
@@ -1290,7 +1290,7 @@
             const dateStr = now.getFullYear().toString().slice(2) + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0');
             return `WV-${dateStr}-${Math.floor(1000 + Math.random() * 9000)}`;
         }
-        // ====================== PLACEORDER ======================
+        // ====================== PLACEORDER – MIT LAGER-REDUKTION ======================
         async function placeOrder() {
             if (!currentUser) {
                 alert("Bitte melde dich zuerst an!");
@@ -1327,6 +1327,16 @@
                     loyaltyEarned: loyaltyEarned,
                     loyaltyCredited: false
                 });
+
+                // 🔥 SOFORT Lager reduzieren + sold erhöhen (genau das, was du vermisst hast!)
+                for (const item of cart) {
+                    if (item.id === MYSTERY_ID) continue;
+                    await db.collection("products").doc(item.id).update({
+                        stock: firebase.firestore.FieldValue.increment(-item.qty),
+                        sold: firebase.firestore.FieldValue.increment(item.qty)
+                    });
+                }
+
                 await sendOrderConfirmationEmail({
                     userEmail: currentUser.email,
                     orderNumber: orderNumber,
@@ -1335,6 +1345,7 @@
                     shipping: getShippingCost(),
                     loyaltyEarned: loyaltyEarned
                 });
+
                 showSuccessModal(orderNumber, finalTotal, loyaltyEarned);
                 cart = [];
                 appliedDiscount = null;

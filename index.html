@@ -463,7 +463,6 @@
                     <li>Lieferadresse</li>
                     <li>Warenkorb-Inhalt</li>
                     <li>Bestellungen</li>
-                    <li>Loyalty-Punkte (lokal)</li>
                     <li>Referral-Code & Referrals</li>
                     <li>Eingelöste Loyalty-Codes</li>
                 </ul>
@@ -523,7 +522,7 @@
         let cart = [];
         let currentUser = null;
         let userAddress = JSON.parse(localStorage.getItem("wavevapes_address")) || {};
-        let loyaltyPoints = parseInt(localStorage.getItem("wavevapes_loyalty_points")) || 0;
+        let loyaltyPoints = 0;
         let currentCategoryFilter = "Alle";
         let notificationList = [];
         const NOTIFICATION_DURATION = 6500;
@@ -697,7 +696,7 @@
                 default: return "status-Zahlung";
             }
         }
-        // ====================== AUTH + LOYALTY SYNC (MIT RESET-FIX) ======================
+        // ====================== AUTH + LOYALTY SYNC (SERVER-ONLY) ======================
         auth.onAuthStateChanged(async (user) => {
             currentUser = user;
             updateAuthUI();
@@ -721,19 +720,7 @@
                 userSnapshotUnsubscribe = db.collection("users").doc(user.uid).onSnapshot(doc => {
                     if (doc.exists) {
                         const data = doc.data();
-                        const firestoreBonus = data.totalBonusPoints || 0;
-                        // NEUER RESET-MECHANISMUS – synchronisiert Admin-Reset mit Shop
-                        const resetTime = data.loyaltyResetAt ? data.loyaltyResetAt.toDate().getTime() : 0;
-                        const lastReset = parseInt(localStorage.getItem("wavevapes_last_reset")) || 0;
-                        if (resetTime > lastReset) {
-                            localStorage.setItem("wavevapes_loyalty_points", "0");
-                            localStorage.setItem("wavevapes_last_reset", resetTime.toString());
-                            loyaltyPoints = 0;
-                        } else {
-                            const localEarned = parseInt(localStorage.getItem("wavevapes_loyalty_points")) || 0;
-                            loyaltyPoints = localEarned + firestoreBonus;
-                        }
-                        localStorage.setItem("wavevapes_loyalty_points", loyaltyPoints);
+                        loyaltyPoints = data.totalBonusPoints || 0;
                         updateLoyaltyDisplay();
                     }
                 });
@@ -844,11 +831,13 @@
             const percent = Math.min(100, Math.floor((loyaltyPoints / nextReward.points) * 100));
             document.getElementById("loyalty-progress-bar").style.width = percent + "%";
         }
-        function addLoyaltyPoints(amount) {
-            loyaltyPoints += Math.floor(amount);
-            localStorage.setItem("wavevapes_loyalty_points", loyaltyPoints);
-            updateLoyaltyDisplay();
-            showToast(`🎉 +${Math.floor(amount)} Loyalty-Punkte gutgeschrieben!`);
+        async function addLoyaltyPoints(amount) {
+            if (!currentUser) return;
+            const pointsToAdd = Math.floor(amount);
+            await db.collection("users").doc(currentUser.uid).update({
+                totalBonusPoints: firebase.firestore.FieldValue.increment(pointsToAdd)
+            });
+            showToast(`🎉 +${pointsToAdd} Loyalty-Punkte gutgeschrieben!`);
         }
         async function applyDiscountCode() {
             const input = document.getElementById("discount-input").value.trim().toUpperCase();

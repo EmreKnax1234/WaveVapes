@@ -53,7 +53,6 @@
             </div>
         </div>
     </header>
-
     <!-- AUTH CHECK -->
     <div id="auth-loading" class="fixed inset-0 bg-black/90 flex items-center justify-center z-50">
         <div class="text-center">
@@ -68,7 +67,6 @@
             <a href="index.html" class="bg-cyan-500 hover:bg-cyan-400 text-black px-10 py-5 rounded-3xl font-bold text-xl">Zurück zum Shop</a>
         </div>
     </div>
-
     <!-- HAUPTINHALT -->
     <main id="admin-content" class="hidden max-w-7xl mx-auto px-6 py-10">
         <!-- TABS -->
@@ -79,7 +77,6 @@
             <button onclick="switchTab(3)" id="tab3" class="flex-1 py-5 text-lg font-semibold">Kategorien</button>
             <button onclick="switchTab(4)" id="tab4" class="flex-1 py-5 text-lg font-semibold bg-gradient-to-r from-amber-400 to-orange-400 text-black">📣 Marketing</button>
         </div>
-
         <!-- ====================== PRODUKTE TAB ====================== -->
         <div id="tab-content-0">
             <!-- BACKUP & RESTORE -->
@@ -202,7 +199,6 @@
                 </div>
             </div>
         </div>
-
         <!-- BESTELLUNGEN TAB -->
         <div id="tab-content-1" class="hidden">
             <div class="card overflow-hidden">
@@ -240,7 +236,6 @@
                 </div>
             </div>
         </div>
-
         <!-- BENUTZER TAB -->
         <div id="tab-content-2" class="hidden">
             <!-- GLOBALER LOYALTY-RESET -->
@@ -281,7 +276,6 @@
                 </div>
             </div>
         </div>
-
         <!-- ====================== KATEGORIEN TAB ====================== -->
         <div id="tab-content-3" class="hidden">
             <!-- NEUE KATEGORIE -->
@@ -318,7 +312,6 @@
                 </div>
             </div>
         </div>
-
         <!-- ====================== MARKETING TAB ====================== -->
         <div id="tab-content-4" class="hidden">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -354,7 +347,6 @@
                         </table>
                     </div>
                 </div>
-
                 <!-- BANNER-EDITOR -->
                 <div class="card p-8">
                     <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><i class="fa-solid fa-image"></i> Hero-Banner Editor</h2>
@@ -383,7 +375,6 @@
                     </form>
                     <div id="banner-preview-live" class="promo-preview mt-6 p-4 text-center text-sm bg-zinc-950"></div>
                 </div>
-
                 <!-- NEWSLETTER -->
                 <div class="card p-8 lg:col-span-2">
                     <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><i class="fa-solid fa-envelope"></i> Newsletter an alle User</h2>
@@ -406,14 +397,12 @@
             </div>
         </div>
     </main>
-
     <!-- EDIT MODAL -->
     <div id="edit-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]"></div>
     <!-- BESTELL-DETAIL MODAL CONTAINER -->
     <div id="order-modal-container"></div>
     <!-- TOAST -->
     <div id="toast-container" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[99999] flex flex-col gap-3"></div>
-
     <script>
         // ==================== FIREBASE CONFIG ====================
         const firebaseConfig = {
@@ -427,12 +416,10 @@
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
-
         // ==================== EMAILJS CONFIG ====================
         const EMAILJS_SERVICE_ID = "service_lzvte0x";
         const EMAILJS_PUBLIC_KEY = "t19pJAHgBpbKpZFGU";
         const EMAILJS_NEWSLETTER_TEMPLATE = "template_newsletter";
-
         let currentEditId = null;
         let selectedFile = null;
         let currentOrderId = null;
@@ -440,7 +427,6 @@
         let allCategories = [];
         let allCoupons = [];
         let currentBannerImage = null;
-
         // ==================== AUTH ====================
         auth.onAuthStateChanged(async (user) => {
             if (!user) return window.location.href = 'index.html';
@@ -456,9 +442,7 @@
             emailjs.init(EMAILJS_PUBLIC_KEY);
             switchTab(0);
         });
-
         function logout() { auth.signOut().then(() => location.href = 'index.html'); }
-
         // ==================== TABS ====================
         function switchTab(n) {
             document.getElementById('tab0').classList.toggle('tab-active', n === 0);
@@ -466,13 +450,11 @@
             document.getElementById('tab2').classList.toggle('tab-active', n === 2);
             document.getElementById('tab3').classList.toggle('tab-active', n === 3);
             document.getElementById('tab4').classList.toggle('tab-active', n === 4);
-
             document.getElementById('tab-content-0').classList.toggle('hidden', n !== 0);
             document.getElementById('tab-content-1').classList.toggle('hidden', n !== 1);
             document.getElementById('tab-content-2').classList.toggle('hidden', n !== 2);
             document.getElementById('tab-content-3').classList.toggle('hidden', n !== 3);
             document.getElementById('tab-content-4').classList.toggle('hidden', n !== 4);
-
             if (n === 1) {
                 loadOrders();
                 checkAndAutoCancelOldOrders();
@@ -485,7 +467,6 @@
                 updateUserCountForNewsletter();
             }
         }
-
         // ==================== TOAST ====================
         function showToast(msg, type = 'success') {
             const toast = document.createElement('div');
@@ -494,7 +475,6 @@
             document.getElementById('toast-container').appendChild(toast);
             setTimeout(() => toast.remove(), 3500);
         }
-
         // ==================== STATUS CLASS ====================
         function getStatusClass(s) {
             const map = {
@@ -506,7 +486,6 @@
             };
             return map[s] || "status-Zahlung";
         }
-
         // ==================== LOYALTY GUTSCHRIFT NUR BEI "WIRD BEARBEITET" ====================
         async function awardLoyaltyIfProcessed(orderId) {
             const doc = await db.collection('orders').doc(orderId).get();
@@ -520,7 +499,6 @@
             await db.collection('orders').doc(orderId).update({ loyaltyCredited: true });
             showToast(`🎉 +${points} Loyalty-Punkte an Kunden gutgeschrieben!`, 'success');
         }
-
         // ====================== STOCK & STORNO LOGIC ======================
         async function handleStockOnStatusChange(orderId, newStatus) {
             const doc = await db.collection('orders').doc(orderId).get();
@@ -547,7 +525,6 @@
                 showToast("✅ Lagerbestand wiederhergestellt", "success");
             }
         }
-
         // ====================== AUTOMATISCHE STORNO NACH 7 TAGEN ======================
         async function checkAndAutoCancelOldOrders() {
             const sevenDaysAgo = firebase.firestore.Timestamp.fromDate(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
@@ -564,7 +541,6 @@
             await batch.commit();
             showToast(`🚨 ${snapshot.size} Bestellung(en) automatisch storniert (7 Tage ohne Zahlung)`, "success");
         }
-
         // ==================== RESET ALL STATISTICS ====================
         async function resetAllStatistics() {
             if (!confirm("⚠️ ALLE STATISTIKEN ZURÜCKSETZEN?\n\nDies setzt bei JEDER Produkt das Feld 'sold' auf 0.\n\nDas kann NICHT rückgängig gemacht werden!")) return;
@@ -581,7 +557,6 @@
                 alert("Fehler beim Zurücksetzen: " + e.message);
             }
         }
-
         // ==================== KATEGORIEN ====================
         function loadCategories() {
             db.collection('categories').orderBy('order').onSnapshot(snap => {
@@ -660,7 +635,6 @@
             defaults.forEach(d => db.collection('categories').add(d));
             showToast('✅ Standard-Kategorien angelegt!');
         }
-
         // ==================== DYNAMISCHE KATEGORIE SELECTS ====================
         function populateCategorySelects() {
             const selects = document.querySelectorAll('#prod-category, #edit-category-select');
@@ -675,7 +649,6 @@
                 });
             });
         }
-
         // ==================== PRODUKTE ====================
         let allProducts = [];
         function loadProducts() {
@@ -732,7 +705,6 @@
             await db.collection('products').doc(id).delete();
             showToast('✅ Produkt gelöscht');
         }
-
         // ==================== EDIT MODAL ====================
         async function openEditModal(id) {
             currentEditId = id;
@@ -852,7 +824,6 @@
             closeEditModal();
             showToast('✅ Produkt gespeichert!');
         }
-
         // ==================== NEUES PRODUKT ====================
         document.getElementById('add-form').addEventListener('submit', async e => {
             e.preventDefault();
@@ -900,7 +871,6 @@
             };
             input.click();
         });
-
         // ==================== CSV EXPORT ====================
         async function exportProductsToCSV() {
             const snapshot = await db.collection("products").get();
@@ -930,7 +900,6 @@
             link.click();
             showToast("✅ CSV-Datei wurde heruntergeladen!", "success");
         }
-
         // ==================== CSV IMPORT ====================
         async function importProductsFromCSV(e) {
             const file = e.target.files[0];
@@ -977,7 +946,6 @@
                 field.replace(/^"|"$/g, '').replace(/""/g, '"')
             );
         }
-
         // ==================== BESTELLUNGEN ====================
         function loadOrders() {
             const tbody = document.getElementById('orders-tbody');
@@ -1015,7 +983,6 @@
             }
             showToast(`Status auf „${status}“ gesetzt`);
         }
-
         // ==================== BESTELL-DETAIL MODAL ====================
         async function showOrderModal(orderId) {
             currentOrderId = orderId;
@@ -1106,7 +1073,6 @@
             showToast('Bestellung gelöscht');
             closeOrderModal();
         }
-
         // ==================== BENUTZER TAB ====================
         function loadUsers() {
             const tbody = document.getElementById('users-tbody');
@@ -1211,7 +1177,6 @@
                 showToast("Fehler: " + e.message, "error");
             }
         }
-
         // ==================== CSV EXPORTS BENUTZER & BESTELLUNGEN ====================
         async function exportOrdersToCSV() {
             const snapshot = await db.collection("orders").get();
@@ -1260,7 +1225,6 @@
             link.click();
             showToast("✅ Benutzer exportiert!", "success");
         }
-
         // ====================== MARKETING FUNCTIONS ======================
         // GUTSCHEIN-MANAGER
         document.getElementById('add-coupon-form').addEventListener('submit', async e => {
@@ -1270,7 +1234,6 @@
             const value = parseFloat(document.getElementById('coupon-value').value);
             const expiry = new Date(document.getElementById('coupon-expiry').value);
             const oneTime = document.getElementById('coupon-onetime').checked;
-
             await db.collection('coupons').add({
                 code,
                 type,
@@ -1284,13 +1247,11 @@
             showToast('✅ Gutschein erstellt!');
             loadCoupons();
         });
-
         async function loadCoupons() {
             const snap = await db.collection('coupons').orderBy('createdAt', 'desc').get();
             allCoupons = snap.docs.map(d => ({id: d.id, ...d.data()}));
             renderCouponsTable();
         }
-
         function renderCouponsTable() {
             const tbody = document.getElementById('coupons-tbody');
             let html = '';
@@ -1309,15 +1270,13 @@
             });
             tbody.innerHTML = html || `<tr><td colspan="5" class="text-center py-16 text-gray-400">Noch keine Gutscheine</td></tr>`;
         }
-
         async function deleteCoupon(id) {
             if (confirm('Gutschein löschen?')) {
                 await db.collection('coupons').doc(id).delete();
                 loadCoupons();
             }
         }
-
-        // BANNER-EDITOR
+        // BANNER-EDITOR (KORRIGIERT – JETZT FUNKTIONIERT ES!)
         async function loadBanner() {
             const doc = await db.collection('banners').doc('hero').get();
             if (doc.exists) {
@@ -1332,7 +1291,6 @@
                 }
             }
         }
-
         const bannerDropzone = document.getElementById('banner-dropzone');
         bannerDropzone.addEventListener('click', () => {
             const input = document.createElement('input');
@@ -1347,46 +1305,67 @@
             };
             input.click();
         });
-
+        // === KORRIGIERTER BANNER-SAVE (DER FIX!) ===
         document.getElementById('banner-form').addEventListener('submit', async e => {
             e.preventDefault();
-            let imageUrl = currentBannerImage;
-            if (imageUrl && typeof imageUrl !== 'string') {
-                const formData = new FormData();
-                formData.append("file", imageUrl);
-                formData.append("upload_preset", "wavevapes");
-                const res = await fetch("https://api.cloudinary.com/v1_1/dbbkmjsr5/image/upload", { method: "POST", body: formData });
-                const json = await res.json();
-                imageUrl = json.secure_url;
+
+            let finalImageUrl = null;
+
+            // 1. Falls vorher schon ein Bild existiert
+            if (currentBannerImage && typeof currentBannerImage === 'string') {
+                finalImageUrl = currentBannerImage;
             }
 
+            // 2. Falls gerade ein neues Bild hochgeladen wurde
+            if (currentBannerImage && typeof currentBannerImage !== 'string') {
+                const formData = new FormData();
+                formData.append("file", currentBannerImage);
+                formData.append("upload_preset", "wavevapes");
+
+                try {
+                    const res = await fetch("https://api.cloudinary.com/v1_1/dbbkmjsr5/image/upload", {
+                        method: "POST",
+                        body: formData
+                    });
+                    const json = await res.json();
+                    if (json.secure_url) finalImageUrl = json.secure_url;
+                    else throw new Error("Cloudinary Fehler");
+                } catch (err) {
+                    alert("❌ Bild-Upload fehlgeschlagen: " + err.message);
+                    return;
+                }
+            }
+
+            // 3. Pflicht: Bild muss vorhanden sein
+            if (!finalImageUrl) {
+                alert("⚠️ Du musst ein Banner-Bild hochladen!");
+                return;
+            }
+
+            // 4. Speichern
             await db.collection('banners').doc('hero').set({
-                text: document.getElementById('banner-text').value,
-                image: imageUrl,
-                link: document.getElementById('banner-link').value,
+                text: document.getElementById('banner-text').value.trim(),
+                image: finalImageUrl,
+                link: document.getElementById('banner-link').value.trim(),
                 active: document.getElementById('banner-active').checked,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             }, { merge: true });
 
-            showToast('✅ Banner live geschaltet!');
+            showToast('✅ Banner live geschaltet! (Bild jetzt korrekt gespeichert)');
+            loadBanner(); // Vorschau aktualisieren
         });
-
         // NEWSLETTER
         async function updateUserCountForNewsletter() {
             const snap = await db.collection('users').get();
             document.getElementById('user-count').textContent = snap.size;
         }
-
         async function sendNewsletter() {
             const subject = document.getElementById('newsletter-subject').value;
             const body = document.getElementById('newsletter-body').value;
             if (!subject || !body) return alert('Betreff + Inhalt ausfüllen!');
-
             if (!confirm(`Newsletter an ALLE User senden? (${document.getElementById('user-count').textContent} Empfänger)`)) return;
-
             const snap = await db.collection('users').get();
             let sent = 0;
-
             for (let doc of snap.docs) {
                 const user = doc.data();
                 if (user.email) {
@@ -1402,7 +1381,6 @@
             }
             showToast(`✅ Newsletter an ${sent} User versendet!`);
         }
-
         // ==================== START ====================
         window.onload = () => {
             loadProducts();

@@ -1,1615 +1,490 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>WaveVapes – Disposable Vapes & Premium Liquids</title>
-    <meta name="description" content="WaveVapes Shop – Disposable Vapes bis 30000 Puffs und Premium Liquids online. 4 für 3 Aktion • Mystery Vape gratis ab 100 € • Gratis Versand ab 100 €. Schnell & diskret per DHL. Nur für Volljährige.">
-    <meta name="robots" content="index, follow">
-    <link rel="canonical" href="https://wavevapes.de">
-    <meta name="theme-color" content="#0a0a0a">
-    <!-- SEO + Social Media -->
-    <meta property="og:title" content="WaveVapes – Tornado 30000 & Premium Liquids">
-    <meta property="og:description" content="4 für 3 Aktion + Mystery Vape gratis ab 100 €. Schnell & diskret per DHL. Nur für Volljährige.">
-    <meta property="og:image" content="https://wavevapes.de/og-image.jpg">
-    <meta property="og:url" content="https://wavevapes.de">
-    <meta property="og:type" content="website">
-    <meta property="og:site_name" content="WaveVapes">
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:site" content="@WaveVapes">
-    <meta name="twitter:creator" content="@WaveVapes">
-    <!-- Preconnect -->
-    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
-    <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
-    <!-- EMAILJS -->
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-    <!-- JSON-LD -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "WebSite",
-      "name": "WaveVapes",
-      "url": "https://wavevapes.de",
-      "description": "Disposable Vapes und Premium Liquids mit Loyalty-System und 4-für-3-Aktion",
-      "publisher": {
-        "@type": "Organization",
-        "name": "WaveVapes",
-        "logo": "https://wavevapes.de/logo.png"
-      },
-      "potentialAction": {
-        "@type": "SearchAction",
-        "target": "https://wavevapes.de/?search={search_term_string}",
-        "query-input": "required name=search_term_string"
-      }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>WaveVapes – Admin Panel</title>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+  <style>
+    :root { --neon-cyan: #67e8f9; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: linear-gradient(135deg, #0a0a0a, #1e1233, #0a0a0a);
+      color: white;
+      min-height: 100vh;
     }
-    </script>
-    <!-- Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Inter:wght@400;500;600&display=swap');
-        :root { --neon-cyan: #67e8f9; }
-        html, body { touch-action: manipulation !important; -webkit-text-size-adjust: 100% !important; -webkit-tap-highlight-color: transparent !important; }
-        * { touch-action: manipulation !important; -webkit-tap-highlight-color: transparent !important; }
-        input, select, button, textarea, .qty-btn, .product-card, .nicotine-select { touch-action: manipulation !important; }
-        body { font-family: 'Inter', system-ui, sans-serif; }
-        .neon-text { text-shadow: 0 0 15px var(--neon-cyan), 0 0 30px var(--neon-cyan); }
-        .product-card { transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); display: flex; flex-direction: column; height: 100%; }
-        .product-card:hover { transform: translateY(-12px) scale(1.04); box-shadow: 0 25px 50px -12px rgb(103 232 249); }
-        .tab-active { border-bottom: 4px solid var(--neon-cyan); color: var(--neon-cyan); font-weight: 600; }
-        .wave-bg { background: linear-gradient(135deg, #0a0a0a, #1e1233, #0a0a0a); }
-        .qty-btn { transition: all 0.2s ease; }
-        .qty-btn:hover { background-color: #22d3ee; color: black; }
-        @keyframes boltPulse { 0%, 100% { transform: scale(1) rotate(0deg); color: #fde047; } 50% { transform: scale(1.35) rotate(20deg); color: #facc15; } }
-        .animate-bolt { animation: boltPulse 650ms infinite alternate ease-in-out; display: inline-block; text-shadow: 0 0 15px #facc15; }
-        #notification-toast { position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); backdrop-filter: blur(12px); color: #67e8f9; padding: 12px 24px; border-radius: 9999px; font-size: 13px; opacity: 0; transition: all 0.6s cubic-bezier(0.34,1.56,0.64,1); z-index: 1000; max-width: 92%; text-align: center; box-shadow: 0 10px 30px -10px rgb(103 232 249); }
-        @media (max-width: 1023px) { #notification-toast { bottom: 15px !important; } }
-        #notification-toast.visible { opacity: 1; transform: translateX(-50%) translateY(-10px); }
-        .tornado-image { width: 100%; height: 160px; object-fit: cover; border-radius: 16px; margin-bottom: 12px; background: #1f2937; }
-        .price-row { display: flex; justify-content: center; align-items: baseline; gap: 8px; margin-bottom: 12px; }
-        .discount-price { font-size: 1.35rem; text-decoration: line-through; color: #9ca3af; }
-        .sale-price { font-size: 1.85rem; font-weight: 700; color: #ef4444; }
-        .mystery-item { background: linear-gradient(90deg, #10b981, #34d399) !important; border: 2px solid #a7f3d0 !important; color: black; }
-        .nicotine-select {
-            background: #1f2937;
-            color: white;
-            border: 1px solid rgba(103,232,249,0.5);
-            border-radius: 9999px;
-            padding: 6px 12px;
-            font-size: 0.875rem;
-            margin-top: 8px;
-            width: 112px !important;
-            margin-left: auto;
-            margin-right: auto;
-            appearance: none;
-            text-align: center;
-        }
-        .nicotine-select:focus { outline: none; border-color: #22d3ee; box-shadow: 0 0 0 3px rgba(34,211,238,0.3); }
-        .loyalty-bar { height: 6px; background: linear-gradient(to right, #67e8f9, #a5f3fc); border-radius: 9999px; transition: width 0.6s cubic-bezier(0.34,1.56,0.64,1); }
-        .review-card { transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1); }
-        .review-card:hover { transform: translateY(-8px); box-shadow: 0 20px 40px -15px rgb(103 232 249); }
-        .star { color: #fde047; }
-        .social-icon { transition: all 0.3s ease; }
-        .social-icon:hover { transform: scale(1.25) rotate(10deg); filter: brightness(1.2); }
-        .auth-tab { transition: all 0.2s; }
-        .auth-tab-active { border-bottom: 4px solid var(--neon-cyan); color: var(--neon-cyan); font-weight: 600; }
-        .unavailable-product { opacity: 0.65; }
-        .unavailable-product .sale-price { text-decoration: line-through; color: #ef4444 !important; }
-        .unavailable-tag { background: rgba(239, 68, 68, 0.3); color: #ef4444; padding: 4px 12px; border-radius: 9999px; font-size: 0.875rem; font-weight: 500; text-align: center; margin-bottom: 12px; }
-        .liquid-card .p-5 { padding: 1rem; }
-        .liquid-card { min-height: auto; }
-        .status-badge { padding:4px 10px; border-radius:999px; font-size:12px; font-weight:600; display: inline-block; text-align: center; min-width: 118px; }
-        .status-Zahlung{background:#facc15;color:black;}
-        .status-Wird{background:#60a5fa;color:black;}
-        .status-Versendet{background:#a78bfa;color:black;}
-        .status-Zugestellt{background:#34d399;color:black;}
-        .status-Storniert{background:#ef4444;color:white;}
-        .stock-info { font-size: 0.8rem; font-weight: 500; margin-top: 8px; text-align: center; border-radius: 9999px; padding: 2px 10px; }
-        .stock-high { background: rgba(16, 185, 129, 0.15); color: #10b981; }
-        .stock-low { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
-        .stock-zero { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
-        img { max-width: 100%; height: auto; display: block; }
-    </style>
+    .neon-text { text-shadow: 0 0 15px var(--neon-cyan), 0 0 30px var(--neon-cyan); }
+    .admin-card { background: #111827; border: 1px solid rgba(103,232,249,0.2); }
+    .status-Zahlung { background:#facc15; color:black; }
+    .status-Wird { background:#60a5fa; color:black; }
+    .status-Versendet { background:#a78bfa; color:black; }
+    .status-Zugestellt { background:#34d399; color:black; }
+    .status-Storniert { background:#ef4444; color:white; }
+  </style>
 </head>
-<body class="wave-bg text-white min-h-screen">
-    <!-- NAVBAR -->
-    <nav class="bg-black/90 backdrop-blur-xl border-b border-cyan-400/30 sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex justify-between items-center">
-            <div class="flex items-center gap-3">
-                <img src="logo.png" alt="WaveVapes Logo" class="h-8 sm:h-11 w-auto drop-shadow-xl" loading="eager" fetchpriority="high">
-                <div>
-                    <h1 class="text-3xl sm:text-4xl font-bold tracking-tighter neon-text">WAVEVAPES</h1>
-                    <p class="text-[9px] sm:text-[10px] text-cyan-300 tracking-[3px] -mt-1">2026 SORTIMENT</p>
-                </div>
-            </div>
-            <div class="flex items-center gap-3 sm:gap-8">
-                <button onclick="showAuthModal()" id="account-btn" class="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 border border-cyan-400/30 px-4 sm:px-6 py-2 sm:py-3 rounded-3xl text-xs sm:text-sm font-medium transition-all">
-                    <i class="fa-solid fa-user text-cyan-300"></i>
-                    <span id="current-user-display" class="font-medium">Account</span>
-                </button>
-                <button onclick="toggleCart()" class="relative flex items-center gap-2 bg-gradient-to-r from-cyan-400 to-purple-500 hover:from-cyan-300 hover:to-purple-400 text-black font-semibold px-5 sm:px-7 py-2 sm:py-3 rounded-3xl transition-all text-sm">
-                    <i class="fa-solid fa-cart-shopping text-lg"></i>
-                    <span class="hidden sm:inline">Warenkorb</span>
-                    <div id="cart-count-badge" class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow-md">0</div>
-                </button>
-            </div>
-        </div>
-        <div class="bg-red-950/70 text-red-300 text-[10px] py-1 text-center font-medium tracking-widest border-t border-red-900/50">
-            18+ • NUR FÜR VOLLJÄHRIGE • NIKOTINPRODUKTE
-        </div>
-    </nav>
+<body class="min-h-screen pb-20">
 
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-8 pb-20">
-        <!-- HERO -->
-        <div class="text-center mb-12">
-            <div class="inline-flex items-center gap-2 bg-white/10 px-5 py-1.5 rounded-3xl text-xs mb-6 backdrop-blur-md">
-                <div class="w-2.5 h-2.5 bg-emerald-400 rounded-full animate-ping"></div>
-                International • Versand per DHL
-            </div>
-            <h2 class="hero-title text-5xl sm:text-6xl font-bold tracking-tighter neon-text mb-3">Bestelle deine Liquids und Vapes</h2>
-            <p class="hero-subtitle text-xl sm:text-2xl text-cyan-200 max-w-md mx-auto">7,99 € pro Flasche • 10 ml • Nikotin frei wählbar (10 oder 20 mg)</p>
-            <p class="text-base sm:text-lg text-gray-300 mt-4">Alle Liquids von ELFLIQ</p>
-            <div class="mt-4 inline-flex items-center gap-3 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-400/30 hover:border-emerald-400 px-7 py-3 rounded-3xl text-emerald-300 text-base font-semibold transition-all">
-                <i class="fa-solid fa-gift text-2xl"></i>
-                <span>Ab 100€ Bestellwert gibt's eine <span class="text-white font-bold underline">Mystery Vape gratis</span> dazu! 🎁</span>
-            </div>
-            <div class="mt-4 inline-flex items-center gap-3 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-400/30 px-7 py-3 rounded-3xl text-amber-300 text-base font-semibold transition-all">
-                <i class="fa-solid fa-truck text-2xl"></i>
-                <span>Gratis Versand ab <span class="text-white font-bold">100 €</span> Bestellwert! 🚚</span>
-            </div>
-        </div>
+  <!-- AUTH MODAL (wird beim Laden gezeigt, wenn nicht eingeloggt) -->
+  <div id="auth-modal" class="fixed inset-0 bg-black/90 flex items-center justify-center z-50">
+    <div class="bg-zinc-900 rounded-3xl p-10 max-w-md w-full mx-4 text-center">
+      <h2 class="text-4xl font-bold neon-text mb-8">Admin Login</h2>
+      <input id="admin-email" type="email" placeholder="Admin E-Mail" class="w-full bg-zinc-800 border border-cyan-500/30 focus:border-cyan-400 rounded-2xl px-6 py-4 mb-4 outline-none"/>
+      <input id="admin-password" type="password" placeholder="Passwort" class="w-full bg-zinc-800 border border-cyan-500/30 focus:border-cyan-400 rounded-2xl px-6 py-4 mb-6 outline-none"/>
+      <button onclick="adminLogin()" class="w-full bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 text-black font-bold py-5 rounded-2xl text-xl transition">
+        Einloggen
+      </button>
+      <p id="admin-error" class="text-red-400 mt-4 min-h-[1.5rem]"></p>
+    </div>
+  </div>
 
-        <!-- USER BANNER -->
-        <div id="user-banner" class="mb-10 bg-gradient-to-r from-zinc-900 to-purple-950 border border-cyan-300/30 hover:border-cyan-300 rounded-3xl p-5 cursor-pointer transition-all group" onclick="showAuthModal()">
-            <div class="flex items-center gap-4 mb-3">
-                <i class="fa-solid fa-circle-user text-4xl text-cyan-300"></i>
-                <div>
-                    <p class="text-cyan-300 text-xs">Angemeldet als</p>
-                    <p id="user-name-display" class="text-2xl font-semibold group-hover:text-cyan-200 transition">Bitte einloggen</p>
-                </div>
-            </div>
-            <div class="flex items-center justify-between bg-zinc-950/70 rounded-2xl p-4 mb-5">
-                <div class="flex items-center gap-3">
-                    <i class="fa-solid fa-star text-3xl text-yellow-400"></i>
-                    <div>
-                        <p class="text-xs text-yellow-300">LOYALTY PUNKTE</p>
-                        <p id="loyalty-points" class="text-3xl font-bold text-white">0</p>
-                    </div>
-                </div>
-                <div class="text-right">
-                    <p id="loyalty-progress-text" class="text-xs text-emerald-400">Nächster Bonus in <span class="font-bold">300</span> Punkten</p>
-                    <div class="w-36 h-2 bg-zinc-800 rounded-full mt-2 overflow-hidden">
-                        <div id="loyalty-progress-bar" class="loyalty-bar w-0"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="flex items-center gap-4 flex-wrap justify-end">
-                <button onclick="event.stopImmediatePropagation(); showOrderHistory()" class="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-cyan-300 hover:text-white px-4 py-2 rounded-2xl text-sm font-medium transition-all">
-                    <i class="fa-solid fa-clock-rotate-left"></i>
-                    <span class="hidden sm:inline">Meine Bestellungen</span>
-                </button>
-                <button onclick="event.stopImmediatePropagation(); shareReferral()" class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-2xl text-sm font-medium transition-all">
-                    <i class="fa-solid fa-share-nodes"></i>
-                    <span class="hidden sm:inline">Freunde einladen</span>
-                </button>
-                <button onclick="event.stopImmediatePropagation(); showMyReferrals()" class="flex items-center gap-2 bg-purple-600/80 hover:bg-purple-600 text-white px-4 py-2 rounded-2xl text-sm font-medium transition-all border border-purple-400/50">
-                    <i class="fa-solid fa-gift"></i>
-                    Meine Referrals
-                </button>
-            </div>
-        </div>
+  <!-- NAVBAR -->
+  <nav class="bg-black/80 backdrop-blur-xl border-b border-cyan-500/30 sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex justify-between items-center">
+      <div class="flex items-center gap-4">
+        <h1 class="text-3xl font-bold neon-text">WAVEVAPES ADMIN</h1>
+        <span class="text-xs bg-red-600/80 px-3 py-1 rounded-full">nur für Admins</span>
+      </div>
+      <div class="flex items-center gap-6">
+        <span id="current-admin" class="text-cyan-300"></span>
+        <button onclick="adminLogout()" class="bg-red-600/80 hover:bg-red-700 px-5 py-2.5 rounded-xl font-medium transition">
+          <i class="fa-solid fa-right-from-bracket mr-2"></i> Logout
+        </button>
+      </div>
+    </div>
+  </nav>
 
-        <!-- TABS -->
-        <div id="category-tabs" class="category-tabs flex overflow-x-auto gap-x-6 pb-4 border-b border-white/10 mb-8 text-base whitespace-nowrap"></div>
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 py-10">
 
-        <!-- SEARCH -->
-        <div class="relative mb-8">
-            <i class="fa-solid fa-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-cyan-400"></i>
-            <input id="search-input" type="text" placeholder="Flavor suchen..." onkeyup="filterProducts()" class="w-full bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl pl-12 pr-6 py-4 text-base outline-none transition">
-        </div>
-
-        <!-- PRODUCTS GRID -->
-        <div id="products-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6"></div>
-
-        <!-- REVIEWS -->
-        <div class="mt-24 border-t border-white/10 pt-16">
-            <div class="text-center mb-12">
-                <div class="inline-flex items-center gap-3 bg-emerald-500/10 text-emerald-400 px-6 py-2 rounded-3xl text-sm font-medium mb-4">
-                    <i class="fa-solid fa-star"></i>
-                    <span>4,92 von 5 Sternen • 1.347 Bewertungen</span>
-                </div>
-                <h2 class="text-5xl sm:text-6xl font-bold tracking-tighter neon-text">Was unsere Kunden sagen</h2>
-                <p class="text-xl text-cyan-200 mt-3 max-w-md mx-auto">Echte Erfahrungen – 100 % von glücklichen Vapern</p>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                <div class="review-card bg-zinc-900 border border-white/10 rounded-3xl p-8">
-                    <div class="flex items-center gap-1 text-3xl mb-5"><i class="fa-solid fa-star star"></i><i class="fa-solid fa-star star"></i><i class="fa-solid fa-star star"></i><i class="fa-solid fa-star star"></i><i class="fa-solid fa-star star"></i></div>
-                    <p class="text-lg text-gray-200 italic leading-relaxed">"Die Tornado 30000 sind einfach krass! 4 für 3 Aktion hat perfekt geklappt und der Geschmack hält ewig. Lieferung in 2 Tagen – top Service!"</p>
-                    <div class="mt-8 flex items-center gap-4"><div class="w-11 h-11 bg-gradient-to-br from-cyan-400 to-purple-500 rounded-2xl flex items-center justify-center text-white font-bold text-xl">TM</div><div><div class="font-semibold text-lg">Tim M.</div><div class="text-xs text-emerald-400">5 Sterne • Vor 3 Tagen</div></div></div>
-                </div>
-                <div class="review-card bg-zinc-900 border border-white/10 rounded-3xl p-8">
-                    <div class="flex items-center gap-1 text-3xl mb-5"><i class="fa-solid fa-star star"></i><i class="fa-solid fa-star star"></i><i class="fa-solid fa-star star"></i><i class="fa-solid fa-star star"></i><i class="fa-solid fa-star star"></i></div>
-                    <p class="text-lg text-gray-200 italic leading-relaxed">"Apple Peach + Blueberry Sour Raspberry sind meine absoluten Favoriten. Der Mystery Vape war eine mega Überraschung. Immer wieder gerne!"</p>
-                    <div class="mt-8 flex items-center gap-4"><div class="w-11 h-11 bg-gradient-to-br from-pink-400 to-rose-500 rounded-2xl flex items-center justify-center text-white font-bold text-xl">SB</div><div><div class="font-semibold text-lg">Sophie B.</div><div class="text-xs text-emerald-400">5 Sterne • Vor 1 Woche</div></div></div>
-                </div>
-                <div class="review-card bg-zinc-900 border border-white/10 rounded-3xl p-8">
-                    <div class="flex items-center gap-1 text-3xl mb-5"><i class="fa-solid fa-star star"></i><i class="fa-solid fa-star star"></i><i class="fa-solid fa-star star"></i><i class="fa-solid fa-star star"></i><i class="fa-solid fa-star text-gray-500"></i></div>
-                    <p class="text-lg text-gray-200 italic leading-relaxed">"Alles top, nur der Versand war diesmal 3 Tage. Liquids schmecken aber 1A und der Loyalty-Punkte-Bonus ist echt fair. 4,5 Sterne!"</p>
-                    <div class="mt-8 flex items-center gap-4"><div class="w-11 h-11 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center text-white font-bold text-xl">LS</div><div><div class="font-semibold text-lg">Luca S.</div><div class="text-xs text-emerald-400">4,5 Sterne • Vor 2 Wochen</div></div></div>
-                </div>
-                <div class="review-card bg-zinc-900 border border-white/10 rounded-3xl p-8">
-                    <div class="flex items-center gap-1 text-3xl mb-5"><i class="fa-solid fa-star star"></i><i class="fa-solid fa-star star"></i><i class="fa-solid fa-star star"></i><i class="fa-solid fa-star star"></i><i class="fa-solid fa-star star"></i></div>
-                    <p class="text-lg text-gray-200 italic leading-relaxed">"Strawberry Kiwi Ice ist der beste Geschmack ever! Gratis Versand ab 100 € hat bei mir geklappt. Danke WaveVapes – ihr seid die Besten!"</p>
-                    <div class="mt-8 flex items-center gap-4"><div class="w-11 h-11 bg-gradient-to-br from-lime-400 to-emerald-500 rounded-2xl flex items-center justify-center text-white font-bold text-xl">MF</div><div><div class="font-semibold text-lg">Jolina F.</div><div class="text-xs text-emerald-400">5 Sterne • Vor 3 Wochen</div></div></div>
-                </div>
-                <div class="review-card bg-zinc-900 border border-white/10 rounded-3xl p-8">
-                    <div class="flex items-center gap-1 text-3xl mb-5"><i class="fa-solid fa-star star"></i><i class="fa-solid fa-star star"></i><i class="fa-solid fa-star star"></i><i class="fa-solid fa-star star"></i><i class="fa-solid fa-star star"></i></div>
-                    <p class="text-lg text-gray-200 italic leading-relaxed">"Peach Ice + Blackberry Lemon sind perfekt für den Sommer. Die Nikotin-Auswahl (10/20 mg) ist super praktisch. Schnell & zuverlässig!"</p>
-                    <div class="mt-8 flex items-center gap-4"><div class="w-11 h-11 bg-gradient-to-br from-violet-400 to-purple-500 rounded-2xl flex items-center justify-center text-white font-bold text-xl">FW</div><div><div class="font-semibold text-lg">Mika W.</div><div class="text-xs text-emerald-400">5 Sterne • Vor 1 Monat</div></div></div>
-                </div>
-                <div class="review-card bg-zinc-900 border border-white/10 rounded-3xl p-8">
-                    <div class="flex items-center gap-1 text-3xl mb-5"><i class="fa-solid fa-star star"></i><i class="fa-solid fa-star star"></i><i class="fa-solid fa-star star"></i><i class="fa-solid fa-star star"></i><i class="fa-solid fa-star text-gray-500"></i></div>
-                    <p class="text-lg text-gray-200 italic leading-relaxed">"4 Flaschen bestellt und die 4-für-3-Aktion hat super funktioniert. Nur eine kleine Delle an der Verpackung, aber Support hat sofort reagiert. Sehr zufrieden!"</p>
-                    <div class="mt-8 flex items-center gap-4"><div class="w-11 h-11 bg-gradient-to-br from-sky-400 to-cyan-500 rounded-2xl flex items-center justify-center text-white font-bold text-xl">EL</div><div><div class="font-semibold text-lg">Stacy B.</div><div class="text-xs text-emerald-400">4,5 Sterne • Vor 1 Monat</div></div></div>
-                </div>
-            </div>
-            <div class="text-center mt-12 text-xs text-gray-400 flex items-center justify-center gap-2">
-                <i class="fa-solid fa-shield-halved text-emerald-400"></i>
-                Alle Bewertungen sind echt und werden regelmäßig auf Trustpilot & Google verifiziert
-            </div>
-        </div>
-
-        <!-- FOOTER -->
-        <footer class="mt-20 pt-12 border-t border-white/10 text-center">
-            <div class="flex flex-wrap justify-center gap-x-8 gap-y-3 text-xs text-gray-400">
-                <button onclick="showImpressumModal()" class="hover:text-white transition">Impressum</button>
-                <button onclick="showDatenschutzModal()" class="hover:text-white transition">Datenschutzerklärung</button>
-                <span class="text-red-400 font-medium cursor-default">Altersverifikation: 18+</span>
-            </div>
-            <div class="mt-10 flex justify-center gap-10 text-4xl">
-                <a href="https://x.com/WaveVapes" target="_blank" rel="noopener noreferrer" class="social-icon text-white hover:text-cyan-400"><i class="fa-brands fa-x-twitter"></i></a>
-                <a href="https://www.instagram.com/wavevapesinternational" target="_blank" rel="noopener noreferrer" class="social-icon text-white hover:text-pink-400"><i class="fa-brands fa-instagram"></i></a>
-            </div>
-            <p class="mt-8 text-[10px] text-gray-500">© 2026 WaveVapes • Wennemannstraße 1a • 45475 Mülheim an der Ruhr</p>
-            <p class="text-[10px] text-gray-500 mt-1">Gesetzliche Altersbeschränkung: Nur für Personen ab 18 Jahren. Nikotinprodukte schädigen Ihre Gesundheit.</p>
-        </footer>
+    <!-- TABS -->
+    <div class="flex border-b border-white/10 mb-10 overflow-x-auto">
+      <button onclick="showTab('products')" class="tab-btn px-6 py-4 font-medium border-b-4 border-transparent hover:border-cyan-400 transition tab-active" data-tab="products">
+        Produkte
+      </button>
+      <button onclick="showTab('orders')" class="tab-btn px-6 py-4 font-medium border-b-4 border-transparent hover:border-cyan-400 transition" data-tab="orders">
+        Bestellungen
+      </button>
+      <button onclick="showTab('stats')" class="tab-btn px-6 py-4 font-medium border-b-4 border-transparent hover:border-cyan-400 transition" data-tab="stats">
+        Statistiken
+      </button>
     </div>
 
-    <!-- FLOATING CART -->
-    <button onclick="toggleCart()" class="fixed bottom-6 right-6 lg:hidden bg-gradient-to-r from-cyan-400 to-purple-500 text-black w-14 h-14 rounded-3xl shadow-2xl flex items-center justify-center z-50">
-        <i class="fa-solid fa-cart-shopping text-3xl"></i>
-    </button>
+    <!-- PRODUKTE TAB -->
+    <div id="tab-products" class="tab-content">
+      <div class="flex justify-between items-center mb-8 flex-wrap gap-4">
+        <h2 class="text-3xl font-bold">Produktverwaltung</h2>
+        <button onclick="openProductModal()" class="bg-emerald-600 hover:bg-emerald-500 px-6 py-3 rounded-xl font-medium flex items-center gap-2">
+          <i class="fa-solid fa-plus"></i> Neues Produkt
+        </button>
+      </div>
 
-    <!-- CART SIDEBAR -->
-    <div id="cart-sidebar" class="fixed top-0 right-0 h-full w-full md:w-96 bg-zinc-950 border-l border-cyan-400/30 shadow-2xl translate-x-full transition-all duration-300 z-[999] overflow-y-auto">
-        <div class="p-6">
-            <div class="flex justify-between items-center mb-8">
-                <h3 class="text-3xl font-bold">Dein Warenkorb</h3>
-                <button onclick="toggleCart()" class="text-4xl text-gray-400 hover:text-white">✕</button>
-            </div>
-            <div id="cart-items-list" class="space-y-6 min-h-[300px]"></div>
-            <div class="mt-6 p-5 bg-zinc-900 rounded-3xl border border-cyan-400/30">
-                <div class="flex justify-between items-center mb-3">
-                    <p class="text-xs uppercase tracking-widest text-gray-400">Lieferadresse</p>
-                    <button onclick="showAddressModal()" class="text-cyan-400 text-sm font-medium hover:text-cyan-300">ändern</button>
-                </div>
-                <div id="cart-address-display" class="text-sm text-gray-300"></div>
-            </div>
-            <div class="mt-8 pt-6 border-t border-white/10">
-                <p class="text-xs uppercase tracking-widest text-gray-400 mb-3">Rabattcode oder Referral</p>
-                <div class="flex flex-col gap-3">
-                    <input id="discount-input" type="text" placeholder="Code eingeben (z.B. REF-ABC123)" class="w-full bg-zinc-900 border border-white/20 focus:border-cyan-400 rounded-2xl px-5 py-3.5 text-sm outline-none">
-                    <button onclick="applyDiscountCode()" class="w-full bg-white hover:bg-cyan-300 text-black font-semibold py-3.5 rounded-2xl transition">Anwenden</button>
-                </div>
-                <div id="discount-status" class="mt-3 text-sm min-h-[24px]"></div>
-            </div>
-            <div class="mt-10 pt-8 border-t border-white/10">
-                <div class="flex justify-between text-2xl font-semibold mb-2">
-                    <span>Gesamt</span>
-                    <span id="cart-total-price" class="text-cyan-300">0,00 €</span>
-                </div>
-                <p class="text-xs text-gray-400">Zahlung per Überweisung • Versand nach Zahlungseingang</p>
-                <p id="cart-shipping-note" class="text-xs text-emerald-400 mt-1"></p>
-                <p id="loyalty-cart-info" class="text-emerald-400 text-xs mt-3 flex items-center gap-2 font-medium"></p>
-            </div>
-            <button onclick="placeOrder()" class="mt-8 w-full py-6 bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 text-black font-bold text-xl rounded-3xl transition-all">BESTELLUNG ABSCHICKEN</button>
-            <button onclick="clearCart()" class="mt-4 text-red-400 text-sm w-full py-3">Warenkorb leeren</button>
-        </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" id="admin-products-grid"></div>
     </div>
 
-    <!-- SUCCESS MODAL -->
-    <div id="success-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-[9999] p-4">
-        <div class="bg-zinc-900 max-w-lg w-full mx-auto rounded-3xl p-8 text-center max-h-[90vh] overflow-y-auto">
-            <div class="mx-auto w-20 h-20 bg-emerald-400/10 text-emerald-400 rounded-3xl flex items-center justify-center text-6xl mb-8">✓</div>
-            <h3 class="text-4xl font-bold mb-3">Bestellung gesendet!</h3>
-            <p class="text-cyan-300 text-xl mb-2">Bestellnummer: <span id="success-order-id" class="font-mono font-bold"></span></p>
-            <p id="success-loyalty-info" class="text-emerald-400 text-sm mb-6"></p>
-            <div class="bg-zinc-950 border border-cyan-400/30 rounded-2xl p-6 mb-8 text-left">
-                <h4 class="text-emerald-400 font-bold mb-4 flex items-center gap-2"><i class="fa-solid fa-money-bill-transfer"></i> Bitte jetzt überweisen</h4>
-                <div id="bank-payment-info" class="space-y-4 text-sm"></div>
-            </div>
-            <div id="success-details" class="text-left bg-black/60 rounded-2xl p-6 text-sm mb-8"></div>
-            <button onclick="closeSuccessModal()" class="bg-white text-black px-14 py-5 rounded-3xl font-semibold text-lg w-full">Zurück zum Shop</button>
-            <p class="text-[10px] text-gray-500 mt-8">Ich erhalte deine Bestellung per E-Mail und warte auf den Zahlungseingang.<br>Danach versende ich sofort per DHL. <strong>Der Versand dauert in der Regel 1–3 Werktage.</strong></p>
-        </div>
+    <!-- BESTELLUNGEN TAB -->
+    <div id="tab-orders" class="tab-content hidden">
+      <h2 class="text-3xl font-bold mb-8">Bestellungen</h2>
+      <div class="space-y-5" id="admin-orders-list"></div>
     </div>
 
-    <!-- ADDRESS MODAL -->
-    <div id="address-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]">
-        <div class="bg-zinc-900 rounded-3xl p-8 max-w-md w-full mx-4">
-            <h3 class="text-2xl font-semibold mb-6">Lieferadresse</h3>
-            <div class="space-y-5">
-                <div><label class="text-xs text-gray-400 block mb-1">Straße + Hausnummer</label><input id="addr-street" type="text" placeholder="Musterstraße 12" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-4 outline-none"></div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div><label class="text-xs text-gray-400 block mb-1">PLZ</label><input id="addr-zip" type="text" placeholder="12345" maxlength="5" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-4 outline-none"></div>
-                    <div><label class="text-xs text-gray-400 block mb-1">Ort</label><input id="addr-city" type="text" placeholder="Musterstadt" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-4 outline-none"></div>
-                </div>
-            </div>
-            <button onclick="saveAddress()" class="mt-8 w-full bg-cyan-400 hover:bg-cyan-300 text-black py-5 rounded-3xl font-bold text-xl">Adresse speichern</button>
-            <button onclick="closeAddressModal()" class="mt-3 w-full text-gray-400 hover:text-white text-sm">Abbrechen</button>
+    <!-- STATISTIKEN TAB -->
+    <div id="tab-stats" class="tab-content hidden">
+      <h2 class="text-3xl font-bold mb-8">Shop-Statistiken</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="admin-card rounded-2xl p-6">
+          <h3 class="text-lg text-gray-400 mb-2">Gesamtumsatz</h3>
+          <p class="text-4xl font-bold text-emerald-400" id="total-revenue">— €</p>
         </div>
+        <div class="admin-card rounded-2xl p-6">
+          <h3 class="text-lg text-gray-400 mb-2">Offene Bestellungen</h3>
+          <p class="text-4xl font-bold text-amber-400" id="pending-orders">—</p>
+        </div>
+        <div class="admin-card rounded-2xl p-6">
+          <h3 class="text-lg text-gray-400 mb-2">Aktive Loyalty-Punkte</h3>
+          <p class="text-4xl font-bold text-cyan-400" id="total-loyalty">—</p>
+        </div>
+      </div>
     </div>
 
-    <!-- AUTH MODAL -->
-    <div id="auth-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]">
-        <div class="bg-zinc-900 rounded-3xl p-8 max-w-md w-full mx-4">
-            <div class="flex justify-between items-center mb-6">
-                <h3 id="auth-title" class="text-3xl font-bold neon-text">Anmelden</h3>
-                <button onclick="closeAuthModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
-            </div>
-            <div class="flex border-b border-white/10 mb-6">
-                <button onclick="switchAuthTab(0)" id="tab-login" class="auth-tab flex-1 py-3 text-center auth-tab-active">Login</button>
-                <button onclick="switchAuthTab(1)" id="tab-register" class="auth-tab flex-1 py-3 text-center">Registrieren</button>
-            </div>
-            <div id="login-form">
-                <input id="login-email" type="email" placeholder="E-Mail Adresse" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-4 outline-none mb-4">
-                <input id="login-password" type="password" placeholder="Passwort" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-4 outline-none mb-6">
-                <button onclick="loginUser()" class="w-full bg-cyan-400 hover:bg-cyan-300 text-black py-5 rounded-3xl font-bold text-xl">Einloggen</button>
-            </div>
-            <div id="register-form" class="hidden">
-                <input id="register-email" type="email" placeholder="E-Mail Adresse" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-4 outline-none mb-4">
-                <input id="register-password" type="password" placeholder="Passwort (min. 6 Zeichen)" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-4 outline-none mb-6">
-                <button onclick="registerUser()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-5 rounded-3xl font-bold text-xl">Konto erstellen</button>
-            </div>
-            <div id="logged-in-view" class="hidden text-center">
-                <i class="fa-solid fa-circle-user text-6xl text-cyan-300 mb-4"></i>
-                <p id="logged-in-email" class="text-xl font-medium mb-2"></p>
-                <button onclick="showNameModal()" class="text-cyan-400 underline text-sm mb-6">Benutzername ändern</button>
-                <button onclick="logoutUser()" class="w-full bg-red-600 hover:bg-red-500 text-white py-5 rounded-3xl font-bold text-xl">Ausloggen</button>
-            </div>
+  </div>
+
+  <!-- PRODUKT MODAL -->
+  <div id="product-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+    <div class="bg-zinc-900 rounded-3xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center mb-6">
+        <h3 class="text-3xl font-bold" id="modal-title">Produkt bearbeiten</h3>
+        <button onclick="closeProductModal()" class="text-4xl text-gray-400 hover:text-white">×</button>
+      </div>
+
+      <div class="space-y-5">
+        <div>
+          <label class="block text-sm text-gray-400 mb-1">Produktname</label>
+          <input id="prod-name" type="text" class="w-full bg-zinc-800 border border-cyan-500/30 rounded-2xl px-5 py-3"/>
         </div>
-    </div>
-
-    <!-- NAME MODAL -->
-    <div id="name-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]">
-        <div class="bg-zinc-900 rounded-3xl p-8 max-w-sm w-full mx-4">
-            <h3 class="text-2xl font-semibold mb-6">Dein Benutzername</h3>
-            <input id="name-input-field" type="text" placeholder="z. B. VapeKing92" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-5 text-lg mb-8 outline-none">
-            <button onclick="saveUserName()" class="w-full bg-cyan-400 hover:bg-cyan-300 text-black py-5 rounded-3xl font-bold text-xl">Speichern</button>
-            <button onclick="closeNameModal()" class="mt-3 w-full text-gray-400 hover:text-white text-sm">Abbrechen</button>
+        <div>
+          <label class="block text-sm text-gray-400 mb-1">Kategorie</label>
+          <select id="prod-category" class="w-full bg-zinc-800 border border-cyan-500/30 rounded-2xl px-5 py-3">
+            <option>WaveVapes Tornado 30000</option>
+            <option>Normale Sorten</option>
+            <option>Neue Sorten</option>
+          </select>
         </div>
-    </div>
-
-    <!-- HISTORY MODAL -->
-    <div id="history-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-[9999]">
-        <div class="bg-zinc-900 max-w-2xl w-full mx-4 rounded-3xl p-8 max-h-[90vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="text-3xl font-bold">Meine Bestellungen</h3>
-                <button onclick="closeHistoryModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
-            </div>
-            <div id="history-list" class="space-y-6"></div>
-            <p id="no-history" class="hidden text-center text-gray-400 py-12">Noch keine Bestellungen gespeichert.</p>
+        <div class="grid grid-cols-2 gap-5">
+          <div>
+            <label class="block text-sm text-gray-400 mb-1">Preis (€)</label>
+            <input id="prod-price" type="number" step="0.01" value="7.99" class="w-full bg-zinc-800 border border-cyan-500/30 rounded-2xl px-5 py-3"/>
+          </div>
+          <div>
+            <label class="block text-sm text-gray-400 mb-1">Lagerbestand</label>
+            <input id="prod-stock" type="number" value="50" class="w-full bg-zinc-800 border border-cyan-500/30 rounded-2xl px-5 py-3"/>
+          </div>
         </div>
-    </div>
-
-    <!-- PAYMENT INFO MODAL -->
-    <div id="payment-info-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-[9999]">
-        <div class="bg-zinc-900 max-w-lg w-full mx-4 rounded-3xl p-8">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="text-2xl font-bold">Überweisungsdaten</h3>
-                <button onclick="closePaymentInfoModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
-            </div>
-            <div id="payment-info-content" class="bg-zinc-950 border border-cyan-400/30 rounded-2xl p-6 mb-8 text-left"></div>
-            <button onclick="closePaymentInfoModal()" class="w-full py-4 bg-white text-black font-semibold rounded-3xl">Schließen</button>
+        <div>
+          <label class="block text-sm text-gray-400 mb-1">Bild-URL</label>
+          <input id="prod-image" type="url" placeholder="https://..." class="w-full bg-zinc-800 border border-cyan-500/30 rounded-2xl px-5 py-3"/>
         </div>
-    </div>
-
-    <!-- REFERRALS MODAL -->
-    <div id="referrals-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-[9999]">
-        <div class="bg-zinc-900 max-w-2xl w-full mx-4 rounded-3xl p-8 max-h-[90vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="text-3xl font-bold neon-text">Meine Referrals & Bonus</h3>
-                <button onclick="closeReferralsModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
-            </div>
-            <div id="referrals-list" class="space-y-5"></div>
-            <p id="no-referrals" class="hidden text-center text-gray-400 py-12">Noch keine Freunde haben deinen Code eingelöst.</p>
+        <div>
+          <label class="block text-sm text-gray-400 mb-1">Beschreibung</label>
+          <textarea id="prod-desc" rows="4" class="w-full bg-zinc-800 border border-cyan-500/30 rounded-2xl px-5 py-3"></textarea>
         </div>
-    </div>
-
-    <!-- AGE MODAL -->
-    <div id="age-modal" class="hidden fixed inset-0 flex items-center justify-center z-[10000]">
-        <div class="bg-zinc-900 rounded-3xl p-10 max-w-sm w-full mx-4 text-center border border-red-500/50">
-            <div class="mx-auto w-24 h-24 bg-red-500/10 text-red-400 rounded-3xl flex items-center justify-center text-7xl mb-8">🚫</div>
-            <h2 class="text-5xl font-bold tracking-tighter mb-4 text-white">18+</h2>
-            <p class="text-xl text-red-300 mb-2">Dieser Shop enthält Nikotinprodukte.</p>
-            <p class="text-lg text-gray-300 mb-10">Du musst mindestens 18 Jahre alt sein, um fortzufahren.<br><strong>Gesetzliche Vorgabe nach JuSchG.</strong></p>
-            <div class="flex flex-col gap-4">
-                <button onclick="confirmAge()" class="w-full bg-emerald-600 hover:bg-emerald-500 py-6 rounded-3xl text-xl font-bold transition-all">✅ JA, ICH BIN ÜBER 18</button>
-                <button onclick="denyAge()" class="w-full bg-zinc-800 hover:bg-zinc-700 py-6 rounded-3xl text-xl font-medium text-gray-400 transition-all">❌ NEIN, ICH BIN UNTER 18</button>
-            </div>
-            <p class="text-[10px] text-gray-500 mt-10">Diese Altersverifikation wird gespeichert. Du wirst nicht erneut gefragt.</p>
+        <div class="flex items-center gap-3">
+          <input type="checkbox" id="prod-available" checked class="w-5 h-5"/>
+          <label for="prod-available">Produkt verfügbar</label>
         </div>
-    </div>
-
-    <!-- IMPRESSUM MODAL -->
-    <div id="impressum-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]">
-        <div class="bg-zinc-900 rounded-3xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-8">
-                <h3 class="text-3xl font-bold neon-text">Impressum</h3>
-                <button onclick="closeImpressumModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
-            </div>
-            <div class="text-sm leading-relaxed space-y-6 text-gray-300">
-                <p><strong>Angaben gemäß § 5 TMG</strong></p>
-                <p>WaveVapes<br>Inhaber: Jakob David Hellrung<br>Wennemannstraße 1a<br>45475 Mülheim an der Ruhr</p>
-                <p><strong>Kontakt:</strong><br>E-Mail: support@wavevapes.de</p>
-                <p><strong>Umsatzsteuer-ID:</strong><br>USt-IdNr. gemäß § 27a UStG: DE 123456789</p>
-                <p><strong>Verantwortlich für den Inhalt nach § 55 Abs. 2 RStV:</strong><br>Jakob David Hellrung</p>
-                <p class="text-xs text-gray-400 pt-8 border-t border-white/10">© 2026 WaveVapes – Alle Rechte vorbehalten.</p>
-            </div>
+        <div class="flex items-center gap-3">
+          <input type="checkbox" id="prod-isnew" class="w-5 h-5"/>
+          <label for="prod-isnew">Als NEU markieren</label>
         </div>
+      </div>
+
+      <div class="mt-10 flex gap-4">
+        <button onclick="saveProduct()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-5 rounded-2xl font-bold text-xl">
+          Speichern
+        </button>
+        <button id="delete-prod-btn" onclick="deleteProduct()" class="bg-red-600/70 hover:bg-red-600 px-8 py-5 rounded-2xl font-bold hidden">
+          Löschen
+        </button>
+      </div>
     </div>
+  </div>
 
-    <!-- DATENSCHUTZ MODAL -->
-    <div id="datenschutz-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]">
-        <div class="bg-zinc-900 rounded-3xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-8">
-                <h3 class="text-3xl font-bold neon-text">Datenschutzerklärung</h3>
-                <button onclick="closeDatenschutzModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
-            </div>
-            <div class="text-sm leading-relaxed space-y-6 text-gray-300">
-                <p class="text-xs text-emerald-400">Stand: März 2026</p>
-                <h4 class="font-semibold text-cyan-300">1. Verantwortliche Stelle</h4>
-                <p>Jakob David Hellrung<br>Wennemannstraße 1a<br>45475 Mülheim an der Ruhr</p>
-                <h4 class="font-semibold text-cyan-300">2. Erhobene Daten</h4>
-                <p>Diese Website speichert lokal im Browser (localStorage) und in Firebase Firestore:</p>
-                <ul class="list-disc pl-6 space-y-1 text-xs">
-                    <li>E-Mail (bei Anmeldung)</li>
-                    <li>Benutzername (lokal)</li>
-                    <li>Lieferadresse</li>
-                    <li>Warenkorb-Inhalt</li>
-                    <li>Bestellungen</li>
-                    <li>Referral-Code & Referrals</li>
-                    <li>Eingelöste Loyalty-Codes</li>
-                </ul>
-                <p>Bei Bestellung werden Daten in Firebase Firestore gespeichert. Keine Weitergabe an Dritte.</p>
-                <h4 class="font-semibold text-cyan-300">3. Cookies & Tracking</h4>
-                <p>Es werden <strong>keine</strong> Tracking-Cookies gesetzt.</p>
-                <h4 class="font-semibold text-cyan-300">4. Deine Rechte</h4>
-                <p>Du hast jederzeit Recht auf Auskunft, Berichtigung, Löschung und Widerspruch. Kontaktiere uns per E-Mail.</p>
-                <p class="text-xs text-gray-400 pt-8 border-t border-white/10">Diese Datenschutzerklärung erfüllt die Anforderungen der DSGVO.</p>
-            </div>
-        </div>
-    </div>
+  <!-- TOAST -->
+  <div id="admin-toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-zinc-900 border border-cyan-500/30 text-cyan-300 px-8 py-4 rounded-2xl shadow-2xl hidden z-50 whitespace-nowrap">
+    Meldung
+  </div>
 
-    <!-- PRODUKT DETAIL MODAL -->
-    <div id="product-detail-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-[9999] p-4">
-        <div class="bg-zinc-900 max-w-3xl w-full mx-auto rounded-3xl overflow-hidden">
-            <div class="flex justify-end p-6 border-b border-white/10">
-                <button onclick="closeProductDetail()" class="text-4xl text-gray-400 hover:text-white">✕</button>
-            </div>
-            <div id="detail-content" class="p-8"></div>
-        </div>
-    </div>
+  <script>
+    // ────────────────────────────────────────────────
+    //  KONFIGURATION
+    // ────────────────────────────────────────────────
+    const firebaseConfig = {
+      apiKey: "AIzaSyDsIUl-iYmH42MPbusFLhGhj5oGLh01BzI",
+      authDomain: "wavevapes-7a960.firebaseapp.com",
+      projectId: "wavevapes-7a960",
+      storageBucket: "wavevapes-7a960.firebasestorage.app",
+      messagingSenderId: "1093624390275",
+      appId: "1:1093624390275:web:b1b8ae17bcf1b59dffb1b6"
+    };
 
-    <div id="notification-toast"></div>
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
 
-    <script>
-        // ====================== EMAILJS KONFIGURATION ======================
-        const EMAILJS_SERVICE_ID = "service_lzvte0x";
-        const EMAILJS_PUBLIC_KEY = "t19pJAHgBpbKpZFGU";
-        const EMAILJS_ORDER_TEMPLATE = "template_cgcu1m8";
-        // ====================== KONFIGURATION ======================
-        const VALID_DISCOUNTS = {
-            "WAVE5": { type: "percent", value: 5 },
-            "Freund10": { type: "percent", value: 10 },
-            "LOYAL5": { type: "fixed", value: 5, points: 300 },
-            "LOYAL10": { type: "fixed", value: 10, points: 600 },
-            "LOYAL15": { type: "fixed", value: 15, points: 1000 },
-            "LOYAL20": { type: "fixed", value: 20, points: 2000 },
-            "LOYAL25": { type: "fixed", value: 25, points: 2500 },
-            "LOYAL50": { type: "fixed", value: 50, points: 5000 }
-        };
-        const MYSTERY_ID = 999;
-        const fakeNames = ["Tim","Anna","Max","Sophie","Luca","Mia","Felix","Emma","Noah","Lena","Leon","Julia","Paul","Laura","Ben","Sarah","David","Hannah","Jonas","Lea"];
-        const NICOTINE_OPTIONS = ["10 mg", "20 mg"];
-        const BANK_OWNER = "Jakob David Hellrung";
-        const BANK_IBAN = "DE38360200300003395812";
-        const BANK_BIC = "NBAGDE3EXXX";
-        const BANK_NAME = "NATIONAL-BANK AG";
-        const SHIPPING_COST = 4.99;
-        const FREE_SHIPPING_THRESHOLD = 100;
-        const REWARDS = [
-            { points: 300, code: "LOYAL5", discount: 5, text: "5 € Gutschein" },
-            { points: 600, code: "LOYAL10", discount: 10, text: "10 € Gutschein" },
-            { points: 1000, code: "LOYAL15", discount: 15, text: "15 € Gutschein" },
-            { points: 2000, code: "LOYAL20", discount: 20, text: "20 € Gutschein" },
-            { points: 2500, code: "LOYAL25", discount: 25, text: "25 € Gutschein" },
-            { points: 5000, code: "LOYAL50", discount: 50, text: "50 € Gutschein" }
-        ];
-        let allProducts = [];
-        let cart = [];
-        let currentUser = null;
-        let userAddress = JSON.parse(localStorage.getItem("wavevapes_address")) || {};
-        let loyaltyPoints = 0;
-        let currentCategoryFilter = "Alle";
-        let notificationList = [];
-        const NOTIFICATION_DURATION = 6500;
-        const HOUR_MS = 3600000;
-        let currentNotificationIndex = 0;
-        let notificationCyclePaused = false;
-        let appliedDiscount = null;
-        let ordersUnsubscribe = null;
-        let userSnapshotUnsubscribe = null;
-        let myReferralCode = "";
-        let productsUnsubscribe = null; // ← NEU für Live-Stock
+    const ALLOWED_ADMIN_EMAILS = [
+      "jakob.hellrung@gmail.com",
+      "stacy_berg@icloud.com"
+    ];
 
-        // ====================== FIREBASE ======================
-        const firebaseConfig = {
-            apiKey: "AIzaSyDsIUl-iYmH42MPbusFLhGhj5oGLh01BzI",
-            authDomain: "wavevapes-7a960.firebaseapp.com",
-            projectId: "wavevapes-7a960",
-            storageBucket: "wavevapes-7a960.firebasestorage.app",
-            messagingSenderId: "1093624390275",
-            appId: "1:1093624390275:web:b1b8ae17bcf1b59dffb1b6"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
+    let editingProductId = null;
 
-        // ====================== EMAILJS INIT ======================
-        function initEmailJS() {
-            if (typeof emailjs !== "undefined") {
-                emailjs.init(EMAILJS_PUBLIC_KEY);
-                console.log("✅ EmailJS initialisiert");
-            }
+    // ────────────────────────────────────────────────
+    //  AUTH
+    // ────────────────────────────────────────────────
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        if (!ALLOWED_ADMIN_EMAILS.includes(user.email)) {
+          alert("Diese E-Mail ist nicht als Admin freigeschaltet.");
+          auth.signOut();
+          return;
         }
+        document.getElementById("current-admin").textContent = user.email;
+        document.getElementById("auth-modal").classList.add("hidden");
+        loadAdminData();
+      } else {
+        document.getElementById("auth-modal").classList.remove("hidden");
+      }
+    });
 
-        // ====================== E-MAIL SENDEN ======================
-        async function sendOrderConfirmationEmail(orderData) {
-            console.log("📧 Versuche E-Mail zu senden...");
-            showToast("📧 E-Mail wird gesendet...", "success");
-            try {
-                const orderItems = orderData.items.map(item => {
-                    const prod = allProducts.find(p => p.id === item.id);
-                    return {
-                        name: item.name,
-                        units: item.qty,
-                        price: (item.price * item.qty).toFixed(2),
-                        image_url: prod && prod.image ? prod.image : "https://wavevapes.de/logo.png"
-                    };
-                });
-                await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_ORDER_TEMPLATE, {
-                    order_id: orderData.orderNumber,
-                    email: orderData.userEmail,
-                    orders: orderItems,
-                    cost: {
-                        shipping: orderData.shipping.toFixed(2),
-                        tax: "0.00",
-                        total: orderData.total.toFixed(2)
-                    },
-                    loyalty_earned: orderData.loyaltyEarned || 0
-                });
-                console.log("✅ E-Mail erfolgreich gesendet!");
-                showToast("✅ Bestellbestätigung per E-Mail versendet!", "success");
-            } catch (e) {
-                console.error("❌ E-Mail Fehler:", e);
-                showToast("❌ E-Mail konnte nicht gesendet werden: " + (e.text || e.message), "error");
-            }
-        }
+    function adminLogin() {
+      const email = document.getElementById("admin-email").value.trim();
+      const pw    = document.getElementById("admin-password").value;
 
-        // ====================== REFERRAL CORE ======================
-        async function createOrUpdateUserProfile() {
-            if (!currentUser) return;
-            const userRef = db.collection("users").doc(currentUser.uid);
-            const doc = await userRef.get();
-            if (!doc.exists) {
-                myReferralCode = "WV-" + Math.random().toString(36).substring(2,8).toUpperCase();
-                const urlParams = new URLSearchParams(window.location.search);
-                const refCode = urlParams.get("ref");
-                await userRef.set({
-                    email: currentUser.email,
-                    username: localStorage.getItem("wavevapes_username") || currentUser.email.split('@')[0],
-                    referralCode: myReferralCode,
-                    referredBy: refCode || null,
-                    referralCount: 0,
-                    totalBonusPoints: 0,
-                    redeemedLoyaltyCodes: [],
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                if (refCode) {
-                    addLoyaltyPoints(50);
-                    await applyReferralBonusToReferrer(refCode);
-                    showToast("🎉 +50 Punkte Willkommensbonus durch Referral!");
-                }
-            } else {
-                const data = doc.data();
-                if (!data.referralCode) {
-                    myReferralCode = "WV-" + Math.random().toString(36).substring(2,8).toUpperCase();
-                    await userRef.update({ referralCode: myReferralCode });
-                    showToast("✅ Dein Referral-Code wurde nachträglich erstellt!");
-                } else {
-                    myReferralCode = data.referralCode;
-                }
-            }
-            db.collection("users").doc(currentUser.uid).onSnapshot(doc => {
-                if (doc.exists) myReferralCode = doc.data().referralCode || "";
-            });
-        }
-        async function applyReferralBonusToReferrer(refCode) {
-            const snapshot = await db.collection("users").where("referralCode", "==", refCode).limit(1).get();
-            if (!snapshot.empty) {
-                const referrerRef = snapshot.docs[0].ref;
-                await referrerRef.update({
-                    referralCount: firebase.firestore.FieldValue.increment(1),
-                    totalBonusPoints: firebase.firestore.FieldValue.increment(100)
-                });
-            }
-        }
-        async function shareReferral() {
-            if (!currentUser) {
-                showToast("Bitte zuerst einloggen!", "error");
-                showAuthModal();
-                return;
-            }
-            if (!myReferralCode) {
-                showToast("Referral-Code wird erstellt...");
-                await createOrUpdateUserProfile();
-            }
-            if (!myReferralCode) {
-                showToast("Fehler beim Erstellen des Codes.<br>Bitte Seite neu laden.", "error");
-                return;
-            }
-            const link = `https://wavevapes.de/?ref=${myReferralCode}`;
-            await navigator.clipboard.writeText(link);
-            showToast(`✅ Referral-Link kopiert!<br><span class="text-xs">${link}</span>`);
-        }
-        async function showMyReferrals() {
-            if (!currentUser) {
-                showAuthModal();
-                return;
-            }
-            const modal = document.getElementById("referrals-modal");
-            modal.classList.remove("hidden"); modal.classList.add("flex");
-            const listEl = document.getElementById("referrals-list");
-            listEl.innerHTML = `<p class="text-center py-8 text-gray-400">Lade deine Referrals...</p>`;
-            const snapshot = await db.collection("users").where("referredBy", "==", myReferralCode).get();
-            if (snapshot.empty) {
-                document.getElementById("no-referrals").classList.remove("hidden");
-                listEl.innerHTML = "";
-                return;
-            }
-            document.getElementById("no-referrals").classList.add("hidden");
-            let html = "";
-            snapshot.forEach(doc => {
-                const u = doc.data();
-                html += `
-                    <div class="bg-zinc-950 border border-emerald-400/30 rounded-3xl p-6 flex justify-between items-center">
-                        <div>
-                            <div class="font-medium">${u.username || u.email}</div>
-                            <div class="text-xs text-emerald-400">Registriert • +100 Punkte für dich</div>
-                        </div>
-                        <div class="text-right">
-                            <span class="text-emerald-400 text-xl font-bold">+100</span>
-                        </div>
-                    </div>`;
-            });
-            listEl.innerHTML = html;
-        }
-        function closeReferralsModal() {
-            const modal = document.getElementById("referrals-modal");
-            modal.classList.add("hidden"); modal.classList.remove("flex");
-        }
-        function getStatusClass(status) {
-            switch(status || "Zahlung erwartet") {
-                case "Zahlung erwartet": return "status-Zahlung";
-                case "Wird bearbeitet": return "status-Wird";
-                case "Versendet": return "status-Versendet";
-                case "Zugestellt": return "status-Zugestellt";
-                case "Storniert": return "status-Storniert";
-                default: return "status-Zahlung";
-            }
-        }
+      if (!ALLOWED_ADMIN_EMAILS.includes(email)) {
+        document.getElementById("admin-error").textContent = "Keine Berechtigung (E-Mail nicht erlaubt)";
+        return;
+      }
 
-        // ====================== AUTH + LOYALTY SYNC ======================
-        auth.onAuthStateChanged(async (user) => {
-            currentUser = user;
-            updateAuthUI();
-            updateUserDisplay();
-            if (user) {
-                const userDoc = await db.collection("users").doc(user.uid).get();
-                if (userDoc.exists && userDoc.data().disabled === true) {
-                    await auth.signOut();
-                    showToast("❌ Dein Account wurde permanent gesperrt.", "error");
-                    return;
-                }
-                if (userDoc.exists && userDoc.data().passwordResetRequested === true) {
-                    await db.collection("users").doc(user.uid).update({
-                        passwordResetRequested: false
-                    });
-                    showToast("🔑 Dein Passwort wurde zurückgesetzt, bitte gib ein neues ein.", "success");
-                }
-                await createOrUpdateUserProfile();
-                loadUserOrders();
-                if (userSnapshotUnsubscribe) userSnapshotUnsubscribe();
-                userSnapshotUnsubscribe = db.collection("users").doc(user.uid).onSnapshot(doc => {
-                    if (doc.exists) {
-                        const data = doc.data();
-                        loyaltyPoints = data.totalBonusPoints || 0;
-                        updateLoyaltyDisplay();
-                    }
-                });
-            } else {
-                if (userSnapshotUnsubscribe) userSnapshotUnsubscribe();
-            }
+      auth.signInWithEmailAndPassword(email, pw)
+        .catch(err => {
+          document.getElementById("admin-error").textContent = err.message;
         });
-        function updateAuthUI() {
-            const btn = document.getElementById("account-btn");
-            const display = document.getElementById("current-user-display");
-            if (currentUser) {
-                display.textContent = currentUser.email.split('@')[0];
-                btn.classList.add("bg-emerald-600", "text-white");
-            } else {
-                display.textContent = "Account";
-                btn.classList.remove("bg-emerald-600", "text-white");
-            }
-        }
-        function showAuthModal() {
-            if (currentUser) {
-                document.getElementById("login-form").classList.add("hidden");
-                document.getElementById("register-form").classList.add("hidden");
-                document.getElementById("logged-in-view").classList.remove("hidden");
-                document.getElementById("logged-in-email").textContent = currentUser.email;
-                document.getElementById("auth-title").textContent = "Dein Account";
-            } else {
-                switchAuthTab(0);
-            }
-            const modal = document.getElementById("auth-modal");
-            modal.classList.remove("hidden"); modal.classList.add("flex");
-        }
-        function closeAuthModal() {
-            const modal = document.getElementById("auth-modal");
-            modal.classList.add("hidden"); modal.classList.remove("flex");
-        }
-        function switchAuthTab(tab) {
-            document.getElementById("tab-login").classList.toggle("auth-tab-active", tab === 0);
-            document.getElementById("tab-register").classList.toggle("auth-tab-active", tab === 1);
-            document.getElementById("login-form").classList.toggle("hidden", tab !== 0);
-            document.getElementById("register-form").classList.toggle("hidden", tab !== 1);
-            document.getElementById("logged-in-view").classList.add("hidden");
-            document.getElementById("auth-title").textContent = tab === 0 ? "Anmelden" : "Registrieren";
-        }
-        async function registerUser() {
-            const email = document.getElementById("register-email").value.trim();
-            const password = document.getElementById("register-password").value.trim();
-            if (!email || password.length < 6) return alert("Bitte gültige E-Mail und Passwort (min. 6 Zeichen) eingeben");
-            try {
-                await auth.createUserWithEmailAndPassword(email, password);
-                closeAuthModal();
-                showToast("✅ Konto erstellt! Willkommen bei WaveVapes");
-            } catch (e) {
-                alert("Registrierung fehlgeschlagen: " + e.message);
-            }
-        }
-        async function loginUser() {
-            const email = document.getElementById("login-email").value.trim();
-            const password = document.getElementById("login-password").value.trim();
-            if (!email || !password) return alert("Bitte E-Mail und Passwort eingeben");
-            try {
-                await auth.signInWithEmailAndPassword(email, password);
-                closeAuthModal();
-            } catch (e) {
-                alert("Login fehlgeschlagen: " + e.message);
-            }
-        }
-        function logoutUser() {
-            auth.signOut();
-            closeAuthModal();
-        }
-        function showNameModal() {
-            document.getElementById("name-input-field").value = localStorage.getItem("wavevapes_username") || "";
-            const modal = document.getElementById("name-modal");
-            modal.classList.remove("hidden"); modal.classList.add("flex");
-        }
-        function closeNameModal() {
-            const modal = document.getElementById("name-modal");
-            modal.classList.add("hidden"); modal.classList.remove("flex");
-        }
-        function saveUserName() {
-            const name = document.getElementById("name-input-field").value.trim();
-            if (name.length < 2) return alert("Mindestens 2 Zeichen");
-            localStorage.setItem("wavevapes_username", name);
-            closeNameModal();
-            updateUserDisplay();
-            showToast("✅ Benutzername gespeichert");
-        }
-        function updateUserDisplay() {
-            const display = document.getElementById("user-name-display");
-            const nav = document.getElementById("current-user-display");
-            const localName = localStorage.getItem("wavevapes_username");
-            if (localName) {
-                display.textContent = localName;
-                nav.textContent = localName;
-            } else if (currentUser) {
-                display.textContent = currentUser.email;
-                nav.textContent = currentUser.email.split('@')[0];
-            } else {
-                display.textContent = "Bitte einloggen";
-                nav.textContent = "Account";
-            }
-        }
-        function updateLoyaltyDisplay() {
-            document.getElementById("loyalty-points").textContent = loyaltyPoints;
-            const nextReward = REWARDS.find(r => loyaltyPoints < r.points) || REWARDS[REWARDS.length - 1];
-            const needed = Math.max(0, nextReward.points - loyaltyPoints);
-            document.getElementById("loyalty-progress-text").innerHTML = `Nächster Bonus in <span class="font-bold">${needed}</span> Punkten (${nextReward.text})`;
-            const percent = Math.min(100, Math.floor((loyaltyPoints / nextReward.points) * 100));
-            document.getElementById("loyalty-progress-bar").style.width = percent + "%";
-        }
-        async function addLoyaltyPoints(amount) {
-            if (!currentUser) return;
-            const pointsToAdd = Math.floor(amount);
-            await db.collection("users").doc(currentUser.uid).update({
-                totalBonusPoints: firebase.firestore.FieldValue.increment(pointsToAdd)
-            });
-            showToast(`🎉 +${pointsToAdd} Loyalty-Punkte gutgeschrieben!`);
-        }
-        async function applyDiscountCode() {
-            const input = document.getElementById("discount-input").value.trim().toUpperCase();
-            const status = document.getElementById("discount-status");
-            if (!input) {
-                status.innerHTML = `<span class="text-red-400">Code eingeben</span>`;
-                return;
-            }
-            if (!currentUser) {
-                status.innerHTML = `<span class="text-red-400">Bitte zuerst einloggen</span>`;
-                showAuthModal();
-                return;
-            }
-            const d = VALID_DISCOUNTS[input];
-            if (!d) {
-                status.innerHTML = `<span class="text-red-400">Ungültiger Code</span>`;
-                return;
-            }
-            const isLoyaltyCode = input.startsWith("LOYAL");
-            if (isLoyaltyCode) {
-                try {
-                    const userRef = db.collection("users").doc(currentUser.uid);
-                    const userDoc = await userRef.get();
-                    if (!userDoc.exists) {
-                        status.innerHTML = `<span class="text-red-400">Benutzerprofil nicht gefunden</span>`;
-                        return;
-                    }
-                    const redeemed = userDoc.data().redeemedLoyaltyCodes || [];
-                    if (redeemed.includes(input)) {
-                        status.innerHTML = `<span class="text-red-400">Dieser Loyalty-Code wurde bereits eingelöst!</span>`;
-                        return;
-                    }
-                    appliedDiscount = { code: input, type: d.type, value: d.value };
-                    await userRef.update({
-                        redeemedLoyaltyCodes: firebase.firestore.FieldValue.arrayUnion(input)
-                    });
-                    const display = d.type === "fixed" ? `${d.value} €` : `${d.value}%`;
-                    status.innerHTML = `<span class="text-emerald-400">✓ ${input} (${display}) eingelöst!</span>`;
-                    updateCartDisplay();
-                } catch (err) {
-                    console.error(err);
-                    status.innerHTML = `<span class="text-red-400">Fehler: ${err.message}</span>`;
-                }
-            } else {
-                appliedDiscount = { code: input, type: d.type, value: d.value };
-                const display = d.type === "fixed" ? `${d.value} €` : `${d.value}%`;
-                status.innerHTML = `<span class="text-emerald-400">✓ ${input} (${display}) eingelöst!</span>`;
-                updateCartDisplay();
-            }
-        }
-        function checkAndAutoRedeemLoyalty() {
-            for (let r of REWARDS) {
-                if (loyaltyPoints >= r.points && !appliedDiscount) {
-                    const alreadyRedeemed = currentUser ? (localStorage.getItem(`redeemed_${r.code}`) === "true") : false;
-                    if (!alreadyRedeemed) {
-                        if (confirm(`🎉 Du hast genug Punkte für ${r.text}!\nJetzt einlösen?`)) {
-                            document.getElementById("discount-input").value = r.code;
-                            applyDiscountCode();
-                            return;
-                        }
-                    }
-                }
-            }
-        }
-        function showAddressModal() {
-            document.getElementById("addr-street").value = userAddress.street || "";
-            document.getElementById("addr-zip").value = userAddress.zip || "";
-            document.getElementById("addr-city").value = userAddress.city || "";
-            const m = document.getElementById("address-modal");
-            m.classList.remove("hidden"); m.classList.add("flex");
-        }
-        function closeAddressModal() {
-            const m = document.getElementById("address-modal");
-            m.classList.add("hidden"); m.classList.remove("flex");
-        }
-        function saveAddress() {
-            const street = document.getElementById("addr-street").value.trim();
-            const zip = document.getElementById("addr-zip").value.trim();
-            const city = document.getElementById("addr-city").value.trim();
-            if (!street || !zip || !city) return alert("Bitte alle Felder ausfüllen!");
-            userAddress = {street, zip, city};
-            localStorage.setItem("wavevapes_address", JSON.stringify(userAddress));
-            closeAddressModal();
-            updateCartDisplay();
-        }
-        function getSubtotal() {
-            return cart.reduce((sum, item) => item.id === MYSTERY_ID ? sum : sum + item.qty * (item.price || 7.99), 0);
-        }
-        function getProductTotal() {
-            let subtotal = getSubtotal();
-            const tornadoQty = getTornadoQuantity();
-            const free = Math.floor(tornadoQty / 4);
-            let total = Math.max(0, subtotal - free * 19.99);
-            if (appliedDiscount) {
-                if (appliedDiscount.type === "percent") {
-                    total = Math.max(0, total - total * appliedDiscount.value / 100);
-                } else {
-                    total = Math.max(0, total - appliedDiscount.value);
-                }
-            }
-            return total;
-        }
-        function getShippingCost() {
-            return getProductTotal() >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_COST;
-        }
-        function calculateCartTotal() {
-            return getProductTotal() + getShippingCost();
-        }
+    }
 
-        // ====================== LIVE STOCK + PRODUCTS ======================
-        async function loadProducts() {
-            const container = document.getElementById("products-grid");
-            container.innerHTML = `<p class="col-span-full text-center py-16 text-gray-400 flex items-center justify-center gap-3"><i class="fa-solid fa-spinner animate-spin text-2xl"></i> Live-Stock wird geladen...</p>`;
+    function adminLogout() {
+      auth.signOut();
+    }
 
-            if (productsUnsubscribe) productsUnsubscribe();
+    // ────────────────────────────────────────────────
+    //  TABS
+    // ────────────────────────────────────────────────
+    function showTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.getElementById(`tab-${tabId}`).classList.remove('hidden');
 
-            productsUnsubscribe = db.collection("products").onSnapshot(snap => {
-                allProducts = [];
-                snap.forEach(doc => {
-                    const data = doc.data();
-                    allProducts.push({
-                        id: doc.id,
-                        name: data.name,
-                        category: data.category,
-                        isNew: data.isNew || false,
-                        available: data.available !== false,
-                        price: data.price || 7.99,
-                        image: data.image || null,
-                        stock: data.stock || 0,
-                        description: data.description || ""
-                    });
-                });
-                renderProducts();
-            });
-        }
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('tab-active', 'border-cyan-400');
+      });
+      document.querySelector(`.tab-btn[data-tab="${tabId}"]`).classList.add('tab-active', 'border-cyan-400');
+    }
 
-        function getSortPriority(p) {
-            if (currentCategoryFilter !== "Alle") return p.available ? 0 : 1;
-            if (p.category === "WaveVapes Tornado 30000") return p.available ? 4 : 5;
-            if (!p.available) return 3;
-            if (p.isNew) return 2;
-            return 1;
-        }
+    // ────────────────────────────────────────────────
+    //  PRODUKTE + BESTELLUNGEN + STATS
+    // ────────────────────────────────────────────────
+    function loadAdminData() {
+      // Produkte live laden
+      db.collection("products").onSnapshot(snap => {
+        const grid = document.getElementById("admin-products-grid");
+        grid.innerHTML = "";
+        snap.forEach(doc => {
+          const p = doc.data();
+          const card = document.createElement("div");
+          card.className = "admin-card rounded-2xl p-5 hover:shadow-xl transition cursor-pointer";
+          card.innerHTML = `
+            <div class="font-bold text-lg mb-2">${p.name || "Kein Name"}</div>
+            <div class="text-sm text-gray-400 mb-3">${p.category || "?"}</div>
+            <div class="flex justify-between text-sm mb-3">
+              <span>Preis:</span><strong>${(p.price||0).toFixed(2)} €</strong>
+            </div>
+            <div class="flex justify-between text-sm mb-4">
+              <span>Bestand:</span><strong class="${p.stock <= 5 ? 'text-amber-400' : p.stock === 0 ? 'text-red-400' : 'text-emerald-400'}">${p.stock || 0}</strong>
+            </div>
+            <div class="flex gap-3">
+              <button onclick="editProduct('${doc.id}')" class="flex-1 bg-blue-600/70 hover:bg-blue-600 py-2 rounded-xl text-sm">
+                Bearbeiten
+              </button>
+            </div>
+          `;
+          grid.appendChild(card);
+        });
+      });
 
-        function renderProducts() {
-            const container = document.getElementById("products-grid");
-            const searchTerm = document.getElementById("search-input").value.toLowerCase().trim();
-            let filtered = allProducts.filter(p => {
-                const catMatch = currentCategoryFilter === "Alle" || p.category === currentCategoryFilter;
-                const searchMatch = !searchTerm || p.name.toLowerCase().includes(searchTerm);
-                return catMatch && searchMatch;
-            });
-            filtered.sort((a, b) => {
-                const prioA = getSortPriority(a);
-                const prioB = getSortPriority(b);
-                if (prioA !== prioB) return prioA - prioB;
-                return a.name.localeCompare(b.name);
-            });
-            let html = "";
-            filtered.forEach(product => {
-                const cartItem = cart.find(i => i.id === product.id);
-                const qty = cartItem ? cartItem.qty : 0;
-                const nicotine = cartItem?.nicotine || "20 mg";
-                const isVape = product.category === "WaveVapes Tornado 30000";
-                const imageHTML = product.image
-                    ? `<img src="${product.image}" class="tornado-image" alt="${product.name} – WaveVapes Disposable Vape" loading="lazy" decoding="async" width="400" height="160">`
-                    : `<div class="tornado-image bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-4xl">🧪</div>`;
-                const oldPrice = isVape ? "35,99" : "10,99";
-                const salePrice = product.price.toFixed(2).replace('.', ',');
-                const unavailableClass = !product.available ? 'unavailable-product' : '';
-                const liquidClass = !isVape ? 'liquid-card' : '';
-                let unavailableTagHTML = !product.available ? `<div class="unavailable-tag">Aktuell NICHT verfügbar</div>` : '';
+      // Bestellungen
+      db.collection("orders")
+        .orderBy("date", "desc")
+        .onSnapshot(snap => {
+          const list = document.getElementById("admin-orders-list");
+          list.innerHTML = "";
+          let revenue = 0;
+          let pending = 0;
 
-                // ==================== LIVE STOCK ANZEIGE ====================
-                let stockHTML = '';
-                const stock = product.stock || 0;
-                if (stock === 0 || !product.available) {
-                    stockHTML = `<div class="stock-info stock-zero">❌ Ausverkauft</div>`;
-                } else if (stock <= 5) {
-                    stockHTML = `<div class="stock-info stock-low">⚠️ Nur noch ${stock} Stück!</div>`;
-                } else {
-                    stockHTML = `<div class="stock-info stock-high">✅ Noch ${stock} auf Lager</div>`;
-                }
-                // ========================================================
+          snap.forEach(doc => {
+            const o = doc.data();
+            revenue += o.total || 0;
+            if (o.status === "Zahlung erwartet" || o.status === "Wird bearbeitet") pending++;
 
-                let nicotineHTML = '';
-                if (!isVape && product.available) {
-                    nicotineHTML = `<select class="nicotine-select" onclick="event.stopImmediatePropagation()" onchange="updateNicotine('${product.id}', this.value); event.stopImmediatePropagation()">${NICOTINE_OPTIONS.map(opt => `<option value="${opt}" ${nicotine === opt ? 'selected' : ''}>${opt}</option>`).join('')}</select>`;
-                }
-                let qtyHTML = product.available ? `
-                    <div class="flex items-center bg-zinc-800 rounded-3xl" onclick="event.stopImmediatePropagation()">
-                        <button onclick="changeQuantity('${product.id}', -1); event.stopImmediatePropagation()" class="qty-btn w-9 h-9 text-2xl text-cyan-300 flex-1 flex items-center justify-center">-</button>
-                        <div class="w-10 text-center font-bold text-xl flex items-center justify-center">${qty}</div>
-                        <button onclick="changeQuantity('${product.id}', 1); event.stopImmediatePropagation()" class="qty-btn w-9 h-9 text-2xl text-cyan-300 flex-1 flex items-center justify-center">+</button>
-                    </div>` : '';
-                html += `
-                    <div onclick="showProductDetail('${product.id}')"
-                         class="product-card bg-zinc-900 border border-white/10 rounded-3xl overflow-hidden ${unavailableClass} ${liquidClass} cursor-pointer">
-                        <div class="h-1.5 bg-gradient-to-r from-cyan-400 to-purple-500"></div>
-                        <div class="p-5 flex flex-col h-full">
-                            ${imageHTML}
-                            <div class="flex items-start justify-between mb-3">
-                                <h4 class="font-semibold text-lg leading-tight flex-1">${product.name}</h4>
-                                ${product.isNew ? `<span class="ml-auto px-3 py-1 bg-lime-400 text-black text-xs font-black tracking-wider rounded-2xl">NEW</span>` : ''}
-                            </div>
-                            ${unavailableTagHTML}
-                            ${stockHTML}
-                            <div class="flex-1"></div>
-                            <div class="price-row"><span class="discount-price">${oldPrice}€</span> → <span class="sale-price">${salePrice}€</span></div>
-                            ${qtyHTML}
-                            ${nicotineHTML}
-                        </div>
-                    </div>`;
-            });
-            container.innerHTML = html || `<p class="col-span-full text-center py-16 text-gray-400">Keine Produkte gefunden.</p>`;
-        }
-
-        function updateNicotine(id, value) {
-            let item = cart.find(i => i.id === id);
-            if (item) item.nicotine = value;
-            updateCartDisplay();
-        }
-        function changeQuantity(id, delta) {
-            const product = allProducts.find(p => p.id === id);
-            if (!product) return;
-            if (!product.available) {
-                showToast("❌ Dieses Produkt ist momentan nicht verfügbar", "error");
-                return;
-            }
-            let existing = cart.find(item => item.id === id);
-            if (!existing) {
-                existing = { id, name: product.name, qty: 0, price: product.price, nicotine: "20 mg" };
-                cart.push(existing);
-            }
-            existing.qty = Math.max(0, existing.qty + delta);
-            if (existing.qty === 0) cart = cart.filter(item => item.id !== id);
-            manageMysteryVape();
-            const newTornadoQty = getTornadoQuantity();
-            if (newTornadoQty >= 4 && newTornadoQty % 4 === 0) showDealToast();
-            updateCartDisplay();
-            renderProducts();
-        }
-        function getTornadoQuantity() {
-            return cart.reduce((sum, item) => {
-                const prod = allProducts.find(p => p.id === item.id);
-                return (prod && prod.category === "WaveVapes Tornado 30000") ? sum + item.qty : sum;
-            }, 0);
-        }
-        function showDealToast() {
-            const toast = document.getElementById('notification-toast');
-            notificationCyclePaused = true;
-            toast.innerHTML = `⚡ <strong>4 FÜR 3 AKTION EINGELÖST!</strong>`;
-            toast.classList.add('visible');
-            setTimeout(() => {
-                toast.classList.remove('visible');
-                notificationCyclePaused = false;
-                showNextNotification();
-            }, 5000);
-        }
-        function updateCartDisplay() {
-            const countEl = document.getElementById("cart-count-badge");
-            const totalEl = document.getElementById("cart-total-price");
-            const listEl = document.getElementById("cart-items-list");
-            const shippingNote = document.getElementById("cart-shipping-note");
-            const addressDisplay = document.getElementById("cart-address-display");
-            const loyaltyCartInfo = document.getElementById("loyalty-cart-info");
-            const totalItems = cart.reduce((sum, item) => sum + item.qty, 0);
-            countEl.textContent = totalItems;
-            const grandTotal = calculateCartTotal();
-            totalEl.textContent = `${grandTotal.toFixed(2).replace('.', ',')} €`;
-            const shipping = getShippingCost();
-            shippingNote.innerHTML = shipping === 0 ? `✅ Gratis Versand (ab 100 €)` : `+ ${shipping.toFixed(2).replace('.', ',')} € Versand`;
-            const productTotal = getProductTotal();
-            if (productTotal > 0) {
-                const pointsEarned = Math.floor(productTotal);
-                loyaltyCartInfo.innerHTML = `🎁 Mit diesem Kauf erhältst du <span class="font-bold">+${pointsEarned}</span> Loyalty-Punkte!`;
-            } else {
-                loyaltyCartInfo.innerHTML = "";
-            }
-            if (userAddress.street) {
-                addressDisplay.innerHTML = `${userAddress.street}<br>${userAddress.zip} ${userAddress.city}`;
-            } else {
-                addressDisplay.innerHTML = `<span class="text-red-400">Noch keine Adresse angegeben</span>`;
-            }
-            if (cart.length === 0) {
-                listEl.innerHTML = `<p class="text-center py-16 text-gray-400">Dein Warenkorb ist leer</p>`;
-                return;
-            }
-            let itemsHTML = "";
-            const tornadoQty = getTornadoQuantity();
-            const free = Math.floor(tornadoQty / 4);
-            if (free > 0) {
-                itemsHTML += `<div class="bg-gradient-to-r from-amber-400 to-yellow-400 text-black p-6 rounded-3xl mb-6 text-center shadow-inner"><div class="flex items-center justify-center gap-3 text-2xl font-black">⚡ 4 FÜR 3 AKTION AKTIV!</div><p class="font-semibold text-base mt-2">Du bekommst <span class="underline">${free} Vape${free > 1 ? 's' : ''} gratis</span></p></div>`;
-            }
-            cart.forEach(item => {
-                const p = item.price || 7.99;
-                const nicDisplay = item.nicotine ? ` (${item.nicotine})` : '';
-                if (item.id === MYSTERY_ID) {
-                    itemsHTML += `<div class="mystery-item flex justify-between items-center rounded-3xl p-5"><div class="flex items-center gap-3"><i class="fa-solid fa-gift text-3xl"></i><div><div class="font-medium">${item.name}</div><div class="text-xs bg-white/30 px-3 py-0.5 rounded-full inline-block">GRATIS AB 100€</div></div></div><div class="text-right"><div class="font-bold text-xl text-emerald-900">0,00 €</div></div></div>`;
-                } else {
-                    itemsHTML += `<div class="flex justify-between items-center bg-zinc-900 border border-white/10 rounded-3xl p-5"><div><div class="font-medium">${item.name}${nicDisplay}</div><div class="text-xs text-gray-400">${item.qty} × ${p.toFixed(2).replace('.', ',')} €</div></div><div class="flex items-center gap-6"><div class="font-bold text-xl">${(item.qty * p).toFixed(2).replace('.', ',')} €</div><button onclick="removeCartItem('${item.id}'); event.stopImmediatePropagation()" class="text-red-400"><i class="fa-solid fa-trash"></i></button></div></div>`;
-                }
-            });
-            listEl.innerHTML = itemsHTML;
-        }
-        function removeCartItem(id) {
-            if (id === MYSTERY_ID) return;
-            cart = cart.filter(item => item.id !== id);
-            manageMysteryVape();
-            updateCartDisplay();
-            renderProducts();
-        }
-        function clearCart() {
-            if (confirm("Wirklich ganzen Warenkorb leeren?")) {
-                cart = [];
-                appliedDiscount = null;
-                document.getElementById("discount-status").innerHTML = "";
-                updateCartDisplay();
-                renderProducts();
-                toggleCart();
-            }
-        }
-        function toggleCart() {
-            document.getElementById("cart-sidebar").classList.toggle("translate-x-full");
-        }
-        function manageMysteryVape() {
-            const subtotal = getSubtotal();
-            const hasMystery = cart.some(item => item.id === MYSTERY_ID);
-            if (subtotal >= 100 && !hasMystery) {
-                cart.push({ id: MYSTERY_ID, name: "Mystery Vape", qty: 1, price: 0 });
-                showMysteryToast();
-            } else if (subtotal < 100 && hasMystery) {
-                cart = cart.filter(item => item.id !== MYSTERY_ID);
-            }
-        }
-        function showMysteryToast() {
-            const toast = document.getElementById('notification-toast');
-            notificationCyclePaused = true;
-            toast.innerHTML = `🎉 <strong>Mystery Vape gratis hinzugefügt!</strong>`;
-            toast.classList.add('visible');
-            setTimeout(() => {
-                toast.classList.remove('visible');
-                notificationCyclePaused = false;
-                showNextNotification();
-            }, 4800);
-        }
-        function generateOrderNumber() {
-            const now = new Date();
-            const dateStr = now.getFullYear().toString().slice(2) + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0');
-            return `WV-${dateStr}-${Math.floor(1000 + Math.random() * 9000)}`;
-        }
-        async function placeOrder() {
-            if (!currentUser) {
-                alert("Bitte melde dich zuerst an!");
-                showAuthModal();
-                return;
-            }
-            if (cart.length === 0) return alert("Dein Warenkorb ist leer.");
-            if (!userAddress.street) {
-                alert("Bitte zuerst deine Lieferadresse eingeben!");
-                showAddressModal();
-                return;
-            }
-            for (let item of cart) {
-                if (item.id === MYSTERY_ID) continue;
-                const product = allProducts.find(p => p.id === item.id);
-                if (product.stock < item.qty) {
-                    alert(`Nicht genug Vorrat für ${item.name}! Verfügbar: ${product.stock}`);
-                    return;
-                }
-            }
-            const orderNumber = generateOrderNumber();
-            const finalTotal = calculateCartTotal();
-            const loyaltyEarned = Math.floor(getProductTotal());
-
-            try {
-                await db.collection("orders").add({
-                    userId: currentUser.uid,
-                    userEmail: currentUser.email,
-                    orderNumber: orderNumber,
-                    items: cart.map(item => ({
-                        id: item.id,
-                        name: item.name,
-                        qty: item.qty,
-                        price: item.price || 7.99,
-                        nicotine: item.nicotine || ""
-                    })),
-                    total: finalTotal,
-                    address: userAddress,
-                    date: firebase.firestore.Timestamp.now(),
-                    status: "Zahlung erwartet",
-                    trackingNumber: "",
-                    carrier: "",
-                    loyaltyEarned: loyaltyEarned,
-                    loyaltyCredited: false
-                });
-
-                for (let item of cart) {
-                    if (item.id === MYSTERY_ID) continue;
-                    await db.collection("products").doc(item.id).update({
-                        stock: firebase.firestore.FieldValue.increment(-item.qty),
-                        sold: firebase.firestore.FieldValue.increment(item.qty)
-                    });
-                }
-
-                await sendOrderConfirmationEmail({
-                    userEmail: currentUser.email,
-                    orderNumber: orderNumber,
-                    total: finalTotal,
-                    items: cart,
-                    shipping: getShippingCost(),
-                    loyaltyEarned: loyaltyEarned
-                });
-
-                showSuccessModal(orderNumber, finalTotal, loyaltyEarned);
-                cart = [];
-                appliedDiscount = null;
-                document.getElementById("discount-status").innerHTML = "";
-                await loadProducts();
-                updateCartDisplay();
-                renderProducts();
-                toggleCart();
-            } catch (e) {
-                alert("Fehler beim Speichern: " + e.message);
-            }
-        }
-        function showSuccessModal(orderNumber, total, loyaltyEarned) {
-            document.getElementById("success-order-id").textContent = orderNumber;
-            document.getElementById("success-loyalty-info").innerHTML = 
-                `<span class="text-emerald-400">+${loyaltyEarned} Punkte!</span><br>
-                 <span class="text-amber-300 text-sm">werden gutgeschrieben, sobald die Bestellung auf „Wird bearbeitet“ steht</span>`;
-            document.getElementById("bank-payment-info").innerHTML = `
-                <div class="space-y-3">
-                    <div><strong>Bank:</strong> ${BANK_NAME}</div>
-                    <div><strong>Empfänger:</strong> ${BANK_OWNER}</div>
-                    <div><strong>IBAN:</strong> <span class="font-mono break-all">${BANK_IBAN}</span></div>
-                    ${BANK_BIC ? `<div><strong>BIC:</strong> ${BANK_BIC}</div>` : ''}
-                    <div><strong>Betrag:</strong> <span class="font-bold text-xl">${total.toFixed(2).replace('.', ',')} €</span></div>
-                    <div class="pt-4 border-t border-white/20">
-                        <div class="text-amber-300 text-xs tracking-wider">VERWENDUNGSZWECK</div>
-                        <div class="font-mono bg-zinc-900 p-3 rounded-xl text-center text-base mt-1">${orderNumber}</div>
-                    </div>
+            const item = document.createElement("div");
+            item.className = "admin-card rounded-2xl p-6";
+            item.innerHTML = `
+              <div class="flex justify-between items-start mb-4 flex-wrap gap-4">
+                <div>
+                  <div class="font-mono text-xl text-cyan-300">${o.orderNumber}</div>
+                  <div class="text-sm text-gray-400">${o.date?.toDate?.()?.toLocaleString('de-DE') || '—'}</div>
+                  <div class="text-sm mt-1">${o.userEmail}</div>
                 </div>
-            `;
-            document.getElementById("success-details").innerHTML = `<div class="font-mono text-xs leading-relaxed bg-black p-5 rounded-2xl">Bestellung erfolgreich!</div>`;
-            const modal = document.getElementById("success-modal");
-            modal.classList.remove("hidden"); modal.classList.add("flex");
-        }
-        function closeSuccessModal() {
-            const modal = document.getElementById("success-modal");
-            modal.classList.add("hidden"); modal.classList.remove("flex");
-        }
-        function loadUserOrders() {
-            if (!currentUser) return;
-            const container = document.getElementById("history-list");
-            container.innerHTML = '<p class="text-center text-gray-400 py-8">Lade Bestellungen live...</p>';
-            if (ordersUnsubscribe) ordersUnsubscribe();
-            ordersUnsubscribe = db.collection("orders")
-                .where("userId", "==", currentUser.uid)
-                .orderBy("date", "desc")
-                .onSnapshot((snap) => {
-                    container.innerHTML = "";
-                    if (snap.empty) {
-                        document.getElementById("no-history").classList.remove("hidden");
-                        return;
-                    }
-                    document.getElementById("no-history").classList.add("hidden");
-                    snap.forEach(doc => {
-                        const order = doc.data();
-                        const dateStr = order.date ? order.date.toDate().toLocaleDateString('de-DE') : '—';
-                        const status = order.status || "Zahlung erwartet";
-                        const statusClass = getStatusClass(status);
-                        let itemsHTML = order.items.map(item =>
-                            `<div class="flex justify-between text-sm"><span>${item.name} × ${item.qty}</span><span>${item.nicotine ? '(' + item.nicotine + ')' : ''}</span></div>`
-                        ).join('');
-                        let trackingHTML = order.trackingNumber ? `
-                            <div class="mt-5 pt-5 border-t border-white/10">
-                                <p class="text-xs text-gray-400">Trackingnummer (${order.carrier || '—'})</p>
-                                <p class="font-mono text-cyan-300 break-all">${order.trackingNumber}</p>
-                            </div>` : '';
-                        let trackButton = '';
-                        if (order.carrier === "DHL" && order.trackingNumber) {
-                            const url = `https://www.dhl.de/de/privatkunden/dhl-sendungsverfolgung.html?piececode=${encodeURIComponent(order.trackingNumber)}`;
-                            trackButton = `
-                                <a href="${url}" target="_blank" rel="noopener noreferrer"
-                                   class="mt-4 w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-3.5 rounded-2xl text-center flex items-center justify-center gap-2 transition">
-                                    <i class="fa-solid fa-truck"></i>
-                                    Sendung verfolgen
-                                </a>`;
-                        }
-                        const card = document.createElement("div");
-                        card.className = "bg-zinc-900 border border-white/10 rounded-3xl p-6";
-                        card.innerHTML = `
-                            <div class="flex justify-between items-start mb-4">
-                                <div>
-                                    <div class="font-mono text-xl text-cyan-300">${order.orderNumber}</div>
-                                    <div class="text-sm text-gray-400 mt-1">${dateStr}</div>
-                                </div>
-                                <span class="status-badge ${statusClass}">${status}</span>
-                            </div>
-                            <div class="mb-5">
-                                <p class="text-xs uppercase text-gray-400 mb-2">Artikel</p>
-                                <div class="space-y-1 text-gray-200">${itemsHTML}</div>
-                            </div>
-                            <div class="flex justify-between items-end mb-6">
-                                <div>
-                                    <p class="text-xs text-gray-400">Gesamt</p>
-                                    <p class="text-2xl font-bold">${order.total.toFixed(2).replace('.', ',')} €</p>
-                                </div>
-                            </div>
-                            ${trackingHTML}
-                            <div class="flex flex-col gap-3 mt-6">
-                                ${trackButton}
-                                <button onclick="showPaymentInfo('${order.orderNumber}')"
-                                        class="w-full bg-zinc-800 hover:bg-zinc-700 text-cyan-300 py-3 rounded-2xl text-sm font-medium transition-all">
-                                    Überweisungsdaten anzeigen
-                                </button>
-                            </div>
-                        `;
-                        container.appendChild(card);
-                    });
-                });
-        }
-        function showOrderHistory() {
-            if (!currentUser) {
-                alert("Bitte zuerst einloggen!");
-                showAuthModal();
-                return;
-            }
-            const modal = document.getElementById("history-modal");
-            modal.classList.remove("hidden");
-            modal.classList.add("flex");
-            loadUserOrders();
-        }
-        function closeHistoryModal() {
-            const modal = document.getElementById("history-modal");
-            modal.classList.add("hidden");
-            modal.classList.remove("flex");
-            if (ordersUnsubscribe) {
-                ordersUnsubscribe();
-                ordersUnsubscribe = null;
-            }
-        }
-        function showPaymentInfo(orderNumber) {
-            const infoHTML = `
-                <div class="space-y-4 text-sm">
-                    <div><strong>Bank:</strong> ${BANK_NAME}</div>
-                    <div><strong>Empfänger:</strong> ${BANK_OWNER}</div>
-                    <div><strong>IBAN:</strong> <span class="font-mono break-all">${BANK_IBAN}</span></div>
-                    ${BANK_BIC ? `<div><strong>BIC:</strong> ${BANK_BIC}</div>` : ''}
-                    <div><strong>Betrag:</strong> <span class="font-bold text-xl">${document.getElementById("cart-total-price").textContent}</span></div>
-                    <div class="pt-4 border-t border-white/20">
-                        <div class="text-amber-300 text-xs tracking-wider">VERWENDUNGSZWECK</div>
-                        <div class="font-mono bg-zinc-900 p-3 rounded-xl text-center text-base mt-1">${orderNumber}</div>
-                    </div>
+                <select onchange="updateOrderStatus('${doc.id}', this.value)" class="status-badge ${getStatusClass(o.status)} px-4 py-1.5 rounded-full text-sm font-medium">
+                  <option ${o.status==="Zahlung erwartet"?"selected":""}>Zahlung erwartet</option>
+                  <option ${o.status==="Wird bearbeitet"?"selected":""}>Wird bearbeitet</option>
+                  <option ${o.status==="Versendet"?"selected":""}>Versendet</option>
+                  <option ${o.status==="Zugestellt"?"selected":""}>Zugestellt</option>
+                  <option ${o.status==="Storniert"?"selected":""}>Storniert</option>
+                </select>
+              </div>
+
+              <div class="mb-4">
+                ${o.items?.map(i => `
+                  <div class="flex justify-between text-sm py-1">
+                    <span>${i.name} × ${i.qty}${i.nicotine ? ` (${i.nicotine})` : ''}</span>
+                    <span>${(i.price * i.qty).toFixed(2)} €</span>
+                  </div>
+                `).join('') || '<p class="text-gray-500">Keine Artikel</p>'}
+              </div>
+
+              <div class="flex justify-between font-bold text-lg border-t border-white/10 pt-4">
+                <span>Gesamt</span>
+                <span class="text-emerald-400">${(o.total||0).toFixed(2)} €</span>
+              </div>
+
+              <div class="mt-5 pt-4 border-t border-white/10">
+                <label class="block text-sm text-gray-400 mb-2">Tracking-Nummer (DHL)</label>
+                <div class="flex gap-3">
+                  <input type="text" value="${o.trackingNumber||''}" id="track-${doc.id}" class="flex-1 bg-zinc-800 border border-cyan-500/30 rounded-xl px-4 py-2.5 text-sm"/>
+                  <button onclick="saveTracking('${doc.id}')" class="bg-cyan-600 hover:bg-cyan-500 px-5 py-2.5 rounded-xl text-sm">
+                    Speichern
+                  </button>
                 </div>
-                <p class="text-emerald-400 text-xs mt-6">Sobald das Geld da ist, packe ich deine Bestellung und versende per DHL. <strong>Der Versand dauert in der Regel 1–3 Werktage.</strong></p>
+              </div>
             `;
-            document.getElementById("payment-info-content").innerHTML = infoHTML;
-            const modal = document.getElementById("payment-info-modal");
-            modal.classList.remove("hidden"); modal.classList.add("flex");
-        }
-        function closePaymentInfoModal() {
-            const modal = document.getElementById("payment-info-modal");
-            modal.classList.add("hidden"); modal.classList.remove("flex");
-        }
-        function showToast(msg, type = "success") {
-            const toast = document.getElementById('notification-toast');
-            if (type === "error") {
-                toast.style.background = "rgba(185, 28, 28, 0.85)";
-            } else {
-                toast.style.background = "rgba(0,0,0,0.85)";
-            }
-            toast.innerHTML = msg;
-            toast.classList.add('visible');
-            setTimeout(() => toast.classList.remove('visible'), 4000);
-        }
-        function generateNotificationList() {
-            notificationList = [];
-            const available = allProducts;
-            for (let i = 0; i < 10; i++) {
-                const name = fakeNames[Math.floor(Math.random() * fakeNames.length)];
-                const prod = available[Math.floor(Math.random() * available.length)].name;
-                const min = Math.floor(Math.random() * 59) + 1;
-                const text = min === 1 ? "Minute" : "Minuten";
-                notificationList.push(`${name} bestellte vor ${min} ${text} ${prod}.`);
-            }
-            localStorage.setItem('wavevapes_notifications', JSON.stringify(notificationList));
-            localStorage.setItem('wavevapes_last_generate', Date.now());
-        }
-        function checkAndGenerateNotifications() {
-            const last = localStorage.getItem('wavevapes_last_generate');
-            if (!last || (Date.now() - last > HOUR_MS)) generateNotificationList();
-            else {
-                const stored = localStorage.getItem('wavevapes_notifications');
-                if (stored) notificationList = JSON.parse(stored);
-                else generateNotificationList();
-            }
-        }
-        function showNextNotification() {
-            if (notificationCyclePaused) return;
-            const toast = document.getElementById('notification-toast');
-            toast.textContent = notificationList[currentNotificationIndex];
-            toast.classList.add('visible');
-            setTimeout(() => toast.classList.remove('visible'), NOTIFICATION_DURATION - 700);
-            currentNotificationIndex = (currentNotificationIndex + 1) % notificationList.length;
-        }
-        function startNotificationCycle() {
-            checkAndGenerateNotifications();
-            showNextNotification();
-            setInterval(showNextNotification, NOTIFICATION_DURATION);
-            setInterval(checkAndGenerateNotifications, 60000);
-        }
-        function renderCategoryTabs() {
-            const html = `
-                <button onclick="setCategoryFilter('Alle')" class="px-5 py-2 transition ${currentCategoryFilter === 'Alle' ? 'tab-active' : ''}">Alle</button>
-                <button onclick="setCategoryFilter('WaveVapes Tornado 30000')" class="px-5 py-2 transition flex items-center gap-x-3 ${currentCategoryFilter === 'WaveVapes Tornado 30000' ? 'tab-active' : ''}">
-                    Tornado 30000 <span class="bg-amber-400 text-black text-xs font-black px-4 py-1 rounded-2xl">4 FÜR 3</span> <i class="fa-solid fa-bolt animate-bolt text-2xl"></i>
-                </button>
-                <button onclick="setCategoryFilter('Normale Sorten')" class="px-5 py-2 transition ${currentCategoryFilter === 'Normale Sorten' ? 'tab-active' : ''}">Normale Sorten</button>
-                <button onclick="setCategoryFilter('Neue Sorten')" class="px-5 py-2 transition ${currentCategoryFilter === 'Neue Sorten' ? 'tab-active' : ''}">Neue Sorten</button>
-            `;
-            document.getElementById("category-tabs").innerHTML = html;
-        }
-        function setCategoryFilter(cat) {
-            currentCategoryFilter = cat;
-            renderCategoryTabs();
-            renderProducts();
-        }
-        function showImpressumModal() {
-            const modal = document.getElementById("impressum-modal");
-            modal.classList.remove("hidden"); modal.classList.add("flex");
-        }
-        function closeImpressumModal() {
-            const modal = document.getElementById("impressum-modal");
-            modal.classList.add("hidden"); modal.classList.remove("flex");
-        }
-        function showDatenschutzModal() {
-            const modal = document.getElementById("datenschutz-modal");
-            modal.classList.remove("hidden"); modal.classList.add("flex");
-        }
-        function closeDatenschutzModal() {
-            const modal = document.getElementById("datenschutz-modal");
-            modal.classList.add("hidden"); modal.classList.remove("flex");
-        }
-        function showAgeModal() {
-            const modal = document.getElementById("age-modal");
-            modal.classList.remove("hidden"); modal.classList.add("flex");
-        }
-        function confirmAge() {
-            localStorage.setItem("age_verified", "true");
-            const modal = document.getElementById("age-modal");
-            modal.classList.add("hidden"); modal.classList.remove("flex");
-            showToast("✅ Willkommen bei WaveVapes!");
-        }
-        function denyAge() {
-            const modal = document.getElementById("age-modal");
-            modal.classList.add("hidden"); modal.classList.remove("flex");
-            alert("Dieser Shop ist nur für Personen ab 18 Jahren.");
-        }
-        function filterProducts() {
-            renderProducts();
-        }
-        function showProductDetail(id) {
-            const product = allProducts.find(p => p.id === id);
-            if (!product) return;
-            const nicotineHTML = product.category !== "WaveVapes Tornado 30000" ? `
-                <div class="mt-6">
-                    <p class="text-xs text-gray-400 mb-2">Nikotinstärke</p>
-                    <select id="modal-nicotine" class="nicotine-select w-full">
-                        <option value="10 mg">10 mg</option>
-                        <option value="20 mg" selected>20 mg</option>
-                    </select>
-                </div>` : '';
-            const html = `
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                    <div>
-                        ${product.image ? `<img src="${product.image}" class="w-full rounded-3xl shadow-2xl" alt="${product.name} – WaveVapes Premium Vape oder Liquid" loading="eager" decoding="async" width="600" height="400">` : ''}
-                    </div>
-                    <div>
-                        <h2 class="text-4xl font-bold tracking-tighter neon-text">${product.name}</h2>
-                        <div class="flex items-center gap-3 mt-3 text-emerald-400">
-                            <span class="text-3xl">★ ★ ★ ★ ★</span>
-                            <span class="text-sm">(4.98 • 347 Bewertungen)</span>
-                        </div>
-                        <div class="mt-8 text-gray-300 leading-relaxed text-[15px]">
-                            ${product.description ? product.description.replace(/\n/g, '<br>') : '<p class="text-gray-400 italic">Noch keine Beschreibung hinterlegt.<br>Trage sie im Admin-Panel ein!</p>'}
-                        </div>
-                        <div class="price-row mt-8">
-                            <span class="discount-price text-2xl">35,99 €</span>
-                            <span class="sale-price text-5xl font-bold">${product.price.toFixed(2).replace('.', ',')} €</span>
-                        </div>
-                        ${nicotineHTML}
-                        <div class="flex items-center gap-4 mt-10">
-                            <button onclick="addFromDetail('${product.id}')"
-                                    class="flex-1 bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-6 rounded-3xl text-xl hover:scale-105 transition">
-                                In den Warenkorb
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            document.getElementById('detail-content').innerHTML = html;
-            const modal = document.getElementById("product-detail-modal");
-            modal.classList.remove("hidden");
-            modal.classList.add("flex");
-        }
-        function closeProductDetail() {
-            const modal = document.getElementById("product-detail-modal");
-            modal.classList.add("hidden");
-            modal.classList.remove("flex");
-        }
-        function addFromDetail(id) {
-            const product = allProducts.find(p => p.id === id);
-            if (!product || !product.available) return;
-            let existing = cart.find(item => item.id === id);
-            if (!existing) {
-                existing = { id, name: product.name, qty: 0, price: product.price, nicotine: "20 mg" };
-                cart.push(existing);
-            }
-            const select = document.getElementById("modal-nicotine");
-            if (select) existing.nicotine = select.value;
-            existing.qty = (existing.qty || 0) + 1;
-            manageMysteryVape();
-            updateCartDisplay();
-            renderProducts();
-            closeProductDetail();
-            showToast(`✅ ${product.name} wurde hinzugefügt!`);
-        }
-        function initialize() {
-            initEmailJS();
-            if (!localStorage.getItem("age_verified")) showAgeModal();
-            localStorage.removeItem('wavevapes_notifications');
-            localStorage.removeItem('wavevapes_last_generate');
-            updateAuthUI();
-            updateUserDisplay();
-            updateLoyaltyDisplay();
-            renderCategoryTabs();
-            loadProducts();
-            updateCartDisplay();
-            startNotificationCycle();
-            checkAndAutoRedeemLoyalty();
-        }
-        window.onload = initialize;
-    </script>
+            list.appendChild(item);
+          });
+
+          document.getElementById("total-revenue").textContent = revenue.toFixed(2) + " €";
+          document.getElementById("pending-orders").textContent = pending;
+        });
+
+      // Loyalty-Summe
+      db.collection("users").onSnapshot(snap => {
+        let sum = 0;
+        snap.forEach(doc => {
+          sum += doc.data().totalBonusPoints || 0;
+        });
+        document.getElementById("total-loyalty").textContent = sum;
+      });
+    }
+
+    function getStatusClass(s) {
+      return {
+        "Zahlung erwartet": "status-Zahlung",
+        "Wird bearbeitet": "status-Wird",
+        "Versendet": "status-Versendet",
+        "Zugestellt": "status-Zugestellt",
+        "Storniert": "status-Storniert"
+      }[s] || "";
+    }
+
+    // ────────────────────────────────────────────────
+    //  PRODUKT MODAL FUNKTIONEN
+    // ────────────────────────────────────────────────
+    function openProductModal() {
+      editingProductId = null;
+      document.getElementById("modal-title").textContent = "Neues Produkt";
+      document.getElementById("delete-prod-btn").classList.add("hidden");
+
+      document.getElementById("prod-name").value = "";
+      document.getElementById("prod-category").value = "Normale Sorten";
+      document.getElementById("prod-price").value = "7.99";
+      document.getElementById("prod-stock").value = "50";
+      document.getElementById("prod-image").value = "";
+      document.getElementById("prod-desc").value = "";
+      document.getElementById("prod-available").checked = true;
+      document.getElementById("prod-isnew").checked = false;
+
+      document.getElementById("product-modal").classList.remove("hidden");
+    }
+
+    function editProduct(id) {
+      db.collection("products").doc(id).get().then(doc => {
+        if (!doc.exists) return;
+        const p = doc.data();
+        editingProductId = id;
+        document.getElementById("modal-title").textContent = "Produkt bearbeiten";
+        document.getElementById("delete-prod-btn").classList.remove("hidden");
+
+        document.getElementById("prod-name").value     = p.name || "";
+        document.getElementById("prod-category").value = p.category || "Normale Sorten";
+        document.getElementById("prod-price").value    = p.price || "7.99";
+        document.getElementById("prod-stock").value    = p.stock || "0";
+        document.getElementById("prod-image").value    = p.image || "";
+        document.getElementById("prod-desc").value     = p.description || "";
+        document.getElementById("prod-available").checked = p.available !== false;
+        document.getElementById("prod-isnew").checked  = !!p.isNew;
+
+        document.getElementById("product-modal").classList.remove("hidden");
+      });
+    }
+
+    function closeProductModal() {
+      document.getElementById("product-modal").classList.add("hidden");
+    }
+
+    function saveProduct() {
+      const data = {
+        name:        document.getElementById("prod-name").value.trim(),
+        category:    document.getElementById("prod-category").value,
+        price:       Number(document.getElementById("prod-price").value) || 7.99,
+        stock:       Number(document.getElementById("prod-stock").value) || 0,
+        image:       document.getElementById("prod-image").value.trim(),
+        description: document.getElementById("prod-desc").value.trim(),
+        available:   document.getElementById("prod-available").checked,
+        isNew:       document.getElementById("prod-isnew").checked,
+        updatedAt:   firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      if (!data.name) {
+        alert("Bitte mindestens einen Namen eingeben.");
+        return;
+      }
+
+      const ref = editingProductId
+        ? db.collection("products").doc(editingProductId)
+        : db.collection("products").doc();
+
+      ref.set(data, { merge: true })
+        .then(() => {
+          showToast("Produkt gespeichert ✓");
+          closeProductModal();
+        })
+        .catch(err => alert("Fehler: " + err.message));
+    }
+
+    function deleteProduct() {
+      if (!editingProductId) return;
+      if (!confirm("Produkt wirklich löschen?")) return;
+
+      db.collection("products").doc(editingProductId).delete()
+        .then(() => {
+          showToast("Produkt gelöscht");
+          closeProductModal();
+        })
+        .catch(err => alert(err.message));
+    }
+
+    // ────────────────────────────────────────────────
+    //  BESTELL STATUS & TRACKING
+    // ────────────────────────────────────────────────
+    function updateOrderStatus(orderId, newStatus) {
+      db.collection("orders").doc(orderId).update({
+        status: newStatus,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }).then(() => {
+        showToast(`Status → ${newStatus}`);
+      });
+    }
+
+    function saveTracking(orderId) {
+      const val = document.getElementById(`track-${orderId}`).value.trim();
+      db.collection("orders").doc(orderId).update({
+        trackingNumber: val,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }).then(() => {
+        showToast("Tracking gespeichert");
+      });
+    }
+
+    // ────────────────────────────────────────────────
+    //  TOAST
+    // ────────────────────────────────────────────────
+    function showToast(msg, duration = 3000) {
+      const t = document.getElementById("admin-toast");
+      t.textContent = msg;
+      t.classList.remove("hidden");
+      setTimeout(() => t.classList.add("hidden"), duration);
+    }
+
+    // Initial
+    showTab('products');
+  </script>
 </body>
 </html>

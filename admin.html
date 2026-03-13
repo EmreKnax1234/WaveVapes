@@ -73,9 +73,9 @@
                 <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><i class="fa-solid fa-download"></i> Backup & Restore</h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <button onclick="exportProductsToCSV()" class="bg-emerald-600 hover:bg-emerald-500 py-6 rounded-3xl font-bold text-xl flex items-center justify-center gap-3">📤 Alle Produkte als CSV exportieren</button>
-                    <button onclick="document.getElementById('csv-upload').click()" class="bg-orange-600 hover:bg-orange-500 py-6 rounded-3xl font-bold text-xl flex items-center justify-center gap-3">📥 CSV importieren & Produkte wiederherstellen</button>
+                    <button onclick="document.getElementById('csv-upload-products').click()" class="bg-orange-600 hover:bg-orange-500 py-6 rounded-3xl font-bold text-xl flex items-center justify-center gap-3">📥 CSV importieren & Produkte wiederherstellen</button>
                 </div>
-                <input type="file" id="csv-upload" accept=".csv" class="hidden" onchange="importProductsFromCSV(event)">
+                <input type="file" id="csv-upload-products" accept=".csv" class="hidden" onchange="importProductsFromCSV(event)">
                 <p class="text-xs text-amber-400 mt-4 text-center">⚠️ Beim Import werden ALLE aktuellen Produkte gelöscht!</p>
             </div>
             <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
@@ -138,6 +138,7 @@
                     <h2 class="text-2xl font-bold flex items-center gap-3"><i class="fa-solid fa-receipt"></i> Live Bestellungen</h2>
                     <div class="flex gap-3">
                         <button onclick="exportOrdersToCSV()" class="bg-emerald-600 hover:bg-emerald-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2"><i class="fa-solid fa-file-csv"></i> CSV Export</button>
+                        <button onclick="document.getElementById('csv-upload-orders').click()" class="bg-orange-600 hover:bg-orange-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2"><i class="fa-solid fa-file-import"></i> CSV Import (Wiederherstellen)</button>
                         <input id="order-search" placeholder="Bestellnr. oder E-Mail" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-3 w-80">
                         <select id="status-filter" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-3">
                             <option value="">Alle Status</option>
@@ -158,6 +159,7 @@
                     </table>
                 </div>
             </div>
+            <input type="file" id="csv-upload-orders" accept=".csv" class="hidden" onchange="importOrdersFromCSV(event)">
         </div>
         <!-- TAB 2: BENUTZER -->
         <div id="tab-content-2" class="hidden">
@@ -167,7 +169,10 @@
             <div class="card overflow-hidden">
                 <div class="p-6 border-b border-white/10 flex items-center justify-between">
                     <h2 class="text-2xl font-bold flex items-center gap-3"><i class="fa-solid fa-users"></i> Benutzer verwalten</h2>
-                    <button onclick="exportUsersToCSV()" class="bg-emerald-600 hover:bg-emerald-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2"><i class="fa-solid fa-file-csv"></i> CSV Export</button>
+                    <div class="flex gap-3">
+                        <button onclick="exportUsersToCSV()" class="bg-emerald-600 hover:bg-emerald-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2"><i class="fa-solid fa-file-csv"></i> CSV Export</button>
+                        <button onclick="document.getElementById('csv-upload-users').click()" class="bg-orange-600 hover:bg-orange-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2"><i class="fa-solid fa-file-import"></i> CSV Import (Wiederherstellen)</button>
+                    </div>
                     <input id="user-search" placeholder="E-Mail oder Username suchen..." class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-3 w-96">
                 </div>
                 <div class="overflow-x-auto">
@@ -187,6 +192,7 @@
                     </table>
                 </div>
             </div>
+            <input type="file" id="csv-upload-users" accept=".csv" class="hidden" onchange="importUsersFromCSV(event)">
         </div>
         <!-- TAB 3: KATEGORIEN -->
         <div id="tab-content-3" class="hidden">
@@ -554,7 +560,7 @@ dropzone.addEventListener('click', () => {
     };
     input.click();
 });
-// ====================== CSV ======================
+// ====================== CSV PRODUKTE ======================
 async function exportProductsToCSV() {
     const snapshot = await db.collection("products").get();
     if (snapshot.empty) return alert("Keine Produkte vorhanden!");
@@ -625,25 +631,25 @@ async function importProductsFromCSV(e) {
     reader.readAsText(file);
     e.target.value = "";
 }
-function parseCSVLine(line) {
-    return line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(field => field.replace(/^"|"$/g, '').replace(/""/g, '"'));
-}
-// ====================== NEUE CSV-EXPORT FUNKTIONEN ======================
+// ====================== CSV BESTELLUNGEN (EXPORT + NEU: IMPORT) ======================
 async function exportOrdersToCSV() {
     const snapshot = await db.collection("orders").orderBy("date", "desc").get();
     if (snapshot.empty) return alert("Keine Bestellungen vorhanden!");
-    let csv = "orderNumber,datum,email,gesamt,status,items\n";
+    let csv = "docId,orderNumber,datum,email,gesamt,status,items,address\n";
     snapshot.forEach(doc => {
         const o = doc.data();
         const dateStr = o.date ? o.date.toDate().toISOString().slice(0,19).replace('T',' ') : '';
         const itemsStr = o.items.map(i => `${i.name} x${i.qty}${i.nicotine ? ' ('+i.nicotine+')' : ''}`).join(' | ');
+        const addressStr = `${o.address.street || ''}, ${o.address.zip || ''} ${o.address.city || ''}`;
         const row = [
+            `"${doc.id}"`,
             `"${o.orderNumber || ''}"`,
             `"${dateStr}"`,
             `"${o.userEmail || ''}"`,
             o.total || 0,
             `"${o.status || 'Zahlung erwartet'}"`,
-            `"${itemsStr.replace(/"/g, '""')}"`
+            `"${itemsStr.replace(/"/g, '""')}"`,
+            `"${addressStr.replace(/"/g, '""')}"`
         ].join(",");
         csv += row + "\n";
     });
@@ -654,13 +660,56 @@ async function exportOrdersToCSV() {
     link.click();
     showToast("✅ Bestellungen als CSV exportiert!", "success");
 }
+async function importOrdersFromCSV(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!confirm("⚠️ WARNUNG!\n\nDie importierten Bestellungen werden ZUSÄTZLICH zu den bestehenden hinzugefügt.\n\nWirklich fortfahren?")) {
+        e.target.value = "";
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = async function(event) {
+        const text = event.target.result;
+        const rows = text.trim().split("\n");
+        const batch = db.batch();
+        for (let i = 1; i < rows.length; i++) {
+            if (!rows[i].trim()) continue;
+            const values = parseCSVLine(rows[i]);
+            const data = {
+                orderNumber: values[1],
+                date: firebase.firestore.Timestamp.fromDate(new Date(values[2])),
+                userEmail: values[3],
+                total: parseFloat(values[4]),
+                status: values[5],
+                items: values[6].split(' | ').map(item => {
+                    const parts = item.match(/(.*?) x(\d+)(?:\s*\((.*)\))?/);
+                    return parts ? { name: parts[1].trim(), qty: parseInt(parts[2]), nicotine: parts[3] || "" } : {};
+                }).filter(Boolean),
+                address: {
+                    street: values[7].split(',')[0] || "",
+                    zip: values[7].split(',')[1] ? values[7].split(',')[1].trim().split(' ')[0] : "",
+                    city: values[7].split(',')[1] ? values[7].split(',')[1].trim().split(' ').slice(1).join(' ') : ""
+                }
+            };
+            const docRef = db.collection("orders").doc(values[0]);
+            batch.set(docRef, data);
+        }
+        await batch.commit();
+        showToast("✅ Bestellungen erfolgreich importiert!", "success");
+        loadOrders();
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+}
+// ====================== CSV BENUTZER (EXPORT + NEU: IMPORT) ======================
 async function exportUsersToCSV() {
     const snapshot = await db.collection("users").get();
     if (snapshot.empty) return alert("Keine Benutzer vorhanden!");
-    let csv = "email,username,referralCode,loyaltyPoints,freeShipping,disabled,referralCount\n";
+    let csv = "uid,email,username,referralCode,loyaltyPoints,freeShipping,disabled,referralCount\n";
     snapshot.forEach(doc => {
         const u = doc.data();
         const row = [
+            `"${doc.id}"`,
             `"${u.email || ''}"`,
             `"${u.username || ''}"`,
             `"${u.referralCode || ''}"`,
@@ -677,6 +726,43 @@ async function exportUsersToCSV() {
     link.download = `wavevapes_benutzer_${new Date().toISOString().slice(0,10)}.csv`;
     link.click();
     showToast("✅ Benutzer als CSV exportiert!", "success");
+}
+async function importUsersFromCSV(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!confirm("⚠️ WARNUNG!\n\nDie importierten Benutzer werden ZUSÄTZLICH zu den bestehenden hinzugefügt.\n\nWirklich fortfahren?")) {
+        e.target.value = "";
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = async function(event) {
+        const text = event.target.result;
+        const rows = text.trim().split("\n");
+        const batch = db.batch();
+        for (let i = 1; i < rows.length; i++) {
+            if (!rows[i].trim()) continue;
+            const values = parseCSVLine(rows[i]);
+            const data = {
+                email: values[1],
+                username: values[2],
+                referralCode: values[3],
+                totalBonusPoints: parseInt(values[4]),
+                freeShipping: values[5] === "JA",
+                disabled: values[6] === "JA",
+                referralCount: parseInt(values[7]) || 0
+            };
+            const docRef = db.collection("users").doc(values[0]);
+            batch.set(docRef, data);
+        }
+        await batch.commit();
+        showToast("✅ Benutzer erfolgreich importiert!", "success");
+        loadUsers();
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+}
+function parseCSVLine(line) {
+    return line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(field => field.replace(/^"|"$/g, '').replace(/""/g, '"'));
 }
 // ====================== KATEGORIEN ======================
 function loadCategories() {

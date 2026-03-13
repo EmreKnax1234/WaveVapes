@@ -317,7 +317,7 @@
                 <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
                     <i class="fa-solid fa-sort"></i> Produkt-Sortierung (Drag & Drop + Auto-Sort)
                 </h2>
-                <p class="text-sm text-gray-400 mb-6">Klicke auf einen Button für automatische Sortierung. Die neue <strong>Auto-Priorität</strong> sortiert genau wie gewünscht:<br>1. Neue Sorten → 2. Normale Sorten → 3. Alle Vapes → 4. Nicht verfügbar / Ausverkauft</p>
+                <p class="text-sm text-gray-400 mb-6">Klicke auf einen Button für automatische Sortierung.<br><strong>Neue AUTO-PRIORITÄT (überarbeitet):</strong><br>1. Neue Sorten (nur verfügbar) → 2. Normale Sorten (nur verfügbar) → 3. Alle Vapes (nur verfügbar) → 4. ALLE nicht verfügbaren Sachen (egal ob neu oder normal – immer ganz unten)</p>
                
                 <div class="flex flex-wrap gap-3 mb-8">
                     <button onclick="autoSort('alpha')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">📋 Alphabetisch A-Z</button>
@@ -325,7 +325,7 @@
                     <button onclick="autoSort('tornado')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">🌪️ Tornado zuerst</button>
                     <button onclick="autoSort('available')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">✅ Verfügbare zuerst</button>
                     <button onclick="autoSort('stock')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">📦 Lagerbestand (hoch zuerst)</button>
-                    <button onclick="autoSortPriority()" class="px-6 py-3 bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold rounded-2xl text-sm transition">🔄 AUTO-PRIORITÄT<br><span class="text-xs font-normal">NEW → Normal → Vapes → Ausverkauft</span></button>
+                    <button onclick="autoSortPriority()" class="px-6 py-3 bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold rounded-2xl text-sm transition">🔄 AUTO-PRIORITÄT<br><span class="text-xs font-normal">NEW (verfügbar) → Normal (verfügbar) → Vapes → ALLE nicht verfügbar (unten)</span></button>
                 </div>
                
                 <div id="sort-list" class="space-y-3 min-h-[500px] bg-zinc-950 rounded-3xl p-6"></div>
@@ -1360,7 +1360,7 @@ function renderSortList() {
         forceFallback: true
     });
 }
-// ====================== TOGGLE IN SORTIERUNG (mit automatischer Kategorie) ======================
+// ====================== TOGGLE IN SORTIERUNG ======================
 async function toggleIsNew(id, e) {
     e.stopImmediatePropagation();
     const doc = await db.collection('products').doc(id).get();
@@ -1420,7 +1420,7 @@ function autoSort(mode) {
     items.forEach(item => container.appendChild(item));
     showToast('✅ Liste automatisch sortiert!', 'success');
 }
-// ====================== NEUES AUTOMATISCHES SORTIERUNGSSYSTEM ======================
+// ====================== NEUES AUTOMATISCHES SORTIERUNGSSYSTEM (überarbeitet) ======================
 function autoSortPriority() {
     const container = document.getElementById('sort-list');
     let items = Array.from(container.children);
@@ -1432,17 +1432,12 @@ function autoSortPriority() {
         const pB = allProducts.find(p => p.id === idB);
         if (!pA || !pB) return 0;
 
-        // PRIORITÄTSSYSTEM:
-        // 1 = Neue Sorten
-        // 2 = Normale Sorten
-        // 3 = Alle Vapes (Tornado)
-        // 4 = Nicht verfügbar / Ausverkauft
+        // NEUE LOGIK: Nicht verfügbare Sachen IMMER ganz unten – egal ob neu oder nicht!
         const getPriority = (p) => {
-            if (p.isNew === true) return 1;
-            if (p.category !== "WaveVapes Tornado 30000" && p.isNew !== true) return 2;
-            if (p.category === "WaveVapes Tornado 30000") return 3;
-            if (p.available === false || (p.stock || 0) <= 0) return 4;
-            return 5; // Fallback
+            if (p.available === false || (p.stock || 0) <= 0) return 4;   // 4 = allerletzte Position
+            if (p.isNew === true) return 1;                              // 1 = Neue Sorten (nur verfügbar)
+            if (p.category !== "WaveVapes Tornado 30000") return 2;      // 2 = Normale Sorten (verfügbar)
+            return 3;                                                    // 3 = Vapes (verfügbar)
         };
 
         const prioA = getPriority(pA);
@@ -1450,12 +1445,12 @@ function autoSortPriority() {
 
         if (prioA !== prioB) return prioA - prioB;
 
-        // Innerhalb derselben Priorität: alphabetisch
+        // Innerhalb derselben Gruppe alphabetisch
         return pA.name.localeCompare(pB.name);
     });
    
     items.forEach(item => container.appendChild(item));
-    showToast('✅ Automatische Prioritätssortierung angewendet!<br>NEW → Normal → Vapes → Ausverkauft', 'success');
+    showToast('✅ Automatische Prioritätssortierung angewendet!<br>1. Neue (verfügbar) → 2. Normale (verfügbar) → 3. Vapes → 4. Alle nicht verfügbaren (unten)', 'success');
 }
 // ====================== SAVE SORT ======================
 async function saveProductOrder() {

@@ -157,7 +157,7 @@
                 <div class="overflow-x-auto">
                     <table class="w-full">
                         <thead class="bg-zinc-950">
-                            <tr><th class="py-5 px-6 text-left">E-Mail</th><th class="py-5 px-6 text-left">Benutzername</th><th class="py-5 px-6 text-center">Referral-Code</th><th class="py-5 px-6 text-center">Loyalty-Punkte</th><th class="py-5 px-6 text-center">Status</th><th class="py-5 px-6 text-right">Aktionen</th></tr>
+                            <tr><th class="py-5 px-6 text-left">E-Mail</th><th class="py-5 px-6 text-left">Benutzername</th><th class="py-5 px-6 text-center">Referral-Code</th><th class="py-5 px-6 text-center">Loyalty-Punkte</th><th class="py-5 px-6 text-center">Gratisversand</th><th class="py-5 px-6 text-center">Status</th><th class="py-5 px-6 text-right">Aktionen</th></tr>
                         </thead>
                         <tbody id="users-tbody" class="text-sm"></tbody>
                     </table>
@@ -862,6 +862,11 @@ function loadUsers() {
                 <td class="py-5 px-6 text-center font-mono text-cyan-300">${refCode}</td>
                 <td class="py-5 px-6 text-center font-bold text-emerald-400">${points}</td>
                 <td class="py-5 px-6 text-center">
+                    <input type="checkbox" ${u.freeShipping === true ? 'checked' : ''} 
+                           onchange="toggleFreeShipping('${doc.id}', this.checked)" 
+                           class="accent-emerald-400 w-5 h-5 cursor-pointer">
+                </td>
+                <td class="py-5 px-6 text-center">
                     <span class="status-badge ${disabled ? 'disabled' : 'bg-emerald-600 text-white'}">${disabled ? 'GESPERRT' : 'AKTIV'}</span>
                 </td>
                 <td class="py-5 px-6 text-right space-x-3">
@@ -872,10 +877,17 @@ function loadUsers() {
                 </td>
             </tr>`;
         });
-        tbody.innerHTML = html || `<tr><td colspan="6" class="text-center py-16 text-gray-400">Keine Benutzer gefunden</td></tr>`;
+        tbody.innerHTML = html || `<tr><td colspan="7" class="text-center py-16 text-gray-400">Keine Benutzer gefunden</td></tr>`;
     });
 }
 document.getElementById('user-search').addEventListener('input', loadUsers);
+async function toggleFreeShipping(uid, enable) {
+    await db.collection('users').doc(uid).update({ 
+        freeShipping: enable 
+    });
+    await logAction(enable ? "free_shipping_enabled" : "free_shipping_disabled", uid);
+    showToast(enable ? '✅ Gratisversand für diesen User AKTIVIERT' : 'Gratisversand deaktiviert', 'success');
+}
 async function resetPassword(email) {
     if (!confirm(`Passwort-Zurücksetzen-E-Mail an ${email} senden?`)) return;
     try {
@@ -1075,10 +1087,11 @@ async function handleStockOnStatusChange(orderId, newStatus) {
         for (let item of order.items) {
             if (item.id === 999) continue;
             await db.collection("products").doc(item.id).update({
-                stock: firebase.firestore.FieldValue.increment(-item.qty)
+                stock: firebase.firestore.FieldValue.increment(-item.qty),
+                sold: firebase.firestore.FieldValue.increment(item.qty)
             });
         }
-        showToast("✅ Lagerbestand abgezogen", "success");
+        showToast("✅ Lager & Verkaufszahlen aktualisiert", "success");
     }
     if (newStatus === "Storniert" && oldStatus === "Wird bearbeitet") {
         for (let item of order.items) {
@@ -1087,7 +1100,7 @@ async function handleStockOnStatusChange(orderId, newStatus) {
                 stock: firebase.firestore.FieldValue.increment(item.qty)
             });
         }
-        showToast("✅ Lagerbestand wiederhergestellt", "success");
+        showToast("✅ Lager wiederhergestellt", "success");
     }
 }
 // ====================== ALLE STATISTIKEN ZURÜCKSETZEN – JETZT FUNKTIONIERT! ======================

@@ -117,6 +117,7 @@
                                 <th class="py-5 px-6 text-left">Bild</th>
                                 <th class="py-5 px-6 text-left">Name</th>
                                 <th class="py-5 px-6 text-left">Kategorie</th>
+                                <th class="py-5 px-6 text-center">Neu</th>
                                 <th class="py-5 px-6 text-center">Preis</th>
                                 <th class="py-5 px-6 text-center">Lager</th>
                                 <th class="py-5 px-6 text-center">Nikotin</th>
@@ -406,11 +407,15 @@ function renderProductTable(filter = '') {
     let html = '';
     const filtered = allProducts.filter(p => p.name.toLowerCase().includes(filter.toLowerCase()));
     filtered.forEach(p => {
+        const neuBadge = p.isNew 
+            ? `<span class="px-3 py-1 bg-lime-400 text-black text-xs font-black tracking-wider rounded-2xl inline-block">NEW</span>` 
+            : '—';
         html += `
         <tr class="table-row-hover border-b border-white/10">
             <td class="py-5 px-6">${p.image ? `<img src="${p.image}" class="w-12 h-12 object-cover rounded-xl" loading="lazy">` : '—'}</td>
             <td class="py-5 px-6 font-medium">${p.name}</td>
             <td class="py-5 px-6">${p.category || '—'}</td>
+            <td class="py-5 px-6 text-center">${neuBadge}</td>
             <td class="py-5 px-6 text-center">${p.price.toFixed(2)} €</td>
             <td class="py-5 px-6 text-center">${p.stock}</td>
             <td class="py-5 px-6 text-center">${p.hasNicotine !== false ? '✅' : '❌'}</td>
@@ -423,7 +428,7 @@ function renderProductTable(filter = '') {
             </td>
         </tr>`;
     });
-    tbody.innerHTML = html || `<tr><td colspan="10" class="text-center py-16 text-gray-400">Keine Produkte gefunden</td></tr>`;
+    tbody.innerHTML = html || `<tr><td colspan="11" class="text-center py-16 text-gray-400">Keine Produkte gefunden</td></tr>`;
 }
 document.getElementById('product-search').addEventListener('input', e => renderProductTable(e.target.value));
 async function toggleAvailable(id, val) {
@@ -1432,12 +1437,11 @@ function autoSortPriority() {
         const pB = allProducts.find(p => p.id === idB);
         if (!pA || !pB) return 0;
 
-        // NEUE LOGIK: Nicht verfügbare Sachen IMMER ganz unten – egal ob neu oder nicht!
         const getPriority = (p) => {
-            if (p.available === false || (p.stock || 0) <= 0) return 4;   // 4 = allerletzte Position
-            if (p.isNew === true) return 1;                              // 1 = Neue Sorten (nur verfügbar)
-            if (p.category !== "WaveVapes Tornado 30000") return 2;      // 2 = Normale Sorten (verfügbar)
-            return 3;                                                    // 3 = Vapes (verfügbar)
+            if (p.available === false || (p.stock || 0) <= 0) return 4;
+            if (p.isNew === true) return 1;
+            if (p.category !== "WaveVapes Tornado 30000") return 2;
+            return 3;
         };
 
         const prioA = getPriority(pA);
@@ -1445,7 +1449,6 @@ function autoSortPriority() {
 
         if (prioA !== prioB) return prioA - prioB;
 
-        // Innerhalb derselben Gruppe alphabetisch
         return pA.name.localeCompare(pB.name);
     });
    

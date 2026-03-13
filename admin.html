@@ -190,28 +190,59 @@
                 </div>
             </div>
         </div>
-        <!-- TAB 4: GUTSCHEINE -->
+        <!-- TAB 4: GUTSCHEINE – NEU MIT USER-SPEZIFISCH + GRATIS VERSAND -->
         <div id="tab-content-4" class="hidden">
             <div class="card p-8">
                 <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><i class="fa-solid fa-ticket"></i> Gutschein-Manager</h2>
+                
                 <form id="add-coupon-form" class="grid grid-cols-2 gap-4 mb-8">
                     <input id="coupon-code" placeholder="CODE (z.B. SUMMER25)" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4" required>
+                    
                     <select id="coupon-type" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4">
                         <option value="percent">Prozent</option>
                         <option value="fixed">Festbetrag €</option>
                     </select>
+                    
                     <input id="coupon-value" type="number" step="0.01" placeholder="Wert" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4" required>
                     <input id="coupon-expiry" type="date" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4" required>
+                    
+                    <!-- USER-SPEZIFISCH -->
+                    <div class="col-span-2 flex items-center gap-3">
+                        <input id="coupon-user-specific" type="checkbox" class="w-5 h-5 accent-cyan-400">
+                        <label class="text-sm font-medium">Nur für einen bestimmten User (user-spezifisch)</label>
+                    </div>
+                    
+                    <div id="user-select-container" class="col-span-2 hidden">
+                        <label class="block text-xs text-gray-400 mb-2">User auswählen</label>
+                        <select id="coupon-user-select" class="w-full bg-zinc-900 border border-cyan-400/50 focus:border-cyan-400 rounded-2xl px-6 py-4 text-base">
+                        </select>
+                    </div>
+                    
+                    <!-- GRATIS VERSAND -->
+                    <div class="col-span-2 flex items-center gap-3">
+                        <input id="coupon-free-shipping" type="checkbox" class="w-5 h-5 accent-emerald-400">
+                        <label class="text-sm font-medium">Diesem User immer kostenlosen Versand geben</label>
+                    </div>
+                    
                     <div class="col-span-2 flex items-center gap-3">
                         <input id="coupon-onetime" type="checkbox" class="w-5 h-5 accent-amber-400">
                         <label class="text-sm">Einmalnutzung pro User</label>
                     </div>
-                    <button type="submit" class="col-span-2 bg-gradient-to-r from-amber-400 to-orange-500 text-black font-bold py-5 rounded-3xl">Gutschein erstellen</button>
+                    
+                    <button type="submit" class="col-span-2 bg-gradient-to-r from-amber-400 to-orange-500 text-black font-bold py-5 rounded-3xl text-lg">Gutschein erstellen</button>
                 </form>
+
                 <div class="overflow-x-auto">
                     <table class="w-full">
                         <thead class="bg-zinc-950">
-                            <tr><th class="py-4 px-6 text-left">Code</th><th class="py-4 px-6 text-center">Typ/Wert</th><th class="py-4 px-6 text-center">Ablauf</th><th class="py-4 px-6 text-center">Status</th><th class="py-4 px-6 text-right">Aktionen</th></tr>
+                            <tr>
+                                <th class="py-4 px-6 text-left">Code</th>
+                                <th class="py-4 px-6 text-center">Typ/Wert</th>
+                                <th class="py-4 px-6 text-center">Ablauf</th>
+                                <th class="py-4 px-6 text-center">User</th>
+                                <th class="py-4 px-6 text-center">Gratis Versand</th>
+                                <th class="py-4 px-6 text-right">Aktionen</th>
+                            </tr>
                         </thead>
                         <tbody id="coupons-tbody" class="text-sm"></tbody>
                     </table>
@@ -289,6 +320,7 @@
 <div id="order-modal-container"></div>
 <!-- TOAST -->
 <div id="toast-container" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[99999] flex flex-col gap-3"></div>
+
 <script>
 // ====================== FIREBASE CONFIG ======================
 const firebaseConfig = {
@@ -314,6 +346,7 @@ let topProductsChart = null;
 let referralChart = null;
 let logsUnsubscribe = null;
 let allProducts = [];
+let allUsersForCoupon = [];
 // ====================== LOG ACTION ======================
 async function logAction(action, target = "", details = {}) {
     if (!auth.currentUser) return;
@@ -677,46 +710,119 @@ function populateCategorySelects() {
         });
     });
 }
-// ====================== GUTSCHEINE ======================
-document.getElementById('add-coupon-form').addEventListener('submit', async e => {
-    e.preventDefault();
-    const code = document.getElementById('coupon-code').value.trim().toUpperCase();
-    const type = document.getElementById('coupon-type').value;
-    const value = parseFloat(document.getElementById('coupon-value').value);
-    const expiry = new Date(document.getElementById('coupon-expiry').value);
-    const oneTime = document.getElementById('coupon-onetime').checked;
-    await db.collection('coupons').add({
-        code, type, value, expiresAt: firebase.firestore.Timestamp.fromDate(expiry),
-        oneTimeUse: oneTime, usedBy: [], createdAt: firebase.firestore.FieldValue.serverTimestamp()
+// ====================== USER-SPEZIFISCHE GUTSCHEINE + GRATIS VERSAND ======================
+async function loadUsersForCouponSelect() {
+    const snap = await db.collection("users").get();
+    allUsersForCoupon = snap.docs.map(doc => ({
+        uid: doc.id,
+        email: doc.data().email || "",
+        username: doc.data().username || doc.data().email?.split("@")[0] || "Unbekannt"
+    }));
+
+    const select = document.getElementById("coupon-user-select");
+    select.innerHTML = `<option value="">— User auswählen —</option>`;
+    allUsersForCoupon.forEach(u => {
+        const opt = document.createElement("option");
+        opt.value = u.uid;
+        opt.textContent = `${u.username} (${u.email})`;
+        select.appendChild(opt);
     });
-    await logAction("coupon_created", code);
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    const userSpecCheck = document.getElementById("coupon-user-specific");
+    const container = document.getElementById("user-select-container");
+    
+    userSpecCheck.addEventListener("change", () => {
+        container.classList.toggle("hidden", !userSpecCheck.checked);
+        if (userSpecCheck.checked) loadUsersForCouponSelect();
+    });
+});
+
+// NEUER FORMULAR-SUBMIT FÜR GUTSCHEINE
+document.getElementById("add-coupon-form").addEventListener("submit", async e => {
+    e.preventDefault();
+    
+    const code = document.getElementById("coupon-code").value.trim().toUpperCase();
+    const type = document.getElementById("coupon-type").value;
+    const value = parseFloat(document.getElementById("coupon-value").value);
+    const expiry = new Date(document.getElementById("coupon-expiry").value);
+    const oneTime = document.getElementById("coupon-onetime").checked;
+    const userSpecific = document.getElementById("coupon-user-specific").checked;
+    const freeShipping = document.getElementById("coupon-free-shipping").checked;
+    
+    let allowedUserId = null;
+    let allowedUserEmail = null;
+    
+    if (userSpecific) {
+        const selectedUid = document.getElementById("coupon-user-select").value;
+        if (!selectedUid) return alert("Bitte einen User auswählen!");
+        
+        const userDoc = allUsersForCoupon.find(u => u.uid === selectedUid);
+        allowedUserId = selectedUid;
+        allowedUserEmail = userDoc.email;
+    }
+    
+    // Gutschein speichern
+    await db.collection("coupons").add({
+        code,
+        type,
+        value,
+        expiresAt: firebase.firestore.Timestamp.fromDate(expiry),
+        oneTimeUse: oneTime,
+        userSpecific: userSpecific,
+        allowedUserId: allowedUserId,
+        allowedUserEmail: allowedUserEmail,
+        grantedFreeShipping: freeShipping,
+        usedBy: [],
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    
+    // Gratis Versand aktivieren (falls gewünscht)
+    if (freeShipping && allowedUserId) {
+        await db.collection("users").doc(allowedUserId).update({
+            freeShipping: true
+        });
+        await logAction("free_shipping_granted", allowedUserId);
+    }
+    
+    await logAction("coupon_created", code, { userSpecific, freeShipping });
     e.target.reset();
-    showToast('✅ Gutschein erstellt!');
+    document.getElementById("user-select-container").classList.add("hidden");
+    showToast("✅ Gutschein erstellt!" + (freeShipping ? " + Gratis Versand aktiviert" : ""));
     loadCoupons();
 });
+
 async function loadCoupons() {
     const snap = await db.collection('coupons').orderBy('createdAt', 'desc').get();
     allCoupons = snap.docs.map(d => ({id: d.id, ...d.data()}));
     renderCouponsTable();
 }
+
 function renderCouponsTable() {
     const tbody = document.getElementById('coupons-tbody');
     let html = '';
     allCoupons.forEach(c => {
         const expired = c.expiresAt.toDate() < new Date();
+        const userInfo = c.userSpecific 
+            ? `<span class="text-cyan-300">${c.allowedUserEmail || "—"}</span>` 
+            : "Alle User";
+        
         html += `
-        <tr class="coupon-row ${c.usedBy.length > 0 ? 'used' : ''}">
+        <tr class="table-row-hover border-b border-white/10">
             <td class="py-4 px-6 font-mono font-bold">${c.code}</td>
             <td class="py-4 px-6 text-center">${c.type === 'percent' ? c.value + '%' : c.value + '€'}</td>
             <td class="py-4 px-6 text-center ${expired ? 'text-red-400' : ''}">${c.expiresAt.toDate().toLocaleDateString('de-DE')}</td>
-            <td class="py-4 px-6 text-center">${c.usedBy.length}/${c.oneTimeUse ? '1' : '∞'}</td>
+            <td class="py-4 px-6 text-center">${userInfo}</td>
+            <td class="py-4 px-6 text-center">${c.grantedFreeShipping ? '✅' : '—'}</td>
             <td class="py-4 px-6 text-right">
                 <button onclick="deleteCoupon('${c.id}')" class="text-red-400 hover:text-white"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>`;
     });
-    tbody.innerHTML = html || `<tr><td colspan="5" class="text-center py-16 text-gray-400">Noch keine Gutscheine</td></tr>`;
+    tbody.innerHTML = html || `<tr><td colspan="6" class="text-center py-16 text-gray-400">Noch keine Gutscheine</td></tr>`;
 }
+
 async function deleteCoupon(id) {
     if (confirm('Gutschein löschen?')) {
         await db.collection('coupons').doc(id).delete();
@@ -1090,7 +1196,7 @@ async function handleStockOnStatusChange(orderId, newStatus) {
         showToast("✅ Lagerbestand wiederhergestellt", "success");
     }
 }
-// ====================== ALLE STATISTIKEN ZURÜCKSETZEN – JETZT FUNKTIONIERT! ======================
+// ====================== ALLE STATISTIKEN ZURÜCKSETZEN ======================
 async function resetAllStatistics() {
     if (!confirm("⚠️ WIRKLICH ALLE STATISTIKEN ZURÜCKSETZEN?\n\nsold wird bei ALLEN Produkten auf 0 gesetzt.\nUmsatz und Top-Seller gehen auf Null.\nDas ist UNWIDERRUFLICH!")) {
         return;

@@ -311,15 +311,27 @@
                 </div>
             </div>
         </div>
-        <!-- TAB 8: SORTIERUNG -->
+        <!-- TAB 8: SORTIERUNG (mit Auto-Sort) -->
         <div id="tab-content-8" class="hidden">
             <div class="card p-8">
                 <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
-                    <i class="fa-solid fa-sort"></i> Produkt-Sortierung (Drag & Drop)
+                    <i class="fa-solid fa-sort"></i> Produkt-Sortierung (Drag & Drop + Auto-Sort)
                 </h2>
-                <p class="text-sm text-gray-400 mb-8">Ziehe die Produkte in die gewünschte Reihenfolge. Die Sortierung wird automatisch im Shop übernommen.</p>
+                <p class="text-sm text-gray-400 mb-6">Klicke auf einen Button für automatische Sortierung, dann kannst du noch manuell ziehen und speichern.</p>
+                
+                <!-- NEUE AUTO-SORT BUTTONS -->
+                <div class="flex flex-wrap gap-3 mb-8">
+                    <button onclick="autoSort('alpha')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">📋 Alphabetisch A-Z</button>
+                    <button onclick="autoSort('new')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">⭐ Neue Sorten zuerst</button>
+                    <button onclick="autoSort('tornado')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">🌪️ Tornado zuerst</button>
+                    <button onclick="autoSort('available')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">✅ Verfügbare zuerst</button>
+                    <button onclick="autoSort('stock')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">📦 Lagerbestand (hoch zuerst)</button>
+                </div>
+                
                 <div id="sort-list" class="space-y-3 min-h-[500px] bg-zinc-950 rounded-3xl p-6"></div>
-                <button onclick="saveProductOrder()" class="mt-10 w-full bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-6 rounded-3xl text-xl hover:scale-105 transition">
+                
+                <button onclick="saveProductOrder()" 
+                        class="mt-10 w-full bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-6 rounded-3xl text-xl hover:scale-105 transition">
                     ✅ Sortierung speichern & live übernehmen
                 </button>
             </div>
@@ -631,7 +643,7 @@ async function importProductsFromCSV(e) {
     reader.readAsText(file);
     e.target.value = "";
 }
-// ====================== CSV BESTELLUNGEN (EXPORT + NEU: IMPORT) ======================
+// ====================== CSV BESTELLUNGEN ======================
 async function exportOrdersToCSV() {
     const snapshot = await db.collection("orders").orderBy("date", "desc").get();
     if (snapshot.empty) return alert("Keine Bestellungen vorhanden!");
@@ -701,7 +713,7 @@ async function importOrdersFromCSV(e) {
     reader.readAsText(file);
     e.target.value = "";
 }
-// ====================== CSV BENUTZER (EXPORT + NEU: IMPORT) ======================
+// ====================== CSV BENUTZER ======================
 async function exportUsersToCSV() {
     const snapshot = await db.collection("users").get();
     if (snapshot.empty) return alert("Keine Benutzer vorhanden!");
@@ -1301,7 +1313,7 @@ async function resetAllStatistics() {
         showToast("Fehler beim Zurücksetzen: " + e.message, "error");
     }
 }
-// ====================== SORTIERUNG ======================
+// ====================== SORTIERUNG + AUTO-SORT ======================
 async function loadProductOrder() {
     const doc = await db.collection('settings').doc('product_order').get();
     productOrder = doc.exists ? (doc.data().order || []) : [];
@@ -1335,6 +1347,43 @@ function renderSortList() {
         ghostClass: 'bg-cyan-900/60',
         forceFallback: true
     });
+}
+// ====================== NEUE AUTO-SORT FUNKTION ======================
+function autoSort(mode) {
+    const container = document.getElementById('sort-list');
+    let items = Array.from(container.children);
+    
+    items.sort((a, b) => {
+        const idA = a.dataset.id;
+        const idB = b.dataset.id;
+        const pA = allProducts.find(p => p.id === idA);
+        const pB = allProducts.find(p => p.id === idB);
+        if (!pA || !pB) return 0;
+        
+        switch(mode) {
+            case 'alpha':
+                return pA.name.localeCompare(pB.name);
+            case 'new':
+                if (pA.isNew && !pB.isNew) return -1;
+                if (!pA.isNew && pB.isNew) return 1;
+                return 0;
+            case 'tornado':
+                const catA = (pA.category === "WaveVapes Tornado 30000") ? 0 : 1;
+                const catB = (pB.category === "WaveVapes Tornado 30000") ? 0 : 1;
+                return catA - catB;
+            case 'available':
+                const availA = (pA.available !== false) ? 0 : 1;
+                const availB = (pB.available !== false) ? 0 : 1;
+                return availA - availB;
+            case 'stock':
+                return (pB.stock || 0) - (pA.stock || 0);
+            default:
+                return 0;
+        }
+    });
+    
+    items.forEach(item => container.appendChild(item));
+    showToast('✅ Liste automatisch sortiert! Du kannst jetzt noch ziehen und dann speichern.', 'success');
 }
 async function saveProductOrder() {
     const items = document.querySelectorAll('#sort-list .sortable-item');

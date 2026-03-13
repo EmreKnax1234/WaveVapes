@@ -317,9 +317,8 @@
                 <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
                     <i class="fa-solid fa-sort"></i> Produkt-Sortierung (Drag & Drop + Auto-Sort)
                 </h2>
-                <p class="text-sm text-gray-400 mb-6">Klicke auf einen Button für automatische Sortierung, dann kannst du noch manuell ziehen und speichern.<br><strong>Neu:</strong> Direkt in der Liste siehst du NEW / NICHT VERFÜGBAR – einfach draufklicken zum Umschalten!</p>
+                <p class="text-sm text-gray-400 mb-6">Klicke auf einen Button für automatische Sortierung, dann kannst du noch manuell ziehen und speichern.<br><strong>Neu:</strong> NEW / NICHT VERFÜGBAR direkt anklickbar + Kategorie wird automatisch gesetzt (isNew = Neue Sorten, sonst Normale Sorten)</p>
                
-                <!-- NEUE AUTO-SORT BUTTONS -->
                 <div class="flex flex-wrap gap-3 mb-8">
                     <button onclick="autoSort('alpha')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">📋 Alphabetisch A-Z</button>
                     <button onclick="autoSort('new')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">⭐ Neue Sorten zuerst</button>
@@ -505,11 +504,12 @@ async function saveEdit() {
     const name = document.getElementById('edit-name').value;
     const price = parseFloat(document.getElementById('edit-price').value);
     const stock = parseInt(document.getElementById('edit-stock').value);
-    const category = document.getElementById('edit-category-select').value;
     const description = document.getElementById('edit-description').value;
     const isNew = document.getElementById('edit-new').checked;
     const unavailable = document.getElementById('edit-unavailable').checked;
     const hasNicotine = document.getElementById('edit-has-nicotine').checked;
+    // AUTOMATISCHE KATEGORIE
+    let category = isNew ? "Neue Sorten" : "Normale Sorten";
     let data = { name, price, stock, category, description: description || "", isNew, available: !unavailable, hasNicotine };
     if (removeCurrentImage && !selectedFile) data.image = null;
     else if (selectedFile) {
@@ -521,9 +521,9 @@ async function saveEdit() {
         if (json.secure_url) data.image = json.secure_url;
     }
     await db.collection('products').doc(currentEditId).update(data);
-    await logAction("product_updated", currentEditId, { name });
+    await logAction("product_updated", currentEditId, { name, category });
     closeEditModal();
-    showToast('✅ Produkt gespeichert!');
+    showToast('✅ Produkt gespeichert! Kategorie automatisch angepasst.');
 }
 // ====================== NEUES PRODUKT ======================
 document.getElementById('add-form').addEventListener('submit', async e => {
@@ -531,11 +531,12 @@ document.getElementById('add-form').addEventListener('submit', async e => {
     const name = document.getElementById('prod-name').value.trim();
     const price = parseFloat(document.getElementById('prod-price').value);
     const stock = parseInt(document.getElementById('prod-stock').value);
-    const category = document.getElementById('prod-category').value;
     const isNew = document.getElementById('prod-new').checked;
     const unavailable = document.getElementById('prod-unavailable').checked;
     const hasNicotine = document.getElementById('prod-has-nicotine').checked;
     const description = document.getElementById('prod-description').value.trim();
+    // AUTOMATISCHE KATEGORIE
+    const category = isNew ? "Neue Sorten" : "Normale Sorten";
     const docRef = await db.collection('products').add({
         name, price, stock, category, isNew: isNew || false, available: !unavailable, hasNicotine, description: description || "", sold: 0
     });
@@ -547,11 +548,11 @@ document.getElementById('add-form').addEventListener('submit', async e => {
         const json = await res.json();
         if (json.secure_url) await docRef.update({ image: json.secure_url });
     }
-    await logAction("product_created", docRef.id, { name });
+    await logAction("product_created", docRef.id, { name, category });
     e.target.reset();
     document.getElementById('preview-thumb').classList.add('hidden');
     selectedFile = null;
-    showToast('✅ Produkt erfolgreich angelegt!');
+    showToast('✅ Produkt erfolgreich angelegt! Kategorie automatisch gesetzt.');
 });
 const dropzone = document.getElementById('dropzone');
 dropzone.addEventListener('click', () => {
@@ -1313,7 +1314,6 @@ async function loadProductOrder() {
     productOrder = doc.exists ? (doc.data().order || []) : [];
     renderSortList();
 }
-// ====================== NEUE RENDER SORT LIST MIT BADGES ======================
 function renderSortList() {
     const container = document.getElementById('sort-list');
     container.innerHTML = '';
@@ -1361,13 +1361,18 @@ function renderSortList() {
         forceFallback: true
     });
 }
-// ====================== TOGGLE IN SORTIERUNG ======================
+// ====================== TOGGLE IN SORTIERUNG (mit automatischer Kategorie) ======================
 async function toggleIsNew(id, e) {
     e.stopImmediatePropagation();
     const doc = await db.collection('products').doc(id).get();
     const current = doc.data().isNew || false;
-    await db.collection('products').doc(id).update({ isNew: !current });
-    showToast(`NEW-Status umgeschaltet → ${!current ? 'aktiv' : 'deaktiviert'}`);
+    const newIsNew = !current;
+    const newCategory = newIsNew ? "Neue Sorten" : "Normale Sorten";
+    await db.collection('products').doc(id).update({ 
+        isNew: newIsNew,
+        category: newCategory
+    });
+    showToast(`NEW-Status umgeschaltet → ${newIsNew ? 'aktiv' : 'deaktiviert'} + Kategorie automatisch angepasst`);
     renderSortList();
 }
 
@@ -1414,7 +1419,7 @@ function autoSort(mode) {
     });
    
     items.forEach(item => container.appendChild(item));
-    showToast('✅ Liste automatisch sortiert! Du kannst jetzt noch ziehen und dann speichern.', 'success');
+    showToast('✅ Liste automatisch sortiert!', 'success');
 }
 async function saveProductOrder() {
     const items = document.querySelectorAll('#sort-list .sortable-item');

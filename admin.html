@@ -443,6 +443,17 @@ async function toggleAvailable(id, val) {
     await logAction("product_availability_changed", id, { available: val });
     showToast('Verfügbarkeit aktualisiert');
 }
+// ====================== DELETE PRODUCT (JETZT WIEDER FUNKTIONIERT) ======================
+async function deleteProduct(id) {
+    if (!confirm('⚠️ Produkt WIRKLICH PERMANENT löschen?\n\nDas kann nicht rückgängig gemacht werden!')) return;
+    try {
+        await db.collection('products').doc(id).delete();
+        await logAction("product_deleted", id);
+        showToast('✅ Produkt erfolgreich gelöscht');
+    } catch (e) {
+        showToast('❌ Fehler beim Löschen: ' + e.message, 'error');
+    }
+}
 // ====================== EDIT MODAL ======================
 async function openEditModal(id) {
     currentEditId = id;

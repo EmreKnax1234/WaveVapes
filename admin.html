@@ -108,7 +108,14 @@
             <div class="card overflow-hidden">
                 <div class="p-6 border-b border-white/10 flex items-center justify-between">
                     <h2 class="text-2xl font-bold">Alle Produkte</h2>
-                    <input id="product-search" placeholder="Produkt suchen..." class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-3 w-80">
+                    <div class="flex items-center gap-3">
+                        <button onclick="enforceCategories()" 
+                                class="bg-amber-600 hover:bg-amber-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2">
+                            <i class="fa-solid fa-magic"></i> 
+                            Alle Kategorien auto-korrigieren
+                        </button>
+                        <input id="product-search" placeholder="Produkt suchen..." class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-3 w-80">
+                    </div>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full">
@@ -319,7 +326,7 @@
                     <i class="fa-solid fa-sort"></i> Produkt-Sortierung (Drag & Drop + Auto-Sort)
                 </h2>
                 <p class="text-sm text-gray-400 mb-6">Klicke auf einen Button für automatische Sortierung.<br><strong>Neue AUTO-PRIORITÄT (überarbeitet):</strong><br>1. Neue Sorten (nur verfügbar) → 2. Normale Sorten (nur verfügbar) → 3. Alle Vapes (nur verfügbar) → 4. ALLE nicht verfügbaren Sachen (egal ob neu oder normal – immer ganz unten)</p>
-               
+              
                 <div class="flex flex-wrap gap-3 mb-8">
                     <button onclick="autoSort('alpha')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">📋 Alphabetisch A-Z</button>
                     <button onclick="autoSort('new')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">⭐ Neue Sorten zuerst</button>
@@ -328,9 +335,9 @@
                     <button onclick="autoSort('stock')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">📦 Lagerbestand (hoch zuerst)</button>
                     <button onclick="autoSortPriority()" class="px-6 py-3 bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold rounded-2xl text-sm transition">🔄 AUTO-PRIORITÄT<br><span class="text-xs font-normal">NEW (verfügbar) → Normal (verfügbar) → Vapes → ALLE nicht verfügbar (unten)</span></button>
                 </div>
-               
+              
                 <div id="sort-list" class="space-y-3 min-h-[500px] bg-zinc-950 rounded-3xl p-6"></div>
-               
+              
                 <button onclick="saveProductOrder()"
                         class="mt-10 w-full bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-6 rounded-3xl text-xl hover:scale-105 transition">
                     ✅ Sortierung speichern & live übernehmen
@@ -407,8 +414,8 @@ function renderProductTable(filter = '') {
     let html = '';
     const filtered = allProducts.filter(p => p.name.toLowerCase().includes(filter.toLowerCase()));
     filtered.forEach(p => {
-        const neuBadge = p.isNew 
-            ? `<span class="px-3 py-1 bg-lime-400 text-black text-xs font-black tracking-wider rounded-2xl inline-block">NEW</span>` 
+        const neuBadge = p.isNew
+            ? `<span class="px-3 py-1 bg-lime-400 text-black text-xs font-black tracking-wider rounded-2xl inline-block">NEW</span>`
             : '—';
         html += `
         <tr class="table-row-hover border-b border-white/10">
@@ -475,7 +482,7 @@ async function openEditModal(id) {
             </div>
         </div>
         <div class="flex gap-4 mt-10">
-            <button onclick="saveEdit()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-5 rounded-3xl font-bold text-lg">Speichern</button>
+            <button onclick="saveEdit()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-5 rounded-3xl font-bold">Speichern</button>
             <button onclick="closeEditModal()" class="flex-1 bg-zinc-700 hover:bg-zinc-600 py-5 rounded-3xl text-lg">Abbrechen</button>
         </div>
     </div>`;
@@ -1321,7 +1328,7 @@ async function loadProductOrder() {
 function renderSortList() {
     const container = document.getElementById('sort-list');
     container.innerHTML = '';
-    
+   
     const sorted = [...allProducts].sort((a, b) => {
         const idxA = productOrder.indexOf(a.id);
         const idxB = productOrder.indexOf(b.id);
@@ -1330,20 +1337,18 @@ function renderSortList() {
         if (idxB === -1) return -1;
         return idxA - idxB;
     });
-
     sorted.forEach(p => {
         const div = document.createElement('div');
         div.className = 'sortable-item flex items-center gap-4 bg-zinc-900 border border-white/10 rounded-3xl p-5 cursor-move select-none';
         div.dataset.id = p.id;
-        
-        const newBadge = p.isNew 
-            ? `<span onclick="toggleIsNew('${p.id}', event)" class="px-3 py-1 bg-lime-400 text-black text-xs font-black tracking-wider rounded-2xl cursor-pointer hover:scale-110 transition">NEW</span>` 
+       
+        const newBadge = p.isNew
+            ? `<span onclick="toggleIsNew('${p.id}', event)" class="px-3 py-1 bg-lime-400 text-black text-xs font-black tracking-wider rounded-2xl cursor-pointer hover:scale-110 transition">NEW</span>`
             : '';
-        
-        const unavailableBadge = p.available === false 
-            ? `<span onclick="toggleAvailableInSort('${p.id}', event)" class="px-3 py-1 bg-red-500 text-white text-xs font-medium rounded-2xl cursor-pointer hover:scale-110 transition">NICHT VERFÜGBAR</span>` 
+       
+        const unavailableBadge = p.available === false
+            ? `<span onclick="toggleAvailableInSort('${p.id}', event)" class="px-3 py-1 bg-red-500 text-white text-xs font-medium rounded-2xl cursor-pointer hover:scale-110 transition">NICHT VERFÜGBAR</span>`
             : '';
-
         div.innerHTML = `
             ${p.image ? `<img src="${p.image}" class="w-14 h-14 object-cover rounded-2xl flex-shrink-0">` : '<div class="w-14 h-14 bg-zinc-800 rounded-2xl flex items-center justify-center text-2xl">📦</div>'}
             <div class="flex-1">
@@ -1357,7 +1362,6 @@ function renderSortList() {
         `;
         container.appendChild(div);
     });
-
     if (sortableInstance) sortableInstance.destroy();
     sortableInstance = new Sortable(container, {
         animation: 180,
@@ -1372,14 +1376,13 @@ async function toggleIsNew(id, e) {
     const current = doc.data().isNew || false;
     const newIsNew = !current;
     const newCategory = newIsNew ? "Neue Sorten" : "Normale Sorten";
-    await db.collection('products').doc(id).update({ 
+    await db.collection('products').doc(id).update({
         isNew: newIsNew,
         category: newCategory
     });
     showToast(`NEW-Status umgeschaltet → ${newIsNew ? 'aktiv' : 'deaktiviert'} + Kategorie automatisch angepasst`);
     renderSortList();
 }
-
 async function toggleAvailableInSort(id, e) {
     e.stopImmediatePropagation();
     const doc = await db.collection('products').doc(id).get();
@@ -1392,14 +1395,14 @@ async function toggleAvailableInSort(id, e) {
 function autoSort(mode) {
     const container = document.getElementById('sort-list');
     let items = Array.from(container.children);
-   
+  
     items.sort((a, b) => {
         const idA = a.dataset.id;
         const idB = b.dataset.id;
         const pA = allProducts.find(p => p.id === idA);
         const pB = allProducts.find(p => p.id === idB);
         if (!pA || !pB) return 0;
-       
+      
         switch(mode) {
             case 'alpha':
                 return pA.name.localeCompare(pB.name);
@@ -1421,7 +1424,7 @@ function autoSort(mode) {
                 return 0;
         }
     });
-   
+  
     items.forEach(item => container.appendChild(item));
     showToast('✅ Liste automatisch sortiert!', 'success');
 }
@@ -1429,29 +1432,25 @@ function autoSort(mode) {
 function autoSortPriority() {
     const container = document.getElementById('sort-list');
     let items = Array.from(container.children);
-   
+  
     items.sort((a, b) => {
         const idA = a.dataset.id;
         const idB = b.dataset.id;
         const pA = allProducts.find(p => p.id === idA);
         const pB = allProducts.find(p => p.id === idB);
         if (!pA || !pB) return 0;
-
         const getPriority = (p) => {
             if (p.available === false || (p.stock || 0) <= 0) return 4;
             if (p.isNew === true) return 1;
             if (p.category !== "WaveVapes Tornado 30000") return 2;
             return 3;
         };
-
         const prioA = getPriority(pA);
         const prioB = getPriority(pB);
-
         if (prioA !== prioB) return prioA - prioB;
-
         return pA.name.localeCompare(pB.name);
     });
-   
+  
     items.forEach(item => container.appendChild(item));
     showToast('✅ Automatische Prioritätssortierung angewendet!<br>1. Neue (verfügbar) → 2. Normale (verfügbar) → 3. Vapes → 4. Alle nicht verfügbaren (unten)', 'success');
 }
@@ -1461,6 +1460,34 @@ async function saveProductOrder() {
     const newOrder = Array.from(items).map(item => item.dataset.id);
     await db.collection('settings').doc('product_order').set({ order: newOrder }, { merge: true });
     showToast('✅ Sortierung gespeichert! Der Shop zeigt jetzt die neue Reihenfolge.', 'success');
+}
+// ====================== AUTOMATISCHE KATEGORIE-KORREKTUR ======================
+async function enforceCategories() {
+    if (!confirm('Alle Produkte prüfen und Kategorie automatisch setzen?\n\nisNew = true → „Neue Sorten“\nisNew = false → „Normale Sorten“\n\nDas ist unwiderruflich!')) return;
+
+    const snap = await db.collection('products').get();
+    let changed = 0;
+    const batch = db.batch();
+
+    snap.forEach(doc => {
+        const p = doc.data();
+        const shouldBe = (p.isNew === true) ? "Neue Sorten" : "Normale Sorten";
+
+        if (p.category !== shouldBe) {
+            batch.update(doc.ref, { category: shouldBe });
+            changed++;
+        }
+    });
+
+    if (changed > 0) {
+        await batch.commit();
+        showToast(`✅ ${changed} Produkte korrigiert! Alle neuen Sorten sind jetzt in „Neue Sorten“`);
+        await logAction("categories_auto_enforced", "", { changed_count: changed });
+    } else {
+        showToast('✅ Alles war bereits perfekt – keine Änderungen nötig');
+    }
+
+    loadProducts(); // Tabelle aktualisieren
 }
 // ====================== TOAST ======================
 function showToast(msg, type = 'success') {

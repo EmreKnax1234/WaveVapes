@@ -317,8 +317,8 @@
                 <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
                     <i class="fa-solid fa-sort"></i> Produkt-Sortierung (Drag & Drop + Auto-Sort)
                 </h2>
-                <p class="text-sm text-gray-400 mb-6">Klicke auf einen Button für automatische Sortierung, dann kannst du noch manuell ziehen und speichern.</p>
-                
+                <p class="text-sm text-gray-400 mb-6">Klicke auf einen Button für automatische Sortierung, dann kannst du noch manuell ziehen und speichern.<br><strong>Neu:</strong> Direkt in der Liste siehst du NEW / NICHT VERFÜGBAR – einfach draufklicken zum Umschalten!</p>
+               
                 <!-- NEUE AUTO-SORT BUTTONS -->
                 <div class="flex flex-wrap gap-3 mb-8">
                     <button onclick="autoSort('alpha')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">📋 Alphabetisch A-Z</button>
@@ -327,10 +327,10 @@
                     <button onclick="autoSort('available')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">✅ Verfügbare zuerst</button>
                     <button onclick="autoSort('stock')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">📦 Lagerbestand (hoch zuerst)</button>
                 </div>
-                
+               
                 <div id="sort-list" class="space-y-3 min-h-[500px] bg-zinc-950 rounded-3xl p-6"></div>
-                
-                <button onclick="saveProductOrder()" 
+               
+                <button onclick="saveProductOrder()"
                         class="mt-10 w-full bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-6 rounded-3xl text-xl hover:scale-105 transition">
                     ✅ Sortierung speichern & live übernehmen
                 </button>
@@ -430,12 +430,6 @@ async function toggleAvailable(id, val) {
     await db.collection('products').doc(id).update({ available: val });
     await logAction("product_availability_changed", id, { available: val });
     showToast('Verfügbarkeit aktualisiert');
-}
-async function deleteProduct(id) {
-    if (!confirm('Produkt wirklich endgültig löschen?')) return;
-    await db.collection('products').doc(id).delete();
-    await logAction("product_deleted", id);
-    showToast('✅ Produkt gelöscht');
 }
 // ====================== EDIT MODAL ======================
 async function openEditModal(id) {
@@ -1319,9 +1313,11 @@ async function loadProductOrder() {
     productOrder = doc.exists ? (doc.data().order || []) : [];
     renderSortList();
 }
+// ====================== NEUE RENDER SORT LIST MIT BADGES ======================
 function renderSortList() {
     const container = document.getElementById('sort-list');
     container.innerHTML = '';
+    
     const sorted = [...allProducts].sort((a, b) => {
         const idxA = productOrder.indexOf(a.id);
         const idxB = productOrder.indexOf(b.id);
@@ -1330,17 +1326,34 @@ function renderSortList() {
         if (idxB === -1) return -1;
         return idxA - idxB;
     });
+
     sorted.forEach(p => {
         const div = document.createElement('div');
         div.className = 'sortable-item flex items-center gap-4 bg-zinc-900 border border-white/10 rounded-3xl p-5 cursor-move select-none';
         div.dataset.id = p.id;
+        
+        const newBadge = p.isNew 
+            ? `<span onclick="toggleIsNew('${p.id}', event)" class="px-3 py-1 bg-lime-400 text-black text-xs font-black tracking-wider rounded-2xl cursor-pointer hover:scale-110 transition">NEW</span>` 
+            : '';
+        
+        const unavailableBadge = p.available === false 
+            ? `<span onclick="toggleAvailableInSort('${p.id}', event)" class="px-3 py-1 bg-red-500 text-white text-xs font-medium rounded-2xl cursor-pointer hover:scale-110 transition">NICHT VERFÜGBAR</span>` 
+            : '';
+
         div.innerHTML = `
             ${p.image ? `<img src="${p.image}" class="w-14 h-14 object-cover rounded-2xl flex-shrink-0">` : '<div class="w-14 h-14 bg-zinc-800 rounded-2xl flex items-center justify-center text-2xl">📦</div>'}
-            <div class="flex-1 font-medium text-lg">${p.name}</div>
+            <div class="flex-1">
+                <div class="font-medium text-lg">${p.name}</div>
+                <div class="flex items-center gap-2 mt-1">
+                    ${newBadge}
+                    ${unavailableBadge}
+                </div>
+            </div>
             <i class="fa-solid fa-grip-lines text-gray-400 text-2xl"></i>
         `;
         container.appendChild(div);
     });
+
     if (sortableInstance) sortableInstance.destroy();
     sortableInstance = new Sortable(container, {
         animation: 180,
@@ -1348,18 +1361,36 @@ function renderSortList() {
         forceFallback: true
     });
 }
-// ====================== NEUE AUTO-SORT FUNKTION ======================
+// ====================== TOGGLE IN SORTIERUNG ======================
+async function toggleIsNew(id, e) {
+    e.stopImmediatePropagation();
+    const doc = await db.collection('products').doc(id).get();
+    const current = doc.data().isNew || false;
+    await db.collection('products').doc(id).update({ isNew: !current });
+    showToast(`NEW-Status umgeschaltet → ${!current ? 'aktiv' : 'deaktiviert'}`);
+    renderSortList();
+}
+
+async function toggleAvailableInSort(id, e) {
+    e.stopImmediatePropagation();
+    const doc = await db.collection('products').doc(id).get();
+    const current = doc.data().available !== false;
+    await db.collection('products').doc(id).update({ available: !current });
+    showToast(`Verfügbarkeit umgeschaltet → ${!current ? 'NICHT verfügbar' : 'verfügbar'}`);
+    renderSortList();
+}
+// ====================== AUTO-SORT ======================
 function autoSort(mode) {
     const container = document.getElementById('sort-list');
     let items = Array.from(container.children);
-    
+   
     items.sort((a, b) => {
         const idA = a.dataset.id;
         const idB = b.dataset.id;
         const pA = allProducts.find(p => p.id === idA);
         const pB = allProducts.find(p => p.id === idB);
         if (!pA || !pB) return 0;
-        
+       
         switch(mode) {
             case 'alpha':
                 return pA.name.localeCompare(pB.name);
@@ -1381,7 +1412,7 @@ function autoSort(mode) {
                 return 0;
         }
     });
-    
+   
     items.forEach(item => container.appendChild(item));
     showToast('✅ Liste automatisch sortiert! Du kannst jetzt noch ziehen und dann speichern.', 'success');
 }

@@ -60,90 +60,128 @@
         input, select, button, textarea, .qty-btn, .product-card, .nicotine-select { touch-action: manipulation !important; }
         body { font-family: 'Inter', system-ui, sans-serif; }
         .neon-text { text-shadow: 0 0 15px var(--neon-cyan), 0 0 30px var(--neon-cyan); }
-        
+       
         /* MODERNE PRODUKTKARTEN */
-        .product-card { 
-            transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1); 
-            display: flex; 
-            flex-direction: column; 
-            height: 100%; 
+        .product-card {
+            transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
             box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
             border: 1px solid rgba(255,255,255,0.08);
             border-radius: 20px;
             overflow: hidden;
         }
-        .product-card:hover { 
-            transform: translateY(-12px) scale(1.03); 
-            box-shadow: 0 25px 50px -12px rgb(103 232 249 / 0.4); 
+        .product-card:hover {
+            transform: translateY(-12px) scale(1.03);
+            box-shadow: 0 25px 50px -12px rgb(103 232 249 / 0.4);
         }
-        .tornado-image { 
-            width: 100%; 
-            aspect-ratio: 16 / 10; 
-            object-fit: contain; 
-            border-radius: 16px; 
-            margin-bottom: 12px; 
-            background: #1f2937; 
+        .tornado-image {
+            width: 100%;
+            aspect-ratio: 16 / 10;
+            object-fit: contain;
+            border-radius: 16px;
+            margin-bottom: 12px;
+            background: #1f2937;
         }
-        #products-grid { 
-            grid-template-columns: 1fr; 
-            gap: 20px; 
+        
+        /* === RESPONSIVE GRID – EXAKT DEINE BREAKPOINTS === */
+        #products-grid {
+            grid-template-columns: 1fr;
+            gap: 20px;
         }
-        @media (min-width: 640px) { 
-            #products-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } 
+        /* Mobile: < 768px → 1 Produkt */
+        @media (max-width: 767px) {
+            #products-grid { grid-template-columns: repeat(1, minmax(0, 1fr)); }
         }
-        @media (min-width: 768px) { 
-            #products-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } 
+        /* Tablet: ≥ 768px → 2 Produkte */
+        @media (min-width: 768px) {
+            #products-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         }
-        @media (min-width: 1024px) { 
-            #products-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } 
+        /* Desktop: ≥ 1200px → 4 Produkte */
+        @media (min-width: 1200px) {
+            #products-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
         }
-        @media (min-width: 1280px) { 
-            #products-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); } 
-        }
-
+        
         .price-row { display: flex; justify-content: center; align-items: baseline; gap: 8px; margin-bottom: 12px; }
         .discount-price { font-size: 1.35rem; text-decoration: line-through; color: #9ca3af; }
-        .sale-price { 
-            font-size: 2.1rem; 
-            font-weight: 700; 
-            color: #ef4444; 
+        .sale-price {
+            font-size: 2.1rem;
+            font-weight: 700;
+            color: #ef4444;
         }
         @media (max-width: 639px) {
             .sale-price { font-size: 1.85rem; }
         }
-
-        /* NEUER "JETZT KAUFEN" BUTTON */
+        
+        /* === TOUCH-FREUNDLICHE BUTTONS (min. 48px) === */
         .buy-btn {
             background: #00c853;
             color: white;
             font-weight: 700;
-            padding: 14px 16px;
+            padding: 16px 20px;
             border-radius: 9999px;
             font-size: 1rem;
             transition: all 0.2s ease;
             width: 100%;
             margin-top: 8px;
             box-shadow: 0 4px 15px -3px rgb(0 200 83 / 0.3);
+            min-height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .buy-btn:hover {
             background: #00b140;
             transform: translateY(-2px);
             box-shadow: 0 6px 20px -3px rgb(0 200 83 / 0.4);
         }
-
+        
+        .qty-btn {
+            transition: all 0.2s ease;
+            min-height: 48px;
+            width: 48px;
+            font-size: 1.5rem;
+        }
+        .qty-btn:hover { background-color: #22d3ee; color: black; }
+        
         .tab-active { border-bottom: 4px solid var(--neon-cyan); color: var(--neon-cyan); font-weight: 600; }
         .wave-bg { background: linear-gradient(135deg, #0a0a0a, #1e1233, #0a0a0a); }
-        .qty-btn { transition: all 0.2s ease; }
-        .qty-btn:hover { background-color: #22d3ee; color: black; }
-        @keyframes boltPulse { 0%, 100% { transform: scale(1) rotate(0deg); color: #fde047; } 50% { transform: scale(1.35) rotate(20deg); color: #facc15; } }
-        .animate-bolt { animation: boltPulse 650ms infinite alternate ease-in-out; display: inline-block; text-shadow: 0 0 15px #facc15; }
-        #notification-toast { position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); backdrop-filter: blur(12px); color: #67e8f9; padding: 12px 24px; border-radius: 9999px; font-size: 13px; opacity: 0; transition: all 0.6s cubic-bezier(0.34,1.56,0.64,1); z-index: 1000; max-width: 92%; text-align: center; box-shadow: 0 10px 30px -10px rgb(103 232 249); }
-        @media (max-width: 1023px) { #notification-toast { bottom: 15px !important; } }
-        #notification-toast.visible { opacity: 1; transform: translateX(-50%) translateY(-10px); }
-        .price-row { display: flex; justify-content: center; align-items: baseline; gap: 8px; margin-bottom: 12px; }
-        .discount-price { font-size: 1.35rem; text-decoration: line-through; color: #9ca3af; }
-        .sale-price { font-size: 1.85rem; font-weight: 700; color: #ef4444; }
-        .mystery-item { background: linear-gradient(90deg, #10b981, #34d399) !important; border: 2px solid #a7f3d0 !important; color: black; }
+        
+        /* === HAMBURGER + MOBILE MENU === */
+        #hamburger-btn {
+            display: none;
+        }
+        @media (max-width: 767px) {
+            #hamburger-btn { display: flex; }
+            .desktop-nav-buttons { display: none; }
+        }
+        
+        #mobile-menu {
+            display: none;
+            position: fixed;
+            top: 73px;
+            left: 0;
+            right: 0;
+            background: rgba(10,10,10,0.98);
+            backdrop-filter: blur(16px);
+            border-top: 1px solid rgba(103,232,249,0.2);
+            padding: 20px;
+            z-index: 999;
+            flex-direction: column;
+            gap: 12px;
+        }
+        #mobile-menu.active {
+            display: flex;
+        }
+        
+        .mobile-nav-btn {
+            min-height: 48px;
+            padding: 16px 20px;
+            font-size: 1.05rem;
+            border-radius: 9999px;
+        }
+        
         .nicotine-select {
             background: #1f2937;
             color: white;
@@ -157,8 +195,9 @@
             margin-right: auto;
             appearance: none;
             text-align: center;
+            min-height: 44px;
         }
-        .nicotine-select:focus { outline: none; border-color: #22d3ee; box-shadow: 0 0 0 3px rgba(34,211,238,0.3); }
+        
         .loyalty-bar { height: 6px; background: linear-gradient(to right, #67e8f9, #a5f3fc); border-radius: 9999px; transition: width 0.6s cubic-bezier(0.34,1.56,0.64,1); }
         .review-card { transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1); }
         .review-card:hover { transform: translateY(-8px); box-shadow: 0 20px 40px -15px rgb(103 232 249); }
@@ -183,6 +222,10 @@
         .stock-low { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
         .stock-zero { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
         img { max-width: 100%; height: auto; display: block; }
+        
+        button, .buy-btn, .qty-btn, .mobile-nav-btn {
+            min-height: 48px;
+        }
     </style>
 </head>
 <body class="wave-bg text-white min-h-screen">
@@ -197,7 +240,15 @@
                         <p class="text-[9px] sm:text-[10px] text-cyan-300 tracking-[3px] -mt-1">2026 SORTIMENT</p>
                     </div>
                 </div>
-                <div class="flex items-center gap-3 sm:gap-8">
+                
+                <!-- HAMBURGER (nur Mobile) -->
+                <button id="hamburger-btn" onclick="toggleMobileMenu()" 
+                        class="md:hidden flex items-center justify-center w-12 h-12 text-cyan-300 text-3xl">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                
+                <!-- DESKTOP NAV -->
+                <div class="desktop-nav-buttons flex items-center gap-3 sm:gap-8">
                     <button onclick="showAuthModal()" id="account-btn"
                             class="flex items-center justify-center bg-zinc-900 hover:bg-zinc-800 border border-cyan-400/30
                                    w-10 h-10 rounded-full text-xs font-medium transition-all overflow-hidden
@@ -216,8 +267,20 @@
                 18+ • NUR FÜR VOLLJÄHRIGE • NIKOTINPRODUKTE
             </div>
         </nav>
+        
+        <!-- MOBILE MENU -->
+        <div id="mobile-menu" class="md:hidden">
+            <button onclick="showAuthModal(); toggleMobileMenu()" 
+                    class="mobile-nav-btn w-full bg-zinc-900 border border-cyan-400/30 text-cyan-300 font-medium flex items-center justify-center gap-3">
+                <i class="fa-solid fa-user"></i> Account
+            </button>
+            <button onclick="toggleCart(); toggleMobileMenu()" 
+                    class="mobile-nav-btn w-full bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-semibold flex items-center justify-center gap-3">
+                <i class="fa-solid fa-cart-shopping"></i> Warenkorb
+            </button>
+        </div>
     </header>
-
+    
     <main class="max-w-7xl mx-auto px-4 sm:px-6 pt-8 pb-20">
         <!-- HERO -->
         <section class="text-center mb-12">
@@ -228,20 +291,19 @@
             <h1 class="hero-title text-5xl sm:text-6xl font-bold tracking-tighter neon-text mb-3">WaveVapes – Premium Vapes & Liquids</h1>
             <p class="hero-subtitle text-xl sm:text-2xl text-cyan-200 max-w-md mx-auto">7,99 € pro Flasche • 10 ml • Nikotin frei wählbar (10 oder 20 mg)</p>
             <p class="text-base sm:text-lg text-gray-300 mt-4">Alle Liquids von ELFLIQ</p>
-         
+        
             <!-- MYSTERY VAPE BANNER -->
             <div class="mt-4 inline-flex items-center gap-3 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-400/30 hover:border-emerald-400 px-7 py-3 rounded-3xl text-emerald-300 text-base font-semibold transition-all">
                 <i class="fa-solid fa-gift text-2xl"></i>
                 <span>Ab 100€ Bestellwert gibt's eine <span class="text-white font-bold underline">Mystery Vape gratis</span> dazu! 🎁</span>
             </div>
-         
+        
             <!-- GRATIS VERSAND BANNER -->
             <div class="mt-4 inline-flex items-center gap-3 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-400/30 px-7 py-3 rounded-3xl text-amber-300 text-base font-semibold transition-all">
                 <i class="fa-solid fa-truck text-2xl"></i>
                 <span>Gratis Versand ab <span class="text-white font-bold">100 €</span> Bestellwert! 🚚</span>
             </div>
         </section>
-
         <!-- TRUST SIGNALS -->
         <section class="trust-section mt-8 mb-12">
             <div class="trust-grid">
@@ -267,7 +329,6 @@
                 </div>
             </div>
         </section>
-
         <!-- USER BANNER -->
         <div id="user-banner" class="mb-10 bg-gradient-to-r from-zinc-900 to-purple-950 border border-cyan-300/30 hover:border-cyan-300 rounded-3xl p-5 cursor-pointer transition-all group" onclick="showAuthModal()">
             <div class="flex items-center gap-4 mb-3">
@@ -380,7 +441,6 @@
             <p class="text-[10px] text-gray-500 mt-1">Gesetzliche Altersbeschränkung: Nur für Personen ab 18 Jahren. Nikotinprodukte schädigen Ihre Gesundheit.</p>
         </footer>
     </main>
-
     <!-- FLOATING CART -->
     <button onclick="toggleCart()" class="fixed bottom-6 right-6 lg:hidden bg-gradient-to-r from-cyan-400 to-purple-500 text-black w-14 h-14 rounded-3xl shadow-2xl flex items-center justify-center z-50">
         <i class="fa-solid fa-cart-shopping text-3xl"></i>
@@ -1681,6 +1741,22 @@
                 document.body.innerHTML = `<div class="fixed inset-0 bg-black flex items-center justify-center text-6xl font-bold text-red-500">🚧<br>Shop in Wartung<br>Bitte später wieder kommen</div>`;
             }
         });
+        
+        // ====================== MOBILE MENU FUNKTION (neu hinzugefügt) ======================
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('active');
+        }
+        
+        // Schließe Menu bei Klick außerhalb
+        document.addEventListener('click', function(e) {
+            const menu = document.getElementById('mobile-menu');
+            const hamburger = document.getElementById('hamburger-btn');
+            if (menu && hamburger && !menu.contains(e.target) && !hamburger.contains(e.target)) {
+                menu.classList.remove('active');
+            }
+        });
+        
         // ====================== INITIALISIERUNG ======================
         function initialize() {
             initEmailJS();

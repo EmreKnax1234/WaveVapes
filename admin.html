@@ -12,7 +12,6 @@
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-    <!-- SORTABLE.JS FÜR DRAG & DROP -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
@@ -33,7 +32,6 @@
         .sidebar-item { transition: all 0.2s; }
         .sidebar-item:hover { background: #27272a; }
         .tab-active { background: #27272a; color: var(--neon-cyan); border-left: 4px solid var(--neon-cyan); }
-        /* NEU: Sortable Styling */
         .sortable-item { transition: all 0.2s; }
         .sortable-item:hover { background: #27272a; }
     </style>
@@ -64,7 +62,6 @@
             <div onclick="switchTab(5)" id="sidebar-5" class="sidebar-item flex items-center gap-3 px-6 py-4 rounded-2xl cursor-pointer"><i class="fa-solid fa-chart-line"></i><span>Analytics</span></div>
             <div onclick="switchTab(6)" id="sidebar-6" class="sidebar-item flex items-center gap-3 px-6 py-4 rounded-2xl cursor-pointer"><i class="fa-solid fa-list-check"></i><span>Admin Logs</span></div>
             <div onclick="switchTab(7)" id="sidebar-7" class="sidebar-item flex items-center gap-3 px-6 py-4 rounded-2xl cursor-pointer"><i class="fa-solid fa-cog"></i><span>Settings</span></div>
-            <!-- NEUER TAB -->
             <div onclick="switchTab(8)" id="sidebar-8" class="sidebar-item flex items-center gap-3 px-6 py-4 rounded-2xl cursor-pointer"><i class="fa-solid fa-sort"></i><span>Sortierung</span></div>
         </div>
     </div>
@@ -308,18 +305,15 @@
                 </div>
             </div>
         </div>
-        <!-- NEUER TAB 8: SORTIERUNG -->
+        <!-- TAB 8: SORTIERUNG -->
         <div id="tab-content-8" class="hidden">
             <div class="card p-8">
                 <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
                     <i class="fa-solid fa-sort"></i> Produkt-Sortierung (Drag & Drop)
                 </h2>
-                <p class="text-sm text-gray-400 mb-8">Ziehe die Produkte einfach in die gewünschte Reihenfolge. Die Sortierung hat Vorrang vor allen anderen Regeln und wird live im Shop übernommen.</p>
-                
+                <p class="text-sm text-gray-400 mb-8">Ziehe die Produkte in die gewünschte Reihenfolge. Die Sortierung wird automatisch im Shop übernommen.</p>
                 <div id="sort-list" class="space-y-3 min-h-[500px] bg-zinc-950 rounded-3xl p-6"></div>
-                
-                <button onclick="saveProductOrder()" 
-                        class="mt-10 w-full bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-6 rounded-3xl text-xl hover:scale-105 transition">
+                <button onclick="saveProductOrder()" class="mt-10 w-full bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-6 rounded-3xl text-xl hover:scale-105 transition">
                     ✅ Sortierung speichern & live übernehmen
                 </button>
             </div>
@@ -357,7 +351,6 @@ let topProductsChart = null;
 let referralChart = null;
 let logsUnsubscribe = null;
 let allProducts = [];
-// NEU: Sortierung
 let productOrder = [];
 let sortableInstance = null;
 // ====================== LOG ACTION ======================
@@ -634,6 +627,56 @@ async function importProductsFromCSV(e) {
 }
 function parseCSVLine(line) {
     return line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(field => field.replace(/^"|"$/g, '').replace(/""/g, '"'));
+}
+// ====================== NEUE CSV-EXPORT FUNKTIONEN ======================
+async function exportOrdersToCSV() {
+    const snapshot = await db.collection("orders").orderBy("date", "desc").get();
+    if (snapshot.empty) return alert("Keine Bestellungen vorhanden!");
+    let csv = "orderNumber,datum,email,gesamt,status,items\n";
+    snapshot.forEach(doc => {
+        const o = doc.data();
+        const dateStr = o.date ? o.date.toDate().toISOString().slice(0,19).replace('T',' ') : '';
+        const itemsStr = o.items.map(i => `${i.name} x${i.qty}${i.nicotine ? ' ('+i.nicotine+')' : ''}`).join(' | ');
+        const row = [
+            `"${o.orderNumber || ''}"`,
+            `"${dateStr}"`,
+            `"${o.userEmail || ''}"`,
+            o.total || 0,
+            `"${o.status || 'Zahlung erwartet'}"`,
+            `"${itemsStr.replace(/"/g, '""')}"`
+        ].join(",");
+        csv += row + "\n";
+    });
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `wavevapes_bestellungen_${new Date().toISOString().slice(0,10)}.csv`;
+    link.click();
+    showToast("✅ Bestellungen als CSV exportiert!", "success");
+}
+async function exportUsersToCSV() {
+    const snapshot = await db.collection("users").get();
+    if (snapshot.empty) return alert("Keine Benutzer vorhanden!");
+    let csv = "email,username,referralCode,loyaltyPoints,freeShipping,disabled,referralCount\n";
+    snapshot.forEach(doc => {
+        const u = doc.data();
+        const row = [
+            `"${u.email || ''}"`,
+            `"${u.username || ''}"`,
+            `"${u.referralCode || ''}"`,
+            u.totalBonusPoints || 0,
+            u.freeShipping === true ? "JA" : "NEIN",
+            u.disabled === true ? "JA" : "NEIN",
+            u.referralCount || 0
+        ].join(",");
+        csv += row + "\n";
+    });
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `wavevapes_benutzer_${new Date().toISOString().slice(0,10)}.csv`;
+    link.click();
+    showToast("✅ Benutzer als CSV exportiert!", "success");
 }
 // ====================== KATEGORIEN ======================
 function loadCategories() {
@@ -1172,7 +1215,7 @@ async function resetAllStatistics() {
         showToast("Fehler beim Zurücksetzen: " + e.message, "error");
     }
 }
-// ====================== NEUE SORTIERUNG FUNKTIONEN ======================
+// ====================== SORTIERUNG ======================
 async function loadProductOrder() {
     const doc = await db.collection('settings').doc('product_order').get();
     productOrder = doc.exists ? (doc.data().order || []) : [];

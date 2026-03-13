@@ -443,7 +443,6 @@ async function toggleAvailable(id, val) {
     await logAction("product_availability_changed", id, { available: val });
     showToast('Verfügbarkeit aktualisiert');
 }
-// ====================== DELETE PRODUCT (JETZT WIEDER FUNKTIONIERT) ======================
 async function deleteProduct(id) {
     if (!confirm('⚠️ Produkt WIRKLICH PERMANENT löschen?\n\nDas kann nicht rückgängig gemacht werden!')) return;
     try {
@@ -500,6 +499,11 @@ async function openEditModal(id) {
     document.getElementById('edit-modal').innerHTML = html;
     document.getElementById('edit-modal').classList.remove('hidden');
     populateCategorySelects();
+    // WICHTIG: Aktuelle Kategorie vorauswählen
+    setTimeout(() => {
+        const select = document.getElementById('edit-category-select');
+        if (select) select.value = p.category || '';
+    }, 100);
     const dropzone = document.getElementById('edit-dropzone');
     dropzone.onclick = () => {
         const input = document.createElement('input');
@@ -532,7 +536,8 @@ async function saveEdit() {
     const isNew = document.getElementById('edit-new').checked;
     const unavailable = document.getElementById('edit-unavailable').checked;
     const hasNicotine = document.getElementById('edit-has-nicotine').checked;
-    const category = isNew ? "Neue Sorten" : "Normale Sorten";
+    const categorySelect = document.getElementById('edit-category-select');
+    const category = categorySelect && categorySelect.value ? categorySelect.value : (isNew ? "Neue Sorten" : "Normale Sorten");
     let data = { name, price, stock, category, description: description || "", isNew, available: !unavailable, hasNicotine };
     if (removeCurrentImage && !selectedFile) data.image = null;
     else if (selectedFile) {
@@ -546,7 +551,7 @@ async function saveEdit() {
     await db.collection('products').doc(currentEditId).update(data);
     await logAction("product_updated", currentEditId, { name, category });
     closeEditModal();
-    showToast('✅ Produkt gespeichert! Kategorie automatisch angepasst.');
+    showToast('✅ Produkt gespeichert! Kategorie manuell zugewiesen.');
 }
 // ====================== NEUES PRODUKT ======================
 document.getElementById('add-form').addEventListener('submit', async e => {
@@ -558,7 +563,8 @@ document.getElementById('add-form').addEventListener('submit', async e => {
     const unavailable = document.getElementById('prod-unavailable').checked;
     const hasNicotine = document.getElementById('prod-has-nicotine').checked;
     const description = document.getElementById('prod-description').value.trim();
-    const category = isNew ? "Neue Sorten" : "Normale Sorten";
+    const categorySelect = document.getElementById('prod-category');
+    const category = categorySelect && categorySelect.value ? categorySelect.value : (isNew ? "Neue Sorten" : "Normale Sorten");
     const docRef = await db.collection('products').add({
         name, price, stock, category, isNew: isNew || false, available: !unavailable, hasNicotine, description: description || "", sold: 0
     });
@@ -574,7 +580,7 @@ document.getElementById('add-form').addEventListener('submit', async e => {
     e.target.reset();
     document.getElementById('preview-thumb').classList.add('hidden');
     selectedFile = null;
-    showToast('✅ Produkt erfolgreich angelegt! Kategorie automatisch gesetzt.');
+    showToast('✅ Produkt erfolgreich angelegt!');
 });
 const dropzone = document.getElementById('dropzone');
 dropzone.addEventListener('click', () => {
@@ -827,7 +833,8 @@ document.getElementById('add-category-form').addEventListener('submit', async e 
     await db.collection('categories').add({ name, order, special });
     await logAction("category_created", "", { name });
     e.target.reset();
-    showToast('✅ Kategorie erstellt!');
+    populateCategorySelects(); // ← NEU: Sofort aktualisieren!
+    showToast('✅ Kategorie erstellt und Dropdowns aktualisiert!');
 });
 async function openEditCategoryModal(id) {
     const doc = await db.collection('categories').doc(id).get();
@@ -856,12 +863,14 @@ async function saveEditCategory(id) {
     await db.collection('categories').doc(id).update({ name, order, special });
     await logAction("category_updated", id, { name });
     document.getElementById('edit-modal').classList.add('hidden');
-    showToast('✅ Kategorie gespeichert');
+    populateCategorySelects(); // ← NEU: Sofort aktualisieren!
+    showToast('✅ Kategorie gespeichert und Dropdowns aktualisiert');
 }
 async function deleteCategory(id) {
     if (!confirm('Kategorie wirklich löschen? Produkte bleiben erhalten.')) return;
     await db.collection('categories').doc(id).delete();
     await logAction("category_deleted", id);
+    populateCategorySelects();
     showToast('✅ Kategorie gelöscht');
 }
 function seedDefaultCategories() {
@@ -878,6 +887,7 @@ function populateCategorySelects() {
     const selects = document.querySelectorAll('#prod-category, #edit-category-select');
     selects.forEach(select => {
         if (!select) return;
+        const currentValue = select.value;
         select.innerHTML = '<option value="">Kategorie wählen...</option>';
         allCategories.forEach(c => {
             const opt = document.createElement('option');
@@ -885,6 +895,7 @@ function populateCategorySelects() {
             opt.textContent = c.name;
             select.appendChild(opt);
         });
+        if (currentValue) select.value = currentValue;
     });
 }
 // ====================== GUTSCHEINE ======================
@@ -1380,18 +1391,13 @@ function renderSortList() {
         forceFallback: true
     });
 }
-// ====================== TOGGLE IN SORTIERUNG ======================
 async function toggleIsNew(id, e) {
     e.stopImmediatePropagation();
     const doc = await db.collection('products').doc(id).get();
     const current = doc.data().isNew || false;
     const newIsNew = !current;
-    const newCategory = newIsNew ? "Neue Sorten" : "Normale Sorten";
-    await db.collection('products').doc(id).update({
-        isNew: newIsNew,
-        category: newCategory
-    });
-    showToast(`NEW-Status umgeschaltet → ${newIsNew ? 'aktiv' : 'deaktiviert'} + Kategorie automatisch angepasst`);
+    await db.collection('products').doc(id).update({ isNew: newIsNew });
+    showToast(`NEW-Status umgeschaltet → ${newIsNew ? 'aktiv' : 'deaktiviert'}`);
     renderSortList();
 }
 async function toggleAvailableInSort(id, e) {
@@ -1402,7 +1408,6 @@ async function toggleAvailableInSort(id, e) {
     showToast(`Verfügbarkeit umgeschaltet → ${!current ? 'NICHT verfügbar' : 'verfügbar'}`);
     renderSortList();
 }
-// ====================== AUTO-SORT (bisherige) ======================
 function autoSort(mode) {
     const container = document.getElementById('sort-list');
     let items = Array.from(container.children);
@@ -1439,7 +1444,6 @@ function autoSort(mode) {
     items.forEach(item => container.appendChild(item));
     showToast('✅ Liste automatisch sortiert!', 'success');
 }
-// ====================== NEUES AUTOMATISCHES SORTIERUNGSSYSTEM (überarbeitet) ======================
 function autoSortPriority() {
     const container = document.getElementById('sort-list');
     let items = Array.from(container.children);
@@ -1463,9 +1467,8 @@ function autoSortPriority() {
     });
   
     items.forEach(item => container.appendChild(item));
-    showToast('✅ Automatische Prioritätssortierung angewendet!<br>1. Neue (verfügbar) → 2. Normale (verfügbar) → 3. Vapes → 4. Alle nicht verfügbaren (unten)', 'success');
+    showToast('✅ Automatische Prioritätssortierung angewendet!', 'success');
 }
-// ====================== SAVE SORT ======================
 async function saveProductOrder() {
     const items = document.querySelectorAll('#sort-list .sortable-item');
     const newOrder = Array.from(items).map(item => item.dataset.id);
@@ -1492,13 +1495,13 @@ async function enforceCategories() {
 
     if (changed > 0) {
         await batch.commit();
-        showToast(`✅ ${changed} Produkte korrigiert! Alle neuen Sorten sind jetzt in „Neue Sorten“`);
+        showToast(`✅ ${changed} Produkte korrigiert!`);
         await logAction("categories_auto_enforced", "", { changed_count: changed });
     } else {
-        showToast('✅ Alles war bereits perfekt – keine Änderungen nötig');
+        showToast('✅ Alles war bereits perfekt');
     }
 
-    loadProducts(); // Tabelle aktualisieren
+    loadProducts();
 }
 // ====================== TOAST ======================
 function showToast(msg, type = 'success') {

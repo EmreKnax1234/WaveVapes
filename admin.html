@@ -311,13 +311,13 @@
                 </div>
             </div>
         </div>
-        <!-- TAB 8: SORTIERUNG (mit Auto-Sort) -->
+        <!-- TAB 8: SORTIERUNG -->
         <div id="tab-content-8" class="hidden">
             <div class="card p-8">
                 <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
                     <i class="fa-solid fa-sort"></i> Produkt-Sortierung (Drag & Drop + Auto-Sort)
                 </h2>
-                <p class="text-sm text-gray-400 mb-6">Klicke auf einen Button für automatische Sortierung, dann kannst du noch manuell ziehen und speichern.<br><strong>Neu:</strong> NEW / NICHT VERFÜGBAR direkt anklickbar + Kategorie wird automatisch gesetzt (isNew = Neue Sorten, sonst Normale Sorten)</p>
+                <p class="text-sm text-gray-400 mb-6">Klicke auf einen Button für automatische Sortierung. Die neue <strong>Auto-Priorität</strong> sortiert genau wie gewünscht:<br>1. Neue Sorten → 2. Normale Sorten → 3. Alle Vapes → 4. Nicht verfügbar / Ausverkauft</p>
                
                 <div class="flex flex-wrap gap-3 mb-8">
                     <button onclick="autoSort('alpha')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">📋 Alphabetisch A-Z</button>
@@ -325,6 +325,7 @@
                     <button onclick="autoSort('tornado')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">🌪️ Tornado zuerst</button>
                     <button onclick="autoSort('available')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">✅ Verfügbare zuerst</button>
                     <button onclick="autoSort('stock')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">📦 Lagerbestand (hoch zuerst)</button>
+                    <button onclick="autoSortPriority()" class="px-6 py-3 bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold rounded-2xl text-sm transition">🔄 AUTO-PRIORITÄT<br><span class="text-xs font-normal">NEW → Normal → Vapes → Ausverkauft</span></button>
                 </div>
                
                 <div id="sort-list" class="space-y-3 min-h-[500px] bg-zinc-950 rounded-3xl p-6"></div>
@@ -508,8 +509,7 @@ async function saveEdit() {
     const isNew = document.getElementById('edit-new').checked;
     const unavailable = document.getElementById('edit-unavailable').checked;
     const hasNicotine = document.getElementById('edit-has-nicotine').checked;
-    // AUTOMATISCHE KATEGORIE
-    let category = isNew ? "Neue Sorten" : "Normale Sorten";
+    const category = isNew ? "Neue Sorten" : "Normale Sorten";
     let data = { name, price, stock, category, description: description || "", isNew, available: !unavailable, hasNicotine };
     if (removeCurrentImage && !selectedFile) data.image = null;
     else if (selectedFile) {
@@ -535,7 +535,6 @@ document.getElementById('add-form').addEventListener('submit', async e => {
     const unavailable = document.getElementById('prod-unavailable').checked;
     const hasNicotine = document.getElementById('prod-has-nicotine').checked;
     const description = document.getElementById('prod-description').value.trim();
-    // AUTOMATISCHE KATEGORIE
     const category = isNew ? "Neue Sorten" : "Normale Sorten";
     const docRef = await db.collection('products').add({
         name, price, stock, category, isNew: isNew || false, available: !unavailable, hasNicotine, description: description || "", sold: 0
@@ -1384,7 +1383,7 @@ async function toggleAvailableInSort(id, e) {
     showToast(`Verfügbarkeit umgeschaltet → ${!current ? 'NICHT verfügbar' : 'verfügbar'}`);
     renderSortList();
 }
-// ====================== AUTO-SORT ======================
+// ====================== AUTO-SORT (bisherige) ======================
 function autoSort(mode) {
     const container = document.getElementById('sort-list');
     let items = Array.from(container.children);
@@ -1421,6 +1420,44 @@ function autoSort(mode) {
     items.forEach(item => container.appendChild(item));
     showToast('✅ Liste automatisch sortiert!', 'success');
 }
+// ====================== NEUES AUTOMATISCHES SORTIERUNGSSYSTEM ======================
+function autoSortPriority() {
+    const container = document.getElementById('sort-list');
+    let items = Array.from(container.children);
+   
+    items.sort((a, b) => {
+        const idA = a.dataset.id;
+        const idB = b.dataset.id;
+        const pA = allProducts.find(p => p.id === idA);
+        const pB = allProducts.find(p => p.id === idB);
+        if (!pA || !pB) return 0;
+
+        // PRIORITÄTSSYSTEM:
+        // 1 = Neue Sorten
+        // 2 = Normale Sorten
+        // 3 = Alle Vapes (Tornado)
+        // 4 = Nicht verfügbar / Ausverkauft
+        const getPriority = (p) => {
+            if (p.isNew === true) return 1;
+            if (p.category !== "WaveVapes Tornado 30000" && p.isNew !== true) return 2;
+            if (p.category === "WaveVapes Tornado 30000") return 3;
+            if (p.available === false || (p.stock || 0) <= 0) return 4;
+            return 5; // Fallback
+        };
+
+        const prioA = getPriority(pA);
+        const prioB = getPriority(pB);
+
+        if (prioA !== prioB) return prioA - prioB;
+
+        // Innerhalb derselben Priorität: alphabetisch
+        return pA.name.localeCompare(pB.name);
+    });
+   
+    items.forEach(item => container.appendChild(item));
+    showToast('✅ Automatische Prioritätssortierung angewendet!<br>NEW → Normal → Vapes → Ausverkauft', 'success');
+}
+// ====================== SAVE SORT ======================
 async function saveProductOrder() {
     const items = document.querySelectorAll('#sort-list .sortable-item');
     const newOrder = Array.from(items).map(item => item.dataset.id);

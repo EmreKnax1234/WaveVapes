@@ -614,7 +614,7 @@
         let ordersUnsubscribe = null;
         let userSnapshotUnsubscribe = null;
         let myReferralCode = "";
-        let userHasFreeShipping = false;   // NEU: Gratisversand-Flag pro User
+        let userHasFreeShipping = false;
 
         // ====================== FIREBASE ======================
         const firebaseConfig = {
@@ -804,9 +804,9 @@
                     if (doc.exists) {
                         const data = doc.data();
                         loyaltyPoints = data.totalBonusPoints || 0;
-                        userHasFreeShipping = data.freeShipping === true;   // NEU: Gratisversand-Flag laden
+                        userHasFreeShipping = data.freeShipping === true;
                         updateLoyaltyDisplay();
-                        updateCartDisplay();   // NEU: Warenkorb sofort aktualisieren
+                        updateCartDisplay();
                     }
                 });
             } else {
@@ -1049,9 +1049,8 @@
             }
             return total;
         }
-        // ====================== NEUE GRATISVERSAND-FUNKTION ======================
         function getShippingCost() {
-            if (userHasFreeShipping) return 0;                    // Admin-Override
+            if (userHasFreeShipping) return 0;
             return getProductTotal() >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_COST;
         }
         function calculateCartTotal() {
@@ -1075,7 +1074,8 @@
                         price: data.price || 7.99,
                         image: data.image || null,
                         stock: data.stock || 0,
-                        description: data.description || ""
+                        description: data.description || "",
+                        hasNicotine: data.hasNicotine !== false
                     });
                 });
                 renderProducts();
@@ -1121,7 +1121,7 @@
                 const liquidClass = !isVape ? 'liquid-card' : '';
                 let unavailableTagHTML = !product.available ? `<div class="unavailable-tag">Aktuell NICHT verfügbar</div>` : '';
                 let nicotineHTML = '';
-                if (!isVape && product.available) {
+                if (!isVape && product.available && product.hasNicotine) {
                     nicotineHTML = `<select class="nicotine-select" onclick="event.stopImmediatePropagation()" onchange="updateNicotine('${product.id}', this.value); event.stopImmediatePropagation()">${NICOTINE_OPTIONS.map(opt => `<option value="${opt}" ${nicotine === opt ? 'selected' : ''}>${opt}</option>`).join('')}</select>`;
                 }
                 let qtyHTML = product.available ? `
@@ -1174,7 +1174,7 @@
             }
             let existing = cart.find(item => item.id === id);
             if (!existing) {
-                existing = { id, name: product.name, qty: 0, price: product.price, nicotine: "20 mg" };
+                existing = { id, name: product.name, qty: 0, price: product.price, nicotine: product.hasNicotine ? "20 mg" : "" };
                 cart.push(existing);
             }
             existing.qty = Math.max(0, existing.qty + delta);
@@ -1241,7 +1241,8 @@
             }
             cart.forEach(item => {
                 const p = item.price || 7.99;
-                const nicDisplay = item.nicotine ? ` (${item.nicotine})` : '';
+                const prod = allProducts.find(pr => pr.id === item.id);
+                const nicDisplay = (item.nicotine && prod && prod.hasNicotine) ? ` (${item.nicotine})` : '';
                 if (item.id === MYSTERY_ID) {
                     itemsHTML += `<div class="mystery-item flex justify-between items-center rounded-3xl p-5"><div class="flex items-center gap-3"><i class="fa-solid fa-gift text-3xl"></i><div><div class="font-medium">${item.name}</div><div class="text-xs bg-white/30 px-3 py-0.5 rounded-full inline-block">GRATIS AB 100€</div></div></div><div class="text-right"><div class="font-bold text-xl text-emerald-900">0,00 €</div></div></div>`;
                 } else {
@@ -1592,18 +1593,18 @@
         function filterProducts() {
             renderProducts();
         }
-        // ====================== PRODUKT DETAIL ======================
+        // ====================== PRODUKT DETAIL MODAL ======================
         function showProductDetail(id) {
             const product = allProducts.find(p => p.id === id);
             if (!product) return;
-            const nicotineHTML = product.category !== "WaveVapes Tornado 30000" ? `
+            const nicotineHTML = (!product.hasNicotine || product.category === "WaveVapes Tornado 30000") ? '' : `
                 <div class="mt-6">
                     <p class="text-xs text-gray-400 mb-2">Nikotinstärke</p>
                     <select id="modal-nicotine" class="nicotine-select w-full">
                         <option value="10 mg">10 mg</option>
                         <option value="20 mg" selected>20 mg</option>
                     </select>
-                </div>` : '';
+                </div>`;
             const html = `
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <div class="flex justify-center">
@@ -1647,11 +1648,12 @@
             if (!product || !product.available) return;
             let existing = cart.find(item => item.id === id);
             if (!existing) {
-                existing = { id, name: product.name, qty: 0, price: product.price, nicotine: "20 mg" };
+                existing = { id, name: product.name, qty: 0, price: product.price };
+                if (product.hasNicotine) existing.nicotine = "20 mg";
                 cart.push(existing);
             }
             const select = document.getElementById("modal-nicotine");
-            if (select) existing.nicotine = select.value;
+            if (select && product.hasNicotine) existing.nicotine = select.value;
             existing.qty = (existing.qty || 0) + 1;
             manageMysteryVape();
             updateCartDisplay();
@@ -1659,7 +1661,7 @@
             closeProductDetail();
             showToast(`✅ ${product.name} wurde hinzugefügt!`);
         }
-        // ====================== SETTINGS SYNC (Shop geschlossen) ======================
+        // ====================== SETTINGS SYNC ======================
         db.collection("settings").doc("main").onSnapshot(doc => {
             const s = doc.data();
             if (s && s.shop_closed === true) {

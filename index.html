@@ -105,37 +105,41 @@
         #product-detail-modal {
             padding: 16px;
         }
-        #product-detail-modal img {
-            max-height: 280px;
+        #product-detail-modal .modal-inner {
+            max-width: 960px;
             width: 100%;
-            max-width: 280px;
-            object-fit: contain;
             margin: 0 auto;
-            display: block;
-            border-radius: 16px;
+            animation: modalPop 0.3s cubic-bezier(0.34,1.56,0.64,1);
+        }
+        #product-detail-modal img {
+            width: 100%;
+            max-width: 100%;
+            height: auto;
+            max-height: 55vh;
+            object-fit: contain;
+            margin: 0 auto 24px;
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgb(103 232 249 / 0.5);
+            background: #1f2937;
+        }
+        #product-detail-modal h2 {
+            font-size: 1.85rem;
+            line-height: 1.15;
+            font-weight: 700;
         }
         @media (min-width: 640px) {
             #product-detail-modal img {
-                max-height: none;
-                max-width: none;
+                max-height: 65vh;
             }
-        }
-        #product-detail-modal h2 {
-            font-size: 1.75rem;
-            line-height: 1.2;
-        }
-        @media (min-width: 640px) {
             #product-detail-modal h2 {
-                font-size: 2.25rem;
+                font-size: 2.75rem;
             }
-        }
-        #product-detail-modal .sale-price {
-            font-size: 2.5rem;
-        }
-        @media (min-width: 640px) {
             #product-detail-modal .sale-price {
-                font-size: 3rem;
+                font-size: 3.5rem;
             }
+        }
+        #product-detail-modal .price-row {
+            margin: 24px 0;
         }
         .tab-active { border-bottom: 4px solid var(--neon-cyan); color: var(--neon-cyan); font-weight: 600; }
         .wave-bg { background: linear-gradient(135deg, #0a0a0a, #1e1233, #0a0a0a); }
@@ -189,6 +193,10 @@
         .stock-low { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
         .stock-zero { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
         img { max-width: 100%; height: auto; display: block; }
+        @keyframes modalPop {
+            from { transform: scale(0.92); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
     </style>
 </head>
 <body class="wave-bg text-white min-h-screen">
@@ -231,13 +239,13 @@
             <h2 class="hero-title text-5xl sm:text-6xl font-bold tracking-tighter neon-text mb-3">Bestelle deine Liquids und Vapes</h2>
             <p class="hero-subtitle text-xl sm:text-2xl text-cyan-200 max-w-md mx-auto">7,99 € pro Flasche • 10 ml • Nikotin frei wählbar (10 oder 20 mg)</p>
             <p class="text-base sm:text-lg text-gray-300 mt-4">Alle Liquids von ELFLIQ</p>
-       
+      
             <!-- MYSTERY VAPE BANNER -->
             <div class="mt-4 inline-flex items-center gap-3 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-400/30 hover:border-emerald-400 px-7 py-3 rounded-3xl text-emerald-300 text-base font-semibold transition-all">
                 <i class="fa-solid fa-gift text-2xl"></i>
                 <span>Ab 100€ Bestellwert gibt's eine <span class="text-white font-bold underline">Mystery Vape gratis</span> dazu! 🎁</span>
             </div>
-       
+      
             <!-- GRATIS VERSAND BANNER -->
             <div class="mt-4 inline-flex items-center gap-3 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-400/30 px-7 py-3 rounded-3xl text-amber-300 text-base font-semibold transition-all">
                 <i class="fa-solid fa-truck text-2xl"></i>
@@ -559,12 +567,7 @@
     </div>
     <!-- PRODUKT DETAIL MODAL -->
     <div id="product-detail-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-[9999] p-4 overflow-y-auto">
-        <div class="bg-zinc-900 max-w-3xl w-full mx-auto rounded-3xl overflow-hidden">
-            <div class="flex justify-end p-6 border-b border-white/10">
-                <button onclick="closeProductDetail()" class="text-4xl text-gray-400 hover:text-white">✕</button>
-            </div>
-            <div id="detail-content" class="p-8"></div>
-        </div>
+        <div id="detail-content" class="w-full"></div>
     </div>
     <div id="notification-toast"></div>
     <script>
@@ -827,7 +830,7 @@
                     showToast("🔑 Dein Passwort wurde zurückgesetzt, bitte gib ein neues ein.", "success");
                 }
                 await createOrUpdateUserProfile();
-                await loadUserCart();  // ← Server-Cart laden
+                await loadUserCart();
                 loadUserOrders();
                 if (userSnapshotUnsubscribe) userSnapshotUnsubscribe();
                 userSnapshotUnsubscribe = db.collection("users").doc(user.uid).onSnapshot(doc => {
@@ -1249,21 +1252,16 @@
             const loyaltyCartInfo = document.getElementById("loyalty-cart-info");
             const paymentInfoEl = document.getElementById("cart-payment-info");
             const totalSection = document.getElementById("cart-total-section");
-
             const totalItems = cart.reduce((sum, item) => sum + item.qty, 0);
             countEl.textContent = totalItems;
-
             if (cart.length === 0) {
                 listEl.innerHTML = `<p class="text-center py-16 text-gray-400">Dein Warenkorb ist leer</p>`;
                 totalSection.style.display = "none";
                 return;
             }
-
             totalSection.style.display = "block";
-
             const grandTotal = calculateCartTotal();
             totalEl.textContent = `${grandTotal.toFixed(2).replace('.', ',')} €`;
-
             const productTotal = getProductTotal();
             if (productTotal > 0) {
                 const pointsEarned = Math.floor(productTotal);
@@ -1271,21 +1269,17 @@
             } else {
                 loyaltyCartInfo.innerHTML = "";
             }
-
             if (userAddress.street) {
                 addressDisplay.innerHTML = `${userAddress.street}<br>${userAddress.zip} ${userAddress.city}`;
             } else {
                 addressDisplay.innerHTML = `<span class="text-red-400">Noch keine Adresse angegeben</span>`;
             }
-
             let itemsHTML = "";
-
             const tornadoQty = getTornadoQuantity();
             const free = Math.floor(tornadoQty / 4);
             if (free > 0) {
                 itemsHTML += `<div class="bg-gradient-to-r from-amber-400 to-yellow-400 text-black p-6 rounded-3xl mb-6 text-center shadow-inner"><div class="flex items-center justify-center gap-3 text-2xl font-black">⚡ 4 FÜR 3 AKTION AKTIV!</div><p class="font-semibold text-base mt-2">Du bekommst <span class="underline">${free} Vape${free > 1 ? 's' : ''} gratis</span></p></div>`;
             }
-
             cart.forEach(item => {
                 const p = item.price || 7.99;
                 const prod = allProducts.find(pr => pr.id === item.id);
@@ -1296,7 +1290,6 @@
                     itemsHTML += `<div class="flex justify-between items-center bg-zinc-900 border border-white/10 rounded-3xl p-5"><div><div class="font-medium">${item.name}${nicDisplay}</div><div class="text-xs text-gray-400">${item.qty} × ${p.toFixed(2).replace('.', ',')} €</div></div><div class="flex items-center gap-6"><div class="font-bold text-xl">${(item.qty * p).toFixed(2).replace('.', ',')} €</div><button onclick="removeCartItem('${item.id}'); event.stopImmediatePropagation()" class="text-red-400"><i class="fa-solid fa-trash"></i></button></div></div>`;
                 }
             });
-
             const shippingCost = getShippingCost();
             const isFree = shippingCost === 0;
             const shippingHTML = `
@@ -1310,9 +1303,7 @@
                     </div>
                 </div>`;
             itemsHTML += shippingHTML;
-
             listEl.innerHTML = itemsHTML;
-
             if (isFree) {
                 paymentInfoEl.innerHTML = "";
             } else {
@@ -1413,7 +1404,6 @@
                     shipping: getShippingCost(),
                     loyaltyEarned: loyaltyEarned
                 });
-                // Cart auf Server leeren
                 cart = [];
                 await saveUserCart();
                 showSuccessModal(orderNumber, finalTotal, loyaltyEarned);
@@ -1668,42 +1658,75 @@
         function showProductDetail(id) {
             const product = allProducts.find(p => p.id === id);
             if (!product) return;
-            const nicotineHTML = (!product.hasNicotine || product.category === "WaveVapes Tornado 30000") ? '' : `
-                <div class="mt-6">
-                    <p class="text-xs text-gray-400 mb-2">Nikotinstärke</p>
-                    <select id="modal-nicotine" class="nicotine-select w-full">
-                        <option value="10 mg">10 mg</option>
-                        <option value="20 mg" selected>20 mg</option>
+
+            const isVape = product.category === "WaveVapes Tornado 30000";
+            const nicotineHTML = (!isVape && product.hasNicotine) ? `
+                <div class="mt-8">
+                    <p class="text-xs text-gray-400 mb-3 tracking-widest">NIKOTINSTÄRKE</p>
+                    <select id="modal-nicotine" class="nicotine-select w-full text-lg py-4">
+                        <option value="10 mg">10 mg/ml</option>
+                        <option value="20 mg" selected>20 mg/ml</option>
                     </select>
-                </div>`;
+                </div>` : '';
+
+            const stockHTML = product.stock > 0 
+                ? `<div class="inline-flex items-center gap-2 bg-emerald-900/50 text-emerald-400 text-sm px-5 py-2 rounded-3xl">
+                       <div class="w-2.5 h-2.5 bg-emerald-400 rounded-full animate-pulse"></div>
+                       Noch ${product.stock} auf Lager
+                   </div>` 
+                : `<div class="text-red-400 text-sm">❌ Derzeit ausverkauft</div>`;
+
             const html = `
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div class="flex justify-center">
-                        ${product.image ? `<img src="${product.image}" class="rounded-3xl shadow-2xl" alt="${product.name}" loading="eager" decoding="async">` : ''}
+                <div class="modal-inner bg-zinc-900 rounded-3xl overflow-hidden">
+                    <!-- Close Button -->
+                    <div class="flex justify-end p-6 border-b border-white/10">
+                        <button onclick="closeProductDetail()" class="text-4xl text-gray-400 hover:text-white transition">✕</button>
                     </div>
-                    <div>
-                        <h2 class="text-4xl font-bold tracking-tighter neon-text">${product.name}</h2>
-                        <div class="flex items-center gap-3 mt-3 text-emerald-400">
-                            <span class="text-3xl">★ ★ ★ ★ ★</span>
-                            <span class="text-sm">(4.98 • 347 Bewertungen)</span>
-                        </div>
-                        <div class="mt-8 text-gray-300 leading-relaxed text-[15px]">
-                            ${product.description ? product.description.replace(/\n/g, '<br>') : '<p class="text-gray-400 italic">Noch keine Beschreibung hinterlegt.<br>Trage sie im Admin-Panel ein!</p>'}
-                        </div>
-                        <div class="price-row mt-8">
-                            <span class="discount-price text-2xl">35,99 €</span>
-                            <span class="sale-price text-5xl font-bold">${product.price.toFixed(2).replace('.', ',')} €</span>
-                        </div>
-                        ${nicotineHTML}
-                        <div class="flex items-center gap-4 mt-10">
-                            <button onclick="addFromDetail('${product.id}')"
-                                    class="flex-1 bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-6 rounded-3xl text-xl hover:scale-105 transition">
-                                In den Warenkorb
-                            </button>
+
+                    <div class="p-6 sm:p-10">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+                            <!-- Bild -->
+                            <div class="flex justify-center items-center bg-black/30 rounded-3xl p-4">
+                                ${product.image 
+                                    ? `<img src="${product.image}" alt="${product.name}" loading="eager">` 
+                                    : `<div class="text-8xl">🧪</div>`}
+                            </div>
+
+                            <!-- Inhalt -->
+                            <div class="flex flex-col">
+                                <div class="flex items-center justify-between">
+                                    <h2 class="neon-text">${product.name}</h2>
+                                    ${product.isNew ? `<span class="px-6 py-2 bg-lime-400 text-black text-xs font-black tracking-widest rounded-3xl">NEW DROP</span>` : ''}
+                                </div>
+
+                                <div class="mt-6 text-gray-300 leading-relaxed text-[15.5px]">
+                                    ${product.description ? product.description.replace(/\n/g, '<br>') : 'Premium Liquid von ELFLIQ – intensiver Geschmack, lange Haltbarkeit.'}
+                                </div>
+
+                                <div class="mt-8 price-row flex items-baseline gap-4">
+                                    <span class="discount-price text-2xl line-through">35,99 €</span>
+                                    <span class="sale-price text-5xl font-black text-red-500">${product.price.toFixed(2).replace('.', ',')} €</span>
+                                </div>
+
+                                ${stockHTML}
+                                ${nicotineHTML}
+
+                                <!-- Menge + Button -->
+                                <div class="mt-auto pt-8 flex flex-col gap-4">
+                                    <button onclick="addFromDetail('${product.id}')" 
+                                            class="w-full bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-6 rounded-3xl text-2xl hover:scale-[1.03] transition-all shadow-xl">
+                                        In den Warenkorb
+                                    </button>
+                                    <button onclick="closeProductDetail()" 
+                                            class="text-gray-400 hover:text-white text-sm py-3">
+                                        ← Zurück zum Shop
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
-            `;
+                </div>`;
+
             document.getElementById('detail-content').innerHTML = html;
             const modal = document.getElementById("product-detail-modal");
             modal.classList.remove("hidden");

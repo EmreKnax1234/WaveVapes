@@ -1192,9 +1192,9 @@ async function saveOrderChanges() {
     closeOrderModal();
 }
 
-// ====================== WICHTIG: DELETE ORDER MIT STATISTIK-RÜCKSETZUNG ======================
+// ====================== DELETE ORDER MIT STATISTIK-RÜCKSETZUNG ======================
 async function deleteOrder() {
-    if (!confirm('Bestellung IRREVERSIBEL löschen?\n\nStatistiken (sold, Umsatz, Top-Seller, Analytics) werden automatisch aktualisiert!')) return;
+    if (!confirm('Bestellung IRREVERSIBEL löschen?\n\nAlle Statistiken (sold, Umsatz, Top-Seller, Analytics-Charts) werden automatisch aktualisiert!')) return;
 
     const doc = await db.collection('orders').doc(currentOrderId).get();
     if (!doc.exists) {
@@ -1207,8 +1207,8 @@ async function deleteOrder() {
     for (let item of order.items) {
         if (item.id === 999) continue; // Mystery Vape ignorieren
         await db.collection("products").doc(item.id).update({
-            sold: firebase.firestore.FieldValue.increment(-item.qty),   // sold zurück
-            stock: firebase.firestore.FieldValue.increment(item.qty)    // stock zurück
+            sold: firebase.firestore.FieldValue.increment(-item.qty),
+            stock: firebase.firestore.FieldValue.increment(item.qty)
         });
     }
 
@@ -1264,7 +1264,6 @@ async function handleStockOnStatusChange(orderId, newStatus) {
         showToast("✅ Lager & Verkaufszahlen aktualisiert", "success");
     }
 
-    // NEU: Auch bei Stornierung sold zurücksetzen (konsistent mit Delete)
     if (newStatus === "Storniert" && oldStatus === "Wird bearbeitet") {
         for (let item of order.items) {
             if (item.id === 999) continue;
@@ -1278,7 +1277,9 @@ async function handleStockOnStatusChange(orderId, newStatus) {
 }
 
 async function resetAllStatistics() {
-    if (!confirm("⚠️ WIRKLICH ALLE STATISTIKEN ZURÜCKSETZEN?\n\nsold wird bei ALLEN Produkten auf 0 gesetzt.\nUmsatz und Top-Seller gehen auf Null.\nDas ist UNWIDERRUFLICH!")) return;
+    if (!confirm("⚠️ WIRKLICH ALLE STATISTIKEN ZURÜCKSETZEN?\n\nsold wird bei ALLEN Produkten auf 0 gesetzt.\nUmsatz und Top-Seller gehen auf Null.\nDas ist UNWIDERRUFLICH!")) {
+        return;
+    }
     try {
         const snapshot = await db.collection("products").get();
         const batch = db.batch();
@@ -1557,7 +1558,9 @@ async function generatePDFReport() {
             productMap.set(item.name, current + item.qty);
         });
     });
-    topProducts = Array.from(productMap.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    topProducts = Array.from(productMap.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
     doc.setFontSize(14);
     doc.text("Zusammenfassung letzte 30 Tage", 20, 45);
     doc.setFontSize(11);

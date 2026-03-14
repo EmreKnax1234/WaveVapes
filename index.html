@@ -384,7 +384,9 @@
             <div class="mt-8 pt-6 border-t border-white/10">
                 <p class="text-xs uppercase tracking-widest text-gray-400 mb-3">Rabattcode oder Referral</p>
                 <div class="flex flex-col gap-3">
-                    <input id="discount-input" type="text" placeholder="Code eingeben (z.B. REF-ABC123)" class="w-full bg-zinc-900 border border-white/20 focus:border-cyan-400 rounded-2xl px-5 py-3.5 text-sm outline-none">
+                    <input id="discount-input" type="text" placeholder="Code eingeben (z.B. REF-ABC123)" 
+                           autocomplete="off" spellcheck="false" 
+                           class="w-full bg-zinc-900 border border-white/20 focus:border-cyan-400 rounded-2xl px-5 py-3.5 text-sm outline-none">
                     <button onclick="applyDiscountCode()" class="w-full bg-white hover:bg-cyan-300 text-black font-semibold py-3.5 rounded-2xl transition">Anwenden</button>
                 </div>
                 <div id="discount-status" class="mt-3 text-sm min-h-[24px]"></div>
@@ -1330,7 +1332,11 @@
             }
         }
         function toggleCart() {
-            document.getElementById("cart-sidebar").classList.toggle("translate-x-full");
+            const sidebar = document.getElementById("cart-sidebar");
+            sidebar.classList.toggle("translate-x-full");
+            if (!sidebar.classList.contains("translate-x-full")) {
+                clearDiscountField();
+            }
         }
         function manageMysteryVape() {
             const subtotal = getSubtotal();
@@ -1770,6 +1776,11 @@
                 renderProducts();
             }
         });
+        // ====================== RABATTFELD FIX ======================
+        function clearDiscountField() {
+            const field = document.getElementById("discount-input");
+            if (field) field.value = "";
+        }
         // ====================== INITIALISIERUNG ======================
         function initialize() {
             initEmailJS();
@@ -1783,6 +1794,7 @@
             loadProducts();
             startNotificationCycle();
             checkAndAutoRedeemLoyalty();
+            clearDiscountField();
         }
         window.onload = initialize;
     </script>

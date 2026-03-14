@@ -60,6 +60,9 @@
         .neon-text { text-shadow: 0 0 15px var(--neon-cyan), 0 0 30px var(--neon-cyan); }
         .product-card { transition: all 0.3s ease; display: flex; flex-direction: column; height: 100%; }
         .product-card:hover { transform: translateY(-12px) scale(1.04); box-shadow: 0 25px 50px -12px rgb(103 232 249); }
+        @media (max-width: 767px) {
+            .product-card { cursor: default; } /* kein Detail-Klick auf Handy */
+        }
         .tornado-image { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; border-radius: 16px; margin-bottom: 12px; background: #1f2937; }
         #products-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
         @media (min-width: 768px) { #products-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; } }
@@ -363,7 +366,7 @@
         </footer>
     </div>
 
-    <!-- CART SIDEBAR (der große Sidebar bleibt erhalten) -->
+    <!-- CART SIDEBAR -->
     <div id="cart-sidebar" class="fixed top-0 right-0 h-full w-full md:w-96 bg-zinc-950 border-l border-cyan-400/30 shadow-2xl translate-x-full transition-all duration-300 z-[999] overflow-y-auto">
         <div class="p-6">
             <div class="flex justify-between items-center mb-8">
@@ -1174,6 +1177,7 @@
                 return a.name.localeCompare(b.name);
             });
             let html = "";
+            const isDesktop = window.innerWidth >= 768; // nur auf Desktop Detail-Klick
             filtered.forEach(product => {
                 const cartItem = cart.find(i => i.id === product.id);
                 const qty = cartItem ? cartItem.qty : 0;
@@ -1208,9 +1212,11 @@
                 } else {
                     stockHTML = `<div class="stock-info stock-zero">❌ Ausverkauft</div>`;
                 }
+                const clickHandler = isDesktop ? `onclick="showProductDetail('${product.id}')"` : '';
+                const cursorClass = isDesktop ? 'cursor-pointer' : '';
                 html += `
-                    <div onclick="showProductDetail('${product.id}')"
-                         class="product-card bg-zinc-900 border border-white/10 rounded-3xl overflow-hidden ${unavailableClass} ${liquidClass} cursor-pointer">
+                    <div ${clickHandler}
+                         class="product-card bg-zinc-900 border border-white/10 rounded-3xl overflow-hidden ${unavailableClass} ${liquidClass} ${cursorClass}">
                         <div class="h-1.5 bg-gradient-to-r from-cyan-400 to-purple-500"></div>
                         <div class="p-5 flex flex-col h-full">
                             ${imageHTML}

@@ -35,6 +35,10 @@
         .sortable-item { transition: all 0.2s; }
         .sortable-item:hover { background: #27272a; }
         .empty-chart { height: 200px; display: flex; align-items: center; justify-content: center; color: #666; font-style: italic; }
+        th.sortable { position: relative; cursor: pointer; }
+        th.sortable:after { content: '↑'; position: absolute; right: 12px; opacity: 0.3; font-size: 0.9em; }
+        th.sortable.asc:after { content: '↑'; opacity: 1; color: #67e8f9; }
+        th.sortable.desc:after { content: '↓'; opacity: 1; color: #67e8f9; }
     </style>
 </head>
 <body class="min-h-screen">
@@ -107,33 +111,42 @@
                     <button type="submit" class="lg:col-span-3 bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-5 rounded-3xl text-xl">Produkt speichern</button>
                 </form>
             </div>
+            <!-- PRODUKTE TABELLE MIT FILTER + SORTIERUNG -->
             <div class="card overflow-hidden">
-                <div class="p-6 border-b border-white/10 flex items-center justify-between">
+                <div class="p-6 border-b border-white/10 flex items-center justify-between flex-wrap gap-4">
                     <h2 class="text-2xl font-bold">Alle Produkte</h2>
-                    <div class="flex items-center gap-3">
-                        <button onclick="enforceCategories()"
-                                class="bg-amber-600 hover:bg-amber-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2">
-                            <i class="fa-solid fa-magic"></i>
-                            Alle Kategorien auto-korrigieren
-                        </button>
-                        <input id="product-search" placeholder="Produkt suchen..." class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-3 w-80">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <select id="admin-category-filter" onchange="applyAdminFilters()" 
+                                class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-3 text-sm">
+                            <option value="Alle">Alle Kategorien</option>
+                        </select>
+                        <select id="admin-status-filter" onchange="applyAdminFilters()" 
+                                class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-3 text-sm">
+                            <option value="">Alle Produkte</option>
+                            <option value="available">Nur verfügbar</option>
+                            <option value="unavailable">Nur nicht verfügbar</option>
+                            <option value="new">Nur neue Sorten</option>
+                            <option value="tornado">Nur Tornado 30000</option>
+                        </select>
+                        <input id="product-search" placeholder="Produkt suchen..." 
+                               class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-3 w-80"
+                               onkeyup="applyAdminFilters()">
                     </div>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full">
-                        <thead class="bg-zinc-950">
+                        <thead class="bg-zinc-950 sticky top-0">
                             <tr>
-                                <th class="py-5 px-6 text-left">Bild</th>
-                                <th class="py-5 px-6 text-left">Name</th>
-                                <th class="py-5 px-6 text-left">Kategorie</th>
-                                <th class="py-5 px-6 text-center">Neu</th>
-                                <th class="py-5 px-6 text-center">Preis</th>
-                                <th class="py-5 px-6 text-center">Alter Preis</th>
-                                <th class="py-5 px-6 text-center">Lager</th>
+                                <th class="py-5 px-6 text-left sortable" onclick="sortAdminTable('name')">Bild / Name</th>
+                                <th class="py-5 px-6 text-left sortable" onclick="sortAdminTable('category')">Kategorie</th>
+                                <th class="py-5 px-6 text-center sortable" onclick="sortAdminTable('isNew')">Neu</th>
+                                <th class="py-5 px-6 text-center sortable" onclick="sortAdminTable('price')">Preis</th>
+                                <th class="py-5 px-6 text-center sortable" onclick="sortAdminTable('originalPrice')">Alter Preis</th>
+                                <th class="py-5 px-6 text-center sortable" onclick="sortAdminTable('stock')">Lager</th>
                                 <th class="py-5 px-6 text-center">Nikotin</th>
-                                <th class="py-5 px-6 text-center">Verfügbar</th>
-                                <th class="py-5 px-6 text-right">Verkauft</th>
-                                <th class="py-5 px-6 text-right">Umsatz</th>
+                                <th class="py-5 px-6 text-center sortable" onclick="sortAdminTable('available')">Verfügbar</th>
+                                <th class="py-5 px-6 text-right sortable" onclick="sortAdminTable('sold')">Verkauft</th>
+                                <th class="py-5 px-6 text-right sortable" onclick="sortAdminTable('revenue')">Umsatz</th>
                                 <th class="py-5 px-6 text-right">Aktionen</th>
                             </tr>
                         </thead>
@@ -338,7 +351,6 @@
                     <i class="fa-solid fa-sort"></i> Produkt-Sortierung (Drag & Drop + Auto-Sort)
                 </h2>
                 <p class="text-sm text-gray-400 mb-6">Klicke auf einen Button für automatische Sortierung.<br><strong>Neue AUTO-PRIORITÄT (überarbeitet):</strong><br>1. Neue Sorten (nur verfügbar) → 2. Normale Sorten (nur verfügbar) → 3. Alle Vapes (nur verfügbar) → 4. ALLE nicht verfügbaren Sachen (egal ob neu oder normal – immer ganz unten)</p>
-            
                 <div class="flex flex-wrap gap-3 mb-8">
                     <button onclick="autoSort('alpha')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">📋 Alphabetisch A-Z</button>
                     <button onclick="autoSort('new')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">⭐ Neue Sorten zuerst</button>
@@ -347,9 +359,7 @@
                     <button onclick="autoSort('stock')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">📦 Lagerbestand (hoch zuerst)</button>
                     <button onclick="autoSortPriority()" class="px-6 py-3 bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold rounded-2xl text-sm transition">🔄 AUTO-PRIORITÄT<br><span class="text-xs font-normal">NEW (verfügbar) → Normal (verfügbar) → Vapes → ALLE nicht verfügbar (unten)</span></button>
                 </div>
-            
                 <div id="sort-list" class="space-y-3 min-h-[500px] bg-zinc-950 rounded-3xl p-6"></div>
-            
                 <button onclick="saveProductOrder()"
                         class="mt-10 w-full bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-6 rounded-3xl text-xl hover:scale-105 transition">
                     ✅ Sortierung speichern & live übernehmen
@@ -364,6 +374,7 @@
 <div id="order-modal-container"></div>
 <!-- TOAST -->
 <div id="toast-container" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[99999] flex flex-col gap-3"></div>
+
 <script>
 // ====================== FIREBASE CONFIG ======================
 const firebaseConfig = {
@@ -377,6 +388,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
+
 // ====================== GLOBALE VARIABLEN ======================
 let currentEditId = null;
 let selectedFile = null;
@@ -391,6 +403,13 @@ let logsUnsubscribe = null;
 let allProducts = [];
 let productOrder = [];
 let sortableInstance = null;
+
+// NEUE SORTIER-VARIABLEN FÜR PRODUKTE-TAB
+let adminSortColumn = 'name';
+let adminSortDirection = 'asc';
+let adminCategoryFilter = 'Alle';
+let adminStatusFilter = '';
+
 // ====================== LOG ACTION ======================
 async function logAction(action, target = "", details = {}) {
     if (!auth.currentUser) return;
@@ -402,6 +421,7 @@ async function logAction(action, target = "", details = {}) {
         details: details || {}
     });
 }
+
 // ====================== STATS UPDATE ======================
 function updateStats() {
     const active = allProducts.filter(p => p.available !== false).length;
@@ -413,6 +433,7 @@ function updateStats() {
     document.getElementById('total-revenue').textContent = revenue.toFixed(0) + ' €';
     document.getElementById('top-seller').textContent = top ? `${top.name} (${top.sold || 0}×)` : '—';
 }
+
 // ====================== PRODUKTE ======================
 function loadProducts() {
     db.collection('products').onSnapshot(snap => {
@@ -421,17 +442,62 @@ function loadProducts() {
         renderProductTable();
     });
 }
-function renderProductTable(filter = '') {
+
+function applyAdminFilters() {
+    adminCategoryFilter = document.getElementById('admin-category-filter').value;
+    adminStatusFilter = document.getElementById('admin-status-filter').value;
+    renderProductTable();
+}
+
+function sortAdminTable(column) {
+    if (adminSortColumn === column) {
+        adminSortDirection = adminSortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+        adminSortColumn = column;
+        adminSortDirection = 'asc';
+    }
+    renderProductTable();
+}
+
+function renderProductTable() {
     const tbody = document.getElementById('products-tbody');
+    const searchTerm = (document.getElementById('product-search').value || '').toLowerCase().trim();
+
+    let filtered = allProducts.filter(p => {
+        const matchesSearch = !searchTerm || p.name.toLowerCase().includes(searchTerm);
+        const matchesCategory = adminCategoryFilter === 'Alle' || p.category === adminCategoryFilter;
+        let matchesStatus = true;
+        if (adminStatusFilter === 'available') matchesStatus = p.available !== false;
+        if (adminStatusFilter === 'unavailable') matchesStatus = p.available === false;
+        if (adminStatusFilter === 'new') matchesStatus = p.isNew === true;
+        if (adminStatusFilter === 'tornado') matchesStatus = p.category === "WaveVapes Tornado 30000";
+        return matchesSearch && matchesCategory && matchesStatus;
+    });
+
+    filtered.sort((a, b) => {
+        let valA, valB;
+        switch(adminSortColumn) {
+            case 'name': valA = a.name; valB = b.name; break;
+            case 'category': valA = a.category || ''; valB = b.category || ''; break;
+            case 'price': valA = a.price; valB = b.price; break;
+            case 'originalPrice': valA = a.originalPrice || 0; valB = b.originalPrice || 0; break;
+            case 'stock': valA = a.stock || 0; valB = b.stock || 0; break;
+            case 'sold': valA = a.sold || 0; valB = b.sold || 0; break;
+            case 'revenue': valA = (a.sold || 0) * a.price; valB = (b.sold || 0) * b.price; break;
+            case 'isNew': valA = a.isNew ? 1 : 0; valB = b.isNew ? 1 : 0; break;
+            case 'available': valA = a.available !== false ? 1 : 0; valB = b.available !== false ? 1 : 0; break;
+            default: valA = a.name; valB = b.name;
+        }
+        if (typeof valA === 'string') {
+            return adminSortDirection === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        }
+        return adminSortDirection === 'asc' ? valA - valB : valB - valA;
+    });
+
     let html = '';
-    const filtered = allProducts.filter(p => p.name.toLowerCase().includes(filter.toLowerCase()));
     filtered.forEach(p => {
-        const neuBadge = p.isNew
-            ? `<span class="px-3 py-1 bg-lime-400 text-black text-xs font-black tracking-wider rounded-2xl inline-block">NEW</span>`
-            : '—';
-        const originalPriceHTML = p.originalPrice 
-            ? `<span class="text-gray-400 line-through">${p.originalPrice.toFixed(2)} €</span>` 
-            : '—';
+        const neuBadge = p.isNew ? `<span class="px-3 py-1 bg-lime-400 text-black text-xs font-black rounded-2xl">NEW</span>` : '—';
+        const originalPriceHTML = p.originalPrice ? `<span class="text-gray-400 line-through">${p.originalPrice.toFixed(2)} €</span>` : '—';
         html += `
         <tr class="table-row-hover border-b border-white/10">
             <td class="py-5 px-6">${p.image ? `<img src="${p.image}" class="w-12 h-12 object-cover rounded-xl" loading="lazy">` : '—'}</td>
@@ -451,14 +517,17 @@ function renderProductTable(filter = '') {
             </td>
         </tr>`;
     });
-    tbody.innerHTML = html || `<tr><td colspan="12" class="text-center py-16 text-gray-400">Keine Produkte gefunden</td></tr>`;
+    tbody.innerHTML = html || `<tr><td colspan="11" class="text-center py-16 text-gray-400">Keine Produkte gefunden</td></tr>`;
 }
-document.getElementById('product-search').addEventListener('input', e => renderProductTable(e.target.value));
+
+document.getElementById('product-search').addEventListener('input', applyAdminFilters);
+
 async function toggleAvailable(id, val) {
     await db.collection('products').doc(id).update({ available: val });
     await logAction("product_availability_changed", id, { available: val });
     showToast('Verfügbarkeit aktualisiert');
 }
+
 async function deleteProduct(id) {
     if (!confirm('⚠️ Produkt WIRKLICH PERMANENT löschen?\n\nDas kann nicht rückgängig gemacht werden!')) return;
     try {
@@ -469,6 +538,7 @@ async function deleteProduct(id) {
         showToast('❌ Fehler beim Löschen: ' + e.message, 'error');
     }
 }
+
 // ====================== EDIT MODAL ======================
 async function openEditModal(id) {
     currentEditId = id;
@@ -510,7 +580,7 @@ async function openEditModal(id) {
         </div>
         <div class="flex gap-4 mt-10">
             <button onclick="saveEdit()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-5 rounded-3xl font-bold">Speichern</button>
-            <button onclick="closeEditModal()" class="flex-1 bg-zinc-700 hover:bg-zinc-600 py-5 rounded-3xl text-lg">Abbrechen</button>
+            <button onclick="closeEditModal()" class="flex-1 bg-zinc-700 hover:bg-zinc-600 py-5 rounded-3xl">Abbrechen</button>
         </div>
     </div>`;
     document.getElementById('edit-modal').innerHTML = html;
@@ -534,15 +604,18 @@ async function openEditModal(id) {
         input.click();
     };
 }
+
 function removeImageInEdit() {
     removeCurrentImage = true;
     document.getElementById('preview-image').innerHTML = `<div class="text-center text-red-400"><i class="fa-solid fa-trash text-6xl mb-4"></i><br>Bild wird beim Speichern entfernt</div>`;
 }
+
 function closeEditModal() {
     document.getElementById('edit-modal').classList.add('hidden');
     selectedFile = null;
     removeCurrentImage = false;
 }
+
 async function saveEdit() {
     if (!currentEditId) return;
     const name = document.getElementById('edit-name').value;
@@ -570,6 +643,7 @@ async function saveEdit() {
     closeEditModal();
     showToast('✅ Produkt gespeichert! Kategorie manuell zugewiesen.');
 }
+
 // ====================== NEUES PRODUKT ======================
 document.getElementById('add-form').addEventListener('submit', async e => {
     e.preventDefault();
@@ -600,6 +674,7 @@ document.getElementById('add-form').addEventListener('submit', async e => {
     selectedFile = null;
     showToast('✅ Produkt erfolgreich angelegt!');
 });
+
 const dropzone = document.getElementById('dropzone');
 dropzone.addEventListener('click', () => {
     const input = document.createElement('input');
@@ -613,6 +688,7 @@ dropzone.addEventListener('click', () => {
     };
     input.click();
 });
+
 // ====================== CSV PRODUKTE ======================
 async function exportProductsToCSV() {
     const snapshot = await db.collection("products").get();
@@ -644,6 +720,7 @@ async function exportProductsToCSV() {
     link.click();
     showToast("✅ CSV-Datei wurde heruntergeladen!", "success");
 }
+
 async function importProductsFromCSV(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -686,6 +763,7 @@ async function importProductsFromCSV(e) {
     reader.readAsText(file);
     e.target.value = "";
 }
+
 // ====================== CSV BESTELLUNGEN ======================
 async function exportOrdersToCSV() {
     const snapshot = await db.collection("orders").orderBy("date", "desc").get();
@@ -715,6 +793,7 @@ async function exportOrdersToCSV() {
     link.click();
     showToast("✅ Bestellungen als CSV exportiert!", "success");
 }
+
 async function importOrdersFromCSV(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -756,6 +835,7 @@ async function importOrdersFromCSV(e) {
     reader.readAsText(file);
     e.target.value = "";
 }
+
 // ====================== CSV BENUTZER ======================
 async function exportUsersToCSV() {
     const snapshot = await db.collection("users").get();
@@ -782,6 +862,7 @@ async function exportUsersToCSV() {
     link.click();
     showToast("✅ Benutzer als CSV exportiert!", "success");
 }
+
 async function importUsersFromCSV(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -816,17 +897,21 @@ async function importUsersFromCSV(e) {
     reader.readAsText(file);
     e.target.value = "";
 }
+
 function parseCSVLine(line) {
     return line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(field => field.replace(/^"|"$/g, '').replace(/""/g, '"'));
 }
+
 // ====================== KATEGORIEN ======================
 function loadCategories() {
     db.collection('categories').orderBy('order').onSnapshot(snap => {
         allCategories = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         renderCategoryTable();
         populateCategorySelects();
+        populateAdminCategoryFilter();
     });
 }
+
 function renderCategoryTable() {
     const tbody = document.getElementById('categories-tbody');
     let html = '';
@@ -844,6 +929,7 @@ function renderCategoryTable() {
     });
     tbody.innerHTML = html || `<tr><td colspan="4" class="text-center py-16 text-gray-400">Noch keine Kategorien</td></tr>`;
 }
+
 document.getElementById('add-category-form').addEventListener('submit', async e => {
     e.preventDefault();
     const name = document.getElementById('cat-name').value.trim();
@@ -854,8 +940,10 @@ document.getElementById('add-category-form').addEventListener('submit', async e 
     await logAction("category_created", "", { name });
     e.target.reset();
     populateCategorySelects();
+    populateAdminCategoryFilter();
     showToast('✅ Kategorie erstellt und Dropdowns aktualisiert!');
 });
+
 async function openEditCategoryModal(id) {
     const doc = await db.collection('categories').doc(id).get();
     const c = doc.data();
@@ -876,6 +964,7 @@ async function openEditCategoryModal(id) {
     document.getElementById('edit-modal').innerHTML = html;
     document.getElementById('edit-modal').classList.remove('hidden');
 }
+
 async function saveEditCategory(id) {
     const name = document.getElementById('edit-cat-name').value.trim();
     const order = parseInt(document.getElementById('edit-cat-order').value) || 999;
@@ -884,15 +973,19 @@ async function saveEditCategory(id) {
     await logAction("category_updated", id, { name });
     document.getElementById('edit-modal').classList.add('hidden');
     populateCategorySelects();
+    populateAdminCategoryFilter();
     showToast('✅ Kategorie gespeichert und Dropdowns aktualisiert');
 }
+
 async function deleteCategory(id) {
     if (!confirm('Kategorie wirklich löschen? Produkte bleiben erhalten.')) return;
     await db.collection('categories').doc(id).delete();
     await logAction("category_deleted", id);
     populateCategorySelects();
+    populateAdminCategoryFilter();
     showToast('✅ Kategorie gelöscht');
 }
+
 function seedDefaultCategories() {
     if (allCategories.length > 0 && !confirm('Es existieren bereits Kategorien. Trotzdem Standard-Kategorien laden?')) return;
     const defaults = [
@@ -903,6 +996,7 @@ function seedDefaultCategories() {
     defaults.forEach(d => db.collection('categories').add(d));
     showToast('✅ Standard-Kategorien angelegt!');
 }
+
 function populateCategorySelects() {
     const selects = document.querySelectorAll('#prod-category, #edit-category-select');
     selects.forEach(select => {
@@ -918,6 +1012,19 @@ function populateCategorySelects() {
         if (currentValue) select.value = currentValue;
     });
 }
+
+function populateAdminCategoryFilter() {
+    const select = document.getElementById('admin-category-filter');
+    if (!select) return;
+    select.innerHTML = '<option value="Alle">Alle Kategorien</option>';
+    allCategories.forEach(cat => {
+        const opt = document.createElement('option');
+        opt.value = cat.name;
+        opt.textContent = cat.name;
+        select.appendChild(opt);
+    });
+}
+
 // ====================== GUTSCHEINE ======================
 document.getElementById('add-coupon-form').addEventListener('submit', async e => {
     e.preventDefault();
@@ -935,11 +1042,13 @@ document.getElementById('add-coupon-form').addEventListener('submit', async e =>
     showToast('✅ Gutschein erstellt!');
     loadCoupons();
 });
+
 async function loadCoupons() {
     const snap = await db.collection('coupons').orderBy('createdAt', 'desc').get();
     allCoupons = snap.docs.map(d => ({id: d.id, ...d.data()}));
     renderCouponsTable();
 }
+
 function renderCouponsTable() {
     const tbody = document.getElementById('coupons-tbody');
     let html = '';
@@ -958,6 +1067,7 @@ function renderCouponsTable() {
     });
     tbody.innerHTML = html || `<tr><td colspan="5" class="text-center py-16 text-gray-400">Noch keine Gutscheine</td></tr>`;
 }
+
 async function deleteCoupon(id) {
     if (confirm('Gutschein löschen?')) {
         await db.collection('coupons').doc(id).delete();
@@ -965,6 +1075,7 @@ async function deleteCoupon(id) {
         loadCoupons();
     }
 }
+
 // ====================== BESTELLUNGEN ======================
 function loadOrders() {
     const tbody = document.getElementById('orders-tbody');
@@ -992,8 +1103,10 @@ function loadOrders() {
         tbody.innerHTML = html || `<tr><td colspan="6" class="text-center py-16 text-gray-400">Noch keine Bestellungen</td></tr>`;
     });
 }
+
 document.getElementById('order-search').addEventListener('input', loadOrders);
 document.getElementById('status-filter').addEventListener('change', loadOrders);
+
 async function quickStatus(id, status) {
     await handleStockOnStatusChange(id, status);
     await db.collection('orders').doc(id).update({ status });
@@ -1001,6 +1114,7 @@ async function quickStatus(id, status) {
     await logAction("order_status_changed", id, { status });
     showToast(`Status auf „${status}“ gesetzt`);
 }
+
 // ====================== ORDER DETAIL MODAL ======================
 async function showOrderModal(orderId) {
     currentOrderId = orderId;
@@ -1061,9 +1175,11 @@ async function showOrderModal(orderId) {
     </div>`;
     document.getElementById('order-modal-container').innerHTML = modalHTML;
 }
+
 function closeOrderModal() {
     document.getElementById('order-modal-container').innerHTML = '';
 }
+
 async function saveOrderChanges() {
     const status = document.getElementById('modal-status').value;
     const carrier = document.getElementById('modal-carrier').value;
@@ -1075,6 +1191,7 @@ async function saveOrderChanges() {
     showToast('Bestellung aktualisiert');
     closeOrderModal();
 }
+
 async function deleteOrder() {
     if (!confirm('Bestellung IRREVERSIBEL löschen?')) return;
     await db.collection('orders').doc(currentOrderId).delete();
@@ -1082,6 +1199,7 @@ async function deleteOrder() {
     showToast('Bestellung gelöscht');
     closeOrderModal();
 }
+
 // ====================== BENUTZER ======================
 function loadUsers() {
     const tbody = document.getElementById('users-tbody');
@@ -1122,12 +1240,15 @@ function loadUsers() {
         tbody.innerHTML = html || `<tr><td colspan="7" class="text-center py-16 text-gray-400">Keine Benutzer gefunden</td></tr>`;
     });
 }
+
 document.getElementById('user-search').addEventListener('input', loadUsers);
+
 async function toggleFreeShipping(uid, enable) {
     await db.collection('users').doc(uid).update({ freeShipping: enable });
     await logAction(enable ? "free_shipping_enabled" : "free_shipping_disabled", uid);
     showToast(enable ? '✅ Gratisversand für diesen User AKTIVIERT' : 'Gratisversand deaktiviert', 'success');
 }
+
 async function resetPassword(email) {
     if (!confirm(`Passwort-Zurücksetzen-E-Mail an ${email} senden?`)) return;
     try {
@@ -1143,11 +1264,13 @@ async function resetPassword(email) {
         showToast("Fehler: " + e.message, "error");
     }
 }
+
 async function toggleDisable(uid, disable) {
     await db.collection('users').doc(uid).update({ disabled: disable });
     await logAction(disable ? "user_disabled" : "user_enabled", uid);
     showToast(disable ? '✅ Benutzer gesperrt' : '✅ Benutzer entsperrt');
 }
+
 async function deleteUser(uid, email) {
     if (!confirm(`⚠️ Account von ${email} WIRKLICH LÖSCHEN?\n\nAlle Bestellungen werden ebenfalls gelöscht!`)) return;
     if (!confirm('LETZTE WARNUNG – unwiderruflich!')) return;
@@ -1163,6 +1286,7 @@ async function deleteUser(uid, email) {
         showToast("Fehler: " + e.message, "error");
     }
 }
+
 async function resetAllLoyaltyPoints() {
     if (!confirm("⚠️ WIRKLICH ALLE Loyalty-Punkte auf 0 setzen?\n\nDas betrifft JEDEN Benutzer und ist unwiderruflich!")) return;
     if (!confirm("LETZTE WARNUNG – alle Punkte werden gelöscht!")) return;
@@ -1178,6 +1302,7 @@ async function resetAllLoyaltyPoints() {
         showToast("Fehler: " + e.message, "error");
     }
 }
+
 async function resetUserPoints(uid) {
     if (!confirm("Punkte dieses Benutzers auf 0 setzen?")) return;
     try {
@@ -1189,6 +1314,7 @@ async function resetUserPoints(uid) {
         showToast("Fehler: " + e.message, "error");
     }
 }
+
 // ====================== ANALYTICS ======================
 async function loadAnalytics() {
     const thirtyDaysAgo = firebase.firestore.Timestamp.fromDate(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
@@ -1203,7 +1329,6 @@ async function loadAnalytics() {
     });
     const labels = Object.keys(dailyRevenue).sort();
     const data = labels.map(d => dailyRevenue[d]);
-    // Revenue Chart
     const revenueContainer = document.getElementById('revenue-chart-container');
     if (revenueChart) revenueChart.destroy();
     if (labels.length === 0) {
@@ -1216,7 +1341,6 @@ async function loadAnalytics() {
             options: { responsive: true, plugins: { legend: { display: false } } }
         });
     }
-    // Top Products
     const productsSnap = await db.collection("products").orderBy("sold", "desc").limit(10).get();
     const prodLabels = [], prodData = [];
     productsSnap.forEach(doc => {
@@ -1235,7 +1359,6 @@ async function loadAnalytics() {
             data: { labels: prodLabels, datasets: [{ data: prodData, backgroundColor: ["#67e8f9","#a78bfa","#f472b6","#fb923c","#4ade80","#22d3ee","#eab308","#ec4899","#14b8a6","#8b5cf6"] }] }
         });
     }
-    // Top Referrer
     const usersSnap = await db.collection("users").orderBy("referralCount", "desc").limit(10).get();
     const refLabels = [], refData = [];
     usersSnap.forEach(doc => {
@@ -1255,6 +1378,7 @@ async function loadAnalytics() {
         });
     }
 }
+
 async function generatePDFReport() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
@@ -1306,6 +1430,7 @@ async function generatePDFReport() {
     await logAction("monthly_report_generated");
     showToast("✅ Vollständiger Monatsbericht als PDF heruntergeladen!", "success");
 }
+
 // ====================== ADMIN LOGS ======================
 function loadAdminLogs() {
     if (logsUnsubscribe) logsUnsubscribe();
@@ -1327,6 +1452,7 @@ function loadAdminLogs() {
         });
     });
 }
+
 // ====================== SETTINGS ======================
 async function loadSettings() {
     const doc = await db.collection("settings").doc("main").get();
@@ -1348,6 +1474,7 @@ async function loadSettings() {
     document.getElementById("set-closed").checked = data.shop_closed || false;
     document.getElementById("set-email-template").value = data.email_template || "";
 }
+
 async function saveSettings() {
     const data = {
         bank_owner: document.getElementById("set-bank-owner").value,
@@ -1362,6 +1489,7 @@ async function saveSettings() {
     await logAction("settings_updated");
     showToast("✅ Einstellungen gespeichert", "success");
 }
+
 // ====================== STATUS & STOCK & LOYALTY ======================
 function getStatusClass(s) {
     switch(s || "Zahlung erwartet") {
@@ -1373,6 +1501,7 @@ function getStatusClass(s) {
         default: return "status-Zahlung";
     }
 }
+
 async function awardLoyaltyIfProcessed(orderId) {
     const doc = await db.collection('orders').doc(orderId).get();
     const order = doc.data();
@@ -1383,6 +1512,7 @@ async function awardLoyaltyIfProcessed(orderId) {
     await db.collection('orders').doc(orderId).update({ loyaltyCredited: true });
     showToast(`🎉 +${points} Loyalty-Punkte gutgeschrieben!`, 'success');
 }
+
 async function handleStockOnStatusChange(orderId, newStatus) {
     const doc = await db.collection('orders').doc(orderId).get();
     const order = doc.data();
@@ -1407,6 +1537,7 @@ async function handleStockOnStatusChange(orderId, newStatus) {
         showToast("✅ Lager wiederhergestellt", "success");
     }
 }
+
 async function resetAllStatistics() {
     if (!confirm("⚠️ WIRKLICH ALLE STATISTIKEN ZURÜCKSETZEN?\n\nsold wird bei ALLEN Produkten auf 0 gesetzt.\nUmsatz und Top-Seller gehen auf Null.\nDas ist UNWIDERRUFLICH!")) {
         return;
@@ -1425,12 +1556,14 @@ async function resetAllStatistics() {
         showToast("Fehler beim Zurücksetzen: " + e.message, "error");
     }
 }
+
 // ====================== SORTIERUNG + AUTO-SORT ======================
 async function loadProductOrder() {
     const doc = await db.collection('settings').doc('product_order').get();
     productOrder = doc.exists ? (doc.data().order || []) : [];
     renderSortList();
 }
+
 function renderSortList() {
     const container = document.getElementById('sort-list');
     container.innerHTML = '';
@@ -1472,6 +1605,7 @@ function renderSortList() {
         forceFallback: true
     });
 }
+
 async function toggleIsNew(id, e) {
     e.stopImmediatePropagation();
     const doc = await db.collection('products').doc(id).get();
@@ -1481,6 +1615,7 @@ async function toggleIsNew(id, e) {
     showToast(`NEW-Status umgeschaltet → ${newIsNew ? 'aktiv' : 'deaktiviert'}`);
     renderSortList();
 }
+
 async function toggleAvailableInSort(id, e) {
     e.stopImmediatePropagation();
     const doc = await db.collection('products').doc(id).get();
@@ -1489,6 +1624,7 @@ async function toggleAvailableInSort(id, e) {
     showToast(`Verfügbarkeit umgeschaltet → ${!current ? 'NICHT verfügbar' : 'verfügbar'}`);
     renderSortList();
 }
+
 function autoSort(mode) {
     const container = document.getElementById('sort-list');
     let items = Array.from(container.children);
@@ -1522,6 +1658,7 @@ function autoSort(mode) {
     items.forEach(item => container.appendChild(item));
     showToast('✅ Liste automatisch sortiert!', 'success');
 }
+
 function autoSortPriority() {
     const container = document.getElementById('sort-list');
     let items = Array.from(container.children);
@@ -1545,12 +1682,14 @@ function autoSortPriority() {
     items.forEach(item => container.appendChild(item));
     showToast('✅ Automatische Prioritätssortierung angewendet!', 'success');
 }
+
 async function saveProductOrder() {
     const items = document.querySelectorAll('#sort-list .sortable-item');
     const newOrder = Array.from(items).map(item => item.dataset.id);
     await db.collection('settings').doc('product_order').set({ order: newOrder }, { merge: true });
     showToast('✅ Sortierung gespeichert! Der Shop zeigt jetzt die neue Reihenfolge.', 'success');
 }
+
 // ====================== AUTOMATISCHE KATEGORIE-KORREKTUR ======================
 async function enforceCategories() {
     if (!confirm('Alle Produkte prüfen und Kategorie automatisch setzen?\n\nisNew = true → „Neue Sorten“\nisNew = false → „Normale Sorten“\n\nDas ist unwiderruflich!')) return;
@@ -1574,6 +1713,7 @@ async function enforceCategories() {
     }
     loadProducts();
 }
+
 // ====================== TOAST ======================
 function showToast(msg, type = 'success') {
     const toast = document.createElement('div');
@@ -1582,6 +1722,7 @@ function showToast(msg, type = 'success') {
     document.getElementById('toast-container').appendChild(toast);
     setTimeout(() => toast.remove(), 3500);
 }
+
 // ====================== SIDEBAR & TABS ======================
 function switchTab(n) {
     document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('tab-active'));
@@ -1592,9 +1733,11 @@ function switchTab(n) {
     if (n === 6) loadAdminLogs();
     if (n === 8) loadProductOrder();
 }
+
 function toggleSidebar() {
     document.getElementById("sidebar").classList.toggle("-translate-x-full");
 }
+
 // ====================== AUTH ======================
 auth.onAuthStateChanged(async (user) => {
     if (!user) return window.location.href = 'index.html';
@@ -1608,6 +1751,7 @@ auth.onAuthStateChanged(async (user) => {
     loadSettings();
     switchTab(0);
 });
+
 // ====================== INIT ======================
 window.onload = () => {
     loadProducts();
@@ -1616,6 +1760,7 @@ window.onload = () => {
     loadOrders();
     loadUsers();
     setTimeout(updateStats, 500);
+    setTimeout(populateAdminCategoryFilter, 800);
 };
 </script>
 </body>

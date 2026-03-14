@@ -273,7 +273,7 @@
                 </div>
             </div>
         </div>
-        <!-- TAB 5: ANALYTICS (NEU & CLEAN) -->
+        <!-- TAB 5: ANALYTICS (CLEAN MIT 2 LINENCHARTS) -->
         <div id="tab-content-5" class="hidden">
             <h2 class="text-4xl font-bold tracking-tighter neon mb-8 flex items-center gap-3">
                 <i class="fa-solid fa-chart-line"></i> Analytics Dashboard
@@ -300,7 +300,7 @@
             </div>
 
             <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                <!-- Umsatz letzte 30 Tage -->
+                <!-- LINENCHART 1: Umsatz letzte 30 Tage -->
                 <div class="card p-8">
                     <h3 class="text-xl font-bold mb-6 flex items-center gap-2"><i class="fa-solid fa-euro-sign"></i> Umsatz letzte 30 Tage</h3>
                     <div id="revenue-chart-container" class="h-80">
@@ -308,7 +308,7 @@
                     </div>
                 </div>
 
-                <!-- NEUER GRAPH: Bestellungen pro Tag -->
+                <!-- LINENCHART 2: Bestellungen pro Tag (wie gewünscht) -->
                 <div class="card p-8">
                     <h3 class="text-xl font-bold mb-6 flex items-center gap-2"><i class="fa-solid fa-cart-shopping"></i> Bestellungen pro Tag</h3>
                     <div id="daily-orders-chart-container" class="h-80">
@@ -1416,7 +1416,7 @@ async function resetUserPoints(uid) {
         showToast("Fehler: " + e.message, "error");
     }
 }
-// ====================== ANALYTICS ======================
+// ====================== ANALYTICS (2 LINENCHARTS) ======================
 async function loadAnalytics() {
     const thirtyDaysAgo = firebase.firestore.Timestamp.fromDate(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
     const ordersSnap = await db.collection("orders").where("date", ">=", thirtyDaysAgo).get();
@@ -1450,23 +1450,23 @@ async function loadAnalytics() {
     document.getElementById('metric-users').textContent = userMap.size;
     document.getElementById('metric-avg').textContent = totalOrders > 0 ? (totalRevenue / totalOrders).toFixed(2) + ' €' : '0 €';
 
-    // Umsatz Line Chart
+    // LINENCHART 1: Umsatz
     const labels = Object.keys(dailyRevenue).sort();
     const revenueData = labels.map(d => dailyRevenue[d]);
     if (revenueChart) revenueChart.destroy();
     revenueChart = new Chart(document.getElementById("revenueChart"), {
         type: "line",
-        data: { labels, datasets: [{ label: "Umsatz €", data: revenueData, borderColor: "#67e8f9", tension: 0.4, fill: true }] },
-        options: { responsive: true, maintainAspectRatio: false }
+        data: { labels, datasets: [{ label: "Umsatz €", data: revenueData, borderColor: "#67e8f9", tension: 0.4, fill: true, backgroundColor: "rgba(103,232,249,0.15)" }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
     });
 
-    // NEUER GRAPH: Bestellungen pro Tag
+    // LINENCHART 2: Bestellungen pro Tag (wie gewünscht)
     const ordersData = labels.map(d => dailyOrdersCount[d] || 0);
     if (dailyOrdersChart) dailyOrdersChart.destroy();
     dailyOrdersChart = new Chart(document.getElementById("dailyOrdersChart"), {
-        type: "bar",
-        data: { labels, datasets: [{ label: "Bestellungen", data: ordersData, backgroundColor: "#a78bfa" }] },
-        options: { responsive: true, maintainAspectRatio: false }
+        type: "line",
+        data: { labels, datasets: [{ label: "Bestellungen", data: ordersData, borderColor: "#a78bfa", tension: 0.4, fill: true, backgroundColor: "rgba(167,139,250,0.15)" }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
     });
 
     // Top Produkte Pie

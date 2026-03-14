@@ -1109,6 +1109,7 @@
                         isNew: data.isNew || false,
                         available: data.available !== false,
                         price: data.price || 7.99,
+                        originalPrice: data.originalPrice || null,
                         image: data.image || null,
                         stock: data.stock || 0,
                         description: data.description || "",
@@ -1157,7 +1158,9 @@
                 const imageHTML = product.image
                     ? `<img src="${product.image}" class="tornado-image" alt="${product.name} – WaveVapes Disposable Vape" loading="lazy" decoding="async" width="400" height="160">`
                     : `<div class="tornado-image bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-4xl">🧪</div>`;
-                const oldPrice = isVape ? "35,99" : "10,99";
+                const oldPrice = product.originalPrice 
+                    ? product.originalPrice.toFixed(2).replace('.', ',') 
+                    : (isVape ? "35,99" : "10,99");
                 const salePrice = product.price.toFixed(2).replace('.', ',');
                 const unavailableClass = !product.available ? 'unavailable-product' : '';
                 const liquidClass = !isVape ? 'liquid-card' : '';
@@ -1685,6 +1688,9 @@
                        Noch ${product.stock} auf Lager
                    </div>`
                 : `<div class="text-red-400 text-sm">❌ Derzeit ausverkauft</div>`;
+            const oldPriceDisplay = product.originalPrice 
+                ? product.originalPrice.toFixed(2).replace('.', ',') + ' €' 
+                : (isVape ? '35,99 €' : '10,99 €');
             const html = `
                 <div class="modal-inner bg-zinc-900 rounded-3xl overflow-hidden">
                     <!-- Close Button -->
@@ -1709,7 +1715,7 @@
                                     ${product.description ? product.description.replace(/\n/g, '<br>') : 'Premium Liquid von ELFLIQ – intensiver Geschmack, lange Haltbarkeit.'}
                                 </div>
                                 <div class="mt-8 price-row flex items-baseline gap-4">
-                                    <span class="discount-price text-2xl line-through">35,99 €</span>
+                                    <span class="discount-price text-2xl line-through">${oldPriceDisplay}</span>
                                     <span class="sale-price text-5xl font-black text-red-500">${product.price.toFixed(2).replace('.', ',')} €</span>
                                 </div>
                                 ${stockHTML}

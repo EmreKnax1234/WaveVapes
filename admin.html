@@ -1192,284 +1192,127 @@ async function saveOrderChanges() {
     closeOrderModal();
 }
 
-// ====================== DELETE ORDER MIT STATISTIK-RÜCKSETZUNG ======================
 async function deleteOrder() {
-    if (!confirm('Bestellung IRREVERSIBEL löschen?\n\nAlle Statistiken (sold, Umsatz, Top-Seller, Analytics-Charts) werden automatisch aktualisiert!')) return;
-
-    const doc = await db.collection('orders').doc(currentOrderId).get();
-    if (!doc.exists) {
-        showToast('Bestellung nicht gefunden', 'error');
-        return;
-    }
-    const order = doc.data();
-
-    // === STATISTIK-RÜCKSETZUNG ===
-    for (let item of order.items) {
-        if (item.id === 999) continue; // Mystery Vape ignorieren
-        await db.collection("products").doc(item.id).update({
-            sold: firebase.firestore.FieldValue.increment(-item.qty),
-            stock: firebase.firestore.FieldValue.increment(item.qty)
-        });
-    }
-
+    if (!confirm('Bestellung IRREVERSIBEL löschen?')) return;
     await db.collection('orders').doc(currentOrderId).delete();
     await logAction("order_deleted", currentOrderId);
-
-    showToast('✅ Bestellung gelöscht – Statistiken wurden automatisch aktualisiert!', 'success');
+    showToast('Bestellung gelöscht');
     closeOrderModal();
-
-    // Sofort-Refresh
-    loadProducts(); // Produkte-Tab + Stats
-    if (!document.getElementById('tab-content-5').classList.contains('hidden')) {
-        loadAnalytics(); // Analytics-Tab
-    }
 }
 
-// ====================== STATUS & STOCK & LOYALTY ======================
-function getStatusClass(s) {
-    switch(s || "Zahlung erwartet") {
-        case "Zahlung erwartet": return "status-Zahlung";
-        case "Wird bearbeitet": return "status-Wird";
-        case "Versendet": return "status-Versendet";
-        case "Zugestellt": return "status-Zugestellt";
-        case "Storniert": return "status-Storniert";
-        default: return "status-Zahlung";
-    }
+// ====================== BENUTZER ======================
+function loadUsers() {
+    const tbody = document.getElementById('users-tbody');
+    db.collection('users').onSnapshot(snapshot => {
+        let html = '';
+        const search = (document.getElementById('user-search').value || '').toLowerCase();
+        snapshot.forEach(doc => {
+            const u = doc.data();
+            const email = u.email || '—';
+            const username = u.username || '—';
+            const refCode = u.referralCode || '—';
+            const points = u.totalBonusPoints || 0;
+            const disabled = u.disabled === true;
+            const freeShipping = u.freeShipping === true;
+            if (search && !email.toLowerCase().includes(search) && !username.toLowerCase().includes(search)) return;
+            html += `
+            <tr class="table-row-hover border-b border-white/10">
+                <td class="py-5 px-6 font-medium">${email}</td>
+                <td class="py-5 px-6">${username}</td>
+                <td class="py-5 px-6 text-center font-mono text-cyan-300">${refCode}</td>
+                <td class="py-5 px-6 text-center font-bold text-emerald-400">${points}</td>
+                <td class="py-5 px-6 text-center">
+                    <input type="checkbox" ${freeShipping ? 'checked' : ''}
+                           onchange="toggleFreeShipping('${doc.id}', this.checked)"
+                           class="accent-emerald-400 w-5 h-5 cursor-pointer">
+                </td>
+                <td class="py-5 px-6 text-center">
+                    <span class="status-badge ${disabled ? 'disabled' : 'bg-emerald-600 text-white'}">${disabled ? 'GESPERRT' : 'AKTIV'}</span>
+                </td>
+                <td class="py-5 px-6 text-right space-x-3">
+                    <button onclick="resetPassword('${email}')" class="text-amber-400 hover:text-amber-300 text-sm font-medium">PW zurücksetzen</button>
+                    <button onclick="resetUserPoints('${doc.id}')" class="text-red-400 hover:text-red-300 text-sm font-medium">Punkte resetten</button>
+                    <button onclick="toggleDisable('${doc.id}', ${!disabled})" class="text-red-400 hover:text-red-300 text-sm font-medium">${disabled ? 'Entsperren' : 'Sperren'}</button>
+                    <button onclick="deleteUser('${doc.id}', '${email}')" class="text-red-500 hover:text-red-400 text-sm font-medium">Löschen</button>
+                </td>
+            </tr>`;
+        });
+        tbody.innerHTML = html || `<tr><td colspan="7" class="text-center py-16 text-gray-400">Keine Benutzer gefunden</td></tr>`;
+    });
 }
 
-async function awardLoyaltyIfProcessed(orderId) {
-    const doc = await db.collection('orders').doc(orderId).get();
-    const order = doc.data();
-    if (!order || order.status !== "Wird bearbeitet" || order.loyaltyCredited === true) return;
-    const points = order.loyaltyEarned || 0;
-    if (points <= 0) return;
-    await db.collection('users').doc(order.userId).update({ totalBonusPoints: firebase.firestore.FieldValue.increment(points) });
-    await db.collection('orders').doc(orderId).update({ loyaltyCredited: true });
-    showToast(`🎉 +${points} Loyalty-Punkte gutgeschrieben!`, 'success');
+document.getElementById('user-search').addEventListener('input', loadUsers);
+
+async function toggleFreeShipping(uid, enable) {
+    await db.collection('users').doc(uid).update({ freeShipping: enable });
+    await logAction(enable ? "free_shipping_enabled" : "free_shipping_disabled", uid);
+    showToast(enable ? '✅ Gratisversand für diesen User AKTIVIERT' : 'Gratisversand deaktiviert', 'success');
 }
 
-async function handleStockOnStatusChange(orderId, newStatus) {
-    const doc = await db.collection('orders').doc(orderId).get();
-    const order = doc.data();
-    const oldStatus = order.status || "Zahlung erwartet";
-
-    if (newStatus === "Wird bearbeitet" && oldStatus !== "Wird bearbeitet") {
-        for (let item of order.items) {
-            if (item.id === 999) continue;
-            await db.collection("products").doc(item.id).update({
-                stock: firebase.firestore.FieldValue.increment(-item.qty),
-                sold: firebase.firestore.FieldValue.increment(item.qty)
-            });
-        }
-        showToast("✅ Lager & Verkaufszahlen aktualisiert", "success");
-    }
-
-    if (newStatus === "Storniert" && oldStatus === "Wird bearbeitet") {
-        for (let item of order.items) {
-            if (item.id === 999) continue;
-            await db.collection("products").doc(item.id).update({
-                stock: firebase.firestore.FieldValue.increment(item.qty),
-                sold: firebase.firestore.FieldValue.increment(-item.qty)
-            });
-        }
-        showToast("✅ Lager & Statistiken zurückgesetzt", "success");
-    }
-}
-
-async function resetAllStatistics() {
-    if (!confirm("⚠️ WIRKLICH ALLE STATISTIKEN ZURÜCKSETZEN?\n\nsold wird bei ALLEN Produkten auf 0 gesetzt.\nUmsatz und Top-Seller gehen auf Null.\nDas ist UNWIDERRUFLICH!")) {
-        return;
-    }
+async function resetPassword(email) {
+    if (!confirm(`Passwort-Zurücksetzen-E-Mail an ${email} senden?`)) return;
     try {
-        const snapshot = await db.collection("products").get();
-        const batch = db.batch();
-        snapshot.forEach(doc => batch.update(doc.ref, { sold: 0 }));
-        await batch.commit();
-        showToast("✅ Alle Statistiken wurden zurückgesetzt!", "success");
-        await logAction("all_statistics_reset");
-        loadProducts();
+        const userSnapshot = await db.collection('users').where('email', '==', email).limit(1).get();
+        if (!userSnapshot.empty) {
+            const uid = userSnapshot.docs[0].id;
+            await db.collection('users').doc(uid).update({ passwordResetRequested: true, passwordResetTimestamp: firebase.firestore.FieldValue.serverTimestamp() });
+        }
+        await auth.sendPasswordResetEmail(email);
+        showToast(`✅ Reset-E-Mail wurde an ${email} gesendet!`);
+        await logAction("password_reset_requested", email);
     } catch (e) {
-        showToast("Fehler beim Zurücksetzen: " + e.message, "error");
+        showToast("Fehler: " + e.message, "error");
     }
 }
 
-// ====================== SORTIERUNG + AUTO-SORT ======================
-async function loadProductOrder() {
-    const doc = await db.collection('settings').doc('product_order').get();
-    productOrder = doc.exists ? (doc.data().order || []) : [];
-    renderSortList();
+async function toggleDisable(uid, disable) {
+    await db.collection('users').doc(uid).update({ disabled: disable });
+    await logAction(disable ? "user_disabled" : "user_enabled", uid);
+    showToast(disable ? '✅ Benutzer gesperrt' : '✅ Benutzer entsperrt');
 }
 
-function renderSortList() {
-    const container = document.getElementById('sort-list');
-    container.innerHTML = '';
-    const sorted = [...allProducts].sort((a, b) => {
-        const idxA = productOrder.indexOf(a.id);
-        const idxB = productOrder.indexOf(b.id);
-        if (idxA === -1 && idxB === -1) return a.name.localeCompare(b.name);
-        if (idxA === -1) return 1;
-        if (idxB === -1) return -1;
-        return idxA - idxB;
-    });
-    sorted.forEach(p => {
-        const div = document.createElement('div');
-        div.className = 'sortable-item flex items-center gap-4 bg-zinc-900 border border-white/10 rounded-3xl p-5 cursor-move select-none';
-        div.dataset.id = p.id;
-        const newBadge = p.isNew
-            ? `<span onclick="toggleIsNew('${p.id}', event)" class="px-3 py-1 bg-lime-400 text-black text-xs font-black tracking-wider rounded-2xl cursor-pointer hover:scale-110 transition">NEW</span>`
-            : '';
-        const unavailableBadge = p.available === false
-            ? `<span onclick="toggleAvailableInSort('${p.id}', event)" class="px-3 py-1 bg-red-500 text-white text-xs font-medium rounded-2xl cursor-pointer hover:scale-110 transition">NICHT VERFÜGBAR</span>`
-            : '';
-        div.innerHTML = `
-            ${p.image ? `<img src="${p.image}" class="w-14 h-14 object-cover rounded-2xl flex-shrink-0">` : '<div class="w-14 h-14 bg-zinc-800 rounded-2xl flex items-center justify-center text-2xl">📦</div>'}
-            <div class="flex-1">
-                <div class="font-medium text-lg">${p.name}</div>
-                <div class="flex items-center gap-2 mt-1">
-                    ${newBadge}
-                    ${unavailableBadge}
-                </div>
-            </div>
-            <i class="fa-solid fa-grip-lines text-gray-400 text-2xl"></i>
-        `;
-        container.appendChild(div);
-    });
-    if (sortableInstance) sortableInstance.destroy();
-    sortableInstance = new Sortable(container, {
-        animation: 180,
-        ghostClass: 'bg-cyan-900/60',
-        forceFallback: true
-    });
-}
-
-async function toggleIsNew(id, e) {
-    e.stopImmediatePropagation();
-    const doc = await db.collection('products').doc(id).get();
-    const current = doc.data().isNew || false;
-    const newIsNew = !current;
-    await db.collection('products').doc(id).update({ isNew: newIsNew });
-    showToast(`NEW-Status umgeschaltet → ${newIsNew ? 'aktiv' : 'deaktiviert'}`);
-    renderSortList();
-}
-
-async function toggleAvailableInSort(id, e) {
-    e.stopImmediatePropagation();
-    const doc = await db.collection('products').doc(id).get();
-    const current = doc.data().available !== false;
-    await db.collection('products').doc(id).update({ available: !current });
-    showToast(`Verfügbarkeit umgeschaltet → ${!current ? 'NICHT verfügbar' : 'verfügbar'}`);
-    renderSortList();
-}
-
-function autoSort(mode) {
-    const container = document.getElementById('sort-list');
-    let items = Array.from(container.children);
-    items.sort((a, b) => {
-        const idA = a.dataset.id;
-        const idB = b.dataset.id;
-        const pA = allProducts.find(p => p.id === idA);
-        const pB = allProducts.find(p => p.id === idB);
-        if (!pA || !pB) return 0;
-        switch(mode) {
-            case 'alpha': return pA.name.localeCompare(pB.name);
-            case 'new':
-                if (pA.isNew && !pB.isNew) return -1;
-                if (!pA.isNew && pB.isNew) return 1;
-                return 0;
-            case 'tornado':
-                const catA = (pA.category === "WaveVapes Tornado 30000") ? 0 : 1;
-                const catB = (pB.category === "WaveVapes Tornado 30000") ? 0 : 1;
-                return catA - catB;
-            case 'available':
-                const availA = (pA.available !== false) ? 0 : 1;
-                const availB = (pB.available !== false) ? 0 : 1;
-                return availA - availB;
-            case 'stock':
-                return (pB.stock || 0) - (pA.stock || 0);
-            default: return 0;
-        }
-    });
-    items.forEach(item => container.appendChild(item));
-    showToast('✅ Liste automatisch sortiert!', 'success');
-}
-
-function autoSortPriority() {
-    const container = document.getElementById('sort-list');
-    let items = Array.from(container.children);
-    items.sort((a, b) => {
-        const idA = a.dataset.id;
-        const idB = b.dataset.id;
-        const pA = allProducts.find(p => p.id === idA);
-        const pB = allProducts.find(p => p.id === idB);
-        if (!pA || !pB) return 0;
-        const getPriority = (p) => {
-            if (p.available === false || (p.stock || 0) <= 0) return 4;
-            if (p.isNew === true) return 1;
-            if (p.category !== "WaveVapes Tornado 30000") return 2;
-            return 3;
-        };
-        const prioA = getPriority(pA);
-        const prioB = getPriority(pB);
-        if (prioA !== prioB) return prioA - prioB;
-        return pA.name.localeCompare(pB.name);
-    });
-    items.forEach(item => container.appendChild(item));
-    showToast('✅ Automatische Prioritätssortierung angewendet!', 'success');
-}
-
-async function saveProductOrder() {
-    const items = document.querySelectorAll('#sort-list .sortable-item');
-    const newOrder = Array.from(items).map(item => item.dataset.id);
-    await db.collection('settings').doc('product_order').set({ order: newOrder }, { merge: true });
-    showToast('✅ Sortierung gespeichert! Der Shop zeigt jetzt die neue Reihenfolge.', 'success');
-}
-
-// ====================== AUTOMATISCHE KATEGORIE-KORREKTUR ======================
-async function enforceCategories() {
-    if (!confirm('Alle Produkte prüfen und Kategorie automatisch setzen?\n\nisNew = true → „Neue Sorten“\nisNew = false → „Normale Sorten“\n\nDas ist unwiderruflich!')) return;
-    const snap = await db.collection('products').get();
-    let changed = 0;
-    const batch = db.batch();
-    snap.forEach(doc => {
-        const p = doc.data();
-        const shouldBe = (p.isNew === true) ? "Neue Sorten" : "Normale Sorten";
-        if (p.category !== shouldBe) {
-            batch.update(doc.ref, { category: shouldBe });
-            changed++;
-        }
-    });
-    if (changed > 0) {
+async function deleteUser(uid, email) {
+    if (!confirm(`⚠️ Account von ${email} WIRKLICH LÖSCHEN?\n\nAlle Bestellungen werden ebenfalls gelöscht!`)) return;
+    if (!confirm('LETZTE WARNUNG – unwiderruflich!')) return;
+    try {
+        await db.collection('users').doc(uid).delete();
+        const orders = await db.collection('orders').where('userId', '==', uid).get();
+        const batch = db.batch();
+        orders.forEach(doc => batch.delete(doc.ref));
         await batch.commit();
-        showToast(`✅ ${changed} Produkte korrigiert!`);
-        await logAction("categories_auto_enforced", "", { changed_count: changed });
-    } else {
-        showToast('✅ Alles war bereits perfekt');
+        showToast(`✅ Account ${email} komplett gelöscht`);
+        await logAction("user_deleted", uid);
+    } catch (e) {
+        showToast("Fehler: " + e.message, "error");
     }
-    loadProducts();
 }
 
-// ====================== TOAST ======================
-function showToast(msg, type = 'success') {
-    const toast = document.createElement('div');
-    toast.className = `toast flex items-center gap-3 px-8 py-4 rounded-3xl shadow-2xl text-sm font-medium ${type === 'error' ? 'bg-red-600' : 'bg-emerald-600'}`;
-    toast.innerHTML = `<i class="fa-solid ${type === 'error' ? 'fa-xmark' : 'fa-check'}"></i> ${msg}`;
-    document.getElementById('toast-container').appendChild(toast);
-    setTimeout(() => toast.remove(), 3500);
+async function resetAllLoyaltyPoints() {
+    if (!confirm("⚠️ WIRKLICH ALLE Loyalty-Punkte auf 0 setzen?\n\nDas betrifft JEDEN Benutzer und ist unwiderruflich!")) return;
+    if (!confirm("LETZTE WARNUNG – alle Punkte werden gelöscht!")) return;
+    try {
+        const snapshot = await db.collection("users").get();
+        const batch = db.batch();
+        snapshot.forEach(doc => batch.update(doc.ref, { totalBonusPoints: 0 }));
+        await batch.commit();
+        showToast("✅ Alle Loyalty-Punkte wurden auf 0 zurückgesetzt!", "success");
+        await logAction("all_loyalty_reset");
+        loadUsers();
+    } catch (e) {
+        showToast("Fehler: " + e.message, "error");
+    }
 }
 
-// ====================== SIDEBAR & TABS ======================
-function switchTab(n) {
-    document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('tab-active'));
-    document.getElementById('sidebar-' + n).classList.add('tab-active');
-    document.querySelectorAll('[id^="tab-content-"]').forEach(el => el.classList.add('hidden'));
-    document.getElementById('tab-content-' + n).classList.remove('hidden');
-    if (n === 5) loadAnalytics();
-    if (n === 6) loadAdminLogs();
-    if (n === 8) loadProductOrder();
-}
-
-function toggleSidebar() {
-    document.getElementById("sidebar").classList.toggle("-translate-x-full");
+async function resetUserPoints(uid) {
+    if (!confirm("Punkte dieses Benutzers auf 0 setzen?")) return;
+    try {
+        await db.collection("users").doc(uid).update({ totalBonusPoints: 0 });
+        showToast("✅ Punkte auf 0 gesetzt");
+        await logAction("user_loyalty_reset", uid);
+        loadUsers();
+    } catch (e) {
+        showToast("Fehler: " + e.message, "error");
+    }
 }
 
 // ====================== ANALYTICS ======================
@@ -1645,6 +1488,254 @@ async function saveSettings() {
     await db.collection("settings").doc("main").set(data, {merge: true});
     await logAction("settings_updated");
     showToast("✅ Einstellungen gespeichert", "success");
+}
+
+// ====================== STATUS & STOCK & LOYALTY ======================
+function getStatusClass(s) {
+    switch(s || "Zahlung erwartet") {
+        case "Zahlung erwartet": return "status-Zahlung";
+        case "Wird bearbeitet": return "status-Wird";
+        case "Versendet": return "status-Versendet";
+        case "Zugestellt": return "status-Zugestellt";
+        case "Storniert": return "status-Storniert";
+        default: return "status-Zahlung";
+    }
+}
+
+async function awardLoyaltyIfProcessed(orderId) {
+    const doc = await db.collection('orders').doc(orderId).get();
+    const order = doc.data();
+    if (!order || order.status !== "Wird bearbeitet" || order.loyaltyCredited === true) return;
+    const points = order.loyaltyEarned || 0;
+    if (points <= 0) return;
+    await db.collection('users').doc(order.userId).update({ totalBonusPoints: firebase.firestore.FieldValue.increment(points) });
+    await db.collection('orders').doc(orderId).update({ loyaltyCredited: true });
+    showToast(`🎉 +${points} Loyalty-Punkte gutgeschrieben!`, 'success');
+}
+
+async function handleStockOnStatusChange(orderId, newStatus) {
+    const doc = await db.collection('orders').doc(orderId).get();
+    const order = doc.data();
+    const oldStatus = order.status || "Zahlung erwartet";
+    if (newStatus === "Wird bearbeitet" && oldStatus !== "Wird bearbeitet") {
+        for (let item of order.items) {
+            if (item.id === 999) continue;
+            await db.collection("products").doc(item.id).update({
+                stock: firebase.firestore.FieldValue.increment(-item.qty),
+                sold: firebase.firestore.FieldValue.increment(item.qty)
+            });
+        }
+        showToast("✅ Lager & Verkaufszahlen aktualisiert", "success");
+    }
+    if (newStatus === "Storniert" && oldStatus === "Wird bearbeitet") {
+        for (let item of order.items) {
+            if (item.id === 999) continue;
+            await db.collection("products").doc(item.id).update({
+                stock: firebase.firestore.FieldValue.increment(item.qty)
+            });
+        }
+        showToast("✅ Lager wiederhergestellt", "success");
+    }
+}
+
+async function resetAllStatistics() {
+    if (!confirm("⚠️ WIRKLICH ALLE STATISTIKEN ZURÜCKSETZEN?\n\nsold wird bei ALLEN Produkten auf 0 gesetzt.\nUmsatz und Top-Seller gehen auf Null.\nDas ist UNWIDERRUFLICH!")) {
+        return;
+    }
+    try {
+        const snapshot = await db.collection("products").get();
+        const batch = db.batch();
+        snapshot.forEach(doc => {
+            batch.update(doc.ref, { sold: 0 });
+        });
+        await batch.commit();
+        showToast("✅ Alle Statistiken wurden zurückgesetzt! (verkaufte Einheiten = 0)", "success");
+        await logAction("all_statistics_reset");
+        loadProducts();
+    } catch (e) {
+        showToast("Fehler beim Zurücksetzen: " + e.message, "error");
+    }
+}
+
+// ====================== SORTIERUNG + AUTO-SORT ======================
+async function loadProductOrder() {
+    const doc = await db.collection('settings').doc('product_order').get();
+    productOrder = doc.exists ? (doc.data().order || []) : [];
+    renderSortList();
+}
+
+function renderSortList() {
+    const container = document.getElementById('sort-list');
+    container.innerHTML = '';
+    const sorted = [...allProducts].sort((a, b) => {
+        const idxA = productOrder.indexOf(a.id);
+        const idxB = productOrder.indexOf(b.id);
+        if (idxA === -1 && idxB === -1) return a.name.localeCompare(b.name);
+        if (idxA === -1) return 1;
+        if (idxB === -1) return -1;
+        return idxA - idxB;
+    });
+    sorted.forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'sortable-item flex items-center gap-4 bg-zinc-900 border border-white/10 rounded-3xl p-5 cursor-move select-none';
+        div.dataset.id = p.id;
+        const newBadge = p.isNew
+            ? `<span onclick="toggleIsNew('${p.id}', event)" class="px-3 py-1 bg-lime-400 text-black text-xs font-black tracking-wider rounded-2xl cursor-pointer hover:scale-110 transition">NEW</span>`
+            : '';
+        const unavailableBadge = p.available === false
+            ? `<span onclick="toggleAvailableInSort('${p.id}', event)" class="px-3 py-1 bg-red-500 text-white text-xs font-medium rounded-2xl cursor-pointer hover:scale-110 transition">NICHT VERFÜGBAR</span>`
+            : '';
+        div.innerHTML = `
+            ${p.image ? `<img src="${p.image}" class="w-14 h-14 object-cover rounded-2xl flex-shrink-0">` : '<div class="w-14 h-14 bg-zinc-800 rounded-2xl flex items-center justify-center text-2xl">📦</div>'}
+            <div class="flex-1">
+                <div class="font-medium text-lg">${p.name}</div>
+                <div class="flex items-center gap-2 mt-1">
+                    ${newBadge}
+                    ${unavailableBadge}
+                </div>
+            </div>
+            <i class="fa-solid fa-grip-lines text-gray-400 text-2xl"></i>
+        `;
+        container.appendChild(div);
+    });
+    if (sortableInstance) sortableInstance.destroy();
+    sortableInstance = new Sortable(container, {
+        animation: 180,
+        ghostClass: 'bg-cyan-900/60',
+        forceFallback: true
+    });
+}
+
+async function toggleIsNew(id, e) {
+    e.stopImmediatePropagation();
+    const doc = await db.collection('products').doc(id).get();
+    const current = doc.data().isNew || false;
+    const newIsNew = !current;
+    await db.collection('products').doc(id).update({ isNew: newIsNew });
+    showToast(`NEW-Status umgeschaltet → ${newIsNew ? 'aktiv' : 'deaktiviert'}`);
+    renderSortList();
+}
+
+async function toggleAvailableInSort(id, e) {
+    e.stopImmediatePropagation();
+    const doc = await db.collection('products').doc(id).get();
+    const current = doc.data().available !== false;
+    await db.collection('products').doc(id).update({ available: !current });
+    showToast(`Verfügbarkeit umgeschaltet → ${!current ? 'NICHT verfügbar' : 'verfügbar'}`);
+    renderSortList();
+}
+
+function autoSort(mode) {
+    const container = document.getElementById('sort-list');
+    let items = Array.from(container.children);
+    items.sort((a, b) => {
+        const idA = a.dataset.id;
+        const idB = b.dataset.id;
+        const pA = allProducts.find(p => p.id === idA);
+        const pB = allProducts.find(p => p.id === idB);
+        if (!pA || !pB) return 0;
+        switch(mode) {
+            case 'alpha':
+                return pA.name.localeCompare(pB.name);
+            case 'new':
+                if (pA.isNew && !pB.isNew) return -1;
+                if (!pA.isNew && pB.isNew) return 1;
+                return 0;
+            case 'tornado':
+                const catA = (pA.category === "WaveVapes Tornado 30000") ? 0 : 1;
+                const catB = (pB.category === "WaveVapes Tornado 30000") ? 0 : 1;
+                return catA - catB;
+            case 'available':
+                const availA = (pA.available !== false) ? 0 : 1;
+                const availB = (pB.available !== false) ? 0 : 1;
+                return availA - availB;
+            case 'stock':
+                return (pB.stock || 0) - (pA.stock || 0);
+            default:
+                return 0;
+        }
+    });
+    items.forEach(item => container.appendChild(item));
+    showToast('✅ Liste automatisch sortiert!', 'success');
+}
+
+function autoSortPriority() {
+    const container = document.getElementById('sort-list');
+    let items = Array.from(container.children);
+    items.sort((a, b) => {
+        const idA = a.dataset.id;
+        const idB = b.dataset.id;
+        const pA = allProducts.find(p => p.id === idA);
+        const pB = allProducts.find(p => p.id === idB);
+        if (!pA || !pB) return 0;
+        const getPriority = (p) => {
+            if (p.available === false || (p.stock || 0) <= 0) return 4;
+            if (p.isNew === true) return 1;
+            if (p.category !== "WaveVapes Tornado 30000") return 2;
+            return 3;
+        };
+        const prioA = getPriority(pA);
+        const prioB = getPriority(pB);
+        if (prioA !== prioB) return prioA - prioB;
+        return pA.name.localeCompare(pB.name);
+    });
+    items.forEach(item => container.appendChild(item));
+    showToast('✅ Automatische Prioritätssortierung angewendet!', 'success');
+}
+
+async function saveProductOrder() {
+    const items = document.querySelectorAll('#sort-list .sortable-item');
+    const newOrder = Array.from(items).map(item => item.dataset.id);
+    await db.collection('settings').doc('product_order').set({ order: newOrder }, { merge: true });
+    showToast('✅ Sortierung gespeichert! Der Shop zeigt jetzt die neue Reihenfolge.', 'success');
+}
+
+// ====================== AUTOMATISCHE KATEGORIE-KORREKTUR ======================
+async function enforceCategories() {
+    if (!confirm('Alle Produkte prüfen und Kategorie automatisch setzen?\n\nisNew = true → „Neue Sorten“\nisNew = false → „Normale Sorten“\n\nDas ist unwiderruflich!')) return;
+    const snap = await db.collection('products').get();
+    let changed = 0;
+    const batch = db.batch();
+    snap.forEach(doc => {
+        const p = doc.data();
+        const shouldBe = (p.isNew === true) ? "Neue Sorten" : "Normale Sorten";
+        if (p.category !== shouldBe) {
+            batch.update(doc.ref, { category: shouldBe });
+            changed++;
+        }
+    });
+    if (changed > 0) {
+        await batch.commit();
+        showToast(`✅ ${changed} Produkte korrigiert!`);
+        await logAction("categories_auto_enforced", "", { changed_count: changed });
+    } else {
+        showToast('✅ Alles war bereits perfekt');
+    }
+    loadProducts();
+}
+
+// ====================== TOAST ======================
+function showToast(msg, type = 'success') {
+    const toast = document.createElement('div');
+    toast.className = `toast flex items-center gap-3 px-8 py-4 rounded-3xl shadow-2xl text-sm font-medium ${type === 'error' ? 'bg-red-600' : 'bg-emerald-600'}`;
+    toast.innerHTML = `<i class="fa-solid ${type === 'error' ? 'fa-xmark' : 'fa-check'}"></i> ${msg}`;
+    document.getElementById('toast-container').appendChild(toast);
+    setTimeout(() => toast.remove(), 3500);
+}
+
+// ====================== SIDEBAR & TABS ======================
+function switchTab(n) {
+    document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('tab-active'));
+    document.getElementById('sidebar-' + n).classList.add('tab-active');
+    document.querySelectorAll('[id^="tab-content-"]').forEach(el => el.classList.add('hidden'));
+    document.getElementById('tab-content-' + n).classList.remove('hidden');
+    if (n === 5) loadAnalytics();
+    if (n === 6) loadAdminLogs();
+    if (n === 8) loadProductOrder();
+}
+
+function toggleSidebar() {
+    document.getElementById("sidebar").classList.toggle("-translate-x-full");
 }
 
 // ====================== AUTH ======================

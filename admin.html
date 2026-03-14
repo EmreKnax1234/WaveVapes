@@ -111,19 +111,16 @@
                     <button type="submit" class="lg:col-span-3 bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-5 rounded-3xl text-xl">Produkt speichern</button>
                 </form>
             </div>
-
-            <!-- NEUE BUTTONS: Bulk-Edit + Automatische Kategoriezuteilung -->
             <div class="flex flex-wrap gap-3 mb-6">
-                <button onclick="openBulkEditModal()" 
+                <button onclick="openBulkEditModal()"
                         class="bg-violet-600 hover:bg-violet-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2">
                     <i class="fa-solid fa-list-check"></i> Bulk-Edit (mehrere Produkte)
                 </button>
-                <button onclick="enforceCategories()" 
+                <button onclick="enforceCategories()"
                         class="bg-amber-600 hover:bg-amber-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2">
                     <i class="fa-solid fa-magic"></i> Automatische Kategoriezuteilung
                 </button>
             </div>
-
             <div class="card overflow-hidden">
                 <div class="p-6 border-b border-white/10 flex items-center justify-between flex-wrap gap-4">
                     <h2 class="text-2xl font-bold">Alle Produkte</h2>
@@ -168,7 +165,6 @@
                 </div>
             </div>
         </div>
-
         <!-- TAB 1: BESTELLUNGEN -->
         <div id="tab-content-1" class="hidden">
             <div class="card overflow-hidden">
@@ -176,7 +172,7 @@
                     <h2 class="text-2xl font-bold flex items-center gap-3"><i class="fa-solid fa-receipt"></i> Live Bestellungen</h2>
                     <div class="flex gap-3">
                         <button onclick="exportOrdersToCSV()" class="bg-emerald-600 hover:bg-emerald-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2"><i class="fa-solid fa-file-csv"></i> CSV Export</button>
-                        <button onclick="exportOrdersWithTracking()" 
+                        <button onclick="exportOrdersWithTracking()"
                                 class="bg-cyan-600 hover:bg-cyan-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2">
                             <i class="fa-solid fa-link"></i> Export mit Tracking-Links
                         </button>
@@ -203,7 +199,6 @@
             </div>
             <input type="file" id="csv-upload-orders" accept=".csv" class="hidden" onchange="importOrdersFromCSV(event)">
         </div>
-
         <!-- TAB 2: BENUTZER -->
         <div id="tab-content-2" class="hidden">
             <div class="card p-8 mb-12 bg-red-950/30 border border-red-500/50">
@@ -237,7 +232,6 @@
             </div>
             <input type="file" id="csv-upload-users" accept=".csv" class="hidden" onchange="importUsersFromCSV(event)">
         </div>
-
         <!-- TAB 3: KATEGORIEN -->
         <div id="tab-content-3" class="hidden">
             <div class="card p-8 mb-12">
@@ -264,7 +258,6 @@
                 </div>
             </div>
         </div>
-
         <!-- TAB 4: GUTSCHEINE -->
         <div id="tab-content-4" class="hidden">
             <div class="card p-8">
@@ -293,7 +286,6 @@
                 </div>
             </div>
         </div>
-
         <!-- TAB 5: ANALYTICS -->
         <div id="tab-content-5" class="hidden">
             <h2 class="text-3xl font-bold mb-8">Analytics – Live Dashboard</h2>
@@ -322,13 +314,11 @@
                 📄 <span>Monatsbericht als PDF herunterladen</span>
             </button>
         </div>
-
         <!-- TAB 6: ADMIN LOGS -->
         <div id="tab-content-6" class="hidden">
             <h2 class="text-3xl font-bold mb-6">Admin Activity Log (Live)</h2>
             <div id="logs-container" class="space-y-4 max-h-[70vh] overflow-y-auto"></div>
         </div>
-
         <!-- TAB 7: SETTINGS -->
         <div id="tab-content-7" class="hidden">
             <h2 class="text-3xl font-bold mb-8">Shop Settings</h2>
@@ -368,7 +358,6 @@
                 </div>
             </div>
         </div>
-
         <!-- TAB 8: SORTIERUNG -->
         <div id="tab-content-8" class="hidden">
             <div class="card p-8">
@@ -393,14 +382,12 @@
         </div>
     </div>
 </div>
-
 <!-- EDIT MODAL -->
 <div id="edit-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]"></div>
 <!-- ORDER MODAL -->
 <div id="order-modal-container"></div>
 <!-- TOAST -->
 <div id="toast-container" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[99999] flex flex-col gap-3"></div>
-
 <script>
 // ====================== FIREBASE CONFIG ======================
 const firebaseConfig = {
@@ -414,7 +401,6 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
-
 // ====================== GLOBALE VARIABLEN ======================
 let currentEditId = null;
 let selectedFile = null;
@@ -434,7 +420,6 @@ let adminSortDirection = 'asc';
 let adminCategoryFilter = 'Alle';
 let adminStatusFilter = '';
 let selectedProductIds = [];
-
 // ====================== LOG ACTION ======================
 async function logAction(action, target = "", details = {}) {
     if (!auth.currentUser) return;
@@ -446,7 +431,6 @@ async function logAction(action, target = "", details = {}) {
         details: details || {}
     });
 }
-
 // ====================== STATS UPDATE ======================
 function updateStats() {
     const active = allProducts.filter(p => p.available !== false).length;
@@ -458,7 +442,6 @@ function updateStats() {
     document.getElementById('total-revenue').textContent = revenue.toFixed(0) + ' €';
     document.getElementById('top-seller').textContent = top ? `${top.name} (${top.sold || 0}×)` : '—';
 }
-
 // ====================== PRODUKTE ======================
 function loadProducts() {
     db.collection('products').onSnapshot(snap => {
@@ -467,13 +450,11 @@ function loadProducts() {
         renderProductTable();
     });
 }
-
 function applyAdminFilters() {
     adminCategoryFilter = document.getElementById('admin-category-filter').value;
     adminStatusFilter = document.getElementById('admin-status-filter').value;
     renderProductTable();
 }
-
 function sortAdminTable(column) {
     if (adminSortColumn === column) {
         adminSortDirection = adminSortDirection === 'asc' ? 'desc' : 'asc';
@@ -483,7 +464,6 @@ function sortAdminTable(column) {
     }
     renderProductTable();
 }
-
 // ====================== NEU: renderProductTable mit Checkbox ======================
 function renderProductTable() {
     const tbody = document.getElementById('products-tbody');
@@ -543,15 +523,12 @@ function renderProductTable() {
     });
     tbody.innerHTML = html || `<tr><td colspan="12" class="text-center py-16 text-gray-400">Keine Produkte gefunden</td></tr>`;
 }
-
 document.getElementById('product-search').addEventListener('input', applyAdminFilters);
-
 async function toggleAvailable(id, val) {
     await db.collection('products').doc(id).update({ available: val });
     await logAction("product_availability_changed", id, { available: val });
     showToast('Verfügbarkeit aktualisiert');
 }
-
 async function deleteProduct(id) {
     if (!confirm('⚠️ Produkt WIRKLICH PERMANENT löschen?\n\nDas kann nicht rückgängig gemacht werden!')) return;
     try {
@@ -562,12 +539,10 @@ async function deleteProduct(id) {
         showToast('❌ Fehler beim Löschen: ' + e.message, 'error');
     }
 }
-
 // ====================== BULK-EDIT ======================
 function toggleSelectAllProducts(cb) {
     document.querySelectorAll('.product-checkbox').forEach(ch => ch.checked = cb.checked);
 }
-
 function openBulkEditModal() {
     selectedProductIds = [];
     document.querySelectorAll('.product-checkbox:checked').forEach(cb => {
@@ -602,18 +577,15 @@ function openBulkEditModal() {
     const sel = document.getElementById('bulk-category');
     if (sel) sel.innerHTML = '<option value="">Kategorie nicht ändern</option>' + sel.innerHTML;
 }
-
 function closeBulkModal() {
     document.getElementById('edit-modal').classList.add('hidden');
 }
-
 async function executeBulkEdit() {
     const price = document.getElementById('bulk-price').value ? parseFloat(document.getElementById('bulk-price').value) : null;
     const stock = document.getElementById('bulk-stock').value ? parseInt(document.getElementById('bulk-stock').value) : null;
     const available = document.getElementById('bulk-available').checked ? true : null;
     const isNew = document.getElementById('bulk-new').checked ? true : null;
     const category = document.getElementById('bulk-category').value || null;
-
     const batch = db.batch();
     let changed = 0;
     for (let id of selectedProductIds) {
@@ -634,7 +606,6 @@ async function executeBulkEdit() {
     showToast(`✅ ${changed} Produkte erfolgreich bearbeitet!`);
     loadProducts();
 }
-
 // ====================== AUTOMATISCHE KATEGORIEZUWEISUNG ======================
 async function enforceCategories() {
     if (!confirm('Alle Produkte automatisch kategorisieren?\n\n• Neue Sorten → „Neue Sorten“\n• Alle anderen → „Normale Sorten“\n\nDas überschreibt bestehende Kategorien!')) return;
@@ -658,7 +629,6 @@ async function enforceCategories() {
     }
     loadProducts();
 }
-
 // ====================== BESTELL-EXPORT MIT TRACKING-LINKS ======================
 async function exportOrdersWithTracking() {
     const snapshot = await db.collection("orders").orderBy("date", "desc").get();
@@ -667,7 +637,7 @@ async function exportOrdersWithTracking() {
     snapshot.forEach(doc => {
         const o = doc.data();
         const dateStr = o.date ? o.date.toDate().toISOString().slice(0,19).replace('T',' ') : '';
-        const trackingLink = o.trackingNumber && o.carrier === "DHL" 
+        const trackingLink = o.trackingNumber && o.carrier === "DHL"
             ? `https://www.dhl.de/de/privatkunden/dhl-sendungsverfolgung.html?piececode=${encodeURIComponent(o.trackingNumber)}`
             : (o.trackingNumber || '');
         const row = [
@@ -689,7 +659,6 @@ async function exportOrdersWithTracking() {
     showToast("✅ Export mit Tracking-Links heruntergeladen!", "success");
     await logAction("orders_export_with_tracking");
 }
-
 // ====================== EDIT MODAL ======================
 async function openEditModal(id) {
     currentEditId = id;
@@ -755,18 +724,15 @@ async function openEditModal(id) {
         input.click();
     };
 }
-
 function removeImageInEdit() {
     removeCurrentImage = true;
     document.getElementById('preview-image').innerHTML = `<div class="text-center text-red-400"><i class="fa-solid fa-trash text-6xl mb-4"></i><br>Bild wird beim Speichern entfernt</div>`;
 }
-
 function closeEditModal() {
     document.getElementById('edit-modal').classList.add('hidden');
     selectedFile = null;
     removeCurrentImage = false;
 }
-
 async function saveEdit() {
     if (!currentEditId) return;
     const name = document.getElementById('edit-name').value;
@@ -794,7 +760,6 @@ async function saveEdit() {
     closeEditModal();
     showToast('✅ Produkt gespeichert! Kategorie manuell zugewiesen.');
 }
-
 // ====================== NEUES PRODUKT ======================
 document.getElementById('add-form').addEventListener('submit', async e => {
     e.preventDefault();
@@ -825,7 +790,6 @@ document.getElementById('add-form').addEventListener('submit', async e => {
     selectedFile = null;
     showToast('✅ Produkt erfolgreich angelegt!');
 });
-
 const dropzone = document.getElementById('dropzone');
 dropzone.addEventListener('click', () => {
     const input = document.createElement('input');
@@ -839,7 +803,6 @@ dropzone.addEventListener('click', () => {
     };
     input.click();
 });
-
 // ====================== CSV PRODUKTE ======================
 async function exportProductsToCSV() {
     const snapshot = await db.collection("products").get();
@@ -871,7 +834,6 @@ async function exportProductsToCSV() {
     link.click();
     showToast("✅ CSV-Datei wurde heruntergeladen!", "success");
 }
-
 async function importProductsFromCSV(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -914,7 +876,6 @@ async function importProductsFromCSV(e) {
     reader.readAsText(file);
     e.target.value = "";
 }
-
 // ====================== CSV BESTELLUNGEN ======================
 async function exportOrdersToCSV() {
     const snapshot = await db.collection("orders").orderBy("date", "desc").get();
@@ -944,7 +905,6 @@ async function exportOrdersToCSV() {
     link.click();
     showToast("✅ Bestellungen als CSV exportiert!", "success");
 }
-
 async function importOrdersFromCSV(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -986,7 +946,6 @@ async function importOrdersFromCSV(e) {
     reader.readAsText(file);
     e.target.value = "";
 }
-
 // ====================== CSV BENUTZER ======================
 async function exportUsersToCSV() {
     const snapshot = await db.collection("users").get();
@@ -1013,7 +972,6 @@ async function exportUsersToCSV() {
     link.click();
     showToast("✅ Benutzer als CSV exportiert!", "success");
 }
-
 async function importUsersFromCSV(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -1048,11 +1006,9 @@ async function importUsersFromCSV(e) {
     reader.readAsText(file);
     e.target.value = "";
 }
-
 function parseCSVLine(line) {
     return line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(field => field.replace(/^"|"$/g, '').replace(/""/g, '"'));
 }
-
 // ====================== KATEGORIEN ======================
 function loadCategories() {
     db.collection('categories').orderBy('order').onSnapshot(snap => {
@@ -1062,7 +1018,6 @@ function loadCategories() {
         populateAdminCategoryFilter();
     });
 }
-
 function renderCategoryTable() {
     const tbody = document.getElementById('categories-tbody');
     let html = '';
@@ -1080,7 +1035,6 @@ function renderCategoryTable() {
     });
     tbody.innerHTML = html || `<tr><td colspan="4" class="text-center py-16 text-gray-400">Noch keine Kategorien</td></tr>`;
 }
-
 document.getElementById('add-category-form').addEventListener('submit', async e => {
     e.preventDefault();
     const name = document.getElementById('cat-name').value.trim();
@@ -1094,7 +1048,6 @@ document.getElementById('add-category-form').addEventListener('submit', async e 
     populateAdminCategoryFilter();
     showToast('✅ Kategorie erstellt und Dropdowns aktualisiert!');
 });
-
 async function openEditCategoryModal(id) {
     const doc = await db.collection('categories').doc(id).get();
     const c = doc.data();
@@ -1115,7 +1068,6 @@ async function openEditCategoryModal(id) {
     document.getElementById('edit-modal').innerHTML = html;
     document.getElementById('edit-modal').classList.remove('hidden');
 }
-
 async function saveEditCategory(id) {
     const name = document.getElementById('edit-cat-name').value.trim();
     const order = parseInt(document.getElementById('edit-cat-order').value) || 999;
@@ -1127,7 +1079,6 @@ async function saveEditCategory(id) {
     populateAdminCategoryFilter();
     showToast('✅ Kategorie gespeichert und Dropdowns aktualisiert');
 }
-
 async function deleteCategory(id) {
     if (!confirm('Kategorie wirklich löschen? Produkte bleiben erhalten.')) return;
     await db.collection('categories').doc(id).delete();
@@ -1136,7 +1087,6 @@ async function deleteCategory(id) {
     populateAdminCategoryFilter();
     showToast('✅ Kategorie gelöscht');
 }
-
 function seedDefaultCategories() {
     if (allCategories.length > 0 && !confirm('Es existieren bereits Kategorien. Trotzdem Standard-Kategorien laden?')) return;
     const defaults = [
@@ -1147,7 +1097,6 @@ function seedDefaultCategories() {
     defaults.forEach(d => db.collection('categories').add(d));
     showToast('✅ Standard-Kategorien angelegt!');
 }
-
 function populateCategorySelects() {
     const selects = document.querySelectorAll('#prod-category, #edit-category-select, #bulk-category');
     selects.forEach(select => {
@@ -1163,7 +1112,6 @@ function populateCategorySelects() {
         if (currentValue) select.value = currentValue;
     });
 }
-
 function populateAdminCategoryFilter() {
     const select = document.getElementById('admin-category-filter');
     if (!select) return;
@@ -1175,7 +1123,6 @@ function populateAdminCategoryFilter() {
         select.appendChild(opt);
     });
 }
-
 // ====================== GUTSCHEINE ======================
 document.getElementById('add-coupon-form').addEventListener('submit', async e => {
     e.preventDefault();
@@ -1193,13 +1140,11 @@ document.getElementById('add-coupon-form').addEventListener('submit', async e =>
     showToast('✅ Gutschein erstellt!');
     loadCoupons();
 });
-
 async function loadCoupons() {
     const snap = await db.collection('coupons').orderBy('createdAt', 'desc').get();
     allCoupons = snap.docs.map(d => ({id: d.id, ...d.data()}));
     renderCouponsTable();
 }
-
 function renderCouponsTable() {
     const tbody = document.getElementById('coupons-tbody');
     let html = '';
@@ -1218,7 +1163,6 @@ function renderCouponsTable() {
     });
     tbody.innerHTML = html || `<tr><td colspan="5" class="text-center py-16 text-gray-400">Noch keine Gutscheine</td></tr>`;
 }
-
 async function deleteCoupon(id) {
     if (confirm('Gutschein löschen?')) {
         await db.collection('coupons').doc(id).delete();
@@ -1226,7 +1170,6 @@ async function deleteCoupon(id) {
         loadCoupons();
     }
 }
-
 // ====================== BESTELLUNGEN ======================
 function loadOrders() {
     const tbody = document.getElementById('orders-tbody');
@@ -1254,10 +1197,8 @@ function loadOrders() {
         tbody.innerHTML = html || `<tr><td colspan="6" class="text-center py-16 text-gray-400">Noch keine Bestellungen</td></tr>`;
     });
 }
-
 document.getElementById('order-search').addEventListener('input', loadOrders);
 document.getElementById('status-filter').addEventListener('change', loadOrders);
-
 async function quickStatus(id, status) {
     await handleStockOnStatusChange(id, status);
     await db.collection('orders').doc(id).update({ status });
@@ -1265,7 +1206,6 @@ async function quickStatus(id, status) {
     await logAction("order_status_changed", id, { status });
     showToast(`Status auf „${status}“ gesetzt`);
 }
-
 // ====================== ORDER DETAIL MODAL ======================
 async function showOrderModal(orderId) {
     currentOrderId = orderId;
@@ -1326,11 +1266,9 @@ async function showOrderModal(orderId) {
     </div>`;
     document.getElementById('order-modal-container').innerHTML = modalHTML;
 }
-
 function closeOrderModal() {
     document.getElementById('order-modal-container').innerHTML = '';
 }
-
 async function saveOrderChanges() {
     const status = document.getElementById('modal-status').value;
     const carrier = document.getElementById('modal-carrier').value;
@@ -1342,7 +1280,6 @@ async function saveOrderChanges() {
     showToast('Bestellung aktualisiert');
     closeOrderModal();
 }
-
 async function deleteOrder() {
     if (!confirm('Bestellung IRREVERSIBEL löschen?')) return;
     await db.collection('orders').doc(currentOrderId).delete();
@@ -1350,7 +1287,6 @@ async function deleteOrder() {
     showToast('Bestellung gelöscht');
     closeOrderModal();
 }
-
 // ====================== BENUTZER ======================
 function loadUsers() {
     const tbody = document.getElementById('users-tbody');
@@ -1391,15 +1327,12 @@ function loadUsers() {
         tbody.innerHTML = html || `<tr><td colspan="7" class="text-center py-16 text-gray-400">Keine Benutzer gefunden</td></tr>`;
     });
 }
-
 document.getElementById('user-search').addEventListener('input', loadUsers);
-
 async function toggleFreeShipping(uid, enable) {
     await db.collection('users').doc(uid).update({ freeShipping: enable });
     await logAction(enable ? "free_shipping_enabled" : "free_shipping_disabled", uid);
     showToast(enable ? '✅ Gratisversand für diesen User AKTIVIERT' : 'Gratisversand deaktiviert', 'success');
 }
-
 async function resetPassword(email) {
     if (!confirm(`Passwort-Zurücksetzen-E-Mail an ${email} senden?`)) return;
     try {
@@ -1415,13 +1348,11 @@ async function resetPassword(email) {
         showToast("Fehler: " + e.message, "error");
     }
 }
-
 async function toggleDisable(uid, disable) {
     await db.collection('users').doc(uid).update({ disabled: disable });
     await logAction(disable ? "user_disabled" : "user_enabled", uid);
     showToast(disable ? '✅ Benutzer gesperrt' : '✅ Benutzer entsperrt');
 }
-
 async function deleteUser(uid, email) {
     if (!confirm(`⚠️ Account von ${email} WIRKLICH LÖSCHEN?\n\nAlle Bestellungen werden ebenfalls gelöscht!`)) return;
     if (!confirm('LETZTE WARNUNG – unwiderruflich!')) return;
@@ -1437,7 +1368,6 @@ async function deleteUser(uid, email) {
         showToast("Fehler: " + e.message, "error");
     }
 }
-
 async function resetAllLoyaltyPoints() {
     if (!confirm("⚠️ WIRKLICH ALLE Loyalty-Punkte auf 0 setzen?\n\nDas betrifft JEDEN Benutzer und ist unwiderruflich!")) return;
     if (!confirm("LETZTE WARNUNG – alle Punkte werden gelöscht!")) return;
@@ -1453,7 +1383,6 @@ async function resetAllLoyaltyPoints() {
         showToast("Fehler: " + e.message, "error");
     }
 }
-
 async function resetUserPoints(uid) {
     if (!confirm("Punkte dieses Benutzers auf 0 setzen?")) return;
     try {
@@ -1465,7 +1394,6 @@ async function resetUserPoints(uid) {
         showToast("Fehler: " + e.message, "error");
     }
 }
-
 // ====================== ANALYTICS ======================
 async function loadAnalytics() {
     const thirtyDaysAgo = firebase.firestore.Timestamp.fromDate(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
@@ -1529,7 +1457,6 @@ async function loadAnalytics() {
         });
     }
 }
-
 async function generatePDFReport() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
@@ -1581,7 +1508,6 @@ async function generatePDFReport() {
     await logAction("monthly_report_generated");
     showToast("✅ Vollständiger Monatsbericht als PDF heruntergeladen!", "success");
 }
-
 // ====================== ADMIN LOGS ======================
 function loadAdminLogs() {
     if (logsUnsubscribe) logsUnsubscribe();
@@ -1603,7 +1529,6 @@ function loadAdminLogs() {
         });
     });
 }
-
 // ====================== SETTINGS ======================
 async function loadSettings() {
     const doc = await db.collection("settings").doc("main").get();
@@ -1625,7 +1550,6 @@ async function loadSettings() {
     document.getElementById("set-closed").checked = data.shop_closed || false;
     document.getElementById("set-email-template").value = data.email_template || "";
 }
-
 async function saveSettings() {
     const data = {
         bank_owner: document.getElementById("set-bank-owner").value,
@@ -1640,7 +1564,6 @@ async function saveSettings() {
     await logAction("settings_updated");
     showToast("✅ Einstellungen gespeichert", "success");
 }
-
 // ====================== STATUS & STOCK & LOYALTY ======================
 function getStatusClass(s) {
     switch(s || "Zahlung erwartet") {
@@ -1652,7 +1575,6 @@ function getStatusClass(s) {
         default: return "status-Zahlung";
     }
 }
-
 async function awardLoyaltyIfProcessed(orderId) {
     const doc = await db.collection('orders').doc(orderId).get();
     const order = doc.data();
@@ -1663,7 +1585,6 @@ async function awardLoyaltyIfProcessed(orderId) {
     await db.collection('orders').doc(orderId).update({ loyaltyCredited: true });
     showToast(`🎉 +${points} Loyalty-Punkte gutgeschrieben!`, 'success');
 }
-
 async function handleStockOnStatusChange(orderId, newStatus) {
     const doc = await db.collection('orders').doc(orderId).get();
     const order = doc.data();
@@ -1688,7 +1609,6 @@ async function handleStockOnStatusChange(orderId, newStatus) {
         showToast("✅ Lager wiederhergestellt", "success");
     }
 }
-
 async function resetAllStatistics() {
     if (!confirm("⚠️ WIRKLICH ALLE STATISTIKEN ZURÜCKSETZEN?\n\nsold wird bei ALLEN Produkten auf 0 gesetzt.\nUmsatz und Top-Seller gehen auf Null.\nDas ist UNWIDERRUFLICH!")) {
         return;
@@ -1707,14 +1627,12 @@ async function resetAllStatistics() {
         showToast("Fehler beim Zurücksetzen: " + e.message, "error");
     }
 }
-
 // ====================== SORTIERUNG + AUTO-SORT ======================
 async function loadProductOrder() {
     const doc = await db.collection('settings').doc('product_order').get();
     productOrder = doc.exists ? (doc.data().order || []) : [];
     renderSortList();
 }
-
 function renderSortList() {
     const container = document.getElementById('sort-list');
     container.innerHTML = '';
@@ -1756,7 +1674,6 @@ function renderSortList() {
         forceFallback: true
     });
 }
-
 async function toggleIsNew(id, e) {
     e.stopImmediatePropagation();
     const doc = await db.collection('products').doc(id).get();
@@ -1766,7 +1683,6 @@ async function toggleIsNew(id, e) {
     showToast(`NEW-Status umgeschaltet → ${newIsNew ? 'aktiv' : 'deaktiviert'}`);
     renderSortList();
 }
-
 async function toggleAvailableInSort(id, e) {
     e.stopImmediatePropagation();
     const doc = await db.collection('products').doc(id).get();
@@ -1775,7 +1691,6 @@ async function toggleAvailableInSort(id, e) {
     showToast(`Verfügbarkeit umgeschaltet → ${!current ? 'NICHT verfügbar' : 'verfügbar'}`);
     renderSortList();
 }
-
 function autoSort(mode) {
     const container = document.getElementById('sort-list');
     let items = Array.from(container.children);
@@ -1809,7 +1724,6 @@ function autoSort(mode) {
     items.forEach(item => container.appendChild(item));
     showToast('✅ Liste automatisch sortiert!', 'success');
 }
-
 function autoSortPriority() {
     const container = document.getElementById('sort-list');
     let items = Array.from(container.children);
@@ -1833,14 +1747,12 @@ function autoSortPriority() {
     items.forEach(item => container.appendChild(item));
     showToast('✅ Automatische Prioritätssortierung angewendet!', 'success');
 }
-
 async function saveProductOrder() {
     const items = document.querySelectorAll('#sort-list .sortable-item');
     const newOrder = Array.from(items).map(item => item.dataset.id);
     await db.collection('settings').doc('product_order').set({ order: newOrder }, { merge: true });
     showToast('✅ Sortierung gespeichert! Der Shop zeigt jetzt die neue Reihenfolge.', 'success');
 }
-
 // ====================== TOAST ======================
 function showToast(msg, type = 'success') {
     const toast = document.createElement('div');
@@ -1849,7 +1761,6 @@ function showToast(msg, type = 'success') {
     document.getElementById('toast-container').appendChild(toast);
     setTimeout(() => toast.remove(), 3500);
 }
-
 // ====================== SIDEBAR & TABS ======================
 function switchTab(n) {
     document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('tab-active'));
@@ -1860,11 +1771,22 @@ function switchTab(n) {
     if (n === 6) loadAdminLogs();
     if (n === 8) loadProductOrder();
 }
-
 function toggleSidebar() {
     document.getElementById("sidebar").classList.toggle("-translate-x-full");
 }
-
+// ====================== LOGOUT ======================
+async function logout() {
+    try {
+        await auth.signOut();
+        showToast("👋 Erfolgreich ausgeloggt", "success");
+        setTimeout(() => {
+            window.location.href = "index.html";
+        }, 800);
+    } catch (e) {
+        console.error(e);
+        alert("Logout fehlgeschlagen: " + e.message);
+    }
+}
 // ====================== AUTH ======================
 auth.onAuthStateChanged(async (user) => {
     if (!user) return window.location.href = 'index.html';
@@ -1878,7 +1800,6 @@ auth.onAuthStateChanged(async (user) => {
     loadSettings();
     switchTab(0);
 });
-
 // ====================== INIT ======================
 window.onload = () => {
     loadProducts();

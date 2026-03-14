@@ -239,13 +239,13 @@
             <h2 class="hero-title text-5xl sm:text-6xl font-bold tracking-tighter neon-text mb-3">Bestelle deine Liquids und Vapes</h2>
             <p class="hero-subtitle text-xl sm:text-2xl text-cyan-200 max-w-md mx-auto">7,99 € pro Flasche • 10 ml • Nikotin frei wählbar (10 oder 20 mg)</p>
             <p class="text-base sm:text-lg text-gray-300 mt-4">Alle Liquids von ELFLIQ</p>
-      
+     
             <!-- MYSTERY VAPE BANNER -->
             <div class="mt-4 inline-flex items-center gap-3 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-400/30 hover:border-emerald-400 px-7 py-3 rounded-3xl text-emerald-300 text-base font-semibold transition-all">
                 <i class="fa-solid fa-gift text-2xl"></i>
                 <span>Ab 100€ Bestellwert gibt's eine <span class="text-white font-bold underline">Mystery Vape gratis</span> dazu! 🎁</span>
             </div>
-      
+     
             <!-- GRATIS VERSAND BANNER -->
             <div class="mt-4 inline-flex items-center gap-3 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-400/30 px-7 py-3 rounded-3xl text-amber-300 text-base font-semibold transition-all">
                 <i class="fa-solid fa-truck text-2xl"></i>
@@ -384,8 +384,8 @@
             <div class="mt-8 pt-6 border-t border-white/10">
                 <p class="text-xs uppercase tracking-widest text-gray-400 mb-3">Rabattcode oder Referral</p>
                 <div class="flex flex-col gap-3">
-                    <input id="discount-input" type="text" placeholder="Code eingeben (z.B. REF-ABC123)" 
-                           autocomplete="off" spellcheck="false" 
+                    <input id="discount-input" type="text" placeholder="Code eingeben (z.B. REF-ABC123)"
+                           autocomplete="off" spellcheck="false"
                            class="w-full bg-zinc-900 border border-white/20 focus:border-cyan-400 rounded-2xl px-5 py-3.5 text-sm outline-none">
                     <button onclick="applyDiscountCode()" class="w-full bg-white hover:bg-cyan-300 text-black font-semibold py-3.5 rounded-2xl transition">Anwenden</button>
                 </div>
@@ -1616,7 +1616,13 @@
             snap.forEach(doc => {
                 const c = doc.data();
                 const active = currentCategoryFilter === c.name ? 'tab-active' : '';
-                let extra = c.special ? ` <span class="bg-amber-400 text-black text-xs font-black px-4 py-1 rounded-2xl">4 FÜR 3</span> <i class="fa-solid fa-bolt animate-bolt text-2xl"></i>` : '';
+                
+                let extra = '';
+                if (c.special === true) {
+                    const badgeText = c.specialText || "4 FÜR 3";
+                    extra = ` <span class="bg-amber-400 text-black text-xs font-black px-4 py-1 rounded-2xl">${badgeText}</span> <i class="fa-solid fa-bolt animate-bolt text-2xl"></i>`;
+                }
+                
                 html += `<button onclick="setCategoryFilter('${c.name}')" class="px-5 py-2 transition ${active}">${c.name}${extra}</button>`;
             });
             document.getElementById("category-tabs").innerHTML = html;
@@ -1664,7 +1670,6 @@
         function showProductDetail(id) {
             const product = allProducts.find(p => p.id === id);
             if (!product) return;
-
             const isVape = product.category === "WaveVapes Tornado 30000";
             const nicotineHTML = (!isVape && product.hasNicotine) ? `
                 <div class="mt-8">
@@ -1674,56 +1679,48 @@
                         <option value="20 mg" selected>20 mg/ml</option>
                     </select>
                 </div>` : '';
-
-            const stockHTML = product.stock > 0 
+            const stockHTML = product.stock > 0
                 ? `<div class="inline-flex items-center gap-2 bg-emerald-900/50 text-emerald-400 text-sm px-5 py-2 rounded-3xl">
                        <div class="w-2.5 h-2.5 bg-emerald-400 rounded-full animate-pulse"></div>
                        Noch ${product.stock} auf Lager
-                   </div>` 
+                   </div>`
                 : `<div class="text-red-400 text-sm">❌ Derzeit ausverkauft</div>`;
-
             const html = `
                 <div class="modal-inner bg-zinc-900 rounded-3xl overflow-hidden">
                     <!-- Close Button -->
                     <div class="flex justify-end p-6 border-b border-white/10">
                         <button onclick="closeProductDetail()" class="text-4xl text-gray-400 hover:text-white transition">✕</button>
                     </div>
-
                     <div class="p-6 sm:p-10">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
                             <!-- Bild -->
                             <div class="flex justify-center items-center bg-black/30 rounded-3xl p-4">
-                                ${product.image 
-                                    ? `<img src="${product.image}" alt="${product.name}" loading="eager">` 
+                                ${product.image
+                                    ? `<img src="${product.image}" alt="${product.name}" loading="eager">`
                                     : `<div class="text-8xl">🧪</div>`}
                             </div>
-
                             <!-- Inhalt -->
                             <div class="flex flex-col">
                                 <div class="flex items-center justify-between">
                                     <h2 class="neon-text">${product.name}</h2>
                                     ${product.isNew ? `<span class="px-6 py-2 bg-lime-400 text-black text-xs font-black tracking-widest rounded-3xl">NEW DROP</span>` : ''}
                                 </div>
-
                                 <div class="mt-6 text-gray-300 leading-relaxed text-[15.5px]">
                                     ${product.description ? product.description.replace(/\n/g, '<br>') : 'Premium Liquid von ELFLIQ – intensiver Geschmack, lange Haltbarkeit.'}
                                 </div>
-
                                 <div class="mt-8 price-row flex items-baseline gap-4">
                                     <span class="discount-price text-2xl line-through">35,99 €</span>
                                     <span class="sale-price text-5xl font-black text-red-500">${product.price.toFixed(2).replace('.', ',')} €</span>
                                 </div>
-
                                 ${stockHTML}
                                 ${nicotineHTML}
-
                                 <!-- Menge + Button -->
                                 <div class="mt-auto pt-8 flex flex-col gap-4">
-                                    <button onclick="addFromDetail('${product.id}')" 
+                                    <button onclick="addFromDetail('${product.id}')"
                                             class="w-full bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-6 rounded-3xl text-2xl hover:scale-[1.03] transition-all shadow-xl">
                                         In den Warenkorb
                                     </button>
-                                    <button onclick="closeProductDetail()" 
+                                    <button onclick="closeProductDetail()"
                                             class="text-gray-400 hover:text-white text-sm py-3">
                                         ← Zurück zum Shop
                                     </button>
@@ -1732,7 +1729,6 @@
                         </div>
                     </div>
                 </div>`;
-
             document.getElementById('detail-content').innerHTML = html;
             const modal = document.getElementById("product-detail-modal");
             modal.classList.remove("hidden");

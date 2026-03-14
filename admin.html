@@ -39,6 +39,8 @@
         th.sortable:after { content: '↑'; position: absolute; right: 12px; opacity: 0.3; font-size: 0.9em; }
         th.sortable.asc:after { content: '↑'; opacity: 1; color: #67e8f9; }
         th.sortable.desc:after { content: '↓'; opacity: 1; color: #67e8f9; }
+        .metric-card { background: linear-gradient(135deg, #18181b, #27272a); transition: all 0.3s; }
+        .metric-card:hover { transform: translateY(-4px); }
     </style>
 </head>
 <body class="min-h-screen">
@@ -112,34 +114,22 @@
                 </form>
             </div>
             <div class="flex flex-wrap gap-3 mb-6">
-                <button onclick="openBulkEditModal()"
-                        class="bg-violet-600 hover:bg-violet-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2">
-                    <i class="fa-solid fa-list-check"></i> Bulk-Edit (mehrere Produkte)
-                </button>
-                <button onclick="enforceCategories()"
-                        class="bg-amber-600 hover:bg-amber-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2">
-                    <i class="fa-solid fa-magic"></i> Automatische Kategoriezuteilung
-                </button>
+                <button onclick="openBulkEditModal()" class="bg-violet-600 hover:bg-violet-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2"><i class="fa-solid fa-list-check"></i> Bulk-Edit (mehrere Produkte)</button>
+                <button onclick="enforceCategories()" class="bg-amber-600 hover:bg-amber-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2"><i class="fa-solid fa-magic"></i> Automatische Kategoriezuteilung</button>
             </div>
             <div class="card overflow-hidden">
                 <div class="p-6 border-b border-white/10 flex items-center justify-between flex-wrap gap-4">
                     <h2 class="text-2xl font-bold">Alle Produkte</h2>
                     <div class="flex flex-wrap items-center gap-3">
-                        <select id="admin-category-filter" onchange="applyAdminFilters()"
-                                class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-3 text-sm">
-                            <option value="Alle">Alle Kategorien</option>
-                        </select>
-                        <select id="admin-status-filter" onchange="applyAdminFilters()"
-                                class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-3 text-sm">
+                        <select id="admin-category-filter" onchange="applyAdminFilters()" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-3 text-sm"><option value="Alle">Alle Kategorien</option></select>
+                        <select id="admin-status-filter" onchange="applyAdminFilters()" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-3 text-sm">
                             <option value="">Alle Produkte</option>
                             <option value="available">Nur verfügbar</option>
                             <option value="unavailable">Nur nicht verfügbar</option>
                             <option value="new">Nur neue Sorten</option>
                             <option value="tornado">Nur Tornado 30000</option>
                         </select>
-                        <input id="product-search" placeholder="Produkt suchen..."
-                               class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-3 w-80"
-                               onkeyup="applyAdminFilters()">
+                        <input id="product-search" placeholder="Produkt suchen..." class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-3 w-80" onkeyup="applyAdminFilters()">
                     </div>
                 </div>
                 <div class="overflow-x-auto">
@@ -172,10 +162,7 @@
                     <h2 class="text-2xl font-bold flex items-center gap-3"><i class="fa-solid fa-receipt"></i> Live Bestellungen</h2>
                     <div class="flex gap-3">
                         <button onclick="exportOrdersToCSV()" class="bg-emerald-600 hover:bg-emerald-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2"><i class="fa-solid fa-file-csv"></i> CSV Export</button>
-                        <button onclick="exportOrdersWithTracking()"
-                                class="bg-cyan-600 hover:bg-cyan-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2">
-                            <i class="fa-solid fa-link"></i> Export mit Tracking-Links
-                        </button>
+                        <button onclick="exportOrdersWithTracking()" class="bg-cyan-600 hover:bg-cyan-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2"><i class="fa-solid fa-link"></i> Export mit Tracking-Links</button>
                         <button onclick="document.getElementById('csv-upload-orders').click()" class="bg-orange-600 hover:bg-orange-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2"><i class="fa-solid fa-file-import"></i> CSV Import (Wiederherstellen)</button>
                         <input id="order-search" placeholder="Bestellnr. oder E-Mail" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-3 w-80">
                         <select id="status-filter" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-3">
@@ -286,32 +273,70 @@
                 </div>
             </div>
         </div>
-        <!-- TAB 5: ANALYTICS -->
+        <!-- TAB 5: ANALYTICS (NEU & CLEAN) -->
         <div id="tab-content-5" class="hidden">
-            <h2 class="text-3xl font-bold mb-8">Analytics – Live Dashboard</h2>
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <h2 class="text-4xl font-bold tracking-tighter neon mb-8 flex items-center gap-3">
+                <i class="fa-solid fa-chart-line"></i> Analytics Dashboard
+            </h2>
+
+            <!-- KEY METRICS -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+                <div class="metric-card p-8 rounded-3xl text-center">
+                    <p class="text-gray-400 text-sm">Gesamtumsatz (30 Tage)</p>
+                    <p id="metric-revenue" class="text-5xl font-bold text-emerald-400 mt-2">0 €</p>
+                </div>
+                <div class="metric-card p-8 rounded-3xl text-center">
+                    <p class="text-gray-400 text-sm">Bestellungen (30 Tage)</p>
+                    <p id="metric-orders" class="text-5xl font-bold text-cyan-400 mt-2">0</p>
+                </div>
+                <div class="metric-card p-8 rounded-3xl text-center">
+                    <p class="text-gray-400 text-sm">Aktive User</p>
+                    <p id="metric-users" class="text-5xl font-bold text-purple-400 mt-2">0</p>
+                </div>
+                <div class="metric-card p-8 rounded-3xl text-center">
+                    <p class="text-gray-400 text-sm">Ø Warenkorb</p>
+                    <p id="metric-avg" class="text-5xl font-bold text-amber-400 mt-2">0 €</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                <!-- Umsatz letzte 30 Tage -->
                 <div class="card p-8">
-                    <h3 class="text-xl font-bold mb-4">Umsatz letzte 30 Tage</h3>
-                    <div id="revenue-chart-container">
-                        <canvas id="revenueChart" height="140"></canvas>
+                    <h3 class="text-xl font-bold mb-6 flex items-center gap-2"><i class="fa-solid fa-euro-sign"></i> Umsatz letzte 30 Tage</h3>
+                    <div id="revenue-chart-container" class="h-80">
+                        <canvas id="revenueChart"></canvas>
                     </div>
                 </div>
+
+                <!-- NEUER GRAPH: Bestellungen pro Tag -->
                 <div class="card p-8">
-                    <h3 class="text-xl font-bold mb-4">Top 10 Produkte</h3>
-                    <div id="top-products-chart-container">
-                        <canvas id="topProductsChart" height="140"></canvas>
+                    <h3 class="text-xl font-bold mb-6 flex items-center gap-2"><i class="fa-solid fa-cart-shopping"></i> Bestellungen pro Tag</h3>
+                    <div id="daily-orders-chart-container" class="h-80">
+                        <canvas id="dailyOrdersChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Top 10 Produkte -->
+                <div class="card p-8">
+                    <h3 class="text-xl font-bold mb-6 flex items-center gap-2"><i class="fa-solid fa-trophy"></i> Top 10 Produkte</h3>
+                    <div id="top-products-chart-container" class="h-80">
+                        <canvas id="topProductsChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Top Referrer -->
+                <div class="card p-8">
+                    <h3 class="text-xl font-bold mb-6 flex items-center gap-2"><i class="fa-solid fa-share-nodes"></i> Top Referrer</h3>
+                    <div id="referral-chart-container" class="h-80">
+                        <canvas id="referralChart"></canvas>
                     </div>
                 </div>
             </div>
-            <div class="card p-8 mt-8">
-                <h3 class="text-xl font-bold mb-4">Top Referrer (Freunde geworben)</h3>
-                <div id="referral-chart-container">
-                    <canvas id="referralChart" height="140"></canvas>
-                </div>
-            </div>
+
             <button onclick="generatePDFReport()"
-                    class="mt-8 w-full bg-gradient-to-r from-amber-400 to-orange-500 text-black font-bold py-6 rounded-3xl text-xl flex items-center justify-center gap-3">
-                📄 <span>Monatsbericht als PDF herunterladen</span>
+                    class="mt-12 w-full bg-gradient-to-r from-amber-400 to-orange-500 text-black font-bold py-7 rounded-3xl text-2xl flex items-center justify-center gap-4 hover:scale-105 transition-all shadow-xl">
+                <i class="fa-solid fa-file-pdf text-3xl"></i>
+                Monatsbericht als PDF herunterladen
             </button>
         </div>
         <!-- TAB 6: ADMIN LOGS -->
@@ -374,10 +399,7 @@
                     <button onclick="autoSortPriority()" class="px-6 py-3 bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold rounded-2xl text-sm transition">🔄 AUTO-PRIORITÄT<br><span class="text-xs font-normal">NEW (verfügbar) → Normal (verfügbar) → Vapes → ALLE nicht verfügbar (unten)</span></button>
                 </div>
                 <div id="sort-list" class="space-y-3 min-h-[500px] bg-zinc-950 rounded-3xl p-6"></div>
-                <button onclick="saveProductOrder()"
-                        class="mt-10 w-full bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-6 rounded-3xl text-xl hover:scale-105 transition">
-                    ✅ Sortierung speichern & live übernehmen
-                </button>
+                <button onclick="saveProductOrder()" class="mt-10 w-full bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-6 rounded-3xl text-xl hover:scale-105 transition">✅ Sortierung speichern & live übernehmen</button>
             </div>
         </div>
     </div>
@@ -409,6 +431,7 @@ let removeCurrentImage = false;
 let allCategories = [];
 let allCoupons = [];
 let revenueChart = null;
+let dailyOrdersChart = null;
 let topProductsChart = null;
 let referralChart = null;
 let logsUnsubscribe = null;
@@ -464,7 +487,6 @@ function sortAdminTable(column) {
     }
     renderProductTable();
 }
-// ====================== NEU: renderProductTable mit Checkbox ======================
 function renderProductTable() {
     const tbody = document.getElementById('products-tbody');
     const searchTerm = (document.getElementById('product-search').value || '').toLowerCase().trim();
@@ -1398,46 +1420,65 @@ async function resetUserPoints(uid) {
 async function loadAnalytics() {
     const thirtyDaysAgo = firebase.firestore.Timestamp.fromDate(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
     const ordersSnap = await db.collection("orders").where("date", ">=", thirtyDaysAgo).get();
+
     let dailyRevenue = {};
+    let dailyOrdersCount = {};
     let totalRevenue = 0;
+    let totalOrders = 0;
+    let productMap = new Map();
+    let userMap = new Map();
+
     ordersSnap.forEach(doc => {
-        const d = doc.data();
-        const day = d.date.toDate().toISOString().slice(0,10);
-        dailyRevenue[day] = (dailyRevenue[day] || 0) + d.total;
-        totalRevenue += d.total;
+        const o = doc.data();
+        const day = o.date.toDate().toISOString().slice(0,10);
+
+        dailyRevenue[day] = (dailyRevenue[day] || 0) + o.total;
+        dailyOrdersCount[day] = (dailyOrdersCount[day] || 0) + 1;
+        totalRevenue += o.total;
+        totalOrders++;
+
+        o.items.forEach(item => {
+            productMap.set(item.name, (productMap.get(item.name) || 0) + item.qty);
+        });
+
+        if (o.userEmail) userMap.set(o.userEmail, (userMap.get(o.userEmail) || 0) + 1);
     });
+
+    // Key Metrics
+    document.getElementById('metric-revenue').textContent = totalRevenue.toFixed(0) + ' €';
+    document.getElementById('metric-orders').textContent = totalOrders;
+    document.getElementById('metric-users').textContent = userMap.size;
+    document.getElementById('metric-avg').textContent = totalOrders > 0 ? (totalRevenue / totalOrders).toFixed(2) + ' €' : '0 €';
+
+    // Umsatz Line Chart
     const labels = Object.keys(dailyRevenue).sort();
-    const data = labels.map(d => dailyRevenue[d]);
-    const revenueContainer = document.getElementById('revenue-chart-container');
+    const revenueData = labels.map(d => dailyRevenue[d]);
     if (revenueChart) revenueChart.destroy();
-    if (labels.length === 0) {
-        revenueContainer.innerHTML = `<div class="empty-chart">Keine Bestellungen in den letzten 30 Tagen</div>`;
-    } else {
-        revenueContainer.innerHTML = `<canvas id="revenueChart" height="140"></canvas>`;
-        revenueChart = new Chart(document.getElementById("revenueChart"), {
-            type: "line",
-            data: { labels, datasets: [{ label: "Umsatz €", data, borderColor: "#67e8f9", tension: 0.4, fill: true, backgroundColor: "rgba(103,232,249,0.1)" }] },
-            options: { responsive: true, plugins: { legend: { display: false } } }
-        });
-    }
-    const productsSnap = await db.collection("products").orderBy("sold", "desc").limit(10).get();
-    const prodLabels = [], prodData = [];
-    productsSnap.forEach(doc => {
-        const p = doc.data();
-        prodLabels.push(p.name);
-        prodData.push(p.sold || 0);
+    revenueChart = new Chart(document.getElementById("revenueChart"), {
+        type: "line",
+        data: { labels, datasets: [{ label: "Umsatz €", data: revenueData, borderColor: "#67e8f9", tension: 0.4, fill: true }] },
+        options: { responsive: true, maintainAspectRatio: false }
     });
-    const topProductsContainer = document.getElementById('top-products-chart-container');
+
+    // NEUER GRAPH: Bestellungen pro Tag
+    const ordersData = labels.map(d => dailyOrdersCount[d] || 0);
+    if (dailyOrdersChart) dailyOrdersChart.destroy();
+    dailyOrdersChart = new Chart(document.getElementById("dailyOrdersChart"), {
+        type: "bar",
+        data: { labels, datasets: [{ label: "Bestellungen", data: ordersData, backgroundColor: "#a78bfa" }] },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+
+    // Top Produkte Pie
+    const prodLabels = Array.from(productMap.keys()).slice(0,10);
+    const prodData = prodLabels.map(name => productMap.get(name));
     if (topProductsChart) topProductsChart.destroy();
-    if (prodLabels.length === 0) {
-        topProductsContainer.innerHTML = `<div class="empty-chart">Noch keine verkauften Produkte</div>`;
-    } else {
-        topProductsContainer.innerHTML = `<canvas id="topProductsChart" height="140"></canvas>`;
-        topProductsChart = new Chart(document.getElementById("topProductsChart"), {
-            type: "pie",
-            data: { labels: prodLabels, datasets: [{ data: prodData, backgroundColor: ["#67e8f9","#a78bfa","#f472b6","#fb923c","#4ade80","#22d3ee","#eab308","#ec4899","#14b8a6","#8b5cf6"] }] }
-        });
-    }
+    topProductsChart = new Chart(document.getElementById("topProductsChart"), {
+        type: "pie",
+        data: { labels: prodLabels, datasets: [{ data: prodData, backgroundColor: ["#67e8f9","#a78bfa","#f472b6","#fb923c","#4ade80","#22d3ee","#eab308","#ec4899","#14b8a6","#8b5cf6"] }] }
+    });
+
+    // Top Referrer Bar
     const usersSnap = await db.collection("users").orderBy("referralCount", "desc").limit(10).get();
     const refLabels = [], refData = [];
     usersSnap.forEach(doc => {
@@ -1445,17 +1486,11 @@ async function loadAnalytics() {
         refLabels.push(u.username || u.email.split("@")[0]);
         refData.push(u.referralCount || 0);
     });
-    const referralContainer = document.getElementById('referral-chart-container');
     if (referralChart) referralChart.destroy();
-    if (refLabels.length === 0) {
-        referralContainer.innerHTML = `<div class="empty-chart">Noch keine Referrals</div>`;
-    } else {
-        referralContainer.innerHTML = `<canvas id="referralChart" height="140"></canvas>`;
-        referralChart = new Chart(document.getElementById("referralChart"), {
-            type: "bar",
-            data: { labels: refLabels, datasets: [{ label: "Geworbene Freunde", data: refData, backgroundColor: "#a78bfa" }] }
-        });
-    }
+    referralChart = new Chart(document.getElementById("referralChart"), {
+        type: "bar",
+        data: { labels: refLabels, datasets: [{ label: "Geworbene Freunde", data: refData, backgroundColor: "#a78bfa" }] }
+    });
 }
 async function generatePDFReport() {
     const { jsPDF } = window.jspdf;
@@ -1807,8 +1842,10 @@ window.onload = () => {
     loadCoupons();
     loadOrders();
     loadUsers();
-    setTimeout(updateStats, 500);
-    setTimeout(populateAdminCategoryFilter, 800);
+    setTimeout(() => {
+        updateStats();
+        populateAdminCategoryFilter();
+    }, 500);
 };
 </script>
 </body>

@@ -210,7 +210,21 @@
                 <form id="add-category-form" class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <input id="cat-name" placeholder="Kategoriename (z.B. Sommer Specials)" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4 text-lg" required>
                     <input id="cat-order" type="number" placeholder="Sortierreihenfolge" value="10" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4" required>
-                    <div class="flex items-center gap-3"><input id="cat-special" type="checkbox" class="w-5 h-5 accent-amber-400"><label class="text-sm">Special (zeigt 4-für-3-Bolt im Shop)</label></div>
+                    
+                    <!-- CUSTOM SPECIAL TEXT -->
+                    <div class="col-span-3 grid grid-cols-2 gap-6">
+                        <div>
+                            <label class="flex items-center gap-3 text-sm cursor-pointer">
+                                <input id="cat-special" type="checkbox" class="w-5 h-5 accent-amber-400">
+                                <span>Special Badge aktivieren</span>
+                            </label>
+                        </div>
+                        <div>
+                            <input id="cat-special-text" placeholder="Badge-Text (z.B. Sonderaktion)" 
+                                   class="w-full bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4 text-lg">
+                        </div>
+                    </div>
+                    
                     <button type="submit" class="bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-5 rounded-3xl text-xl hover:scale-105 transition">Kategorie speichern</button>
                 </form>
             </div>
@@ -222,7 +236,13 @@
                 <div class="overflow-x-auto">
                     <table class="w-full">
                         <thead class="bg-zinc-950">
-                            <tr><th class="py-5 px-6 text-left">Name</th><th class="py-5 px-6 text-center">Order</th><th class="py-5 px-6 text-center">Special</th><th class="py-5 px-6 text-right">Aktionen</th></tr>
+                            <tr>
+                                <th class="py-5 px-6 text-left">Name</th>
+                                <th class="py-5 px-6 text-center">Order</th>
+                                <th class="py-5 px-6 text-center">Special</th>
+                                <th class="py-5 px-6 text-center">Badge-Text</th>
+                                <th class="py-5 px-6 text-right">Aktionen</th>
+                            </tr>
                         </thead>
                         <tbody id="categories-tbody" class="text-sm"></tbody>
                     </table>
@@ -257,7 +277,7 @@
                 </div>
             </div>
         </div>
-        <!-- TAB 5: ANALYTICS (JETZT MIT FULL REPORT + FALLBACKS) -->
+        <!-- TAB 5: ANALYTICS -->
         <div id="tab-content-5" class="hidden">
             <h2 class="text-3xl font-bold mb-8">Analytics – Live Dashboard</h2>
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -280,7 +300,7 @@
                     <canvas id="referralChart" height="140"></canvas>
                 </div>
             </div>
-            <button onclick="generatePDFReport()" 
+            <button onclick="generatePDFReport()"
                     class="mt-8 w-full bg-gradient-to-r from-amber-400 to-orange-500 text-black font-bold py-6 rounded-3xl text-xl flex items-center justify-center gap-3">
                 📄 <span>Monatsbericht als PDF herunterladen</span>
             </button>
@@ -336,7 +356,7 @@
                     <i class="fa-solid fa-sort"></i> Produkt-Sortierung (Drag & Drop + Auto-Sort)
                 </h2>
                 <p class="text-sm text-gray-400 mb-6">Klicke auf einen Button für automatische Sortierung.<br><strong>Neue AUTO-PRIORITÄT (überarbeitet):</strong><br>1. Neue Sorten (nur verfügbar) → 2. Normale Sorten (nur verfügbar) → 3. Alle Vapes (nur verfügbar) → 4. ALLE nicht verfügbaren Sachen (egal ob neu oder normal – immer ganz unten)</p>
-             
+            
                 <div class="flex flex-wrap gap-3 mb-8">
                     <button onclick="autoSort('alpha')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">📋 Alphabetisch A-Z</button>
                     <button onclick="autoSort('new')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">⭐ Neue Sorten zuerst</button>
@@ -345,9 +365,9 @@
                     <button onclick="autoSort('stock')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">📦 Lagerbestand (hoch zuerst)</button>
                     <button onclick="autoSortPriority()" class="px-6 py-3 bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold rounded-2xl text-sm transition">🔄 AUTO-PRIORITÄT<br><span class="text-xs font-normal">NEW (verfügbar) → Normal (verfügbar) → Vapes → ALLE nicht verfügbar (unten)</span></button>
                 </div>
-             
+            
                 <div id="sort-list" class="space-y-3 min-h-[500px] bg-zinc-950 rounded-3xl p-6"></div>
-             
+            
                 <button onclick="saveProductOrder()"
                         class="mt-10 w-full bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-6 rounded-3xl text-xl hover:scale-105 transition">
                     ✅ Sortierung speichern & live übernehmen
@@ -362,6 +382,7 @@
 <div id="order-modal-container"></div>
 <!-- TOAST -->
 <div id="toast-container" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[99999] flex flex-col gap-3"></div>
+
 <script>
 // ====================== FIREBASE CONFIG ======================
 const firebaseConfig = {
@@ -825,25 +846,27 @@ function renderCategoryTable() {
             <td class="py-5 px-6 font-medium">${c.name}</td>
             <td class="py-5 px-6 text-center">${c.order}</td>
             <td class="py-5 px-6 text-center">${c.special ? '✅' : '—'}</td>
+            <td class="py-5 px-6 text-center">${c.specialText || '—'}</td>
             <td class="py-5 px-6 text-right space-x-4">
                 <button onclick="openEditCategoryModal('${c.id}')" class="text-cyan-400 hover:text-white"><i class="fa-solid fa-pen"></i></button>
                 <button onclick="deleteCategory('${c.id}')" class="text-red-400 hover:text-white"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>`;
     });
-    tbody.innerHTML = html || `<tr><td colspan="4" class="text-center py-16 text-gray-400">Noch keine Kategorien</td></tr>`;
+    tbody.innerHTML = html || `<tr><td colspan="5" class="text-center py-16 text-gray-400">Noch keine Kategorien</td></tr>`;
 }
 document.getElementById('add-category-form').addEventListener('submit', async e => {
     e.preventDefault();
     const name = document.getElementById('cat-name').value.trim();
     const order = parseInt(document.getElementById('cat-order').value) || 999;
     const special = document.getElementById('cat-special').checked;
+    const specialText = document.getElementById('cat-special-text').value.trim() || (special ? "Sonderaktion" : "");
     if (!name) return alert("Name erforderlich");
-    await db.collection('categories').add({ name, order, special });
-    await logAction("category_created", "", { name });
+    await db.collection('categories').add({ name, order, special, specialText });
+    await logAction("category_created", "", { name, special, specialText });
     e.target.reset();
     populateCategorySelects();
-    showToast('✅ Kategorie erstellt und Dropdowns aktualisiert!');
+    showToast('✅ Kategorie mit custom Special-Text gespeichert!');
 });
 async function openEditCategoryModal(id) {
     const doc = await db.collection('categories').doc(id).get();
@@ -853,10 +876,19 @@ async function openEditCategoryModal(id) {
             <h3 class="text-3xl font-bold neon mb-6">Kategorie bearbeiten</h3>
             <input id="edit-cat-name" value="${c.name}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 mb-4">
             <input id="edit-cat-order" type="number" value="${c.order}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 mb-4">
-            <div class="flex items-center gap-3 mb-8">
-                <input id="edit-cat-special" type="checkbox" ${c.special ? 'checked' : ''} class="w-5 h-5 accent-amber-400">
-                <label>Special (4-für-3-Bolt)</label>
+            
+            <!-- CUSTOM SPECIAL TEXT -->
+            <div class="grid grid-cols-2 gap-6 mb-6">
+                <div>
+                    <label class="flex items-center gap-3 text-sm cursor-pointer">
+                        <input id="edit-cat-special" type="checkbox" ${c.special ? 'checked' : ''} class="w-5 h-5 accent-amber-400">
+                        <span>Special Badge</span>
+                    </label>
+                </div>
+                <input id="edit-cat-special-text" value="${c.specialText || '4 FÜR 3'}" 
+                       placeholder="Badge-Text" class="bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
             </div>
+            
             <div class="flex gap-4">
                 <button onclick="saveEditCategory('${id}')" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-5 rounded-3xl font-bold">Speichern</button>
                 <button onclick="closeEditModal()" class="flex-1 bg-zinc-700 hover:bg-zinc-600 py-5 rounded-3xl">Abbrechen</button>
@@ -869,11 +901,12 @@ async function saveEditCategory(id) {
     const name = document.getElementById('edit-cat-name').value.trim();
     const order = parseInt(document.getElementById('edit-cat-order').value) || 999;
     const special = document.getElementById('edit-cat-special').checked;
-    await db.collection('categories').doc(id).update({ name, order, special });
-    await logAction("category_updated", id, { name });
+    const specialText = document.getElementById('edit-cat-special-text').value.trim() || (special ? "Sonderaktion" : "");
+    await db.collection('categories').doc(id).update({ name, order, special, specialText });
+    await logAction("category_updated", id, { name, special, specialText });
     document.getElementById('edit-modal').classList.add('hidden');
     populateCategorySelects();
-    showToast('✅ Kategorie gespeichert und Dropdowns aktualisiert');
+    showToast('✅ Kategorie + Custom Special-Text gespeichert');
 }
 async function deleteCategory(id) {
     if (!confirm('Kategorie wirklich löschen? Produkte bleiben erhalten.')) return;
@@ -885,12 +918,12 @@ async function deleteCategory(id) {
 function seedDefaultCategories() {
     if (allCategories.length > 0 && !confirm('Es existieren bereits Kategorien. Trotzdem Standard-Kategorien laden?')) return;
     const defaults = [
-        { name: "WaveVapes Tornado 30000", order: 1, special: true },
-        { name: "Normale Sorten", order: 2, special: false },
-        { name: "Neue Sorten", order: 3, special: false }
+        { name: "WaveVapes Tornado 30000", order: 1, special: true, specialText: "4 FÜR 3" },
+        { name: "Normale Sorten", order: 2, special: false, specialText: "" },
+        { name: "Neue Sorten", order: 3, special: false, specialText: "" }
     ];
     defaults.forEach(d => db.collection('categories').add(d));
-    showToast('✅ Standard-Kategorien angelegt!');
+    showToast('✅ Standard-Kategorien mit Text angelegt!');
 }
 function populateCategorySelects() {
     const selects = document.querySelectorAll('#prod-category, #edit-category-select');
@@ -1178,7 +1211,7 @@ async function resetUserPoints(uid) {
         showToast("Fehler: " + e.message, "error");
     }
 }
-// ====================== ANALYTICS (JETZT MIT FALLBACKS + FULL PDF REPORT) ======================
+// ====================== ANALYTICS ======================
 async function loadAnalytics() {
     const thirtyDaysAgo = firebase.firestore.Timestamp.fromDate(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
     const ordersSnap = await db.collection("orders").where("date", ">=", thirtyDaysAgo).get();
@@ -1192,8 +1225,6 @@ async function loadAnalytics() {
     });
     const labels = Object.keys(dailyRevenue).sort();
     const data = labels.map(d => dailyRevenue[d]);
-
-    // Revenue Chart
     const revenueContainer = document.getElementById('revenue-chart-container');
     if (revenueChart) revenueChart.destroy();
     if (labels.length === 0) {
@@ -1206,8 +1237,6 @@ async function loadAnalytics() {
             options: { responsive: true, plugins: { legend: { display: false } } }
         });
     }
-
-    // Top Products
     const productsSnap = await db.collection("products").orderBy("sold", "desc").limit(10).get();
     const prodLabels = [], prodData = [];
     productsSnap.forEach(doc => {
@@ -1226,8 +1255,6 @@ async function loadAnalytics() {
             data: { labels: prodLabels, datasets: [{ data: prodData, backgroundColor: ["#67e8f9","#a78bfa","#f472b6","#fb923c","#4ade80","#22d3ee","#eab308","#ec4899","#14b8a6","#8b5cf6"] }] }
         });
     }
-
-    // Top Referrer
     const usersSnap = await db.collection("users").orderBy("referralCount", "desc").limit(10).get();
     const refLabels = [], refData = [];
     usersSnap.forEach(doc => {
@@ -1247,7 +1274,6 @@ async function loadAnalytics() {
         });
     }
 }
-
 async function generatePDFReport() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
@@ -1255,16 +1281,12 @@ async function generatePDFReport() {
     doc.text("WaveVapes Monatsbericht", 20, 20);
     doc.setFontSize(11);
     doc.text(`Erstellt am: ${new Date().toLocaleDateString("de-DE")} ${new Date().toLocaleTimeString("de-DE")}`, 20, 30);
-
-    // 30-Tage-Daten holen
     const thirtyDaysAgo = firebase.firestore.Timestamp.fromDate(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
     const ordersSnap = await db.collection("orders").where("date", ">=", thirtyDaysAgo).get();
-
     let totalRevenue = 0;
     let orderCount = 0;
     let topProducts = [];
     const productMap = new Map();
-
     ordersSnap.forEach(doc => {
         const o = doc.data();
         totalRevenue += o.total || 0;
@@ -1274,27 +1296,20 @@ async function generatePDFReport() {
             productMap.set(item.name, current + item.qty);
         });
     });
-
-    // Top 5 Produkte
     topProducts = Array.from(productMap.entries())
         .sort((a, b) => b[1] - a[1])
         .slice(0, 5);
-
-    // PDF Inhalt
     doc.setFontSize(14);
     doc.text("Zusammenfassung letzte 30 Tage", 20, 45);
     doc.setFontSize(11);
     doc.text(`Gesamtumsatz: ${totalRevenue.toFixed(2)} €`, 20, 55);
     doc.text(`Anzahl Bestellungen: ${orderCount}`, 20, 62);
-
     doc.text("Top 5 Produkte:", 20, 75);
     let y = 82;
     topProducts.forEach(([name, qty]) => {
         doc.text(`${name}: ${qty} Stück`, 25, y);
         y += 7;
     });
-
-    // Referrer (letzte 10)
     const usersSnap = await db.collection("users").orderBy("referralCount", "desc").limit(10).get();
     doc.text("Top Referrer:", 20, y + 10);
     y += 17;
@@ -1304,10 +1319,8 @@ async function generatePDFReport() {
         doc.text(`${name} – ${u.referralCount || 0} Freunde geworben`, 25, y);
         y += 7;
     });
-
     doc.setFontSize(10);
     doc.text("Bericht erstellt mit WaveVapes Admin Panel v2.0", 20, 280);
-
     doc.save(`wavevapes-monatsbericht_${new Date().toISOString().slice(0,10)}.pdf`);
     await logAction("monthly_report_generated");
     showToast("✅ Vollständiger Monatsbericht als PDF heruntergeladen!", "success");
@@ -1440,7 +1453,6 @@ async function loadProductOrder() {
 function renderSortList() {
     const container = document.getElementById('sort-list');
     container.innerHTML = '';
-  
     const sorted = [...allProducts].sort((a, b) => {
         const idxA = productOrder.indexOf(a.id);
         const idxB = productOrder.indexOf(b.id);
@@ -1453,11 +1465,9 @@ function renderSortList() {
         const div = document.createElement('div');
         div.className = 'sortable-item flex items-center gap-4 bg-zinc-900 border border-white/10 rounded-3xl p-5 cursor-move select-none';
         div.dataset.id = p.id;
-      
         const newBadge = p.isNew
             ? `<span onclick="toggleIsNew('${p.id}', event)" class="px-3 py-1 bg-lime-400 text-black text-xs font-black tracking-wider rounded-2xl cursor-pointer hover:scale-110 transition">NEW</span>`
             : '';
-      
         const unavailableBadge = p.available === false
             ? `<span onclick="toggleAvailableInSort('${p.id}', event)" class="px-3 py-1 bg-red-500 text-white text-xs font-medium rounded-2xl cursor-pointer hover:scale-110 transition">NICHT VERFÜGBAR</span>`
             : '';
@@ -1501,14 +1511,12 @@ async function toggleAvailableInSort(id, e) {
 function autoSort(mode) {
     const container = document.getElementById('sort-list');
     let items = Array.from(container.children);
- 
     items.sort((a, b) => {
         const idA = a.dataset.id;
         const idB = b.dataset.id;
         const pA = allProducts.find(p => p.id === idA);
         const pB = allProducts.find(p => p.id === idB);
         if (!pA || !pB) return 0;
-     
         switch(mode) {
             case 'alpha':
                 return pA.name.localeCompare(pB.name);
@@ -1530,14 +1538,12 @@ function autoSort(mode) {
                 return 0;
         }
     });
- 
     items.forEach(item => container.appendChild(item));
     showToast('✅ Liste automatisch sortiert!', 'success');
 }
 function autoSortPriority() {
     const container = document.getElementById('sort-list');
     let items = Array.from(container.children);
- 
     items.sort((a, b) => {
         const idA = a.dataset.id;
         const idB = b.dataset.id;
@@ -1555,7 +1561,6 @@ function autoSortPriority() {
         if (prioA !== prioB) return prioA - prioB;
         return pA.name.localeCompare(pB.name);
     });
- 
     items.forEach(item => container.appendChild(item));
     showToast('✅ Automatische Prioritätssortierung angewendet!', 'success');
 }

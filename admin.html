@@ -111,16 +111,28 @@
                     <button type="submit" class="lg:col-span-3 bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-5 rounded-3xl text-xl">Produkt speichern</button>
                 </form>
             </div>
-            <!-- PRODUKTE TABELLE MIT FILTER + SORTIERUNG -->
+
+            <!-- NEUE BUTTONS: Bulk-Edit + Automatische Kategoriezuteilung -->
+            <div class="flex flex-wrap gap-3 mb-6">
+                <button onclick="openBulkEditModal()" 
+                        class="bg-violet-600 hover:bg-violet-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2">
+                    <i class="fa-solid fa-list-check"></i> Bulk-Edit (mehrere Produkte)
+                </button>
+                <button onclick="enforceCategories()" 
+                        class="bg-amber-600 hover:bg-amber-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2">
+                    <i class="fa-solid fa-magic"></i> Automatische Kategoriezuteilung
+                </button>
+            </div>
+
             <div class="card overflow-hidden">
                 <div class="p-6 border-b border-white/10 flex items-center justify-between flex-wrap gap-4">
                     <h2 class="text-2xl font-bold">Alle Produkte</h2>
                     <div class="flex flex-wrap items-center gap-3">
-                        <select id="admin-category-filter" onchange="applyAdminFilters()" 
+                        <select id="admin-category-filter" onchange="applyAdminFilters()"
                                 class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-3 text-sm">
                             <option value="Alle">Alle Kategorien</option>
                         </select>
-                        <select id="admin-status-filter" onchange="applyAdminFilters()" 
+                        <select id="admin-status-filter" onchange="applyAdminFilters()"
                                 class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-3 text-sm">
                             <option value="">Alle Produkte</option>
                             <option value="available">Nur verfügbar</option>
@@ -128,7 +140,7 @@
                             <option value="new">Nur neue Sorten</option>
                             <option value="tornado">Nur Tornado 30000</option>
                         </select>
-                        <input id="product-search" placeholder="Produkt suchen..." 
+                        <input id="product-search" placeholder="Produkt suchen..."
                                class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-3 w-80"
                                onkeyup="applyAdminFilters()">
                     </div>
@@ -137,6 +149,7 @@
                     <table class="w-full">
                         <thead class="bg-zinc-950 sticky top-0">
                             <tr>
+                                <th class="py-5 px-6 text-center w-12"><input type="checkbox" id="select-all-products" onclick="toggleSelectAllProducts(this)" class="accent-cyan-400 w-5 h-5"></th>
                                 <th class="py-5 px-6 text-left sortable" onclick="sortAdminTable('name')">Bild / Name</th>
                                 <th class="py-5 px-6 text-left sortable" onclick="sortAdminTable('category')">Kategorie</th>
                                 <th class="py-5 px-6 text-center sortable" onclick="sortAdminTable('isNew')">Neu</th>
@@ -155,6 +168,7 @@
                 </div>
             </div>
         </div>
+
         <!-- TAB 1: BESTELLUNGEN -->
         <div id="tab-content-1" class="hidden">
             <div class="card overflow-hidden">
@@ -162,6 +176,10 @@
                     <h2 class="text-2xl font-bold flex items-center gap-3"><i class="fa-solid fa-receipt"></i> Live Bestellungen</h2>
                     <div class="flex gap-3">
                         <button onclick="exportOrdersToCSV()" class="bg-emerald-600 hover:bg-emerald-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2"><i class="fa-solid fa-file-csv"></i> CSV Export</button>
+                        <button onclick="exportOrdersWithTracking()" 
+                                class="bg-cyan-600 hover:bg-cyan-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2">
+                            <i class="fa-solid fa-link"></i> Export mit Tracking-Links
+                        </button>
                         <button onclick="document.getElementById('csv-upload-orders').click()" class="bg-orange-600 hover:bg-orange-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2"><i class="fa-solid fa-file-import"></i> CSV Import (Wiederherstellen)</button>
                         <input id="order-search" placeholder="Bestellnr. oder E-Mail" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-3 w-80">
                         <select id="status-filter" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-3">
@@ -185,6 +203,7 @@
             </div>
             <input type="file" id="csv-upload-orders" accept=".csv" class="hidden" onchange="importOrdersFromCSV(event)">
         </div>
+
         <!-- TAB 2: BENUTZER -->
         <div id="tab-content-2" class="hidden">
             <div class="card p-8 mb-12 bg-red-950/30 border border-red-500/50">
@@ -218,6 +237,7 @@
             </div>
             <input type="file" id="csv-upload-users" accept=".csv" class="hidden" onchange="importUsersFromCSV(event)">
         </div>
+
         <!-- TAB 3: KATEGORIEN -->
         <div id="tab-content-3" class="hidden">
             <div class="card p-8 mb-12">
@@ -244,6 +264,7 @@
                 </div>
             </div>
         </div>
+
         <!-- TAB 4: GUTSCHEINE -->
         <div id="tab-content-4" class="hidden">
             <div class="card p-8">
@@ -272,6 +293,7 @@
                 </div>
             </div>
         </div>
+
         <!-- TAB 5: ANALYTICS -->
         <div id="tab-content-5" class="hidden">
             <h2 class="text-3xl font-bold mb-8">Analytics – Live Dashboard</h2>
@@ -300,11 +322,13 @@
                 📄 <span>Monatsbericht als PDF herunterladen</span>
             </button>
         </div>
+
         <!-- TAB 6: ADMIN LOGS -->
         <div id="tab-content-6" class="hidden">
             <h2 class="text-3xl font-bold mb-6">Admin Activity Log (Live)</h2>
             <div id="logs-container" class="space-y-4 max-h-[70vh] overflow-y-auto"></div>
         </div>
+
         <!-- TAB 7: SETTINGS -->
         <div id="tab-content-7" class="hidden">
             <h2 class="text-3xl font-bold mb-8">Shop Settings</h2>
@@ -344,6 +368,7 @@
                 </div>
             </div>
         </div>
+
         <!-- TAB 8: SORTIERUNG -->
         <div id="tab-content-8" class="hidden">
             <div class="card p-8">
@@ -368,6 +393,7 @@
         </div>
     </div>
 </div>
+
 <!-- EDIT MODAL -->
 <div id="edit-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]"></div>
 <!-- ORDER MODAL -->
@@ -403,12 +429,11 @@ let logsUnsubscribe = null;
 let allProducts = [];
 let productOrder = [];
 let sortableInstance = null;
-
-// NEUE SORTIER-VARIABLEN FÜR PRODUKTE-TAB
 let adminSortColumn = 'name';
 let adminSortDirection = 'asc';
 let adminCategoryFilter = 'Alle';
 let adminStatusFilter = '';
+let selectedProductIds = [];
 
 // ====================== LOG ACTION ======================
 async function logAction(action, target = "", details = {}) {
@@ -459,10 +484,10 @@ function sortAdminTable(column) {
     renderProductTable();
 }
 
+// ====================== NEU: renderProductTable mit Checkbox ======================
 function renderProductTable() {
     const tbody = document.getElementById('products-tbody');
     const searchTerm = (document.getElementById('product-search').value || '').toLowerCase().trim();
-
     let filtered = allProducts.filter(p => {
         const matchesSearch = !searchTerm || p.name.toLowerCase().includes(searchTerm);
         const matchesCategory = adminCategoryFilter === 'Alle' || p.category === adminCategoryFilter;
@@ -473,7 +498,6 @@ function renderProductTable() {
         if (adminStatusFilter === 'tornado') matchesStatus = p.category === "WaveVapes Tornado 30000";
         return matchesSearch && matchesCategory && matchesStatus;
     });
-
     filtered.sort((a, b) => {
         let valA, valB;
         switch(adminSortColumn) {
@@ -493,13 +517,13 @@ function renderProductTable() {
         }
         return adminSortDirection === 'asc' ? valA - valB : valB - valA;
     });
-
     let html = '';
     filtered.forEach(p => {
         const neuBadge = p.isNew ? `<span class="px-3 py-1 bg-lime-400 text-black text-xs font-black rounded-2xl">NEW</span>` : '—';
         const originalPriceHTML = p.originalPrice ? `<span class="text-gray-400 line-through">${p.originalPrice.toFixed(2)} €</span>` : '—';
         html += `
         <tr class="table-row-hover border-b border-white/10">
+            <td class="py-5 px-6 text-center"><input type="checkbox" class="product-checkbox accent-cyan-400 w-5 h-5" data-id="${p.id}"></td>
             <td class="py-5 px-6">${p.image ? `<img src="${p.image}" class="w-12 h-12 object-cover rounded-xl" loading="lazy">` : '—'}</td>
             <td class="py-5 px-6 font-medium">${p.name}</td>
             <td class="py-5 px-6">${p.category || '—'}</td>
@@ -517,7 +541,7 @@ function renderProductTable() {
             </td>
         </tr>`;
     });
-    tbody.innerHTML = html || `<tr><td colspan="11" class="text-center py-16 text-gray-400">Keine Produkte gefunden</td></tr>`;
+    tbody.innerHTML = html || `<tr><td colspan="12" class="text-center py-16 text-gray-400">Keine Produkte gefunden</td></tr>`;
 }
 
 document.getElementById('product-search').addEventListener('input', applyAdminFilters);
@@ -537,6 +561,133 @@ async function deleteProduct(id) {
     } catch (e) {
         showToast('❌ Fehler beim Löschen: ' + e.message, 'error');
     }
+}
+
+// ====================== BULK-EDIT ======================
+function toggleSelectAllProducts(cb) {
+    document.querySelectorAll('.product-checkbox').forEach(ch => ch.checked = cb.checked);
+}
+
+function openBulkEditModal() {
+    selectedProductIds = [];
+    document.querySelectorAll('.product-checkbox:checked').forEach(cb => {
+        selectedProductIds.push(cb.dataset.id);
+    });
+    if (selectedProductIds.length === 0) {
+        alert("Bitte zuerst Produkte per Checkbox auswählen!");
+        return;
+    }
+    const html = `
+    <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]">
+        <div class="bg-zinc-900 rounded-3xl p-8 max-w-lg w-full mx-4 modal">
+            <h3 class="text-3xl font-bold mb-6 neon">Bulk-Edit (${selectedProductIds.length} Produkte)</h3>
+            <div class="space-y-6">
+                <div><label class="block text-sm text-gray-400 mb-2">Neuer Preis (€)</label><input id="bulk-price" type="number" step="0.01" placeholder="z.B. 7.99" class="w-full bg-zinc-800 rounded-2xl px-6 py-4"></div>
+                <div><label class="block text-sm text-gray-400 mb-2">Lagerbestand</label><input id="bulk-stock" type="number" placeholder="z.B. 50" class="w-full bg-zinc-800 rounded-2xl px-6 py-4"></div>
+                <div class="flex items-center gap-4">
+                    <label class="flex items-center gap-3"><input id="bulk-available" type="checkbox" class="w-5 h-5 accent-cyan-400"> Verfügbar</label>
+                    <label class="flex items-center gap-3"><input id="bulk-new" type="checkbox" class="w-5 h-5 accent-lime-400"> Neue Sorte</label>
+                </div>
+                <div><label class="block text-sm text-gray-400 mb-2">Kategorie</label><select id="bulk-category" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4"></select></div>
+            </div>
+            <div class="flex gap-4 mt-10">
+                <button onclick="executeBulkEdit()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-5 rounded-3xl font-bold">JETZT ÄNDERN</button>
+                <button onclick="closeBulkModal()" class="flex-1 bg-zinc-700 hover:bg-zinc-600 py-5 rounded-3xl">Abbrechen</button>
+            </div>
+        </div>
+    </div>`;
+    document.getElementById('edit-modal').innerHTML = html;
+    document.getElementById('edit-modal').classList.remove('hidden');
+    populateCategorySelects();
+    const sel = document.getElementById('bulk-category');
+    if (sel) sel.innerHTML = '<option value="">Kategorie nicht ändern</option>' + sel.innerHTML;
+}
+
+function closeBulkModal() {
+    document.getElementById('edit-modal').classList.add('hidden');
+}
+
+async function executeBulkEdit() {
+    const price = document.getElementById('bulk-price').value ? parseFloat(document.getElementById('bulk-price').value) : null;
+    const stock = document.getElementById('bulk-stock').value ? parseInt(document.getElementById('bulk-stock').value) : null;
+    const available = document.getElementById('bulk-available').checked ? true : null;
+    const isNew = document.getElementById('bulk-new').checked ? true : null;
+    const category = document.getElementById('bulk-category').value || null;
+
+    const batch = db.batch();
+    let changed = 0;
+    for (let id of selectedProductIds) {
+        const updateData = {};
+        if (price !== null) updateData.price = price;
+        if (stock !== null) updateData.stock = stock;
+        if (available !== null) updateData.available = available;
+        if (isNew !== null) updateData.isNew = isNew;
+        if (category) updateData.category = category;
+        if (Object.keys(updateData).length > 0) {
+            batch.update(db.collection('products').doc(id), updateData);
+            changed++;
+        }
+    }
+    await batch.commit();
+    await logAction("bulk_edit", "", { count: changed });
+    closeBulkModal();
+    showToast(`✅ ${changed} Produkte erfolgreich bearbeitet!`);
+    loadProducts();
+}
+
+// ====================== AUTOMATISCHE KATEGORIEZUWEISUNG ======================
+async function enforceCategories() {
+    if (!confirm('Alle Produkte automatisch kategorisieren?\n\n• Neue Sorten → „Neue Sorten“\n• Alle anderen → „Normale Sorten“\n\nDas überschreibt bestehende Kategorien!')) return;
+    const snap = await db.collection('products').get();
+    const batch = db.batch();
+    let changed = 0;
+    snap.forEach(doc => {
+        const p = doc.data();
+        const targetCat = p.isNew === true ? "Neue Sorten" : "Normale Sorten";
+        if (p.category !== targetCat) {
+            batch.update(doc.ref, { category: targetCat });
+            changed++;
+        }
+    });
+    if (changed > 0) {
+        await batch.commit();
+        await logAction("auto_category_assignment", "", { changed });
+        showToast(`✅ ${changed} Produkte automatisch kategorisiert!`, "success");
+    } else {
+        showToast("✅ Alles war schon korrekt");
+    }
+    loadProducts();
+}
+
+// ====================== BESTELL-EXPORT MIT TRACKING-LINKS ======================
+async function exportOrdersWithTracking() {
+    const snapshot = await db.collection("orders").orderBy("date", "desc").get();
+    if (snapshot.empty) return alert("Keine Bestellungen!");
+    let csv = "Bestellnr.,Datum,Kunde,Gesamt,Status,Tracking-Nummer,Tracking-Link\n";
+    snapshot.forEach(doc => {
+        const o = doc.data();
+        const dateStr = o.date ? o.date.toDate().toISOString().slice(0,19).replace('T',' ') : '';
+        const trackingLink = o.trackingNumber && o.carrier === "DHL" 
+            ? `https://www.dhl.de/de/privatkunden/dhl-sendungsverfolgung.html?piececode=${encodeURIComponent(o.trackingNumber)}`
+            : (o.trackingNumber || '');
+        const row = [
+            `"${o.orderNumber || ''}"`,
+            `"${dateStr}"`,
+            `"${o.userEmail || ''}"`,
+            o.total || 0,
+            `"${o.status || ''}"`,
+            `"${o.trackingNumber || ''}"`,
+            `"${trackingLink}"`
+        ].join(",");
+        csv += row + "\n";
+    });
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `wavevapes_bestellungen_mit_tracking_${new Date().toISOString().slice(0,10)}.csv`;
+    link.click();
+    showToast("✅ Export mit Tracking-Links heruntergeladen!", "success");
+    await logAction("orders_export_with_tracking");
 }
 
 // ====================== EDIT MODAL ======================
@@ -998,7 +1149,7 @@ function seedDefaultCategories() {
 }
 
 function populateCategorySelects() {
-    const selects = document.querySelectorAll('#prod-category, #edit-category-select');
+    const selects = document.querySelectorAll('#prod-category, #edit-category-select, #bulk-category');
     selects.forEach(select => {
         if (!select) return;
         const currentValue = select.value;
@@ -1688,30 +1839,6 @@ async function saveProductOrder() {
     const newOrder = Array.from(items).map(item => item.dataset.id);
     await db.collection('settings').doc('product_order').set({ order: newOrder }, { merge: true });
     showToast('✅ Sortierung gespeichert! Der Shop zeigt jetzt die neue Reihenfolge.', 'success');
-}
-
-// ====================== AUTOMATISCHE KATEGORIE-KORREKTUR ======================
-async function enforceCategories() {
-    if (!confirm('Alle Produkte prüfen und Kategorie automatisch setzen?\n\nisNew = true → „Neue Sorten“\nisNew = false → „Normale Sorten“\n\nDas ist unwiderruflich!')) return;
-    const snap = await db.collection('products').get();
-    let changed = 0;
-    const batch = db.batch();
-    snap.forEach(doc => {
-        const p = doc.data();
-        const shouldBe = (p.isNew === true) ? "Neue Sorten" : "Normale Sorten";
-        if (p.category !== shouldBe) {
-            batch.update(doc.ref, { category: shouldBe });
-            changed++;
-        }
-    });
-    if (changed > 0) {
-        await batch.commit();
-        showToast(`✅ ${changed} Produkte korrigiert!`);
-        await logAction("categories_auto_enforced", "", { changed_count: changed });
-    } else {
-        showToast('✅ Alles war bereits perfekt');
-    }
-    loadProducts();
 }
 
 // ====================== TOAST ======================

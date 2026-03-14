@@ -92,7 +92,8 @@
                 <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><i class="fa-solid fa-plus"></i> Neues Produkt hinzufügen</h2>
                 <form id="add-form" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <input id="prod-name" placeholder="Produktname" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4 text-lg" required>
-                    <input id="prod-price" type="number" step="0.01" placeholder="Preis (€)" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4" required>
+                    <input id="prod-price" type="number" step="0.01" placeholder="Aktueller Preis (€)" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4" required>
+                    <input id="prod-original-price" type="number" step="0.01" placeholder="Alter Preis (Strikethrough z.B. 35.99)" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4">
                     <input id="prod-stock" type="number" placeholder="Lagerbestand" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4" required>
                     <select id="prod-category" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4 text-lg"></select>
                     <div class="flex items-center gap-3"><input id="prod-new" type="checkbox" class="w-5 h-5 accent-lime-400"><label>Neue Sorte</label></div>
@@ -127,6 +128,7 @@
                                 <th class="py-5 px-6 text-left">Kategorie</th>
                                 <th class="py-5 px-6 text-center">Neu</th>
                                 <th class="py-5 px-6 text-center">Preis</th>
+                                <th class="py-5 px-6 text-center">Alter Preis</th>
                                 <th class="py-5 px-6 text-center">Lager</th>
                                 <th class="py-5 px-6 text-center">Nikotin</th>
                                 <th class="py-5 px-6 text-center">Verfügbar</th>
@@ -210,21 +212,7 @@
                 <form id="add-category-form" class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <input id="cat-name" placeholder="Kategoriename (z.B. Sommer Specials)" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4 text-lg" required>
                     <input id="cat-order" type="number" placeholder="Sortierreihenfolge" value="10" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4" required>
-                    
-                    <!-- CUSTOM SPECIAL TEXT -->
-                    <div class="col-span-3 grid grid-cols-2 gap-6">
-                        <div>
-                            <label class="flex items-center gap-3 text-sm cursor-pointer">
-                                <input id="cat-special" type="checkbox" class="w-5 h-5 accent-amber-400">
-                                <span>Special Badge aktivieren</span>
-                            </label>
-                        </div>
-                        <div>
-                            <input id="cat-special-text" placeholder="Badge-Text (z.B. Sonderaktion)" 
-                                   class="w-full bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4 text-lg">
-                        </div>
-                    </div>
-                    
+                    <div class="flex items-center gap-3"><input id="cat-special" type="checkbox" class="w-5 h-5 accent-amber-400"><label class="text-sm">Special (zeigt 4-für-3-Bolt im Shop)</label></div>
                     <button type="submit" class="bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-5 rounded-3xl text-xl hover:scale-105 transition">Kategorie speichern</button>
                 </form>
             </div>
@@ -236,13 +224,7 @@
                 <div class="overflow-x-auto">
                     <table class="w-full">
                         <thead class="bg-zinc-950">
-                            <tr>
-                                <th class="py-5 px-6 text-left">Name</th>
-                                <th class="py-5 px-6 text-center">Order</th>
-                                <th class="py-5 px-6 text-center">Special</th>
-                                <th class="py-5 px-6 text-center">Badge-Text</th>
-                                <th class="py-5 px-6 text-right">Aktionen</th>
-                            </tr>
+                            <tr><th class="py-5 px-6 text-left">Name</th><th class="py-5 px-6 text-center">Order</th><th class="py-5 px-6 text-center">Special</th><th class="py-5 px-6 text-right">Aktionen</th></tr>
                         </thead>
                         <tbody id="categories-tbody" class="text-sm"></tbody>
                     </table>
@@ -382,7 +364,6 @@
 <div id="order-modal-container"></div>
 <!-- TOAST -->
 <div id="toast-container" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[99999] flex flex-col gap-3"></div>
-
 <script>
 // ====================== FIREBASE CONFIG ======================
 const firebaseConfig = {
@@ -448,6 +429,9 @@ function renderProductTable(filter = '') {
         const neuBadge = p.isNew
             ? `<span class="px-3 py-1 bg-lime-400 text-black text-xs font-black tracking-wider rounded-2xl inline-block">NEW</span>`
             : '—';
+        const originalPriceHTML = p.originalPrice 
+            ? `<span class="text-gray-400 line-through">${p.originalPrice.toFixed(2)} €</span>` 
+            : '—';
         html += `
         <tr class="table-row-hover border-b border-white/10">
             <td class="py-5 px-6">${p.image ? `<img src="${p.image}" class="w-12 h-12 object-cover rounded-xl" loading="lazy">` : '—'}</td>
@@ -455,6 +439,7 @@ function renderProductTable(filter = '') {
             <td class="py-5 px-6">${p.category || '—'}</td>
             <td class="py-5 px-6 text-center">${neuBadge}</td>
             <td class="py-5 px-6 text-center">${p.price.toFixed(2)} €</td>
+            <td class="py-5 px-6 text-center">${originalPriceHTML}</td>
             <td class="py-5 px-6 text-center">${p.stock}</td>
             <td class="py-5 px-6 text-center">${p.hasNicotine !== false ? '✅' : '❌'}</td>
             <td class="py-5 px-6 text-center"><input type="checkbox" ${p.available !== false ? 'checked' : ''} onchange="toggleAvailable('${p.id}', this.checked)" class="accent-cyan-400 w-5 h-5"></td>
@@ -466,7 +451,7 @@ function renderProductTable(filter = '') {
             </td>
         </tr>`;
     });
-    tbody.innerHTML = html || `<tr><td colspan="11" class="text-center py-16 text-gray-400">Keine Produkte gefunden</td></tr>`;
+    tbody.innerHTML = html || `<tr><td colspan="12" class="text-center py-16 text-gray-400">Keine Produkte gefunden</td></tr>`;
 }
 document.getElementById('product-search').addEventListener('input', e => renderProductTable(e.target.value));
 async function toggleAvailable(id, val) {
@@ -507,8 +492,9 @@ async function openEditModal(id) {
                 <input id="edit-name" value="${p.name}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 text-lg">
                 <div class="grid grid-cols-2 gap-4">
                     <input id="edit-price" type="number" step="0.01" value="${p.price}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
-                    <input id="edit-stock" type="number" value="${p.stock}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
+                    <input id="edit-original-price" type="number" step="0.01" value="${p.originalPrice || ''}" placeholder="Alter Preis (Strikethrough)" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
                 </div>
+                <input id="edit-stock" type="number" value="${p.stock}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
                 <select id="edit-category-select" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4"></select>
                 <div class="flex items-center gap-6">
                     <div class="flex items-center gap-3"><input id="edit-new" type="checkbox" ${p.isNew ? 'checked' : ''}><label>Neue Sorte</label></div>
@@ -561,6 +547,7 @@ async function saveEdit() {
     if (!currentEditId) return;
     const name = document.getElementById('edit-name').value;
     const price = parseFloat(document.getElementById('edit-price').value);
+    const originalPrice = parseFloat(document.getElementById('edit-original-price').value) || null;
     const stock = parseInt(document.getElementById('edit-stock').value);
     const description = document.getElementById('edit-description').value;
     const isNew = document.getElementById('edit-new').checked;
@@ -568,7 +555,7 @@ async function saveEdit() {
     const hasNicotine = document.getElementById('edit-has-nicotine').checked;
     const categorySelect = document.getElementById('edit-category-select');
     const category = categorySelect && categorySelect.value ? categorySelect.value : (isNew ? "Neue Sorten" : "Normale Sorten");
-    let data = { name, price, stock, category, description: description || "", isNew, available: !unavailable, hasNicotine };
+    let data = { name, price, originalPrice, stock, category, description: description || "", isNew, available: !unavailable, hasNicotine };
     if (removeCurrentImage && !selectedFile) data.image = null;
     else if (selectedFile) {
         const formData = new FormData();
@@ -588,6 +575,7 @@ document.getElementById('add-form').addEventListener('submit', async e => {
     e.preventDefault();
     const name = document.getElementById('prod-name').value.trim();
     const price = parseFloat(document.getElementById('prod-price').value);
+    const originalPrice = parseFloat(document.getElementById('prod-original-price').value) || null;
     const stock = parseInt(document.getElementById('prod-stock').value);
     const isNew = document.getElementById('prod-new').checked;
     const unavailable = document.getElementById('prod-unavailable').checked;
@@ -596,7 +584,7 @@ document.getElementById('add-form').addEventListener('submit', async e => {
     const categorySelect = document.getElementById('prod-category');
     const category = categorySelect && categorySelect.value ? categorySelect.value : (isNew ? "Neue Sorten" : "Normale Sorten");
     const docRef = await db.collection('products').add({
-        name, price, stock, category, isNew: isNew || false, available: !unavailable, hasNicotine, description: description || "", sold: 0
+        name, price, originalPrice, stock, category, isNew: isNew || false, available: !unavailable, hasNicotine, description: description || "", sold: 0
     });
     if (selectedFile) {
         const formData = new FormData();
@@ -629,13 +617,14 @@ dropzone.addEventListener('click', () => {
 async function exportProductsToCSV() {
     const snapshot = await db.collection("products").get();
     if (snapshot.empty) return alert("Keine Produkte vorhanden!");
-    let csv = "id,name,price,stock,category,isNew,available,hasNicotine,description,image,sold\n";
+    let csv = "id,name,price,originalPrice,stock,category,isNew,available,hasNicotine,description,image,sold\n";
     snapshot.forEach(doc => {
         const p = doc.data();
         const row = [
             `"${doc.id}"`,
             `"${(p.name || "").replace(/"/g, '""')}"`,
             p.price || 0,
+            p.originalPrice || "",
             p.stock || 0,
             `"${p.category || ""}"`,
             p.isNew === true ? "true" : "false",
@@ -677,14 +666,15 @@ async function importProductsFromCSV(e) {
             const data = {
                 name: values[1],
                 price: parseFloat(values[2]),
-                stock: parseInt(values[3]),
-                category: values[4],
-                isNew: values[5] === "true",
-                available: values[6] === "true",
-                hasNicotine: values[7] === "true",
-                description: values[8],
-                image: values[9] || null,
-                sold: parseInt(values[10]) || 0
+                originalPrice: values[3] ? parseFloat(values[3]) : null,
+                stock: parseInt(values[4]),
+                category: values[5],
+                isNew: values[6] === "true",
+                available: values[7] === "true",
+                hasNicotine: values[8] === "true",
+                description: values[9],
+                image: values[10] || null,
+                sold: parseInt(values[11]) || 0
             };
             const docRef = db.collection("products").doc(values[0]);
             batch.set(docRef, data);
@@ -846,27 +836,25 @@ function renderCategoryTable() {
             <td class="py-5 px-6 font-medium">${c.name}</td>
             <td class="py-5 px-6 text-center">${c.order}</td>
             <td class="py-5 px-6 text-center">${c.special ? '✅' : '—'}</td>
-            <td class="py-5 px-6 text-center">${c.specialText || '—'}</td>
             <td class="py-5 px-6 text-right space-x-4">
                 <button onclick="openEditCategoryModal('${c.id}')" class="text-cyan-400 hover:text-white"><i class="fa-solid fa-pen"></i></button>
                 <button onclick="deleteCategory('${c.id}')" class="text-red-400 hover:text-white"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>`;
     });
-    tbody.innerHTML = html || `<tr><td colspan="5" class="text-center py-16 text-gray-400">Noch keine Kategorien</td></tr>`;
+    tbody.innerHTML = html || `<tr><td colspan="4" class="text-center py-16 text-gray-400">Noch keine Kategorien</td></tr>`;
 }
 document.getElementById('add-category-form').addEventListener('submit', async e => {
     e.preventDefault();
     const name = document.getElementById('cat-name').value.trim();
     const order = parseInt(document.getElementById('cat-order').value) || 999;
     const special = document.getElementById('cat-special').checked;
-    const specialText = document.getElementById('cat-special-text').value.trim() || (special ? "Sonderaktion" : "");
     if (!name) return alert("Name erforderlich");
-    await db.collection('categories').add({ name, order, special, specialText });
-    await logAction("category_created", "", { name, special, specialText });
+    await db.collection('categories').add({ name, order, special });
+    await logAction("category_created", "", { name });
     e.target.reset();
     populateCategorySelects();
-    showToast('✅ Kategorie mit custom Special-Text gespeichert!');
+    showToast('✅ Kategorie erstellt und Dropdowns aktualisiert!');
 });
 async function openEditCategoryModal(id) {
     const doc = await db.collection('categories').doc(id).get();
@@ -876,19 +864,10 @@ async function openEditCategoryModal(id) {
             <h3 class="text-3xl font-bold neon mb-6">Kategorie bearbeiten</h3>
             <input id="edit-cat-name" value="${c.name}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 mb-4">
             <input id="edit-cat-order" type="number" value="${c.order}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 mb-4">
-            
-            <!-- CUSTOM SPECIAL TEXT -->
-            <div class="grid grid-cols-2 gap-6 mb-6">
-                <div>
-                    <label class="flex items-center gap-3 text-sm cursor-pointer">
-                        <input id="edit-cat-special" type="checkbox" ${c.special ? 'checked' : ''} class="w-5 h-5 accent-amber-400">
-                        <span>Special Badge</span>
-                    </label>
-                </div>
-                <input id="edit-cat-special-text" value="${c.specialText || '4 FÜR 3'}" 
-                       placeholder="Badge-Text" class="bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
+            <div class="flex items-center gap-3 mb-8">
+                <input id="edit-cat-special" type="checkbox" ${c.special ? 'checked' : ''} class="w-5 h-5 accent-amber-400">
+                <label>Special (4-für-3-Bolt)</label>
             </div>
-            
             <div class="flex gap-4">
                 <button onclick="saveEditCategory('${id}')" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-5 rounded-3xl font-bold">Speichern</button>
                 <button onclick="closeEditModal()" class="flex-1 bg-zinc-700 hover:bg-zinc-600 py-5 rounded-3xl">Abbrechen</button>
@@ -901,12 +880,11 @@ async function saveEditCategory(id) {
     const name = document.getElementById('edit-cat-name').value.trim();
     const order = parseInt(document.getElementById('edit-cat-order').value) || 999;
     const special = document.getElementById('edit-cat-special').checked;
-    const specialText = document.getElementById('edit-cat-special-text').value.trim() || (special ? "Sonderaktion" : "");
-    await db.collection('categories').doc(id).update({ name, order, special, specialText });
-    await logAction("category_updated", id, { name, special, specialText });
+    await db.collection('categories').doc(id).update({ name, order, special });
+    await logAction("category_updated", id, { name });
     document.getElementById('edit-modal').classList.add('hidden');
     populateCategorySelects();
-    showToast('✅ Kategorie + Custom Special-Text gespeichert');
+    showToast('✅ Kategorie gespeichert und Dropdowns aktualisiert');
 }
 async function deleteCategory(id) {
     if (!confirm('Kategorie wirklich löschen? Produkte bleiben erhalten.')) return;
@@ -918,12 +896,12 @@ async function deleteCategory(id) {
 function seedDefaultCategories() {
     if (allCategories.length > 0 && !confirm('Es existieren bereits Kategorien. Trotzdem Standard-Kategorien laden?')) return;
     const defaults = [
-        { name: "WaveVapes Tornado 30000", order: 1, special: true, specialText: "4 FÜR 3" },
-        { name: "Normale Sorten", order: 2, special: false, specialText: "" },
-        { name: "Neue Sorten", order: 3, special: false, specialText: "" }
+        { name: "WaveVapes Tornado 30000", order: 1, special: true },
+        { name: "Normale Sorten", order: 2, special: false },
+        { name: "Neue Sorten", order: 3, special: false }
     ];
     defaults.forEach(d => db.collection('categories').add(d));
-    showToast('✅ Standard-Kategorien mit Text angelegt!');
+    showToast('✅ Standard-Kategorien angelegt!');
 }
 function populateCategorySelects() {
     const selects = document.querySelectorAll('#prod-category, #edit-category-select');
@@ -1225,6 +1203,7 @@ async function loadAnalytics() {
     });
     const labels = Object.keys(dailyRevenue).sort();
     const data = labels.map(d => dailyRevenue[d]);
+    // Revenue Chart
     const revenueContainer = document.getElementById('revenue-chart-container');
     if (revenueChart) revenueChart.destroy();
     if (labels.length === 0) {
@@ -1237,6 +1216,7 @@ async function loadAnalytics() {
             options: { responsive: true, plugins: { legend: { display: false } } }
         });
     }
+    // Top Products
     const productsSnap = await db.collection("products").orderBy("sold", "desc").limit(10).get();
     const prodLabels = [], prodData = [];
     productsSnap.forEach(doc => {
@@ -1255,6 +1235,7 @@ async function loadAnalytics() {
             data: { labels: prodLabels, datasets: [{ data: prodData, backgroundColor: ["#67e8f9","#a78bfa","#f472b6","#fb923c","#4ade80","#22d3ee","#eab308","#ec4899","#14b8a6","#8b5cf6"] }] }
         });
     }
+    // Top Referrer
     const usersSnap = await db.collection("users").orderBy("referralCount", "desc").limit(10).get();
     const refLabels = [], refData = [];
     usersSnap.forEach(doc => {

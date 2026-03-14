@@ -34,6 +34,7 @@
         .tab-active { background: #27272a; color: var(--neon-cyan); border-left: 4px solid var(--neon-cyan); }
         .sortable-item { transition: all 0.2s; }
         .sortable-item:hover { background: #27272a; }
+        .empty-chart { height: 200px; display: flex; align-items: center; justify-content: center; color: #666; font-style: italic; }
     </style>
 </head>
 <body class="min-h-screen">
@@ -109,9 +110,9 @@
                 <div class="p-6 border-b border-white/10 flex items-center justify-between">
                     <h2 class="text-2xl font-bold">Alle Produkte</h2>
                     <div class="flex items-center gap-3">
-                        <button onclick="enforceCategories()" 
+                        <button onclick="enforceCategories()"
                                 class="bg-amber-600 hover:bg-amber-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2">
-                            <i class="fa-solid fa-magic"></i> 
+                            <i class="fa-solid fa-magic"></i>
                             Alle Kategorien auto-korrigieren
                         </button>
                         <input id="product-search" placeholder="Produkt suchen..." class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-3 w-80">
@@ -256,24 +257,33 @@
                 </div>
             </div>
         </div>
-        <!-- TAB 5: ANALYTICS -->
+        <!-- TAB 5: ANALYTICS (JETZT MIT FULL REPORT + FALLBACKS) -->
         <div id="tab-content-5" class="hidden">
             <h2 class="text-3xl font-bold mb-8">Analytics – Live Dashboard</h2>
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div class="card p-8">
                     <h3 class="text-xl font-bold mb-4">Umsatz letzte 30 Tage</h3>
-                    <canvas id="revenueChart" height="140"></canvas>
+                    <div id="revenue-chart-container">
+                        <canvas id="revenueChart" height="140"></canvas>
+                    </div>
                 </div>
                 <div class="card p-8">
                     <h3 class="text-xl font-bold mb-4">Top 10 Produkte</h3>
-                    <canvas id="topProductsChart" height="140"></canvas>
+                    <div id="top-products-chart-container">
+                        <canvas id="topProductsChart" height="140"></canvas>
+                    </div>
                 </div>
             </div>
             <div class="card p-8 mt-8">
                 <h3 class="text-xl font-bold mb-4">Top Referrer (Freunde geworben)</h3>
-                <canvas id="referralChart" height="140"></canvas>
+                <div id="referral-chart-container">
+                    <canvas id="referralChart" height="140"></canvas>
+                </div>
             </div>
-            <button onclick="generatePDFReport()" class="mt-8 w-full bg-gradient-to-r from-amber-400 to-orange-500 text-black font-bold py-6 rounded-3xl text-xl">📄 Monatsbericht als PDF herunterladen</button>
+            <button onclick="generatePDFReport()" 
+                    class="mt-8 w-full bg-gradient-to-r from-amber-400 to-orange-500 text-black font-bold py-6 rounded-3xl text-xl flex items-center justify-center gap-3">
+                📄 <span>Monatsbericht als PDF herunterladen</span>
+            </button>
         </div>
         <!-- TAB 6: ADMIN LOGS -->
         <div id="tab-content-6" class="hidden">
@@ -326,7 +336,7 @@
                     <i class="fa-solid fa-sort"></i> Produkt-Sortierung (Drag & Drop + Auto-Sort)
                 </h2>
                 <p class="text-sm text-gray-400 mb-6">Klicke auf einen Button für automatische Sortierung.<br><strong>Neue AUTO-PRIORITÄT (überarbeitet):</strong><br>1. Neue Sorten (nur verfügbar) → 2. Normale Sorten (nur verfügbar) → 3. Alle Vapes (nur verfügbar) → 4. ALLE nicht verfügbaren Sachen (egal ob neu oder normal – immer ganz unten)</p>
-              
+             
                 <div class="flex flex-wrap gap-3 mb-8">
                     <button onclick="autoSort('alpha')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">📋 Alphabetisch A-Z</button>
                     <button onclick="autoSort('new')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">⭐ Neue Sorten zuerst</button>
@@ -335,9 +345,9 @@
                     <button onclick="autoSort('stock')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">📦 Lagerbestand (hoch zuerst)</button>
                     <button onclick="autoSortPriority()" class="px-6 py-3 bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold rounded-2xl text-sm transition">🔄 AUTO-PRIORITÄT<br><span class="text-xs font-normal">NEW (verfügbar) → Normal (verfügbar) → Vapes → ALLE nicht verfügbar (unten)</span></button>
                 </div>
-              
+             
                 <div id="sort-list" class="space-y-3 min-h-[500px] bg-zinc-950 rounded-3xl p-6"></div>
-              
+             
                 <button onclick="saveProductOrder()"
                         class="mt-10 w-full bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-6 rounded-3xl text-xl hover:scale-105 transition">
                     ✅ Sortierung speichern & live übernehmen
@@ -499,7 +509,6 @@ async function openEditModal(id) {
     document.getElementById('edit-modal').innerHTML = html;
     document.getElementById('edit-modal').classList.remove('hidden');
     populateCategorySelects();
-    // WICHTIG: Aktuelle Kategorie vorauswählen
     setTimeout(() => {
         const select = document.getElementById('edit-category-select');
         if (select) select.value = p.category || '';
@@ -833,7 +842,7 @@ document.getElementById('add-category-form').addEventListener('submit', async e 
     await db.collection('categories').add({ name, order, special });
     await logAction("category_created", "", { name });
     e.target.reset();
-    populateCategorySelects(); // ← NEU: Sofort aktualisieren!
+    populateCategorySelects();
     showToast('✅ Kategorie erstellt und Dropdowns aktualisiert!');
 });
 async function openEditCategoryModal(id) {
@@ -863,7 +872,7 @@ async function saveEditCategory(id) {
     await db.collection('categories').doc(id).update({ name, order, special });
     await logAction("category_updated", id, { name });
     document.getElementById('edit-modal').classList.add('hidden');
-    populateCategorySelects(); // ← NEU: Sofort aktualisieren!
+    populateCategorySelects();
     showToast('✅ Kategorie gespeichert und Dropdowns aktualisiert');
 }
 async function deleteCategory(id) {
@@ -1169,24 +1178,36 @@ async function resetUserPoints(uid) {
         showToast("Fehler: " + e.message, "error");
     }
 }
-// ====================== ANALYTICS ======================
+// ====================== ANALYTICS (JETZT MIT FALLBACKS + FULL PDF REPORT) ======================
 async function loadAnalytics() {
     const thirtyDaysAgo = firebase.firestore.Timestamp.fromDate(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
     const ordersSnap = await db.collection("orders").where("date", ">=", thirtyDaysAgo).get();
     let dailyRevenue = {};
+    let totalRevenue = 0;
     ordersSnap.forEach(doc => {
         const d = doc.data();
         const day = d.date.toDate().toISOString().slice(0,10);
         dailyRevenue[day] = (dailyRevenue[day] || 0) + d.total;
+        totalRevenue += d.total;
     });
     const labels = Object.keys(dailyRevenue).sort();
     const data = labels.map(d => dailyRevenue[d]);
+
+    // Revenue Chart
+    const revenueContainer = document.getElementById('revenue-chart-container');
     if (revenueChart) revenueChart.destroy();
-    revenueChart = new Chart(document.getElementById("revenueChart"), {
-        type: "line",
-        data: { labels, datasets: [{ label: "Umsatz €", data, borderColor: "#67e8f9", tension: 0.4 }] },
-        options: { responsive: true, plugins: { legend: { display: false } } }
-    });
+    if (labels.length === 0) {
+        revenueContainer.innerHTML = `<div class="empty-chart">Keine Bestellungen in den letzten 30 Tagen</div>`;
+    } else {
+        revenueContainer.innerHTML = `<canvas id="revenueChart" height="140"></canvas>`;
+        revenueChart = new Chart(document.getElementById("revenueChart"), {
+            type: "line",
+            data: { labels, datasets: [{ label: "Umsatz €", data, borderColor: "#67e8f9", tension: 0.4, fill: true, backgroundColor: "rgba(103,232,249,0.1)" }] },
+            options: { responsive: true, plugins: { legend: { display: false } } }
+        });
+    }
+
+    // Top Products
     const productsSnap = await db.collection("products").orderBy("sold", "desc").limit(10).get();
     const prodLabels = [], prodData = [];
     productsSnap.forEach(doc => {
@@ -1194,11 +1215,19 @@ async function loadAnalytics() {
         prodLabels.push(p.name);
         prodData.push(p.sold || 0);
     });
+    const topProductsContainer = document.getElementById('top-products-chart-container');
     if (topProductsChart) topProductsChart.destroy();
-    topProductsChart = new Chart(document.getElementById("topProductsChart"), {
-        type: "pie",
-        data: { labels: prodLabels, datasets: [{ data: prodData, backgroundColor: ["#67e8f9","#a78bfa","#f472b6","#fb923c","#4ade80"] }] }
-    });
+    if (prodLabels.length === 0) {
+        topProductsContainer.innerHTML = `<div class="empty-chart">Noch keine verkauften Produkte</div>`;
+    } else {
+        topProductsContainer.innerHTML = `<canvas id="topProductsChart" height="140"></canvas>`;
+        topProductsChart = new Chart(document.getElementById("topProductsChart"), {
+            type: "pie",
+            data: { labels: prodLabels, datasets: [{ data: prodData, backgroundColor: ["#67e8f9","#a78bfa","#f472b6","#fb923c","#4ade80","#22d3ee","#eab308","#ec4899","#14b8a6","#8b5cf6"] }] }
+        });
+    }
+
+    // Top Referrer
     const usersSnap = await db.collection("users").orderBy("referralCount", "desc").limit(10).get();
     const refLabels = [], refData = [];
     usersSnap.forEach(doc => {
@@ -1206,21 +1235,82 @@ async function loadAnalytics() {
         refLabels.push(u.username || u.email.split("@")[0]);
         refData.push(u.referralCount || 0);
     });
+    const referralContainer = document.getElementById('referral-chart-container');
     if (referralChart) referralChart.destroy();
-    referralChart = new Chart(document.getElementById("referralChart"), {
-        type: "bar",
-        data: { labels: refLabels, datasets: [{ label: "Geworbene Freunde", data: refData, backgroundColor: "#a78bfa" }] }
-    });
+    if (refLabels.length === 0) {
+        referralContainer.innerHTML = `<div class="empty-chart">Noch keine Referrals</div>`;
+    } else {
+        referralContainer.innerHTML = `<canvas id="referralChart" height="140"></canvas>`;
+        referralChart = new Chart(document.getElementById("referralChart"), {
+            type: "bar",
+            data: { labels: refLabels, datasets: [{ label: "Geworbene Freunde", data: refData, backgroundColor: "#a78bfa" }] }
+        });
+    }
 }
+
 async function generatePDFReport() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
-    doc.setFontSize(20);
+    doc.setFontSize(22);
     doc.text("WaveVapes Monatsbericht", 20, 20);
-    doc.setFontSize(12);
-    doc.text(`Erstellt: ${new Date().toLocaleDateString("de-DE")}`, 20, 35);
-    doc.save("wavevapes-monatsbericht.pdf");
+    doc.setFontSize(11);
+    doc.text(`Erstellt am: ${new Date().toLocaleDateString("de-DE")} ${new Date().toLocaleTimeString("de-DE")}`, 20, 30);
+
+    // 30-Tage-Daten holen
+    const thirtyDaysAgo = firebase.firestore.Timestamp.fromDate(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
+    const ordersSnap = await db.collection("orders").where("date", ">=", thirtyDaysAgo).get();
+
+    let totalRevenue = 0;
+    let orderCount = 0;
+    let topProducts = [];
+    const productMap = new Map();
+
+    ordersSnap.forEach(doc => {
+        const o = doc.data();
+        totalRevenue += o.total || 0;
+        orderCount++;
+        o.items.forEach(item => {
+            const current = productMap.get(item.name) || 0;
+            productMap.set(item.name, current + item.qty);
+        });
+    });
+
+    // Top 5 Produkte
+    topProducts = Array.from(productMap.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+
+    // PDF Inhalt
+    doc.setFontSize(14);
+    doc.text("Zusammenfassung letzte 30 Tage", 20, 45);
+    doc.setFontSize(11);
+    doc.text(`Gesamtumsatz: ${totalRevenue.toFixed(2)} €`, 20, 55);
+    doc.text(`Anzahl Bestellungen: ${orderCount}`, 20, 62);
+
+    doc.text("Top 5 Produkte:", 20, 75);
+    let y = 82;
+    topProducts.forEach(([name, qty]) => {
+        doc.text(`${name}: ${qty} Stück`, 25, y);
+        y += 7;
+    });
+
+    // Referrer (letzte 10)
+    const usersSnap = await db.collection("users").orderBy("referralCount", "desc").limit(10).get();
+    doc.text("Top Referrer:", 20, y + 10);
+    y += 17;
+    usersSnap.forEach(doc => {
+        const u = doc.data();
+        const name = u.username || u.email.split("@")[0];
+        doc.text(`${name} – ${u.referralCount || 0} Freunde geworben`, 25, y);
+        y += 7;
+    });
+
+    doc.setFontSize(10);
+    doc.text("Bericht erstellt mit WaveVapes Admin Panel v2.0", 20, 280);
+
+    doc.save(`wavevapes-monatsbericht_${new Date().toISOString().slice(0,10)}.pdf`);
     await logAction("monthly_report_generated");
+    showToast("✅ Vollständiger Monatsbericht als PDF heruntergeladen!", "success");
 }
 // ====================== ADMIN LOGS ======================
 function loadAdminLogs() {
@@ -1350,7 +1440,7 @@ async function loadProductOrder() {
 function renderSortList() {
     const container = document.getElementById('sort-list');
     container.innerHTML = '';
-   
+  
     const sorted = [...allProducts].sort((a, b) => {
         const idxA = productOrder.indexOf(a.id);
         const idxB = productOrder.indexOf(b.id);
@@ -1363,11 +1453,11 @@ function renderSortList() {
         const div = document.createElement('div');
         div.className = 'sortable-item flex items-center gap-4 bg-zinc-900 border border-white/10 rounded-3xl p-5 cursor-move select-none';
         div.dataset.id = p.id;
-       
+      
         const newBadge = p.isNew
             ? `<span onclick="toggleIsNew('${p.id}', event)" class="px-3 py-1 bg-lime-400 text-black text-xs font-black tracking-wider rounded-2xl cursor-pointer hover:scale-110 transition">NEW</span>`
             : '';
-       
+      
         const unavailableBadge = p.available === false
             ? `<span onclick="toggleAvailableInSort('${p.id}', event)" class="px-3 py-1 bg-red-500 text-white text-xs font-medium rounded-2xl cursor-pointer hover:scale-110 transition">NICHT VERFÜGBAR</span>`
             : '';
@@ -1411,14 +1501,14 @@ async function toggleAvailableInSort(id, e) {
 function autoSort(mode) {
     const container = document.getElementById('sort-list');
     let items = Array.from(container.children);
-  
+ 
     items.sort((a, b) => {
         const idA = a.dataset.id;
         const idB = b.dataset.id;
         const pA = allProducts.find(p => p.id === idA);
         const pB = allProducts.find(p => p.id === idB);
         if (!pA || !pB) return 0;
-      
+     
         switch(mode) {
             case 'alpha':
                 return pA.name.localeCompare(pB.name);
@@ -1440,14 +1530,14 @@ function autoSort(mode) {
                 return 0;
         }
     });
-  
+ 
     items.forEach(item => container.appendChild(item));
     showToast('✅ Liste automatisch sortiert!', 'success');
 }
 function autoSortPriority() {
     const container = document.getElementById('sort-list');
     let items = Array.from(container.children);
-  
+ 
     items.sort((a, b) => {
         const idA = a.dataset.id;
         const idB = b.dataset.id;
@@ -1465,7 +1555,7 @@ function autoSortPriority() {
         if (prioA !== prioB) return prioA - prioB;
         return pA.name.localeCompare(pB.name);
     });
-  
+ 
     items.forEach(item => container.appendChild(item));
     showToast('✅ Automatische Prioritätssortierung angewendet!', 'success');
 }
@@ -1478,21 +1568,17 @@ async function saveProductOrder() {
 // ====================== AUTOMATISCHE KATEGORIE-KORREKTUR ======================
 async function enforceCategories() {
     if (!confirm('Alle Produkte prüfen und Kategorie automatisch setzen?\n\nisNew = true → „Neue Sorten“\nisNew = false → „Normale Sorten“\n\nDas ist unwiderruflich!')) return;
-
     const snap = await db.collection('products').get();
     let changed = 0;
     const batch = db.batch();
-
     snap.forEach(doc => {
         const p = doc.data();
         const shouldBe = (p.isNew === true) ? "Neue Sorten" : "Normale Sorten";
-
         if (p.category !== shouldBe) {
             batch.update(doc.ref, { category: shouldBe });
             changed++;
         }
     });
-
     if (changed > 0) {
         await batch.commit();
         showToast(`✅ ${changed} Produkte korrigiert!`);
@@ -1500,7 +1586,6 @@ async function enforceCategories() {
     } else {
         showToast('✅ Alles war bereits perfekt');
     }
-
     loadProducts();
 }
 // ====================== TOAST ======================

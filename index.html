@@ -231,13 +231,13 @@
             <h2 class="hero-title text-5xl sm:text-6xl font-bold tracking-tighter neon-text mb-3">Bestelle deine Liquids und Vapes</h2>
             <p class="hero-subtitle text-xl sm:text-2xl text-cyan-200 max-w-md mx-auto">7,99 € pro Flasche • 10 ml • Nikotin frei wählbar (10 oder 20 mg)</p>
             <p class="text-base sm:text-lg text-gray-300 mt-4">Alle Liquids von ELFLIQ</p>
-        
+       
             <!-- MYSTERY VAPE BANNER -->
             <div class="mt-4 inline-flex items-center gap-3 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-400/30 hover:border-emerald-400 px-7 py-3 rounded-3xl text-emerald-300 text-base font-semibold transition-all">
                 <i class="fa-solid fa-gift text-2xl"></i>
                 <span>Ab 100€ Bestellwert gibt's eine <span class="text-white font-bold underline">Mystery Vape gratis</span> dazu! 🎁</span>
             </div>
-        
+       
             <!-- GRATIS VERSAND BANNER -->
             <div class="mt-4 inline-flex items-center gap-3 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-400/30 px-7 py-3 rounded-3xl text-amber-300 text-base font-semibold transition-all">
                 <i class="fa-solid fa-truck text-2xl"></i>
@@ -383,11 +383,10 @@
             </div>
             <div class="mt-10 pt-8 border-t border-white/10">
                 <div class="flex justify-between text-2xl font-semibold mb-2">
-                    <span>Gesamt</span>
+                    <span>Gesamt inkl. Versand</span>
                     <span id="cart-total-price" class="text-cyan-300">0,00 €</span>
                 </div>
                 <p class="text-xs text-gray-400">Zahlung per Überweisung • Versand nach Zahlungseingang</p>
-                <p id="cart-shipping-note" class="text-xs text-emerald-400 mt-1"></p>
                 <p id="loyalty-cart-info" class="text-emerald-400 text-xs mt-3 flex items-center gap-2 font-medium"></p>
             </div>
             <button onclick="placeOrder()" class="mt-8 w-full py-6 bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 text-black font-bold text-xl rounded-3xl transition-all">BESTELLUNG ABSCHICKEN</button>
@@ -615,7 +614,6 @@
         let userSnapshotUnsubscribe = null;
         let myReferralCode = "";
         let userHasFreeShipping = false;
-        // NEU: Produkt-Sortierung aus Admin
         let productOrder = [];
         // ====================== FIREBASE ======================
         const firebaseConfig = {
@@ -1101,7 +1099,6 @@
                 const searchMatch = !searchTerm || p.name.toLowerCase().includes(searchTerm);
                 return catMatch && searchMatch;
             });
-            // NEU: Admin-Sortierung hat Vorrang
             filtered.sort((a, b) => {
                 const idxA = productOrder.indexOf(a.id);
                 const idxB = productOrder.indexOf(b.id);
@@ -1209,21 +1206,20 @@
                 showNextNotification();
             }, 5000);
         }
+        // ====================== NEUE UPDATECARTDISPLAY MIT VERSAND ALS PRODUKT ======================
         function updateCartDisplay() {
             const countEl = document.getElementById("cart-count-badge");
             const totalEl = document.getElementById("cart-total-price");
             const listEl = document.getElementById("cart-items-list");
-            const shippingNote = document.getElementById("cart-shipping-note");
             const addressDisplay = document.getElementById("cart-address-display");
             const loyaltyCartInfo = document.getElementById("loyalty-cart-info");
+
             const totalItems = cart.reduce((sum, item) => sum + item.qty, 0);
             countEl.textContent = totalItems;
+
             const grandTotal = calculateCartTotal();
             totalEl.textContent = `${grandTotal.toFixed(2).replace('.', ',')} €`;
-            const shipping = getShippingCost();
-            shippingNote.innerHTML = userHasFreeShipping
-                ? `✅ <strong>Gratis Versand für dich</strong> (Admin-Override)`
-                : (shipping === 0 ? `✅ Gratis Versand (ab 100 €)` : `+ ${shipping.toFixed(2).replace('.', ',')} € Versand`);
+
             const productTotal = getProductTotal();
             if (productTotal > 0) {
                 const pointsEarned = Math.floor(productTotal);
@@ -1231,21 +1227,26 @@
             } else {
                 loyaltyCartInfo.innerHTML = "";
             }
+
             if (userAddress.street) {
                 addressDisplay.innerHTML = `${userAddress.street}<br>${userAddress.zip} ${userAddress.city}`;
             } else {
                 addressDisplay.innerHTML = `<span class="text-red-400">Noch keine Adresse angegeben</span>`;
             }
+
             if (cart.length === 0) {
                 listEl.innerHTML = `<p class="text-center py-16 text-gray-400">Dein Warenkorb ist leer</p>`;
                 return;
             }
+
             let itemsHTML = "";
+
             const tornadoQty = getTornadoQuantity();
             const free = Math.floor(tornadoQty / 4);
             if (free > 0) {
                 itemsHTML += `<div class="bg-gradient-to-r from-amber-400 to-yellow-400 text-black p-6 rounded-3xl mb-6 text-center shadow-inner"><div class="flex items-center justify-center gap-3 text-2xl font-black">⚡ 4 FÜR 3 AKTION AKTIV!</div><p class="font-semibold text-base mt-2">Du bekommst <span class="underline">${free} Vape${free > 1 ? 's' : ''} gratis</span></p></div>`;
             }
+
             cart.forEach(item => {
                 const p = item.price || 7.99;
                 const prod = allProducts.find(pr => pr.id === item.id);
@@ -1256,6 +1257,22 @@
                     itemsHTML += `<div class="flex justify-between items-center bg-zinc-900 border border-white/10 rounded-3xl p-5"><div><div class="font-medium">${item.name}${nicDisplay}</div><div class="text-xs text-gray-400">${item.qty} × ${p.toFixed(2).replace('.', ',')} €</div></div><div class="flex items-center gap-6"><div class="font-bold text-xl">${(item.qty * p).toFixed(2).replace('.', ',')} €</div><button onclick="removeCartItem('${item.id}'); event.stopImmediatePropagation()" class="text-red-400"><i class="fa-solid fa-trash"></i></button></div></div>`;
                 }
             });
+
+            // === VERSAND ALS EIGENES PRODUKT-ITEM ===
+            const shippingCost = getShippingCost();
+            const isFree = shippingCost === 0;
+            const shippingHTML = `
+                <div class="flex justify-between items-center bg-zinc-900 border ${isFree ? 'border-emerald-400/30' : 'border-white/10'} rounded-3xl p-5 mt-3">
+                    <div>
+                        <div class="font-medium">${isFree ? 'Gratis Versand' : 'Versand (DHL)'}</div>
+                        ${isFree ? `<div class="text-xs text-emerald-400">ab 100 € oder für dich aktiviert</div>` : ''}
+                    </div>
+                    <div class="font-bold text-xl ${isFree ? 'text-emerald-400' : ''}">
+                        ${isFree ? '0,00' : shippingCost.toFixed(2).replace('.', ',')} €
+                    </div>
+                </div>`;
+            itemsHTML += shippingHTML;
+
             listEl.innerHTML = itemsHTML;
         }
         function removeCartItem(id) {
@@ -1675,7 +1692,7 @@
                 document.body.innerHTML = `<div class="fixed inset-0 bg-black flex items-center justify-center text-6xl font-bold text-red-500">🚧<br>Shop in Wartung<br>Bitte später wieder kommen</div>`;
             }
         });
-        // ====================== PRODUCT ORDER SYNC (NEU) ======================
+        // ====================== PRODUCT ORDER SYNC ======================
         db.collection('settings').doc('product_order').onSnapshot(doc => {
             if (doc.exists) {
                 productOrder = doc.data().order || [];

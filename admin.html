@@ -115,8 +115,7 @@
             <div class="card p-8 mb-12 bg-red-950/30 border border-red-500/50">
                 <button onclick="resetAllStatistics()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-5 rounded-3xl text-xl flex items-center justify-center gap-3"><i class="fa-solid fa-warning"></i> ALLE STATISTIKEN ZURÜCKSETZEN</button>
             </div>
-            
-            <!-- ==================== NEUES PRODUKT HINZUFÜGEN – VOLLSTÄNDIG MIT BUNDLE ==================== -->
+            <!-- NEUES PRODUKT HINZUFÜGEN – VOLLSTÄNDIG MIT BUNDLE -->
             <div class="card p-8 mb-12">
                 <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><i class="fa-solid fa-plus"></i> Neues Produkt hinzufügen</h2>
                 <form id="add-form" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -126,7 +125,7 @@
                     <input id="prod-stock" type="number" placeholder="Lagerbestand" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4" required>
                     <select id="prod-category" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4 text-lg"></select>
                     
-                    <!-- BUNDLE OPTIONEN – VOLLSTÄNDIG -->
+                    <!-- BUNDLE OPTIONEN -->
                     <div class="col-span-full flex items-center gap-3">
                         <input id="prod-is-bundle" type="checkbox" class="w-5 h-5 accent-purple-400">
                         <label class="font-medium text-lg">Ist Bundle (Kunde wählt Liquids aus)</label>
@@ -441,14 +440,14 @@
             </div>
         </div>
         
-        <!-- TAB 8: SORTIERUNG -->
+        <!-- TAB 8: SORTIERUNG – DEINE NEUE LOGIK (MANUELLE SORTIERUNG IST IMMER DEFAULT) -->
         <div id="tab-content-8" class="hidden">
             <div class="card p-8">
                 <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
                     <i class="fa-solid fa-sort"></i> Produkt-Sortierung (Drag & Drop + Auto-Sort)
                 </h2>
-                <p class="text-sm text-gray-400 mb-6">Klicke auf einen Button für automatische Sortierung.<br><strong>Neue AUTO-PRIORITÄT (überarbeitet):</strong><br>1. Neue Sorten (nur verfügbar) → 2. Normale Sorten (nur verfügbar) → 3. Alle Vapes (nur verfügbar) → 4. ALLE nicht verfügbaren Sachen (egal ob neu oder normal – immer ganz unten)</p>
-               
+                <p class="text-sm text-gray-400 mb-6">Deine manuelle Drag-&-Drop-Sortierung ist immer die Default und wird beim Refresh geladen.<br>Auto-Sort-Buttons ändern die Reihenfolge und speichern sie sofort als neue Default.</p>
+                
                 <div class="mb-8 bg-zinc-900 border border-white/10 rounded-3xl p-6">
                     <label class="block text-sm text-gray-400 mb-3">Nur Produkte einer Kategorie sortieren</label>
                     <select id="sort-category-filter" onchange="changeSortCategoryFilter()" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-4 text-base">
@@ -1895,7 +1894,7 @@ async function resetAllStatistics() {
     }
 }
 
-// ====================== SORTIERUNG ======================
+// ====================== SORTIERUNG – DEINE NEUE LOGIK (MANUELLE SORTIERUNG IMMER PRIORISIERT) ======================
 async function loadProductOrder() {
     const doc = await db.collection('settings').doc('product_order').get();
     productOrder = doc.exists ? (doc.data().order || []) : [];
@@ -1955,6 +1954,7 @@ async function toggleAvailableInSort(id, e) {
     renderSortList();
 }
 
+// AUTO-SORT BUTTONS SPEICHERN SOFORT ALS NEUE DEFAULT
 function autoSort(mode) {
     const container = document.getElementById('sort-list');
     let items = Array.from(container.children);
@@ -1974,7 +1974,8 @@ function autoSort(mode) {
         }
     });
     items.forEach(item => container.appendChild(item));
-    showToast('✅ Liste automatisch sortiert!', 'success');
+    saveProductOrder(); // ← SOFORT SPEICHERN → wird neue Default
+    showToast('✅ Auto-Sortierung als neue Default gespeichert!', 'success');
 }
 
 function autoSortPriority() {
@@ -1998,7 +1999,8 @@ function autoSortPriority() {
         return pA.name.localeCompare(pB.name);
     });
     items.forEach(item => container.appendChild(item));
-    showToast('✅ Automatische Prioritätssortierung angewendet!', 'success');
+    saveProductOrder(); // ← SOFORT SPEICHERN → wird neue Default
+    showToast('✅ AUTO-PRIORITÄT als neue Default gespeichert!', 'success');
 }
 
 async function saveProductOrder() {

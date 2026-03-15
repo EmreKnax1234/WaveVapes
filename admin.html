@@ -490,7 +490,6 @@ let currentEditId = null;
 let selectedFile = null;
 let previewUrl = null;
 let currentOrderId = null;
-let removeCurrentImage = false;
 let allCategories = [];
 let allCoupons = [];
 let revenueChart = null;
@@ -523,7 +522,7 @@ async function logAction(action, target = "", details = {}) {
     });
 }
 
-// ====================== LIVE STATISTIKEN AUS ORDERS ======================
+// ====================== LIVE STATISTIKEN ======================
 function startLiveStatsListener() {
     db.collection("orders").onSnapshot(snap => {
         let revenue = 0;
@@ -575,52 +574,54 @@ function initDropzone() {
     }
 }
 
-// ====================== PRODUKT HINZUFÜGEN ======================
-document.getElementById('add-form').addEventListener('submit', async function(e) {
-    e.preventDefault();
+// ====================== PRODUKT SPEICHERN ======================
+function initProductForm() {
+    const form = document.getElementById('add-form');
+    if (!form) return;
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
 
-    const name = document.getElementById('prod-name').value.trim();
-    if (!name) return alert("Produktname fehlt!");
+        const name = document.getElementById('prod-name').value.trim();
+        if (!name) return alert("Produktname fehlt!");
 
-    let imageUrl = null;
-    if (selectedFile) {
-        try {
-            const storageRef = storage.ref('products/' + Date.now() + '_' + selectedFile.name);
-            await storageRef.put(selectedFile);
-            imageUrl = await storageRef.getDownloadURL();
-        } catch (err) {
-            console.error(err);
-            alert("Bild-Upload fehlgeschlagen: " + err.message);
-            return;
+        let imageUrl = null;
+        if (selectedFile) {
+            try {
+                const storageRef = storage.ref('products/' + Date.now() + '_' + selectedFile.name);
+                await storageRef.put(selectedFile);
+                imageUrl = await storageRef.getDownloadURL();
+            } catch (err) {
+                console.error(err);
+                alert("Bild-Upload fehlgeschlagen: " + err.message);
+                return;
+            }
         }
-    }
 
-    const productData = {
-        name: name,
-        price: parseFloat(document.getElementById('prod-price').value) || 7.99,
-        originalPrice: document.getElementById('prod-original-price').value ? parseFloat(document.getElementById('prod-original-price').value) : null,
-        stock: parseInt(document.getElementById('prod-stock').value) || 0,
-        category: document.getElementById('prod-category').value || "Normale Sorten",
-        isNew: document.getElementById('prod-new').checked,
-        available: !document.getElementById('prod-unavailable').checked,
-        hasNicotine: document.getElementById('prod-has-nicotine').checked,
-        description: document.getElementById('prod-description').value.trim(),
-        image: imageUrl,
-        sold: 0
-    };
+        const productData = {
+            name: name,
+            price: parseFloat(document.getElementById('prod-price').value) || 7.99,
+            originalPrice: document.getElementById('prod-original-price').value ? parseFloat(document.getElementById('prod-original-price').value) : null,
+            stock: parseInt(document.getElementById('prod-stock').value) || 0,
+            category: document.getElementById('prod-category').value || "Normale Sorten",
+            isNew: document.getElementById('prod-new').checked,
+            available: !document.getElementById('prod-unavailable').checked,
+            hasNicotine: document.getElementById('prod-has-nicotine').checked,
+            description: document.getElementById('prod-description').value.trim(),
+            image: imageUrl,
+            sold: 0
+        };
 
-    try {
-        await db.collection('products').add(productData);
-        showToast('✅ Produkt erfolgreich hinzugefügt + Bild hochgeladen!', 'success');
-        
-        // Formular zurücksetzen
-        document.getElementById('add-form').reset();
-        document.getElementById('preview-thumb').classList.add('hidden');
-        selectedFile = null;
-    } catch (err) {
-        alert("Fehler beim Speichern: " + err.message);
-    }
-});
+        try {
+            await db.collection('products').add(productData);
+            showToast('✅ Produkt erfolgreich hinzugefügt + Bild hochgeladen!', 'success');
+            form.reset();
+            document.getElementById('preview-thumb').classList.add('hidden');
+            selectedFile = null;
+        } catch (err) {
+            alert("Fehler beim Speichern: " + err.message);
+        }
+    });
+}
 
 // ====================== PRODUKTE ======================
 function loadProducts() {
@@ -1954,6 +1955,7 @@ window.onload = () => {
     loadUsers();
     startLiveStatsListener();
     initDropzone();
+    initProductForm();   // ← WICHTIG: Formular-Listener hier
     setTimeout(() => {
         updateStatsDisplay();
         populateAdminCategoryFilter();

@@ -247,7 +247,8 @@
                 <form id="add-category-form" class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <input id="cat-name" placeholder="Kategoriename (z.B. Sommer Specials)" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4 text-lg" required>
                     <input id="cat-order" type="number" placeholder="Sortierreihenfolge" value="10" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4" required>
-                    <div class="flex items-center gap-3"><input id="cat-special" type="checkbox" class="w-5 h-5 accent-amber-400"><label class="text-sm">Special (zeigt 4-für-3-Bolt im Shop)</label></div>
+                    <input id="cat-special-text" placeholder="Badge-Text (z.B. 4 für 3 + Preis Drop)" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4 text-lg">
+                    <div class="flex items-center gap-3"><input id="cat-special" type="checkbox" class="w-5 h-5 accent-amber-400"><label class="text-sm">Special (zeigt Bolt + Badge im Shop)</label></div>
                     <button type="submit" class="bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-5 rounded-3xl text-xl hover:scale-105 transition">Kategorie speichern</button>
                 </form>
             </div>
@@ -259,7 +260,13 @@
                 <div class="overflow-x-auto">
                     <table class="w-full">
                         <thead class="bg-zinc-950">
-                            <tr><th class="py-5 px-6 text-left">Name</th><th class="py-5 px-6 text-center">Order</th><th class="py-5 px-6 text-center">Special</th><th class="py-5 px-6 text-right">Aktionen</th></tr>
+                            <tr>
+                                <th class="py-5 px-6 text-left">Name</th>
+                                <th class="py-5 px-6 text-center">Order</th>
+                                <th class="py-5 px-6 text-center">Badge-Text</th>
+                                <th class="py-5 px-6 text-center">Special</th>
+                                <th class="py-5 px-6 text-right">Aktionen</th>
+                            </tr>
                         </thead>
                         <tbody id="categories-tbody" class="text-sm"></tbody>
                     </table>
@@ -1143,10 +1150,12 @@ function renderCategoryTable() {
     const tbody = document.getElementById('categories-tbody');
     let html = '';
     allCategories.forEach(c => {
+        const badge = c.specialText ? `<span class="px-4 py-1 bg-amber-400 text-black text-xs font-black rounded-2xl">${c.specialText}</span>` : '—';
         html += `
         <tr class="table-row-hover border-b border-white/10">
             <td class="py-5 px-6 font-medium">${c.name}</td>
             <td class="py-5 px-6 text-center">${c.order}</td>
+            <td class="py-5 px-6 text-center">${badge}</td>
             <td class="py-5 px-6 text-center">${c.special ? '✅' : '—'}</td>
             <td class="py-5 px-6 text-right space-x-4">
                 <button onclick="openEditCategoryModal('${c.id}')" class="text-cyan-400 hover:text-white"><i class="fa-solid fa-pen"></i></button>
@@ -1154,36 +1163,45 @@ function renderCategoryTable() {
             </td>
         </tr>`;
     });
-    tbody.innerHTML = html || `<tr><td colspan="4" class="text-center py-16 text-gray-400">Noch keine Kategorien</td></tr>`;
+    tbody.innerHTML = html || `<tr><td colspan="5" class="text-center py-16 text-gray-400">Noch keine Kategorien</td></tr>`;
 }
 document.getElementById('add-category-form').addEventListener('submit', async e => {
     e.preventDefault();
     const name = document.getElementById('cat-name').value.trim();
     const order = parseInt(document.getElementById('cat-order').value) || 999;
+    const specialText = document.getElementById('cat-special-text').value.trim();
     const special = document.getElementById('cat-special').checked;
     if (!name) return alert("Name erforderlich");
-    await db.collection('categories').add({ name, order, special });
-    await logAction("category_created", "", { name });
+    await db.collection('categories').add({ 
+        name, 
+        order, 
+        special, 
+        specialText: specialText || null 
+    });
+    await logAction("category_created", "", { name, specialText });
     e.target.reset();
     populateCategorySelects();
     populateAdminCategoryFilter();
-    showToast('✅ Kategorie erstellt und Dropdowns aktualisiert!');
+    showToast('✅ Kategorie mit eigenem Badge-Text erstellt!');
 });
 async function openEditCategoryModal(id) {
     const doc = await db.collection('categories').doc(id).get();
     const c = doc.data();
     const html = `
-        <div class="bg-zinc-900 rounded-3xl p-8 max-w-md w-full mx-4 modal">
-            <h3 class="text-3xl font-bold neon mb-6">Kategorie bearbeiten</h3>
-            <input id="edit-cat-name" value="${c.name}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 mb-4">
-            <input id="edit-cat-order" type="number" value="${c.order}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 mb-4">
-            <div class="flex items-center gap-3 mb-8">
-                <input id="edit-cat-special" type="checkbox" ${c.special ? 'checked' : ''} class="w-5 h-5 accent-amber-400">
-                <label>Special (4-für-3-Bolt)</label>
-            </div>
-            <div class="flex gap-4">
-                <button onclick="saveEditCategory('${id}')" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-5 rounded-3xl font-bold">Speichern</button>
-                <button onclick="closeEditModal()" class="flex-1 bg-zinc-700 hover:bg-zinc-600 py-5 rounded-3xl">Abbrechen</button>
+        <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]">
+            <div class="bg-zinc-900 rounded-3xl p-8 max-w-md w-full mx-4 modal">
+                <h3 class="text-3xl font-bold neon mb-6">Kategorie bearbeiten</h3>
+                <input id="edit-cat-name" value="${c.name || ''}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 mb-4">
+                <input id="edit-cat-order" type="number" value="${c.order || 999}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 mb-4">
+                <input id="edit-cat-special-text" value="${c.specialText || ''}" placeholder="Badge-Text (z.B. 4 für 3 + Preis Drop)" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 mb-4">
+                <div class="flex items-center gap-3 mb-8">
+                    <input id="edit-cat-special" type="checkbox" ${c.special ? 'checked' : ''} class="w-5 h-5 accent-amber-400">
+                    <label>Special (zeigt Bolt + Badge)</label>
+                </div>
+                <div class="flex gap-4">
+                    <button onclick="saveEditCategory('${id}')" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-5 rounded-3xl font-bold">Speichern</button>
+                    <button onclick="closeEditModal()" class="flex-1 bg-zinc-700 hover:bg-zinc-600 py-5 rounded-3xl">Abbrechen</button>
+                </div>
             </div>
         </div>`;
     document.getElementById('edit-modal').innerHTML = html;
@@ -1192,13 +1210,19 @@ async function openEditCategoryModal(id) {
 async function saveEditCategory(id) {
     const name = document.getElementById('edit-cat-name').value.trim();
     const order = parseInt(document.getElementById('edit-cat-order').value) || 999;
+    const specialText = document.getElementById('edit-cat-special-text').value.trim();
     const special = document.getElementById('edit-cat-special').checked;
-    await db.collection('categories').doc(id).update({ name, order, special });
-    await logAction("category_updated", id, { name });
-    document.getElementById('edit-modal').classList.add('hidden');
+    await db.collection('categories').doc(id).update({ 
+        name, 
+        order, 
+        special, 
+        specialText: specialText || null 
+    });
+    await logAction("category_updated", id, { name, specialText });
+    closeEditModal();
     populateCategorySelects();
     populateAdminCategoryFilter();
-    showToast('✅ Kategorie gespeichert und Dropdowns aktualisiert');
+    showToast('✅ Kategorie + Badge-Text gespeichert!');
 }
 async function deleteCategory(id) {
     if (!confirm('Kategorie wirklich löschen? Produkte bleiben erhalten.')) return;
@@ -1211,7 +1235,7 @@ async function deleteCategory(id) {
 function seedDefaultCategories() {
     if (allCategories.length > 0 && !confirm('Es existieren bereits Kategorien. Trotzdem Standard-Kategorien laden?')) return;
     const defaults = [
-        { name: "WaveVapes Tornado 30000", order: 1, special: true },
+        { name: "WaveVapes Tornado 30000", order: 1, special: true, specialText: "4 für 3" },
         { name: "Normale Sorten", order: 2, special: false },
         { name: "Neue Sorten", order: 3, special: false }
     ];

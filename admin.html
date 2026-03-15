@@ -89,7 +89,7 @@
             </div>
             <div class="grid grid-cols-2 md:grid-cols-5 gap-6 mb-12">
                 <div class="metric-card p-6 relative" style="cursor:pointer;">
-                    <p class="text-gray-400 text-sm">Gesamtumsatz</p>
+                    <p class="text-gray-400 text-sm">Gesamtumsatz (live aus Bestellungen)</p>
                     <p id="total-revenue" class="text-4xl font-bold text-emerald-400">0 €</p>
                     <button onclick="editManualMetrics()" class="metric-edit-btn text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1 rounded-xl"><i class="fa-solid fa-pen"></i></button>
                 </div>
@@ -98,7 +98,7 @@
                     <p id="active-products" class="text-4xl font-bold text-cyan-400">0</p>
                 </div>
                 <div class="metric-card p-6 relative" style="cursor:pointer;">
-                    <p class="text-gray-400 text-sm">Verkaufte Einheiten</p>
+                    <p class="text-gray-400 text-sm">Verkaufte Einheiten (live aus Bestellungen)</p>
                     <p id="total-sold" class="text-4xl font-bold text-purple-400">0</p>
                     <button onclick="editManualMetrics()" class="metric-edit-btn text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1 rounded-xl"><i class="fa-solid fa-pen"></i></button>
                 </div>
@@ -298,10 +298,8 @@
                         <tbody id="coupons-tbody" class="text-sm"></tbody>
                     </table>
                 </div>
-                <!-- LOYALTY HISTORY BUTTON -->
                 <div class="mt-8 pt-6 border-t border-white/10">
-                    <button onclick="showLoyaltyHistory()"
-                            class="bg-violet-600 hover:bg-violet-500 w-full py-5 rounded-3xl text-base font-medium flex items-center justify-center gap-3">
+                    <button onclick="showLoyaltyHistory()" class="bg-violet-600 hover:bg-violet-500 w-full py-5 rounded-3xl text-base font-medium flex items-center justify-center gap-3">
                         <i class="fa-solid fa-history"></i>
                         Loyalty-Codes History anzeigen (LOYAL5, LOYAL10, LOYAL15 ...)
                     </button>
@@ -414,10 +412,7 @@
                 </h2>
                 <p class="text-sm text-gray-400 mb-6">Klicke auf einen Button für automatische Sortierung.<br><strong>Neue AUTO-PRIORITÄT (überarbeitet):</strong><br>1. Neue Sorten (nur verfügbar) → 2. Normale Sorten (nur verfügbar) → 3. Alle Vapes (nur verfügbar) → 4. ALLE nicht verfügbaren Sachen (egal ob neu oder normal – immer ganz unten)</p>
                 <div class="flex flex-wrap gap-3 mb-8">
-                    <button onclick="openShopPreview()"
-                            class="px-8 py-4 bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold rounded-3xl text-base transition flex items-center gap-3 shadow-xl">
-                        👀 Vorschau im Shop öffnen (neuer Tab)
-                    </button>
+                    <button onclick="openShopPreview()" class="px-8 py-4 bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold rounded-3xl text-base transition flex items-center gap-3 shadow-xl">👀 Vorschau im Shop öffnen (neuer Tab)</button>
                     <button onclick="autoSort('alpha')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">📋 Alphabetisch A-Z</button>
                     <button onclick="autoSort('new')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">⭐ Neue Sorten zuerst</button>
                     <button onclick="autoSort('tornado')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">🌪️ Tornado zuerst</button>
@@ -452,7 +447,7 @@
         </div>
     </div>
 </div>
-<!-- EDIT MODAL (Bulk + Einzel-Edit + History-Modals) -->
+<!-- EDIT MODAL -->
 <div id="edit-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]"></div>
 <!-- ORDER MODAL -->
 <div id="order-modal-container"></div>
@@ -493,6 +488,8 @@ let adminStatusFilter = '';
 let selectedProductIds = [];
 let manualRevenueOverride = null;
 let manualSoldOverride = null;
+let ordersRevenue = 0;
+let ordersSold = 0;
 // ====================== LOG ACTION ======================
 async function logAction(action, target = "", details = {}) {
     if (!auth.currentUser) return;
@@ -504,63 +501,61 @@ async function logAction(action, target = "", details = {}) {
         details: details || {}
     });
 }
-// ====================== STATS UPDATE ======================
-async function updateStats() {
-    const active = allProducts.filter(p => p.available !== false).length;
-    const soldTotal = allProducts.reduce((sum, p) => sum + (p.sold || 0), 0);
-    const revenue = allProducts.reduce((sum, p) => sum + (p.sold || 0) * (p.price || 0), 0);
-    const top = [...allProducts].sort((a, b) => (b.sold || 0) - (a.sold || 0))[0];
-    const displayRevenue = manualRevenueOverride !== null ? manualRevenueOverride : revenue;
-    const displaySold = manualSoldOverride !== null ? manualSoldOverride : soldTotal;
-    document.getElementById('active-products').textContent = active;
-    document.getElementById('total-sold').textContent = displaySold;
+// ====================== LIVE STATISTIKEN AUS ORDERS ======================
+function startLiveStatsListener() {
+    db.collection("orders").onSnapshot(snap => {
+        let revenue = 0;
+        let sold = 0;
+        snap.forEach(doc => {
+            const o = doc.data();
+            revenue += o.total || 0;
+            (o.items || []).forEach(item => sold += (item.qty || 0));
+        });
+        ordersRevenue = revenue;
+        ordersSold = sold;
+        const productRevenue = allProducts.reduce((sum, p) => sum + (p.sold || 0) * (p.price || 0), 0);
+        const productSold = allProducts.reduce((sum, p) => sum + (p.sold || 0), 0);
+        if (Math.abs(ordersRevenue - productRevenue) > 0.01 || ordersSold !== productSold) {
+            correctProductStatsFromOrders();
+        }
+        updateStatsDisplay();
+    });
+}
+async function correctProductStatsFromOrders() {
+    const batch = db.batch();
+    const productMap = new Map();
+    const ordersSnap = await db.collection("orders").get();
+    ordersSnap.forEach(doc => {
+        const o = doc.data();
+        o.items.forEach(item => {
+            if (item.id && item.id !== 999) {
+                const current = productMap.get(item.id) || 0;
+                productMap.set(item.id, current + item.qty);
+            }
+        });
+    });
+    const productsSnap = await db.collection("products").get();
+    productsSnap.forEach(doc => {
+        const currentSold = productMap.get(doc.id) || 0;
+        batch.update(doc.ref, { sold: currentSold });
+    });
+    await batch.commit();
+    showToast("✅ Statistik automatisch korrigiert und gespeichert!", "success");
+    loadProducts();
+}
+function updateStatsDisplay() {
+    const displayRevenue = manualRevenueOverride !== null ? manualRevenueOverride : ordersRevenue;
+    const displaySold = manualSoldOverride !== null ? manualSoldOverride : ordersSold;
     document.getElementById('total-revenue').textContent = displayRevenue.toFixed(0) + ' €';
+    document.getElementById('total-sold').textContent = displaySold;
+    const top = [...allProducts].sort((a, b) => (b.sold || 0) - (a.sold || 0))[0];
     document.getElementById('top-seller').textContent = top ? `${top.name} (${top.sold || 0}×)` : '—';
-}
-// ====================== MANUELLE METRIK-BEARBEITUNG ======================
-async function editManualMetrics() {
-    const currentRevenue = manualRevenueOverride !== null ? manualRevenueOverride : allProducts.reduce((sum, p) => sum + (p.sold || 0) * (p.price || 0), 0);
-    const currentSold = manualSoldOverride !== null ? manualSoldOverride : allProducts.reduce((sum, p) => sum + (p.sold || 0), 0);
-    document.getElementById('manual-revenue-input').value = currentRevenue;
-    document.getElementById('manual-sold-input').value = currentSold;
-    const modal = document.getElementById('manual-metrics-modal');
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
-}
-function closeManualMetricsModal() {
-    const modal = document.getElementById('manual-metrics-modal');
-    modal.classList.add('hidden');
-    modal.classList.remove('flex');
-}
-async function saveManualMetrics() {
-    const revenue = parseFloat(document.getElementById('manual-revenue-input').value) || 0;
-    const sold = parseInt(document.getElementById('manual-sold-input').value) || 0;
-    manualRevenueOverride = revenue;
-    manualSoldOverride = sold;
-    await db.collection("settings").doc("main").set({
-        manualRevenueOverride: revenue,
-        manualSoldOverride: sold
-    }, { merge: true });
-    updateStats();
-    closeManualMetricsModal();
-    showToast("✅ Manuelle Werte gespeichert!", "success");
-}
-async function resetManualMetrics() {
-    manualRevenueOverride = null;
-    manualSoldOverride = null;
-    await db.collection("settings").doc("main").set({
-        manualRevenueOverride: firebase.firestore.FieldValue.delete(),
-        manualSoldOverride: firebase.firestore.FieldValue.delete()
-    }, { merge: true });
-    updateStats();
-    closeManualMetricsModal();
-    showToast("✅ Zurück auf automatische Berechnung", "success");
 }
 // ====================== PRODUKTE ======================
 function loadProducts() {
     db.collection('products').onSnapshot(snap => {
         allProducts = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        updateStats();
+        updateStatsDisplay();
         renderProductTable();
     });
 }
@@ -570,12 +565,8 @@ function applyAdminFilters() {
     renderProductTable();
 }
 function sortAdminTable(column) {
-    if (adminSortColumn === column) {
-        adminSortDirection = adminSortDirection === 'asc' ? 'desc' : 'asc';
-    } else {
-        adminSortColumn = column;
-        adminSortDirection = 'asc';
-    }
+    if (adminSortColumn === column) adminSortDirection = adminSortDirection === 'asc' ? 'desc' : 'asc';
+    else { adminSortColumn = column; adminSortDirection = 'asc'; }
     renderProductTable();
 }
 function renderProductTable() {
@@ -605,9 +596,7 @@ function renderProductTable() {
             case 'available': valA = a.available !== false ? 1 : 0; valB = b.available !== false ? 1 : 0; break;
             default: valA = a.name; valB = b.name;
         }
-        if (typeof valA === 'string') {
-            return adminSortDirection === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
-        }
+        if (typeof valA === 'string') return adminSortDirection === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
         return adminSortDirection === 'asc' ? valA - valB : valB - valA;
     });
     let html = '';
@@ -636,7 +625,6 @@ function renderProductTable() {
     });
     tbody.innerHTML = html || `<tr><td colspan="12" class="text-center py-16 text-gray-400">Keine Produkte gefunden</td></tr>`;
 }
-document.getElementById('product-search').addEventListener('input', applyAdminFilters);
 async function toggleAvailable(id, val) {
     await db.collection('products').doc(id).update({ available: val });
     await logAction("product_availability_changed", id, { available: val });
@@ -652,7 +640,6 @@ async function deleteProduct(id) {
         showToast('❌ Fehler beim Löschen: ' + e.message, 'error');
     }
 }
-// ====================== NEU: SINGLE EDIT MODAL (fehlte vorher!) ======================
 async function openEditModal(id) {
     const doc = await db.collection('products').doc(id).get();
     const p = doc.data();
@@ -674,7 +661,7 @@ async function openEditModal(id) {
     </div>`;
     document.getElementById('edit-modal').innerHTML = html;
     document.getElementById('edit-modal').classList.remove('hidden');
-    populateCategorySelects(); // für den Edit-Select
+    populateCategorySelects();
     const sel = document.getElementById('edit-category');
     if (sel) sel.value = p.category || '';
 }
@@ -685,27 +672,19 @@ async function saveEditProduct(id) {
     const category = document.getElementById('edit-category').value;
     const isNew = document.getElementById('edit-new').checked;
     const available = document.getElementById('edit-available').checked;
-    await db.collection('products').doc(id).update({
-        name, price, stock, category, isNew, available
-    });
+    await db.collection('products').doc(id).update({ name, price, stock, category, isNew, available });
     await logAction("product_updated", id);
     closeEditModal();
     showToast('✅ Produkt gespeichert');
     loadProducts();
 }
-// ====================== BULK-EDIT ======================
 function toggleSelectAllProducts(cb) {
     document.querySelectorAll('.product-checkbox').forEach(ch => ch.checked = cb.checked);
 }
 function openBulkEditModal() {
     selectedProductIds = [];
-    document.querySelectorAll('.product-checkbox:checked').forEach(cb => {
-        selectedProductIds.push(cb.dataset.id);
-    });
-    if (selectedProductIds.length === 0) {
-        alert("Bitte zuerst Produkte per Checkbox auswählen!");
-        return;
-    }
+    document.querySelectorAll('.product-checkbox:checked').forEach(cb => selectedProductIds.push(cb.dataset.id));
+    if (selectedProductIds.length === 0) return alert("Bitte zuerst Produkte per Checkbox auswählen!");
     const html = `
     <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]">
         <div class="bg-zinc-900 rounded-3xl p-8 max-w-2xl w-full mx-4 modal">
@@ -766,7 +745,6 @@ async function executeBulkEdit() {
 function closeBulkModal() {
     document.getElementById('edit-modal').classList.add('hidden');
 }
-// ====================== NEU: enforceCategories ======================
 async function enforceCategories() {
     if (!confirm("Automatische Kategoriezuteilung für alle Produkte durchführen?")) return;
     const snap = await db.collection("products").get();
@@ -781,23 +759,6 @@ async function enforceCategories() {
     await batch.commit();
     showToast("✅ Automatische Kategoriezuteilung abgeschlossen!");
     loadProducts();
-}
-// ====================== NEU: exportOrdersWithTracking ======================
-async function exportOrdersWithTracking() {
-    const snapshot = await db.collection("orders").orderBy("date", "desc").get();
-    if (snapshot.empty) return alert("Keine Bestellungen vorhanden!");
-    let csv = "Bestellnr.,Datum,Kunde,Gesamt,Status,Tracking,Carrier\n";
-    snapshot.forEach(doc => {
-        const o = doc.data();
-        const dateStr = o.date ? o.date.toDate().toISOString().slice(0,10) : '';
-        csv += `"${o.orderNumber}","${dateStr}","${o.userEmail}","${o.total}","${o.status || '—'}","${o.trackingNumber || ''}","${o.carrier || ''}"\n`;
-    });
-    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `wavevapes_bestellungen_mit_tracking_${new Date().toISOString().slice(0,10)}.csv`;
-    link.click();
-    showToast("✅ Bestellungen mit Tracking-Links exportiert!", "success");
 }
 // ====================== SHOP VORSCHAU ======================
 function openShopPreview() {
@@ -826,9 +787,7 @@ async function showLoyaltyHistory() {
             <div class="flex justify-between items-center mb-6">
                 <h3 class="text-3xl font-bold neon">Loyalty-Codes History</h3>
                 <div class="flex gap-3">
-                    <button onclick="exportLoyaltyHistory()" class="bg-emerald-600 hover:bg-emerald-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2">
-                        📤 Als CSV exportieren
-                    </button>
+                    <button onclick="exportLoyaltyHistory()" class="bg-emerald-600 hover:bg-emerald-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2">📤 Als CSV exportieren</button>
                     <button onclick="closeEditModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
                 </div>
             </div>
@@ -848,9 +807,7 @@ async function showLoyaltyHistory() {
             <div class="bg-zinc-950 border border-violet-400/30 rounded-3xl p-6">
                 <div class="font-medium mb-3">${u.username || u.email}</div>
                 <div class="flex flex-wrap gap-2">
-                    ${u.redeemedLoyaltyCodes.map(code => `
-                        <span class="bg-violet-600 text-white text-xs px-4 py-1.5 rounded-2xl font-mono">${code}</span>
-                    `).join('')}
+                    ${u.redeemedLoyaltyCodes.map(code => `<span class="bg-violet-600 text-white text-xs px-4 py-1.5 rounded-2xl font-mono">${code}</span>`).join('')}
                 </div>
             </div>`;
     });
@@ -933,9 +890,7 @@ async function showCouponHistory(couponId) {
                 <h3 class="text-3xl font-bold neon">Nutzungs-History: <span class="text-amber-400">${coupon.code}</span></h3>
                 <button onclick="closeEditModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
             </div>
-            <div class="space-y-3">
-                ${listHTML}
-            </div>
+            <div class="space-y-3">${listHTML}</div>
         </div>
     </div>`;
     document.getElementById('edit-modal').innerHTML = modalHTML;
@@ -948,7 +903,7 @@ async function deleteCoupon(id) {
         loadCoupons();
     }
 }
-// ====================== CLOSE MODAL FUNCTION ======================
+// ====================== CLOSE MODAL ======================
 function closeEditModal() {
     const modal = document.getElementById('edit-modal');
     modal.classList.add('hidden');
@@ -979,9 +934,8 @@ async function exportProductsToCSV() {
     });
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
-    const date = new Date().toISOString().slice(0,10);
     link.href = URL.createObjectURL(blob);
-    link.download = `wavevapes_products_backup_${date}.csv`;
+    link.download = `wavevapes_products_backup_${new Date().toISOString().slice(0,10)}.csv`;
     link.click();
     showToast("✅ CSV-Datei wurde heruntergeladen!", "success");
 }
@@ -1055,6 +1009,22 @@ async function exportOrdersToCSV() {
     link.download = `wavevapes_bestellungen_${new Date().toISOString().slice(0,10)}.csv`;
     link.click();
     showToast("✅ Bestellungen als CSV exportiert!", "success");
+}
+async function exportOrdersWithTracking() {
+    const snapshot = await db.collection("orders").orderBy("date", "desc").get();
+    if (snapshot.empty) return alert("Keine Bestellungen vorhanden!");
+    let csv = "Bestellnr.,Datum,Kunde,Gesamt,Status,Tracking,Carrier\n";
+    snapshot.forEach(doc => {
+        const o = doc.data();
+        const dateStr = o.date ? o.date.toDate().toISOString().slice(0,10) : '';
+        csv += `"${o.orderNumber}","${dateStr}","${o.userEmail}","${o.total}","${o.status || '—'}","${o.trackingNumber || ''}","${o.carrier || ''}"\n`;
+    });
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `wavevapes_bestellungen_mit_tracking_${new Date().toISOString().slice(0,10)}.csv`;
+    link.click();
+    showToast("✅ Bestellungen mit Tracking-Links exportiert!", "success");
 }
 async function importOrdersFromCSV(e) {
     const file = e.target.files[0];
@@ -1310,7 +1280,6 @@ async function quickStatus(id, status) {
     await logAction("order_status_changed", id, { status });
     showToast(`Status auf „${status}“ gesetzt`);
 }
-// ====================== ORDER DETAIL MODAL ======================
 async function showOrderModal(orderId) {
     currentOrderId = orderId;
     const doc = await db.collection('orders').doc(orderId).get();
@@ -1344,10 +1313,7 @@ async function showOrderModal(orderId) {
                         <i class="fa-solid fa-note-sticky text-amber-400"></i>
                         Interne Notizen (nur für dich sichtbar)
                     </label>
-                    <textarea id="modal-internal-notes"
-                              rows="4"
-                              placeholder="z. B. Kunde hat schon überwiesen, IBAN-Ende 5812, Betrag passt..."
-                              class="w-full bg-zinc-800 border border-amber-400/30 focus:border-amber-400 rounded-2xl px-5 py-3 text-sm resize-y min-h-[100px]"></textarea>
+                    <textarea id="modal-internal-notes" rows="4" placeholder="z. B. Kunde hat schon überwiesen, IBAN-Ende 5812, Betrag passt..." class="w-full bg-zinc-800 border border-amber-400/30 focus:border-amber-400 rounded-2xl px-5 py-3 text-sm resize-y min-h-[100px]"></textarea>
                 </div>
                 <div class="bg-zinc-950 -mx-8 -mb-8 p-8 rounded-b-3xl border-t border-white/10">
                     <h4 class="font-bold mb-6 text-cyan-400 flex items-center gap-2"><i class="fa-solid fa-truck"></i> Admin-Steuerung</h4>
@@ -1386,30 +1352,20 @@ async function showOrderModal(orderId) {
 function closeOrderModal() {
     document.getElementById('order-modal-container').innerHTML = '';
 }
-// ====================== SAVE ORDER CHANGES ======================
 async function saveOrderChanges() {
     const status = document.getElementById('modal-status').value;
     const carrier = document.getElementById('modal-carrier').value;
     const tracking = document.getElementById('modal-tracking').value.trim();
     const internalNotes = document.getElementById('modal-internal-notes').value.trim();
     await handleStockOnStatusChange(currentOrderId, status);
-    const updateData = {
-        status,
-        carrier,
-        trackingNumber: tracking || firebase.firestore.FieldValue.delete()
-    };
-    if (internalNotes) {
-        updateData.internalNotes = internalNotes;
-    } else {
-        updateData.internalNotes = firebase.firestore.FieldValue.delete();
-    }
+    const updateData = { status, carrier, trackingNumber: tracking || firebase.firestore.FieldValue.delete() };
+    if (internalNotes) updateData.internalNotes = internalNotes; else updateData.internalNotes = firebase.firestore.FieldValue.delete();
     await db.collection('orders').doc(currentOrderId).update(updateData);
     if (status === "Wird bearbeitet") await awardLoyaltyIfProcessed(currentOrderId);
     await logAction("order_updated", currentOrderId, { status, hasNotes: !!internalNotes });
     showToast('Bestellung + interne Notizen aktualisiert');
     closeOrderModal();
 }
-// ====================== DELETE ORDER ======================
 async function deleteOrder() {
     if (!confirm('⚠️ Bestellung WIRKLICH IRREVERSIBEL löschen?\n\nDer Lagerbestand wird automatisch wieder aufgefüllt\nund die Verkaufszahlen (sold) werden zurückgesetzt!')) return;
     const doc = await db.collection('orders').doc(currentOrderId).get();
@@ -1425,10 +1381,7 @@ async function deleteOrder() {
         showToast("✅ Lagerbestand + Verkaufszahlen wurden zurückgesetzt!", "success");
     }
     await db.collection('orders').doc(currentOrderId).delete();
-    await logAction("order_deleted_with_stock_restore", currentOrderId, {
-        status: order.status,
-        itemsRestored: order.items.length
-    });
+    await logAction("order_deleted_with_stock_restore", currentOrderId, { status: order.status, itemsRestored: order.items.length });
     showToast('Bestellung komplett gelöscht + Lager zurückgesetzt');
     closeOrderModal();
     loadOrders();
@@ -1455,9 +1408,7 @@ function loadUsers() {
                 <td class="py-5 px-6 text-center font-mono text-cyan-300">${refCode}</td>
                 <td class="py-5 px-6 text-center font-bold text-emerald-400">${points}</td>
                 <td class="py-5 px-6 text-center">
-                    <input type="checkbox" ${freeShipping ? 'checked' : ''}
-                           onchange="toggleFreeShipping('${doc.id}', this.checked)"
-                           class="accent-emerald-400 w-5 h-5 cursor-pointer">
+                    <input type="checkbox" ${freeShipping ? 'checked' : ''} onchange="toggleFreeShipping('${doc.id}', this.checked)" class="accent-emerald-400 w-5 h-5 cursor-pointer">
                 </td>
                 <td class="py-5 px-6 text-center">
                     <span class="status-badge ${disabled ? 'disabled' : 'bg-emerald-600 text-white'}">${disabled ? 'GESPERRT' : 'AKTIV'}</span>
@@ -1557,9 +1508,7 @@ async function loadAnalytics() {
         dailyOrdersCount[day] = (dailyOrdersCount[day] || 0) + 1;
         totalRevenue += o.total;
         totalOrders++;
-        o.items.forEach(item => {
-            productMap.set(item.name, (productMap.get(item.name) || 0) + item.qty);
-        });
+        o.items.forEach(item => productMap.set(item.name, (productMap.get(item.name) || 0) + item.qty));
         if (o.userEmail) userMap.set(o.userEmail, (userMap.get(o.userEmail) || 0) + 1);
     });
     document.getElementById('metric-revenue').textContent = totalRevenue.toFixed(0) + ' €';
@@ -1623,9 +1572,7 @@ async function generatePDFReport() {
             productMap.set(item.name, current + item.qty);
         });
     });
-    topProducts = Array.from(productMap.entries())
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5);
+    topProducts = Array.from(productMap.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5);
     doc.setFontSize(14);
     doc.text("Zusammenfassung letzte 30 Tage", 20, 45);
     doc.setFontSize(11);
@@ -1756,15 +1703,11 @@ async function handleStockOnStatusChange(orderId, newStatus) {
     }
 }
 async function resetAllStatistics() {
-    if (!confirm("⚠️ WIRKLICH ALLE STATISTIKEN ZURÜCKSETZEN?\n\nsold wird bei ALLEN Produkten auf 0 gesetzt.\nUmsatz und Top-Seller gehen auf Null.\nDas ist UNWIDERRUFLICH!")) {
-        return;
-    }
+    if (!confirm("⚠️ WIRKLICH ALLE STATISTIKEN ZURÜCKSETZEN?\n\nsold wird bei ALLEN Produkten auf 0 gesetzt.\nUmsatz und Top-Seller gehen auf Null.\nDas ist UNWIDERRUFLICH!")) return;
     try {
         const snapshot = await db.collection("products").get();
         const batch = db.batch();
-        snapshot.forEach(doc => {
-            batch.update(doc.ref, { sold: 0 });
-        });
+        snapshot.forEach(doc => batch.update(doc.ref, { sold: 0 }));
         await batch.commit();
         showToast("✅ Alle Statistiken wurden zurückgesetzt! (verkaufte Einheiten = 0)", "success");
         await logAction("all_statistics_reset");
@@ -1794,39 +1737,27 @@ function renderSortList() {
         const div = document.createElement('div');
         div.className = 'sortable-item flex items-center gap-4 bg-zinc-900 border border-white/10 rounded-3xl p-5 cursor-move select-none';
         div.dataset.id = p.id;
-        const newBadge = p.isNew
-            ? `<span onclick="toggleIsNew('${p.id}', event)" class="px-3 py-1 bg-lime-400 text-black text-xs font-black tracking-wider rounded-2xl cursor-pointer hover:scale-110 transition">NEW</span>`
-            : '';
-        const unavailableBadge = p.available === false
-            ? `<span onclick="toggleAvailableInSort('${p.id}', event)" class="px-3 py-1 bg-red-500 text-white text-xs font-medium rounded-2xl cursor-pointer hover:scale-110 transition">NICHT VERFÜGBAR</span>`
-            : '';
+        const newBadge = p.isNew ? `<span onclick="toggleIsNew('${p.id}', event)" class="px-3 py-1 bg-lime-400 text-black text-xs font-black tracking-wider rounded-2xl cursor-pointer hover:scale-110 transition">NEW</span>` : '';
+        const unavailableBadge = p.available === false ? `<span onclick="toggleAvailableInSort('${p.id}', event)" class="px-3 py-1 bg-red-500 text-white text-xs font-medium rounded-2xl cursor-pointer hover:scale-110 transition">NICHT VERFÜGBAR</span>` : '';
         div.innerHTML = `
             ${p.image ? `<img src="${p.image}" class="w-14 h-14 object-cover rounded-2xl flex-shrink-0">` : '<div class="w-14 h-14 bg-zinc-800 rounded-2xl flex items-center justify-center text-2xl">📦</div>'}
             <div class="flex-1">
                 <div class="font-medium text-lg">${p.name}</div>
-                <div class="flex items-center gap-2 mt-1">
-                    ${newBadge}
-                    ${unavailableBadge}
-                </div>
+                <div class="flex items-center gap-2 mt-1">${newBadge}${unavailableBadge}</div>
             </div>
             <i class="fa-solid fa-grip-lines text-gray-400 text-2xl"></i>
         `;
         container.appendChild(div);
     });
     if (sortableInstance) sortableInstance.destroy();
-    sortableInstance = new Sortable(container, {
-        animation: 180,
-        ghostClass: 'bg-cyan-900/60',
-        forceFallback: true
-    });
+    sortableInstance = new Sortable(container, { animation: 180, ghostClass: 'bg-cyan-900/60', forceFallback: true });
 }
 async function toggleIsNew(id, e) {
     e.stopImmediatePropagation();
     const doc = await db.collection('products').doc(id).get();
     const current = doc.data().isNew || false;
-    const newIsNew = !current;
-    await db.collection('products').doc(id).update({ isNew: newIsNew });
-    showToast(`NEW-Status umgeschaltet → ${newIsNew ? 'aktiv' : 'deaktiviert'}`);
+    await db.collection('products').doc(id).update({ isNew: !current });
+    showToast(`NEW-Status umgeschaltet → ${!current ? 'aktiv' : 'deaktiviert'}`);
     renderSortList();
 }
 async function toggleAvailableInSort(id, e) {
@@ -1847,24 +1778,12 @@ function autoSort(mode) {
         const pB = allProducts.find(p => p.id === idB);
         if (!pA || !pB) return 0;
         switch(mode) {
-            case 'alpha':
-                return pA.name.localeCompare(pB.name);
-            case 'new':
-                if (pA.isNew && !pB.isNew) return -1;
-                if (!pA.isNew && pB.isNew) return 1;
-                return 0;
-            case 'tornado':
-                const catA = (pA.category === "WaveVapes Tornado 30000") ? 0 : 1;
-                const catB = (pB.category === "WaveVapes Tornado 30000") ? 0 : 1;
-                return catA - catB;
-            case 'available':
-                const availA = (pA.available !== false) ? 0 : 1;
-                const availB = (pB.available !== false) ? 0 : 1;
-                return availA - availB;
-            case 'stock':
-                return (pB.stock || 0) - (pA.stock || 0);
-            default:
-                return 0;
+            case 'alpha': return pA.name.localeCompare(pB.name);
+            case 'new': return (pB.isNew ? 1 : 0) - (pA.isNew ? 1 : 0);
+            case 'tornado': return ((pA.category === "WaveVapes Tornado 30000") ? 0 : 1) - ((pB.category === "WaveVapes Tornado 30000") ? 0 : 1);
+            case 'available': return ((pA.available !== false) ? 0 : 1) - ((pB.available !== false) ? 0 : 1);
+            case 'stock': return (pB.stock || 0) - (pA.stock || 0);
+            default: return 0;
         }
     });
     items.forEach(item => container.appendChild(item));
@@ -1925,9 +1844,7 @@ async function logout() {
     try {
         await auth.signOut();
         showToast("👋 Erfolgreich ausgeloggt", "success");
-        setTimeout(() => {
-            window.location.href = "index.html";
-        }, 800);
+        setTimeout(() => window.location.href = "index.html", 800);
     } catch (e) {
         console.error(e);
         alert("Logout fehlgeschlagen: " + e.message);
@@ -1968,8 +1885,9 @@ window.onload = () => {
     loadCoupons();
     loadOrders();
     loadUsers();
+    startLiveStatsListener();
     setTimeout(() => {
-        updateStats();
+        updateStatsDisplay();
         populateAdminCategoryFilter();
         loadLiveUsers();
     }, 500);

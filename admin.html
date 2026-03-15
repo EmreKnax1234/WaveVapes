@@ -38,8 +38,10 @@
         th.sortable:after { content: '↑'; position: absolute; right: 12px; opacity: 0.3; font-size: 0.9em; }
         th.sortable.asc:after { content: '↑'; opacity: 1; color: #67e8f9; }
         th.sortable.desc:after { content: '↓'; opacity: 1; color: #67e8f9; }
-        .metric-card { background: linear-gradient(135deg, #18181b, #27272a); transition: all 0.3s; }
+        .metric-card { background: linear-gradient(135deg, #18181b, #27272a); transition: all 0.3s; position: relative; }
         .metric-card:hover { transform: translateY(-4px); }
+        .metric-edit-btn { position: absolute; top: 12px; right: 12px; font-size: 11px; background: #27272a; padding: 4px 8px; border-radius: 9999px; cursor: pointer; opacity: 0.7; }
+        .metric-edit-btn:hover { opacity: 1; background: #3b82f6; }
     </style>
 </head>
 <body class="min-h-screen">
@@ -84,12 +86,29 @@
                 <input type="file" id="csv-upload-products" accept=".csv" class="hidden" onchange="importProductsFromCSV(event)">
                 <p class="text-xs text-amber-400 mt-4 text-center">⚠️ Beim Import werden ALLE aktuellen Produkte gelöscht!</p>
             </div>
+
+            <!-- METRIK-KARTEN mit Edit-Buttons -->
             <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
-                <div class="card p-6"><p class="text-gray-400 text-sm">Gesamtumsatz</p><p id="total-revenue" class="text-4xl font-bold text-emerald-400">0 €</p></div>
-                <div class="card p-6"><p class="text-gray-400 text-sm">Aktive Produkte</p><p id="active-products" class="text-4xl font-bold text-cyan-400">0</p></div>
-                <div class="card p-6"><p class="text-gray-400 text-sm">Verkaufte Einheiten</p><p id="total-sold" class="text-4xl font-bold text-purple-400">0</p></div>
-                <div class="card p-6 bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-400/30"><p class="text-gray-400 text-sm">Top-Seller</p><p id="top-seller" class="text-2xl font-bold text-amber-400">—</p></div>
+                <div class="metric-card p-6 relative" style="cursor:pointer;">
+                    <p class="text-gray-400 text-sm">Gesamtumsatz</p>
+                    <p id="total-revenue" class="text-4xl font-bold text-emerald-400">0 €</p>
+                    <button onclick="editManualMetrics()" class="metric-edit-btn text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1 rounded-xl"><i class="fa-solid fa-pen"></i></button>
+                </div>
+                <div class="metric-card p-6 relative">
+                    <p class="text-gray-400 text-sm">Aktive Produkte</p>
+                    <p id="active-products" class="text-4xl font-bold text-cyan-400">0</p>
+                </div>
+                <div class="metric-card p-6 relative" style="cursor:pointer;">
+                    <p class="text-gray-400 text-sm">Verkaufte Einheiten</p>
+                    <p id="total-sold" class="text-4xl font-bold text-purple-400">0</p>
+                    <button onclick="editManualMetrics()" class="metric-edit-btn text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1 rounded-xl"><i class="fa-solid fa-pen"></i></button>
+                </div>
+                <div class="metric-card p-6 bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-400/30">
+                    <p class="text-gray-400 text-sm">Top-Seller</p>
+                    <p id="top-seller" class="text-2xl font-bold text-amber-400">—</p>
+                </div>
             </div>
+
             <div class="card p-8 mb-12 bg-red-950/30 border border-red-500/50">
                 <button onclick="resetAllStatistics()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-5 rounded-3xl text-xl flex items-center justify-center gap-3"><i class="fa-solid fa-warning"></i> ALLE STATISTIKEN ZURÜCKSETZEN</button>
             </div>
@@ -397,12 +416,36 @@
         </div>
     </div>
 </div>
+
+<!-- MANUELLER METRIK-EDIT MODAL -->
+<div id="manual-metrics-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]">
+    <div class="bg-zinc-900 rounded-3xl p-8 max-w-md w-full mx-4 modal">
+        <h3 class="text-2xl font-bold mb-6 neon">Manuelle Werte setzen</h3>
+        <div class="space-y-6">
+            <div>
+                <label class="block text-sm text-gray-400 mb-2">Gesamtumsatz (€)</label>
+                <input id="manual-revenue-input" type="number" step="0.01" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 text-2xl">
+            </div>
+            <div>
+                <label class="block text-sm text-gray-400 mb-2">Verkaufte Einheiten</label>
+                <input id="manual-sold-input" type="number" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 text-2xl">
+            </div>
+        </div>
+        <div class="flex gap-4 mt-8">
+            <button onclick="saveManualMetrics()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-5 rounded-3xl font-bold">Speichern</button>
+            <button onclick="resetManualMetrics()" class="flex-1 bg-zinc-700 hover:bg-zinc-600 py-5 rounded-3xl">Zurücksetzen auf automatisch</button>
+            <button onclick="closeManualMetricsModal()" class="flex-1 bg-zinc-700 hover:bg-zinc-600 py-5 rounded-3xl">Abbrechen</button>
+        </div>
+    </div>
+</div>
+
 <!-- EDIT MODAL -->
 <div id="edit-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]"></div>
 <!-- ORDER MODAL -->
 <div id="order-modal-container"></div>
 <!-- TOAST -->
 <div id="toast-container" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[99999] flex flex-col gap-3"></div>
+
 <script>
 // ====================== FIREBASE CONFIG ======================
 const firebaseConfig = {
@@ -436,6 +479,8 @@ let adminSortDirection = 'asc';
 let adminCategoryFilter = 'Alle';
 let adminStatusFilter = '';
 let selectedProductIds = [];
+let manualRevenueOverride = null;
+let manualSoldOverride = null;
 // ====================== LOG ACTION ======================
 async function logAction(action, target = "", details = {}) {
     if (!auth.currentUser) return;
@@ -447,16 +492,68 @@ async function logAction(action, target = "", details = {}) {
         details: details || {}
     });
 }
-// ====================== STATS UPDATE ======================
-function updateStats() {
+// ====================== STATS UPDATE (mit manuellen Overrides) ======================
+async function updateStats() {
     const active = allProducts.filter(p => p.available !== false).length;
     const soldTotal = allProducts.reduce((sum, p) => sum + (p.sold || 0), 0);
     const revenue = allProducts.reduce((sum, p) => sum + (p.sold || 0) * (p.price || 0), 0);
     const top = [...allProducts].sort((a, b) => (b.sold || 0) - (a.sold || 0))[0];
+
+    const displayRevenue = manualRevenueOverride !== null ? manualRevenueOverride : revenue;
+    const displaySold = manualSoldOverride !== null ? manualSoldOverride : soldTotal;
+
     document.getElementById('active-products').textContent = active;
-    document.getElementById('total-sold').textContent = soldTotal;
-    document.getElementById('total-revenue').textContent = revenue.toFixed(0) + ' €';
+    document.getElementById('total-sold').textContent = displaySold;
+    document.getElementById('total-revenue').textContent = displayRevenue.toFixed(0) + ' €';
     document.getElementById('top-seller').textContent = top ? `${top.name} (${top.sold || 0}×)` : '—';
+}
+// ====================== MANUELLE METRIK-BEARBEITUNG ======================
+async function editManualMetrics() {
+    const currentRevenue = manualRevenueOverride !== null ? manualRevenueOverride : 
+        allProducts.reduce((sum, p) => sum + (p.sold || 0) * (p.price || 0), 0);
+    const currentSold = manualSoldOverride !== null ? manualSoldOverride : 
+        allProducts.reduce((sum, p) => sum + (p.sold || 0), 0);
+
+    document.getElementById('manual-revenue-input').value = currentRevenue;
+    document.getElementById('manual-sold-input').value = currentSold;
+
+    const modal = document.getElementById('manual-metrics-modal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+function closeManualMetricsModal() {
+    const modal = document.getElementById('manual-metrics-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+async function saveManualMetrics() {
+    const revenue = parseFloat(document.getElementById('manual-revenue-input').value) || 0;
+    const sold = parseInt(document.getElementById('manual-sold-input').value) || 0;
+
+    manualRevenueOverride = revenue;
+    manualSoldOverride = sold;
+
+    await db.collection("settings").doc("main").set({
+        manualRevenueOverride: revenue,
+        manualSoldOverride: sold
+    }, { merge: true });
+
+    updateStats();
+    closeManualMetricsModal();
+    showToast("✅ Manuelle Werte gespeichert!", "success");
+}
+async function resetManualMetrics() {
+    manualRevenueOverride = null;
+    manualSoldOverride = null;
+
+    await db.collection("settings").doc("main").set({
+        manualRevenueOverride: firebase.firestore.FieldValue.delete(),
+        manualSoldOverride: firebase.firestore.FieldValue.delete()
+    }, { merge: true });
+
+    updateStats();
+    closeManualMetricsModal();
+    showToast("✅ Zurück auf automatische Berechnung", "success");
 }
 // ====================== PRODUKTE ======================
 function loadProducts() {
@@ -1386,10 +1483,9 @@ async function deleteOrder() {
     const doc = await db.collection('orders').doc(currentOrderId).get();
     const order = doc.data();
 
-    // Lager + sold zurücksetzen (nur bei bearbeiteten Bestellungen)
     if (order.status === "Wird bearbeitet" || order.status === "Versendet" || order.status === "Zugestellt") {
         for (let item of order.items) {
-            if (item.id === 999) continue; // Mystery Vape ignorieren
+            if (item.id === 999) continue;
             await db.collection("products").doc(item.id).update({
                 stock: firebase.firestore.FieldValue.increment(item.qty),
                 sold: firebase.firestore.FieldValue.increment(-item.qty)
@@ -1398,7 +1494,6 @@ async function deleteOrder() {
         showToast("✅ Lagerbestand + Verkaufszahlen wurden zurückgesetzt!", "success");
     }
 
-    // Bestellung löschen
     await db.collection('orders').doc(currentOrderId).delete();
     await logAction("order_deleted_with_stock_restore", currentOrderId, { 
         status: order.status, 
@@ -1407,7 +1502,7 @@ async function deleteOrder() {
 
     showToast('Bestellung komplett gelöscht + Lager zurückgesetzt');
     closeOrderModal();
-    loadOrders(); // Tabelle sofort aktualisieren
+    loadOrders();
 }
 // ====================== BENUTZER ======================
 function loadUsers() {
@@ -1662,6 +1757,8 @@ async function loadSettings() {
         email_template: "Deine Bestellung wurde bestätigt..."
     };
     if (!doc.exists) await db.collection("settings").doc("main").set(data);
+    manualRevenueOverride = data.manualRevenueOverride !== undefined ? data.manualRevenueOverride : null;
+    manualSoldOverride = data.manualSoldOverride !== undefined ? data.manualSoldOverride : null;
     document.getElementById("set-bank-owner").value = data.bank_owner || "";
     document.getElementById("set-iban").value = data.iban || "";
     document.getElementById("set-bic").value = data.bic || "";

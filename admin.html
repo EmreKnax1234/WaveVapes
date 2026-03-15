@@ -244,7 +244,7 @@
                 </div>
             </div>
         </div>
-        <!-- TAB 4: GUTSCHEINE + NEUE COUPON-NUTZUNGS-HISTORY -->
+        <!-- TAB 4: GUTSCHEINE + COUPON-NUTZUNGS-HISTORY -->
         <div id="tab-content-4" class="hidden">
             <div class="card p-8">
                 <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><i class="fa-solid fa-ticket"></i> Gutschein-Manager + Nutzungs-History</h2>
@@ -397,7 +397,7 @@
         </div>
     </div>
 </div>
-<!-- EDIT MODAL (wird auch für Coupon-History verwendet) -->
+<!-- EDIT MODAL -->
 <div id="edit-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]"></div>
 <!-- ORDER MODAL -->
 <div id="order-modal-container"></div>
@@ -1350,6 +1350,7 @@ async function showOrderModal(orderId) {
 function closeOrderModal() {
     document.getElementById('order-modal-container').innerHTML = '';
 }
+// ====================== SAVE ORDER CHANGES ======================
 async function saveOrderChanges() {
     const status = document.getElementById('modal-status').value;
     const carrier = document.getElementById('modal-carrier').value;
@@ -1378,12 +1379,35 @@ async function saveOrderChanges() {
     showToast('Bestellung + interne Notizen aktualisiert');
     closeOrderModal();
 }
+// ====================== DELETE ORDER MIT LAGER- & STATISTIK-RÜCKSETZUNG ======================
 async function deleteOrder() {
-    if (!confirm('Bestellung IRREVERSIBEL löschen?')) return;
+    if (!confirm('⚠️ Bestellung WIRKLICH IRREVERSIBEL löschen?\n\nDer Lagerbestand wird automatisch wieder aufgefüllt\nund die Verkaufszahlen (sold) werden zurückgesetzt!')) return;
+
+    const doc = await db.collection('orders').doc(currentOrderId).get();
+    const order = doc.data();
+
+    // Lager + sold zurücksetzen (nur bei bearbeiteten Bestellungen)
+    if (order.status === "Wird bearbeitet" || order.status === "Versendet" || order.status === "Zugestellt") {
+        for (let item of order.items) {
+            if (item.id === 999) continue; // Mystery Vape ignorieren
+            await db.collection("products").doc(item.id).update({
+                stock: firebase.firestore.FieldValue.increment(item.qty),
+                sold: firebase.firestore.FieldValue.increment(-item.qty)
+            });
+        }
+        showToast("✅ Lagerbestand + Verkaufszahlen wurden zurückgesetzt!", "success");
+    }
+
+    // Bestellung löschen
     await db.collection('orders').doc(currentOrderId).delete();
-    await logAction("order_deleted", currentOrderId);
-    showToast('Bestellung gelöscht');
+    await logAction("order_deleted_with_stock_restore", currentOrderId, { 
+        status: order.status, 
+        itemsRestored: order.items.length 
+    });
+
+    showToast('Bestellung komplett gelöscht + Lager zurückgesetzt');
     closeOrderModal();
+    loadOrders(); // Tabelle sofort aktualisieren
 }
 // ====================== BENUTZER ======================
 function loadUsers() {

@@ -207,9 +207,8 @@
             from { transform: scale(0.92); opacity: 0; }
             to { transform: scale(1); opacity: 1; }
         }
-        /* BUNDLE STYLES */
-        .bundle-section { background: rgba(139, 92, 246, 0.1); border: 2px solid #a78bfa; border-radius: 24px; padding: 20px; margin: 24px 0; }
-        .bundle-choice { background: #1f2937; border: 1px solid #a78bfa; border-radius: 9999px; padding: 12px 16px; margin-bottom: 12px; }
+        /* LIVE TODAY STATS */
+        #today-live-stats { font-size: 0.95rem; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); padding: 8px 16px; border-radius: 9999px; display: inline-flex; align-items: center; gap: 8px; }
     </style>
 </head>
 <body class="wave-bg text-white min-h-screen">
@@ -252,15 +251,23 @@
             <h2 class="hero-title text-5xl sm:text-6xl font-bold tracking-tighter neon-text mb-3">Bestelle deine Liquids und Vapes</h2>
             <p class="hero-subtitle text-xl sm:text-2xl text-cyan-200 max-w-md mx-auto">7,99 € pro Flasche • 10 ml • Nikotin frei wählbar (10 oder 20 mg)</p>
             <p class="text-base sm:text-lg text-gray-300 mt-4">Alle Liquids von ELFLIQ</p>
+  
             <!-- MYSTERY VAPE BANNER -->
             <div class="mt-4 inline-flex items-center gap-3 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-400/30 hover:border-emerald-400 px-7 py-3 rounded-3xl text-emerald-300 text-base font-semibold transition-all">
                 <i class="fa-solid fa-gift text-2xl"></i>
                 <span>Ab 100€ Bestellwert gibt's eine <span class="text-white font-bold underline">Mystery Vape gratis</span> dazu! 🎁</span>
             </div>
+  
             <!-- GRATIS VERSAND BANNER -->
-            <div id="free-shipping-banner" class="mt-4 inline-flex items-center gap-3 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-400/30 px-7 py-3 rounded-3xl text-amber-300 text-base font-semibold transition-all">
+            <div class="mt-4 inline-flex items-center gap-3 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-400/30 px-7 py-3 rounded-3xl text-amber-300 text-base font-semibold transition-all">
                 <i class="fa-solid fa-truck text-2xl"></i>
-                <span id="shipping-banner-text">Gratis Versand ab <span class="text-white font-bold">100 €</span> Bestellwert! 🚚</span>
+                <span>Gratis Versand ab <span class="text-white font-bold">100 €</span> Bestellwert! 🚚</span>
+            </div>
+
+            <!-- LIVE TODAY STATS -->
+            <div id="today-live-stats" class="mt-6 inline-flex items-center gap-2 bg-emerald-900/30 text-emerald-400 px-6 py-2 rounded-3xl text-sm font-medium">
+                <div class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                Heute: <span id="today-units">0</span> Produkte • <span id="today-revenue">0 €</span> Umsatz
             </div>
         </div>
         <!-- USER BANNER -->
@@ -613,6 +620,7 @@
             "LOYAL50": { type: "fixed", value: 50, points: 5000 }
         };
         const MYSTERY_ID = 999;
+        const fakeNames = ["Tim","Anna","Max","Sophie","Luca","Mia","Felix","Emma","Noah","Lena","Leon","Julia","Paul","Laura","Ben","Sarah","David","Hannah","Jonas","Lea"];
         const NICOTINE_OPTIONS = ["10 mg", "20 mg"];
         const BANK_OWNER = "Jakob David Hellrung";
         const BANK_IBAN = "DE38360200300003395812";
@@ -634,14 +642,17 @@
         let userAddress = JSON.parse(localStorage.getItem("wavevapes_address")) || {};
         let loyaltyPoints = 0;
         let currentCategoryFilter = "Alle";
+        let notificationList = [];
+        const NOTIFICATION_DURATION = 6500;
+        const HOUR_MS = 3600000;
+        let currentNotificationIndex = 0;
+        let notificationCyclePaused = false;
         let appliedDiscount = null;
         let ordersUnsubscribe = null;
         let userSnapshotUnsubscribe = null;
         let myReferralCode = "";
         let userHasFreeShipping = false;
         let productOrder = [];
-        let modalProductId = null;
-        let modalCurrentQty = 1;
         // ====================== FIREBASE ======================
         const firebaseConfig = {
             apiKey: "AIzaSyDsIUl-iYmH42MPbusFLhGhj5oGLh01BzI",
@@ -866,6 +877,7 @@
                         updateCartDisplay();
                     }
                 });
+                // LIVE PRESENCE
                 updatePresence();
                 setInterval(updatePresence, 30000);
             } else {
@@ -1061,10 +1073,13 @@
         function checkAndAutoRedeemLoyalty() {
             for (let r of REWARDS) {
                 if (loyaltyPoints >= r.points && !appliedDiscount) {
-                    if (confirm(`🎉 Du hast genug Punkte für ${r.text}!\nJetzt einlösen?`)) {
-                        document.getElementById("discount-input").value = r.code;
-                        applyDiscountCode();
-                        return;
+                    const alreadyRedeemed = currentUser ? (localStorage.getItem(`redeemed_${r.code}`) === "true") : false;
+                    if (!alreadyRedeemed) {
+                        if (confirm(`🎉 Du hast genug Punkte für ${r.text}!\nJetzt einlösen?`)) {
+                            document.getElementById("discount-input").value = r.code;
+                            applyDiscountCode();
+                            return;
+                        }
                     }
                 }
             }
@@ -1091,18 +1106,13 @@
             updateCartDisplay();
         }
         function getSubtotal() {
-            return cart.reduce((sum, item) => {
-                if (item.id === MYSTERY_ID) return sum;
-                const prod = allProducts.find(p => p.id === item.id);
-                return sum + item.qty * (prod ? prod.price : 7.99);
-            }, 0);
+            return cart.reduce((sum, item) => item.id === MYSTERY_ID ? sum : sum + item.qty * (item.price || 7.99), 0);
         }
         function getProductTotal() {
             let subtotal = getSubtotal();
             const tornadoQty = getTornadoQuantity();
             const free = Math.floor(tornadoQty / 4);
-            const tornadoPrice = allProducts.find(p => p.category === "WaveVapes Tornado 30000")?.price || 19.99;
-            let total = Math.max(0, subtotal - free * tornadoPrice);
+            let total = Math.max(0, subtotal - free * 19.99);
             if (appliedDiscount) {
                 if (appliedDiscount.type === "percent") {
                     total = Math.max(0, total - total * appliedDiscount.value / 100);
@@ -1139,11 +1149,7 @@
                         image: data.image || null,
                         stock: data.stock || 0,
                         description: data.description || "",
-                        hasNicotine: data.hasNicotine !== false,
-                        isBundle: data.isBundle || false,
-                        bundleNumChoices: data.bundleNumChoices || 3,
-                        bundleFreeExtra: data.bundleFreeExtra || false,
-                        bundleAllowedIds: data.bundleAllowedIds || []   // NEU: Admin-definierte Liste
+                        hasNicotine: data.hasNicotine !== false
                     });
                 });
                 renderProducts();
@@ -1152,6 +1158,13 @@
                 console.error(e);
                 showToast("⚠️ Firestore nicht erreichbar – prüfe Admin-Panel");
             }
+        }
+        function getSortPriority(p) {
+            if (currentCategoryFilter !== "Alle") return p.available ? 0 : 1;
+            if (p.category === "WaveVapes Tornado 30000") return p.available ? 4 : 5;
+            if (!p.available) return 3;
+            if (p.isNew) return 2;
+            return 1;
         }
         function renderProducts() {
             const container = document.getElementById("products-grid");
@@ -1167,6 +1180,9 @@
                 if (idxA !== -1 && idxB !== -1) return idxA - idxB;
                 if (idxA !== -1) return -1;
                 if (idxB !== -1) return 1;
+                const prioA = getSortPriority(a);
+                const prioB = getSortPriority(b);
+                if (prioA !== prioB) return prioA - prioB;
                 return a.name.localeCompare(b.name);
             });
             let html = "";
@@ -1216,7 +1232,6 @@
                             <div class="flex items-start justify-between mb-3">
                                 <h4 class="font-semibold text-lg leading-tight flex-1">${product.name}</h4>
                                 ${product.isNew ? `<span class="ml-auto px-3 py-1 bg-lime-400 text-black text-xs font-black tracking-wider rounded-2xl">NEW</span>` : ''}
-                                ${product.isBundle ? `<span class="ml-auto px-3 py-1 bg-purple-500 text-white text-xs font-black tracking-wider rounded-2xl">BUNDLE</span>` : ''}
                             </div>
                             ${unavailableTagHTML}
                             ${stockHTML}
@@ -1262,7 +1277,15 @@
             }, 0);
         }
         function showDealToast() {
-            showToast(`⚡ <strong>4 FÜR 3 AKTION EINGELÖST!</strong>`, "success");
+            const toast = document.getElementById('notification-toast');
+            notificationCyclePaused = true;
+            toast.innerHTML = `⚡ <strong>4 FÜR 3 AKTION EINGELÖST!</strong>`;
+            toast.classList.add('visible');
+            setTimeout(() => {
+                toast.classList.remove('visible');
+                notificationCyclePaused = false;
+                showNextNotification();
+            }, 5000);
         }
         // ====================== UPDATECARTDISPLAY ======================
         function updateCartDisplay() {
@@ -1307,10 +1330,6 @@
                 const nicDisplay = (item.nicotine && prod && prod.hasNicotine) ? ` (${item.nicotine})` : '';
                 if (item.id === MYSTERY_ID) {
                     itemsHTML += `<div class="mystery-item flex justify-between items-center rounded-3xl p-5"><div class="flex items-center gap-3"><i class="fa-solid fa-gift text-3xl"></i><div><div class="font-medium">${item.name}</div><div class="text-xs bg-white/30 px-3 py-0.5 rounded-full inline-block">GRATIS AB 100€</div></div></div><div class="text-right"><div class="font-bold text-xl text-emerald-900">0,00 €</div></div></div>`;
-                } else if (item.isBundle) {
-                    let bundleText = `Bundle: ${item.bundleChoices ? item.bundleChoices.length : 0} Liquids`;
-                    if (item.bundleFreeChoice) bundleText += " + 1 gratis";
-                    itemsHTML += `<div class="flex justify-between items-center bg-zinc-900 border border-purple-400/30 rounded-3xl p-5"><div><div class="font-medium">${item.name}</div><div class="text-xs text-purple-400">${bundleText}</div></div><div class="flex items-center gap-6"><div class="font-bold text-xl">${(item.qty * p).toFixed(2).replace('.', ',')} €</div><button onclick="removeCartItem('${item.id}'); event.stopImmediatePropagation()" class="text-red-400"><i class="fa-solid fa-trash"></i></button></div></div>`;
                 } else {
                     itemsHTML += `<div class="flex justify-between items-center bg-zinc-900 border border-white/10 rounded-3xl p-5"><div><div class="font-medium">${item.name}${nicDisplay}</div><div class="text-xs text-gray-400">${item.qty} × ${p.toFixed(2).replace('.', ',')} €</div></div><div class="flex items-center gap-6"><div class="font-bold text-xl">${(item.qty * p).toFixed(2).replace('.', ',')} €</div><button onclick="removeCartItem('${item.id}'); event.stopImmediatePropagation()" class="text-red-400"><i class="fa-solid fa-trash"></i></button></div></div>`;
                 }
@@ -1334,7 +1353,6 @@
             } else {
                 paymentInfoEl.innerHTML = `Zahlung per Überweisung • Versand nach Zahlungseingang`;
             }
-            updateFreeShippingBanner();
         }
         function removeCartItem(id) {
             if (id === MYSTERY_ID) return;
@@ -1374,7 +1392,15 @@
             saveUserCart();
         }
         function showMysteryToast() {
-            showToast(`🎉 <strong>Mystery Vape gratis hinzugefügt!</strong>`, "success");
+            const toast = document.getElementById('notification-toast');
+            notificationCyclePaused = true;
+            toast.innerHTML = `🎉 <strong>Mystery Vape gratis hinzugefügt!</strong>`;
+            toast.classList.add('visible');
+            setTimeout(() => {
+                toast.classList.remove('visible');
+                notificationCyclePaused = false;
+                showNextNotification();
+            }, 4800);
         }
         function generateOrderNumber() {
             const now = new Date();
@@ -1407,10 +1433,7 @@
                         name: item.name,
                         qty: item.qty,
                         price: item.price || 7.99,
-                        nicotine: item.nicotine || "",
-                        isBundle: item.isBundle || false,
-                        bundleChoices: item.bundleChoices || [],
-                        bundleFreeChoice: item.bundleFreeChoice || null
+                        nicotine: item.nicotine || ""
                     })),
                     total: finalTotal,
                     address: userAddress,
@@ -1592,6 +1615,42 @@
             toast.classList.add('visible');
             setTimeout(() => toast.classList.remove('visible'), 4000);
         }
+        function generateNotificationList() {
+            notificationList = [];
+            const available = allProducts;
+            for (let i = 0; i < 10; i++) {
+                const name = fakeNames[Math.floor(Math.random() * fakeNames.length)];
+                const prod = available[Math.floor(Math.random() * available.length)].name;
+                const min = Math.floor(Math.random() * 59) + 1;
+                const text = min === 1 ? "Minute" : "Minuten";
+                notificationList.push(`${name} bestellte vor ${min} ${text} ${prod}.`);
+            }
+            localStorage.setItem('wavevapes_notifications', JSON.stringify(notificationList));
+            localStorage.setItem('wavevapes_last_generate', Date.now());
+        }
+        function checkAndGenerateNotifications() {
+            const last = localStorage.getItem('wavevapes_last_generate');
+            if (!last || (Date.now() - last > HOUR_MS)) generateNotificationList();
+            else {
+                const stored = localStorage.getItem('wavevapes_notifications');
+                if (stored) notificationList = JSON.parse(stored);
+                else generateNotificationList();
+            }
+        }
+        function showNextNotification() {
+            if (notificationCyclePaused) return;
+            const toast = document.getElementById('notification-toast');
+            toast.textContent = notificationList[currentNotificationIndex];
+            toast.classList.add('visible');
+            setTimeout(() => toast.classList.remove('visible'), NOTIFICATION_DURATION - 700);
+            currentNotificationIndex = (currentNotificationIndex + 1) % notificationList.length;
+        }
+        function startNotificationCycle() {
+            checkAndGenerateNotifications();
+            showNextNotification();
+            setInterval(showNextNotification, NOTIFICATION_DURATION);
+            setInterval(checkAndGenerateNotifications, 60000);
+        }
         // ====================== DYNAMISCHE KATEGORIEN ======================
         async function renderCategoryTabs() {
             const snap = await db.collection("categories").orderBy("order").get();
@@ -1599,11 +1658,13 @@
             snap.forEach(doc => {
                 const c = doc.data();
                 const active = currentCategoryFilter === c.name ? 'tab-active' : '';
+             
                 let extra = '';
                 if (c.special === true) {
                     const badgeText = c.specialText || "4 FÜR 3";
                     extra = ` <span class="bg-amber-400 text-black text-xs font-black px-4 py-1 rounded-2xl">${badgeText}</span> <i class="fa-solid fa-bolt animate-bolt text-2xl"></i>`;
                 }
+             
                 html += `<button onclick="setCategoryFilter('${c.name}')" class="px-5 py-2 transition ${active}">${c.name}${extra}</button>`;
             });
             document.getElementById("category-tabs").innerHTML = html;
@@ -1669,33 +1730,25 @@
             const oldPriceDisplay = product.originalPrice
                 ? product.originalPrice.toFixed(2).replace('.', ',') + ' €'
                 : (isVape ? '35,99 €' : '10,99 €');
-            const bundleHTML = product.isBundle ? `
-                <div class="mt-8 bundle-section">
-                    <p class="text-xs text-purple-300 mb-4 font-medium">WÄHLE DEINE ${product.bundleNumChoices} LIQUIDS</p>
-                    <div id="bundle-choices" class="space-y-6"></div>
-                    ${product.bundleFreeExtra ? `
-                    <div class="mt-6">
-                        <p class="text-xs text-emerald-300 mb-2">+ 1 GRATIS EXTRA-SORTE DER WAHL</p>
-                        <select id="bundle-free-choice" class="nicotine-select w-full text-lg py-4"></select>
-                    </div>` : ''}
-                </div>` : '';
             const html = `
                 <div class="modal-inner bg-zinc-900 rounded-3xl overflow-hidden">
+                    <!-- Close Button -->
                     <div class="flex justify-end p-6 border-b border-white/10">
                         <button onclick="closeProductDetail()" class="text-4xl text-gray-400 hover:text-white transition">✕</button>
                     </div>
                     <div class="p-6 sm:p-10">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+                            <!-- Bild -->
                             <div class="flex justify-center items-center bg-black/30 rounded-3xl p-4">
                                 ${product.image
                                     ? `<img src="${product.image}" alt="${product.name}" loading="eager">`
                                     : `<div class="text-8xl">🧪</div>`}
                             </div>
+                            <!-- Inhalt -->
                             <div class="flex flex-col">
                                 <div class="flex items-center justify-between">
                                     <h2 class="neon-text">${product.name}</h2>
                                     ${product.isNew ? `<span class="px-6 py-2 bg-lime-400 text-black text-xs font-black tracking-widest rounded-3xl">NEW DROP</span>` : ''}
-                                    ${product.isBundle ? `<span class="px-6 py-2 bg-purple-500 text-white text-xs font-black tracking-widest rounded-3xl">BUNDLE</span>` : ''}
                                 </div>
                                 <div class="mt-6 text-gray-300 leading-relaxed text-[15.5px]">
                                     ${product.description ? product.description.replace(/\n/g, '<br>') : 'Premium Liquid von ELFLIQ – intensiver Geschmack, lange Haltbarkeit.'}
@@ -1706,16 +1759,9 @@
                                 </div>
                                 ${stockHTML}
                                 ${nicotineHTML}
-                                ${bundleHTML}
+                                <!-- Menge + Button -->
                                 <div class="mt-auto pt-8 flex flex-col gap-4">
-                                    <div class="flex items-center bg-zinc-800 rounded-3xl mx-auto w-fit shadow-inner">
-                                        <button onclick="modalQtyChange(-1); event.stopImmediatePropagation()"
-                                                class="qty-btn w-12 h-12 text-3xl text-cyan-300 flex items-center justify-center rounded-l-3xl">-</button>
-                                        <div id="modal-qty" class="w-14 text-center font-bold text-3xl">1</div>
-                                        <button onclick="modalQtyChange(1); event.stopImmediatePropagation()"
-                                                class="qty-btn w-12 h-12 text-3xl text-cyan-300 flex items-center justify-center rounded-r-3xl">+</button>
-                                    </div>
-                                    <button onclick="addFromDetailModal()"
+                                    <button onclick="addFromDetail('${product.id}')"
                                             class="w-full bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-6 rounded-3xl text-2xl hover:scale-[1.03] transition-all shadow-xl">
                                         In den Warenkorb
                                     </button>
@@ -1732,94 +1778,30 @@
             const modal = document.getElementById("product-detail-modal");
             modal.classList.remove("hidden");
             modal.classList.add("flex");
-            modalProductId = id;
-            modalCurrentQty = 1;
-            if (product.isBundle) {
-                renderBundleSelectors(product);
-            }
         }
         function closeProductDetail() {
             const modal = document.getElementById("product-detail-modal");
             modal.classList.add("hidden");
             modal.classList.remove("flex");
         }
-        function modalQtyChange(delta) {
-            modalCurrentQty = Math.max(1, modalCurrentQty + delta);
-            const qtyEl = document.getElementById('modal-qty');
-            if (qtyEl) qtyEl.textContent = modalCurrentQty;
-        }
-        function renderBundleSelectors(product) {
-            const container = document.getElementById('bundle-choices');
-            if (!container) return;
-            container.innerHTML = '';
-            let availableLiquids = allProducts.filter(p => !p.isBundle && p.hasNicotine !== false);
-            if (product.bundleAllowedIds && product.bundleAllowedIds.length > 0) {
-                availableLiquids = availableLiquids.filter(p => product.bundleAllowedIds.includes(p.id));
-            }
-            for (let i = 1; i <= (product.bundleNumChoices || 3); i++) {
-                const selectHTML = `
-                    <div class="bundle-choice">
-                        <select onchange="updateBundleChoice(this)" class="nicotine-select w-full text-lg py-4">
-                            <option value="">— Liquid ${i} wählen —</option>
-                            ${availableLiquids.map(l => `<option value="${l.id}">${l.name}</option>`).join('')}
-                        </select>
-                    </div>`;
-                container.innerHTML += selectHTML;
-            }
-            if (product.bundleFreeExtra) {
-                const freeSelect = document.getElementById('bundle-free-choice');
-                if (freeSelect) {
-                    freeSelect.innerHTML = `<option value="">— Gratis Extra wählen —</option>` +
-                        availableLiquids.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
-                }
-            }
-        }
-        function updateBundleChoice(select) {
-            // Live-Update (kein Speichern nötig)
-        }
-        function addFromDetailModal() {
-            if (!modalProductId) return;
-            const product = allProducts.find(p => p.id === modalProductId);
+        function addFromDetail(id) {
+            const product = allProducts.find(p => p.id === id);
             if (!product || !product.available) return;
-            let existing = cart.find(item => item.id === modalProductId);
+            let existing = cart.find(item => item.id === id);
             if (!existing) {
-                existing = { id: modalProductId, name: product.name, qty: 0, price: product.price };
-                if (product.hasNicotine) {
-                    const nicSelect = document.getElementById('modal-nicotine');
-                    existing.nicotine = nicSelect ? nicSelect.value : "20 mg";
-                }
-                if (product.isBundle) {
-                    existing.isBundle = true;
-                    existing.bundleChoices = [];
-                    const selects = document.querySelectorAll('#bundle-choices select');
-                    selects.forEach(s => {
-                        if (s.value) existing.bundleChoices.push(s.value);
-                    });
-                    const freeSelect = document.getElementById('bundle-free-choice');
-                    if (freeSelect && freeSelect.value) existing.bundleFreeChoice = freeSelect.value;
-                }
+                existing = { id, name: product.name, qty: 0, price: product.price };
+                if (product.hasNicotine) existing.nicotine = "20 mg";
                 cart.push(existing);
             }
-            existing.qty += modalCurrentQty;
+            const select = document.getElementById("modal-nicotine");
+            if (select && product.hasNicotine) existing.nicotine = select.value;
+            existing.qty = (existing.qty || 0) + 1;
             manageMysteryVape();
             saveUserCart();
             updateCartDisplay();
             renderProducts();
             closeProductDetail();
-            showToast(`✅ ${modalCurrentQty} × ${product.name} hinzugefügt!`);
-            modalCurrentQty = 1;
-        }
-        // ====================== DYNAMISCHER GRATIS-VERSAND BANNER ======================
-        function updateFreeShippingBanner() {
-            const subtotal = getSubtotal();
-            const bannerText = document.getElementById('shipping-banner-text');
-            if (!bannerText) return;
-            if (subtotal >= FREE_SHIPPING_THRESHOLD) {
-                bannerText.innerHTML = `Gratis Versand <span class="text-emerald-400 font-bold">AKTIVIERT! 🚚</span>`;
-            } else {
-                const remaining = (FREE_SHIPPING_THRESHOLD - subtotal).toFixed(2).replace('.', ',');
-                bannerText.innerHTML = `Nur noch <span class="text-white font-bold">${remaining} €</span> bis gratis Versand! 🚚`;
-            }
+            showToast(`✅ ${product.name} wurde hinzugefügt!`);
         }
         // ====================== SETTINGS SYNC ======================
         db.collection("settings").doc("main").onSnapshot(doc => {
@@ -1848,7 +1830,7 @@
         });
         // ====================== PRODUCT ORDER SYNC ======================
         db.collection('settings').doc('product_order').onSnapshot(doc => {
-            if (doc.exists && allProducts.length > 0) {
+            if (doc.exists) {
                 productOrder = doc.data().order || [];
                 renderProducts();
             }
@@ -1859,6 +1841,7 @@
             if (field) field.value = "";
         }
         // ====================== LIVE FEATURES ======================
+        // Presence (für Admin)
         function updatePresence() {
             if (!currentUser) return;
             db.collection("presence").doc(currentUser.uid).set({
@@ -1869,6 +1852,8 @@
                 page: "shop"
             }, { merge: true });
         }
+
+        // Live New Order Toast
         let lastOrderTimestamp = 0;
         function listenForNewOrders() {
             db.collection("orders").orderBy("date", "desc").limit(1).onSnapshot(snap => {
@@ -1883,6 +1868,26 @@
                 });
             });
         }
+
+        // Live Today Stats
+        function loadTodayStats() {
+            const todayStart = new Date();
+            todayStart.setHours(0, 0, 0, 0);
+            const startTimestamp = firebase.firestore.Timestamp.fromDate(todayStart);
+            db.collection("orders").where("date", ">=", startTimestamp).onSnapshot(snap => {
+                let revenue = 0;
+                let units = 0;
+                snap.forEach(doc => {
+                    const o = doc.data();
+                    revenue += o.total || 0;
+                    (o.items || []).forEach(item => units += (item.qty || 0));
+                });
+                document.getElementById("today-units").textContent = units;
+                document.getElementById("today-revenue").textContent = revenue.toFixed(0) + " €";
+            });
+        }
+
+        // Live Online Count in Footer
         function updateLiveOnlineFooter() {
             db.collection("presence").onSnapshot(snap => {
                 let count = 0;
@@ -1898,22 +1903,28 @@
                 if (el) el.textContent = count;
             });
         }
+
         // ====================== INITIALISIERUNG ======================
-        async function initialize() {
+        function initialize() {
             initEmailJS();
             if (!localStorage.getItem("age_verified")) showAgeModal();
+            localStorage.removeItem('wavevapes_notifications');
+            localStorage.removeItem('wavevapes_last_generate');
             updateAuthUI();
             updateUserDisplay();
             updateLoyaltyDisplay();
             renderCategoryTabs();
-            await loadProducts();
+            loadProducts();
+            startNotificationCycle();
             checkAndAutoRedeemLoyalty();
             clearDiscountField();
+
+            // LIVE FEATURES START
             updatePresence();
             setInterval(updatePresence, 30000);
             listenForNewOrders();
+            loadTodayStats();
             updateLiveOnlineFooter();
-            updateFreeShippingBanner();
         }
         window.onload = initialize;
     </script>

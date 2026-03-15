@@ -207,6 +207,9 @@
             from { transform: scale(0.92); opacity: 0; }
             to { transform: scale(1); opacity: 1; }
         }
+        /* BUNDLE STYLES */
+        .bundle-choice { background: #1f2937; border: 1px solid rgba(103,232,249,0.5); border-radius: 9999px; padding: 12px; margin-bottom: 12px; }
+        .bundle-choice select { width: 100%; }
     </style>
 </head>
 <body class="wave-bg text-white min-h-screen">
@@ -1136,7 +1139,10 @@
                         image: data.image || null,
                         stock: data.stock || 0,
                         description: data.description || "",
-                        hasNicotine: data.hasNicotine !== false
+                        hasNicotine: data.hasNicotine !== false,
+                        isBundle: data.isBundle || false,
+                        bundleNumChoices: data.bundleNumChoices || 3,
+                        bundleFreeExtra: data.bundleFreeExtra || false
                     });
                 });
                 renderProducts();
@@ -1154,7 +1160,6 @@
                 const searchMatch = !searchTerm || p.name.toLowerCase().includes(searchTerm);
                 return catMatch && searchMatch;
             });
-            // === MANUELLE SORTIERUNG NUR – KEINE AUTOMATISCHE PRIORITÄT MEHR ===
             filtered.sort((a, b) => {
                 const idxA = productOrder.indexOf(a.id);
                 const idxB = productOrder.indexOf(b.id);
@@ -1210,6 +1215,7 @@
                             <div class="flex items-start justify-between mb-3">
                                 <h4 class="font-semibold text-lg leading-tight flex-1">${product.name}</h4>
                                 ${product.isNew ? `<span class="ml-auto px-3 py-1 bg-lime-400 text-black text-xs font-black tracking-wider rounded-2xl">NEW</span>` : ''}
+                                ${product.isBundle ? `<span class="ml-auto px-3 py-1 bg-purple-500 text-white text-xs font-black tracking-wider rounded-2xl">BUNDLE</span>` : ''}
                             </div>
                             ${unavailableTagHTML}
                             ${stockHTML}
@@ -1300,6 +1306,10 @@
                 const nicDisplay = (item.nicotine && prod && prod.hasNicotine) ? ` (${item.nicotine})` : '';
                 if (item.id === MYSTERY_ID) {
                     itemsHTML += `<div class="mystery-item flex justify-between items-center rounded-3xl p-5"><div class="flex items-center gap-3"><i class="fa-solid fa-gift text-3xl"></i><div><div class="font-medium">${item.name}</div><div class="text-xs bg-white/30 px-3 py-0.5 rounded-full inline-block">GRATIS AB 100€</div></div></div><div class="text-right"><div class="font-bold text-xl text-emerald-900">0,00 €</div></div></div>`;
+                } else if (item.isBundle) {
+                    let bundleText = `Bundle: ${item.bundleChoices ? item.bundleChoices.length : 0} Liquids`;
+                    if (item.bundleFreeChoice) bundleText += " + 1 gratis";
+                    itemsHTML += `<div class="flex justify-between items-center bg-zinc-900 border border-purple-400/30 rounded-3xl p-5"><div><div class="font-medium">${item.name}</div><div class="text-xs text-purple-400">${bundleText}</div></div><div class="flex items-center gap-6"><div class="font-bold text-xl">${(item.qty * p).toFixed(2).replace('.', ',')} €</div><button onclick="removeCartItem('${item.id}'); event.stopImmediatePropagation()" class="text-red-400"><i class="fa-solid fa-trash"></i></button></div></div>`;
                 } else {
                     itemsHTML += `<div class="flex justify-between items-center bg-zinc-900 border border-white/10 rounded-3xl p-5"><div><div class="font-medium">${item.name}${nicDisplay}</div><div class="text-xs text-gray-400">${item.qty} × ${p.toFixed(2).replace('.', ',')} €</div></div><div class="flex items-center gap-6"><div class="font-bold text-xl">${(item.qty * p).toFixed(2).replace('.', ',')} €</div><button onclick="removeCartItem('${item.id}'); event.stopImmediatePropagation()" class="text-red-400"><i class="fa-solid fa-trash"></i></button></div></div>`;
                 }
@@ -1396,7 +1406,10 @@
                         name: item.name,
                         qty: item.qty,
                         price: item.price || 7.99,
-                        nicotine: item.nicotine || ""
+                        nicotine: item.nicotine || "",
+                        isBundle: item.isBundle || false,
+                        bundleChoices: item.bundleChoices || [],
+                        bundleFreeChoice: item.bundleFreeChoice || null
                     })),
                     total: finalTotal,
                     address: userAddress,
@@ -1655,6 +1668,16 @@
             const oldPriceDisplay = product.originalPrice
                 ? product.originalPrice.toFixed(2).replace('.', ',') + ' €'
                 : (isVape ? '35,99 €' : '10,99 €');
+            const bundleHTML = product.isBundle ? `
+                <div class="mt-8 border-t border-white/10 pt-8">
+                    <p class="text-xs text-purple-300 mb-4 font-medium">WÄHLE DEINE ${product.bundleNumChoices} LIQUIDS</p>
+                    <div id="bundle-choices" class="space-y-6"></div>
+                    ${product.bundleFreeExtra ? `
+                    <div class="mt-6">
+                        <p class="text-xs text-emerald-300 mb-2">+ 1 GRATIS EXTRA-SORTE DER WAHL</p>
+                        <select id="bundle-free-choice" class="nicotine-select w-full text-lg py-4"></select>
+                    </div>` : ''}
+                </div>` : '';
             const html = `
                 <div class="modal-inner bg-zinc-900 rounded-3xl overflow-hidden">
                     <div class="flex justify-end p-6 border-b border-white/10">
@@ -1671,6 +1694,7 @@
                                 <div class="flex items-center justify-between">
                                     <h2 class="neon-text">${product.name}</h2>
                                     ${product.isNew ? `<span class="px-6 py-2 bg-lime-400 text-black text-xs font-black tracking-widest rounded-3xl">NEW DROP</span>` : ''}
+                                    ${product.isBundle ? `<span class="px-6 py-2 bg-purple-500 text-white text-xs font-black tracking-widest rounded-3xl">BUNDLE</span>` : ''}
                                 </div>
                                 <div class="mt-6 text-gray-300 leading-relaxed text-[15.5px]">
                                     ${product.description ? product.description.replace(/\n/g, '<br>') : 'Premium Liquid von ELFLIQ – intensiver Geschmack, lange Haltbarkeit.'}
@@ -1681,6 +1705,7 @@
                                 </div>
                                 ${stockHTML}
                                 ${nicotineHTML}
+                                ${bundleHTML}
                                 <div class="mt-auto pt-8 flex flex-col gap-4">
                                     <div class="flex items-center bg-zinc-800 rounded-3xl mx-auto w-fit shadow-inner">
                                         <button onclick="modalQtyChange(-1); event.stopImmediatePropagation()"
@@ -1708,6 +1733,9 @@
             modal.classList.add("flex");
             modalProductId = id;
             modalCurrentQty = 1;
+            if (product.isBundle) {
+                renderBundleSelectors(product);
+            }
         }
         function closeProductDetail() {
             const modal = document.getElementById("product-detail-modal");
@@ -1719,6 +1747,32 @@
             const qtyEl = document.getElementById('modal-qty');
             if (qtyEl) qtyEl.textContent = modalCurrentQty;
         }
+        function renderBundleSelectors(product) {
+            const container = document.getElementById('bundle-choices');
+            if (!container) return;
+            container.innerHTML = '';
+            const liquids = allProducts.filter(p => !p.isBundle && p.hasNicotine !== false);
+            for (let i = 1; i <= (product.bundleNumChoices || 3); i++) {
+                const selectHTML = `
+                    <div class="bundle-choice">
+                        <select onchange="updateBundleChoice(this)" class="nicotine-select w-full text-lg py-4">
+                            <option value="">— Liquid ${i} wählen —</option>
+                            ${liquids.map(l => `<option value="${l.id}">${l.name}</option>`).join('')}
+                        </select>
+                    </div>`;
+                container.innerHTML += selectHTML;
+            }
+            if (product.bundleFreeExtra) {
+                const freeSelect = document.getElementById('bundle-free-choice');
+                if (freeSelect) {
+                    freeSelect.innerHTML = `<option value="">— Gratis Extra wählen —</option>` +
+                        liquids.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+                }
+            }
+        }
+        function updateBundleChoice(select) {
+            // Nur für Live-Update im Modal (kein Speichern nötig)
+        }
         function addFromDetailModal() {
             if (!modalProductId) return;
             const product = allProducts.find(p => p.id === modalProductId);
@@ -1729,6 +1783,16 @@
                 if (product.hasNicotine) {
                     const nicSelect = document.getElementById('modal-nicotine');
                     existing.nicotine = nicSelect ? nicSelect.value : "20 mg";
+                }
+                if (product.isBundle) {
+                    existing.isBundle = true;
+                    existing.bundleChoices = [];
+                    const selects = document.querySelectorAll('#bundle-choices select');
+                    selects.forEach(s => {
+                        if (s.value) existing.bundleChoices.push(s.value);
+                    });
+                    const freeSelect = document.getElementById('bundle-free-choice');
+                    if (freeSelect && freeSelect.value) existing.bundleFreeChoice = freeSelect.value;
                 }
                 cart.push(existing);
             }
@@ -1846,8 +1910,6 @@
             listenForNewOrders();
             updateLiveOnlineFooter();
             updateFreeShippingBanner();
-            // Fake-Bestell-Benachrichtigungen komplett entfernt
-            // LIVE TODAY STATS Banner komplett entfernt
         }
         window.onload = initialize;
     </script>

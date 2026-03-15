@@ -1147,6 +1147,9 @@
                 });
                 renderProducts();
                 showToast("✅ Produkte aus Firestore geladen");
+
+                // === FIX FÜR SORTIERUNG: Sofort nach Produkten laden anwenden ===
+                loadAndApplyProductOrder();
             } catch (e) {
                 console.error(e);
                 showToast("⚠️ Firestore nicht erreichbar – prüfe Admin-Panel");
@@ -1227,6 +1230,19 @@
                     </div>`;
             });
             container.innerHTML = html || `<p class="col-span-full text-center py-16 text-gray-400">Keine Produkte gefunden.</p>`;
+        }
+        // ====================== NEUE FUNKTION FÜR SORTIERUNG ======================
+        async function loadAndApplyProductOrder() {
+            try {
+                const doc = await db.collection('settings').doc('product_order').get();
+                if (doc.exists) {
+                    productOrder = doc.data().order || [];
+                    console.log("✅ Sortierung geladen:", productOrder.length, "Produkte");
+                    renderProducts();
+                }
+            } catch (e) {
+                console.error("Sortierung laden fehlgeschlagen", e);
+            }
         }
         function updateNicotine(id, value) {
             let item = cart.find(i => i.id === id);

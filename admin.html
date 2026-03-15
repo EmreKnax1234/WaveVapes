@@ -38,11 +38,8 @@
         th.sortable:after { content: '↑'; position: absolute; right: 12px; opacity: 0.3; font-size: 0.9em; }
         th.sortable.asc:after { content: '↑'; opacity: 1; color: #67e8f9; }
         th.sortable.desc:after { content: '↓'; opacity: 1; color: #67e8f9; }
-        .metric-card { background: linear-gradient(135deg, #18181b, #27272a); transition: all 0.3s; position: relative; }
+        .metric-card { background: linear-gradient(135deg, #18181b, #27272a); transition: all 0.3s; }
         .metric-card:hover { transform: translateY(-4px); }
-        .metric-edit-btn { position: absolute; top: 12px; right: 12px; font-size: 11px; background: #27272a; padding: 4px 8px; border-radius: 9999px; cursor: pointer; opacity: 0.7; }
-        .metric-edit-btn:hover { opacity: 1; background: #3b82f6; }
-        #live-users-card { background: linear-gradient(135deg, #0a0a0a, #1e1233); border: 2px solid #67e8f9; }
     </style>
 </head>
 <body class="min-h-screen">
@@ -87,30 +84,11 @@
                 <input type="file" id="csv-upload-products" accept=".csv" class="hidden" onchange="importProductsFromCSV(event)">
                 <p class="text-xs text-amber-400 mt-4 text-center">⚠️ Beim Import werden ALLE aktuellen Produkte gelöscht!</p>
             </div>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-6 mb-12">
-                <div class="metric-card p-6 relative" style="cursor:pointer;">
-                    <p class="text-gray-400 text-sm">Gesamtumsatz</p>
-                    <p id="total-revenue" class="text-4xl font-bold text-emerald-400">0 €</p>
-                    <button onclick="editManualMetrics()" class="metric-edit-btn text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1 rounded-xl"><i class="fa-solid fa-pen"></i></button>
-                </div>
-                <div class="metric-card p-6 relative">
-                    <p class="text-gray-400 text-sm">Aktive Produkte</p>
-                    <p id="active-products" class="text-4xl font-bold text-cyan-400">0</p>
-                </div>
-                <div class="metric-card p-6 relative" style="cursor:pointer;">
-                    <p class="text-gray-400 text-sm">Verkaufte Einheiten</p>
-                    <p id="total-sold" class="text-4xl font-bold text-purple-400">0</p>
-                    <button onclick="editManualMetrics()" class="metric-edit-btn text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1 rounded-xl"><i class="fa-solid fa-pen"></i></button>
-                </div>
-                <div class="metric-card p-6 bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-400/30">
-                    <p class="text-gray-400 text-sm">Top-Seller</p>
-                    <p id="top-seller" class="text-2xl font-bold text-amber-400">—</p>
-                </div>
-                <div id="live-users-card" class="metric-card p-8 text-center border border-cyan-400/30 bg-gradient-to-br from-cyan-950 to-zinc-900">
-                    <p class="text-gray-400 text-sm">LIVE ONLINE</p>
-                    <p id="live-users-count" class="text-6xl font-bold text-cyan-400 mt-2">0</p>
-                    <p class="text-xs text-cyan-300 mt-3">User auf wavevapes.de</p>
-                </div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
+                <div class="card p-6"><p class="text-gray-400 text-sm">Gesamtumsatz</p><p id="total-revenue" class="text-4xl font-bold text-emerald-400">0 €</p></div>
+                <div class="card p-6"><p class="text-gray-400 text-sm">Aktive Produkte</p><p id="active-products" class="text-4xl font-bold text-cyan-400">0</p></div>
+                <div class="card p-6"><p class="text-gray-400 text-sm">Verkaufte Einheiten</p><p id="total-sold" class="text-4xl font-bold text-purple-400">0</p></div>
+                <div class="card p-6 bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-400/30"><p class="text-gray-400 text-sm">Top-Seller</p><p id="top-seller" class="text-2xl font-bold text-amber-400">—</p></div>
             </div>
             <div class="card p-8 mb-12 bg-red-950/30 border border-red-500/50">
                 <button onclick="resetAllStatistics()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-5 rounded-3xl text-xl flex items-center justify-center gap-3"><i class="fa-solid fa-warning"></i> ALLE STATISTIKEN ZURÜCKSETZEN</button>
@@ -266,7 +244,7 @@
                 </div>
             </div>
         </div>
-        <!-- TAB 4: GUTSCHEINE + LOYALTY HISTORY -->
+        <!-- TAB 4: GUTSCHEINE + NEUE COUPON-NUTZUNGS-HISTORY -->
         <div id="tab-content-4" class="hidden">
             <div class="card p-8">
                 <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><i class="fa-solid fa-ticket"></i> Gutschein-Manager + Nutzungs-History</h2>
@@ -297,14 +275,6 @@
                         </thead>
                         <tbody id="coupons-tbody" class="text-sm"></tbody>
                     </table>
-                </div>
-                <!-- LOYALTY HISTORY BUTTON -->
-                <div class="mt-8 pt-6 border-t border-white/10">
-                    <button onclick="showLoyaltyHistory()"
-                            class="bg-violet-600 hover:bg-violet-500 w-full py-5 rounded-3xl text-base font-medium flex items-center justify-center gap-3">
-                        <i class="fa-solid fa-history"></i>
-                        Loyalty-Codes History anzeigen (LOYAL5, LOYAL10, LOYAL15 ...)
-                    </button>
                 </div>
             </div>
         </div>
@@ -414,10 +384,6 @@
                 </h2>
                 <p class="text-sm text-gray-400 mb-6">Klicke auf einen Button für automatische Sortierung.<br><strong>Neue AUTO-PRIORITÄT (überarbeitet):</strong><br>1. Neue Sorten (nur verfügbar) → 2. Normale Sorten (nur verfügbar) → 3. Alle Vapes (nur verfügbar) → 4. ALLE nicht verfügbaren Sachen (egal ob neu oder normal – immer ganz unten)</p>
                 <div class="flex flex-wrap gap-3 mb-8">
-                    <button onclick="openShopPreview()" 
-                            class="px-8 py-4 bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold rounded-3xl text-base transition flex items-center gap-3 shadow-xl">
-                        👀 Vorschau im Shop öffnen (neuer Tab)
-                    </button>
                     <button onclick="autoSort('alpha')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">📋 Alphabetisch A-Z</button>
                     <button onclick="autoSort('new')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">⭐ Neue Sorten zuerst</button>
                     <button onclick="autoSort('tornado')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">🌪️ Tornado zuerst</button>
@@ -431,38 +397,12 @@
         </div>
     </div>
 </div>
-
-<!-- MANUELLER METRIK-EDIT MODAL -->
-<div id="manual-metrics-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]">
-    <div class="bg-zinc-900 rounded-3xl p-8 max-w-md w-full mx-4 modal">
-        <h3 class="text-2xl font-bold mb-6 neon">Manuelle Werte setzen</h3>
-        <div class="space-y-6">
-            <div>
-                <label class="block text-sm text-gray-400 mb-2">Gesamtumsatz (€)</label>
-                <input id="manual-revenue-input" type="number" step="0.01" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 text-2xl">
-            </div>
-            <div>
-                <label class="block text-sm text-gray-400 mb-2">Verkaufte Einheiten</label>
-                <input id="manual-sold-input" type="number" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 text-2xl">
-            </div>
-        </div>
-        <div class="flex gap-4 mt-8">
-            <button onclick="saveManualMetrics()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-5 rounded-3xl font-bold">Speichern</button>
-            <button onclick="resetManualMetrics()" class="flex-1 bg-zinc-700 hover:bg-zinc-600 py-5 rounded-3xl">Zurücksetzen auf automatisch</button>
-            <button onclick="closeManualMetricsModal()" class="flex-1 bg-zinc-700 hover:bg-zinc-600 py-5 rounded-3xl">Abbrechen</button>
-        </div>
-    </div>
-</div>
-
-<!-- EDIT MODAL (Bulk + Einzel-Edit + History-Modals) -->
+<!-- EDIT MODAL (wird auch für Coupon-History verwendet) -->
 <div id="edit-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]"></div>
-
 <!-- ORDER MODAL -->
 <div id="order-modal-container"></div>
-
 <!-- TOAST -->
 <div id="toast-container" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[99999] flex flex-col gap-3"></div>
-
 <script>
 // ====================== FIREBASE CONFIG ======================
 const firebaseConfig = {
@@ -496,8 +436,6 @@ let adminSortDirection = 'asc';
 let adminCategoryFilter = 'Alle';
 let adminStatusFilter = '';
 let selectedProductIds = [];
-let manualRevenueOverride = null;
-let manualSoldOverride = null;
 // ====================== LOG ACTION ======================
 async function logAction(action, target = "", details = {}) {
     if (!auth.currentUser) return;
@@ -510,56 +448,15 @@ async function logAction(action, target = "", details = {}) {
     });
 }
 // ====================== STATS UPDATE ======================
-async function updateStats() {
+function updateStats() {
     const active = allProducts.filter(p => p.available !== false).length;
     const soldTotal = allProducts.reduce((sum, p) => sum + (p.sold || 0), 0);
     const revenue = allProducts.reduce((sum, p) => sum + (p.sold || 0) * (p.price || 0), 0);
     const top = [...allProducts].sort((a, b) => (b.sold || 0) - (a.sold || 0))[0];
-    const displayRevenue = manualRevenueOverride !== null ? manualRevenueOverride : revenue;
-    const displaySold = manualSoldOverride !== null ? manualSoldOverride : soldTotal;
     document.getElementById('active-products').textContent = active;
-    document.getElementById('total-sold').textContent = displaySold;
-    document.getElementById('total-revenue').textContent = displayRevenue.toFixed(0) + ' €';
+    document.getElementById('total-sold').textContent = soldTotal;
+    document.getElementById('total-revenue').textContent = revenue.toFixed(0) + ' €';
     document.getElementById('top-seller').textContent = top ? `${top.name} (${top.sold || 0}×)` : '—';
-}
-// ====================== MANUELLE METRIK-BEARBEITUNG ======================
-async function editManualMetrics() {
-    const currentRevenue = manualRevenueOverride !== null ? manualRevenueOverride : allProducts.reduce((sum, p) => sum + (p.sold || 0) * (p.price || 0), 0);
-    const currentSold = manualSoldOverride !== null ? manualSoldOverride : allProducts.reduce((sum, p) => sum + (p.sold || 0), 0);
-    document.getElementById('manual-revenue-input').value = currentRevenue;
-    document.getElementById('manual-sold-input').value = currentSold;
-    const modal = document.getElementById('manual-metrics-modal');
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
-}
-function closeManualMetricsModal() {
-    const modal = document.getElementById('manual-metrics-modal');
-    modal.classList.add('hidden');
-    modal.classList.remove('flex');
-}
-async function saveManualMetrics() {
-    const revenue = parseFloat(document.getElementById('manual-revenue-input').value) || 0;
-    const sold = parseInt(document.getElementById('manual-sold-input').value) || 0;
-    manualRevenueOverride = revenue;
-    manualSoldOverride = sold;
-    await db.collection("settings").doc("main").set({
-        manualRevenueOverride: revenue,
-        manualSoldOverride: sold
-    }, { merge: true });
-    updateStats();
-    closeManualMetricsModal();
-    showToast("✅ Manuelle Werte gespeichert!", "success");
-}
-async function resetManualMetrics() {
-    manualRevenueOverride = null;
-    manualSoldOverride = null;
-    await db.collection("settings").doc("main").set({
-        manualRevenueOverride: firebase.firestore.FieldValue.delete(),
-        manualSoldOverride: firebase.firestore.FieldValue.delete()
-    }, { merge: true });
-    updateStats();
-    closeManualMetricsModal();
-    showToast("✅ Zurück auf automatische Berechnung", "success");
 }
 // ====================== PRODUKTE ======================
 function loadProducts() {
@@ -657,7 +554,7 @@ async function deleteProduct(id) {
         showToast('❌ Fehler beim Löschen: ' + e.message, 'error');
     }
 }
-// ====================== BULK-EDIT (mit Beschreibung + Bild löschen) ======================
+// ====================== BULK-EDIT ======================
 function toggleSelectAllProducts(cb) {
     document.querySelectorAll('.product-checkbox').forEach(ch => ch.checked = cb.checked);
 }
@@ -672,16 +569,14 @@ function openBulkEditModal() {
     }
     const html = `
     <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]">
-        <div class="bg-zinc-900 rounded-3xl p-8 max-w-2xl w-full mx-4 modal">
+        <div class="bg-zinc-900 rounded-3xl p-8 max-w-lg w-full mx-4 modal">
             <h3 class="text-3xl font-bold mb-6 neon">Bulk-Edit (${selectedProductIds.length} Produkte)</h3>
             <div class="space-y-6">
                 <div><label class="block text-sm text-gray-400 mb-2">Neuer Preis (€)</label><input id="bulk-price" type="number" step="0.01" placeholder="z.B. 7.99" class="w-full bg-zinc-800 rounded-2xl px-6 py-4"></div>
                 <div><label class="block text-sm text-gray-400 mb-2">Lagerbestand</label><input id="bulk-stock" type="number" placeholder="z.B. 50" class="w-full bg-zinc-800 rounded-2xl px-6 py-4"></div>
-                <div><label class="block text-sm text-gray-400 mb-2">Beschreibung (überschreibt alle ausgewählten)</label><textarea id="bulk-description" rows="4" placeholder="Neue Beschreibung für alle..." class="w-full bg-zinc-800 border border-cyan-400/30 rounded-3xl px-6 py-4"></textarea></div>
-                <div class="flex items-center gap-6">
+                <div class="flex items-center gap-4">
                     <label class="flex items-center gap-3"><input id="bulk-available" type="checkbox" class="w-5 h-5 accent-cyan-400"> Verfügbar</label>
                     <label class="flex items-center gap-3"><input id="bulk-new" type="checkbox" class="w-5 h-5 accent-lime-400"> Neue Sorte</label>
-                    <label class="flex items-center gap-3"><input id="bulk-delete-image" type="checkbox" class="w-5 h-5 accent-red-400"> Bild bei ALLEN löschen</label>
                 </div>
                 <div><label class="block text-sm text-gray-400 mb-2">Kategorie</label><select id="bulk-category" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4"></select></div>
             </div>
@@ -697,28 +592,24 @@ function openBulkEditModal() {
     const sel = document.getElementById('bulk-category');
     if (sel) sel.innerHTML = '<option value="">Kategorie nicht ändern</option>' + sel.innerHTML;
 }
+function closeBulkModal() {
+    document.getElementById('edit-modal').classList.add('hidden');
+}
 async function executeBulkEdit() {
     const price = document.getElementById('bulk-price').value ? parseFloat(document.getElementById('bulk-price').value) : null;
     const stock = document.getElementById('bulk-stock').value ? parseInt(document.getElementById('bulk-stock').value) : null;
-    const description = document.getElementById('bulk-description').value.trim() || null;
     const available = document.getElementById('bulk-available').checked ? true : null;
     const isNew = document.getElementById('bulk-new').checked ? true : null;
-    const deleteImage = document.getElementById('bulk-delete-image').checked;
     const category = document.getElementById('bulk-category').value || null;
-
     const batch = db.batch();
     let changed = 0;
-
     for (let id of selectedProductIds) {
         const updateData = {};
         if (price !== null) updateData.price = price;
         if (stock !== null) updateData.stock = stock;
-        if (description !== null) updateData.description = description;
         if (available !== null) updateData.available = available;
         if (isNew !== null) updateData.isNew = isNew;
         if (category) updateData.category = category;
-        if (deleteImage) updateData.image = null;
-
         if (Object.keys(updateData).length > 0) {
             batch.update(db.collection('products').doc(id), updateData);
             changed++;
@@ -727,168 +618,206 @@ async function executeBulkEdit() {
     await batch.commit();
     await logAction("bulk_edit", "", { count: changed });
     closeBulkModal();
-    showToast(`✅ ${changed} Produkte erfolgreich bearbeitet! (Beschreibung + Bild-Löschung)`);
+    showToast(`✅ ${changed} Produkte erfolgreich bearbeitet!`);
     loadProducts();
 }
-function closeBulkModal() {
-    document.getElementById('edit-modal').classList.add('hidden');
+// ====================== AUTOMATISCHE KATEGORIEZUWEISUNG ======================
+async function enforceCategories() {
+    if (!confirm('Alle Produkte automatisch kategorisieren?\n\n• Neue Sorten → „Neue Sorten“\n• Alle anderen → „Normale Sorten“\n\nDas überschreibt bestehende Kategorien!')) return;
+    const snap = await db.collection('products').get();
+    const batch = db.batch();
+    let changed = 0;
+    snap.forEach(doc => {
+        const p = doc.data();
+        const targetCat = p.isNew === true ? "Neue Sorten" : "Normale Sorten";
+        if (p.category !== targetCat) {
+            batch.update(doc.ref, { category: targetCat });
+            changed++;
+        }
+    });
+    if (changed > 0) {
+        await batch.commit();
+        await logAction("auto_category_assignment", "", { changed });
+        showToast(`✅ ${changed} Produkte automatisch kategorisiert!`, "success");
+    } else {
+        showToast("✅ Alles war schon korrekt");
+    }
+    loadProducts();
 }
-// ====================== SHOP VORSCHAU ======================
-function openShopPreview() {
-    window.open('index.html?preview=1', '_blank');
-}
-// ====================== LOYALTY HISTORY EXPORT ======================
-async function exportLoyaltyHistory() {
-    const usersSnap = await db.collection('users').where('redeemedLoyaltyCodes', '!=', []).get();
-    let csv = "E-Mail,Benutzername,Redeemed Codes,Anzahl\n";
-    usersSnap.forEach(doc => {
-        const u = doc.data();
-        const codes = (u.redeemedLoyaltyCodes || []).join(' | ');
-        csv += `"${u.email || ''}","${u.username || ''}","${codes}",${(u.redeemedLoyaltyCodes || []).length}\n`;
+// ====================== BESTELL-EXPORT MIT TRACKING-LINKS ======================
+async function exportOrdersWithTracking() {
+    const snapshot = await db.collection("orders").orderBy("date", "desc").get();
+    if (snapshot.empty) return alert("Keine Bestellungen!");
+    let csv = "Bestellnr.,Datum,Kunde,Gesamt,Status,Tracking-Nummer,Tracking-Link\n";
+    snapshot.forEach(doc => {
+        const o = doc.data();
+        const dateStr = o.date ? o.date.toDate().toISOString().slice(0,19).replace('T',' ') : '';
+        const trackingLink = o.trackingNumber && o.carrier === "DHL"
+            ? `https://www.dhl.de/de/privatkunden/dhl-sendungsverfolgung.html?piececode=${encodeURIComponent(o.trackingNumber)}`
+            : (o.trackingNumber || '');
+        const row = [
+            `"${o.orderNumber || ''}"`,
+            `"${dateStr}"`,
+            `"${o.userEmail || ''}"`,
+            o.total || 0,
+            `"${o.status || ''}"`,
+            `"${o.trackingNumber || ''}"`,
+            `"${trackingLink}"`
+        ].join(",");
+        csv += row + "\n";
     });
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `wavevapes_loyalty_history_${new Date().toISOString().slice(0,10)}.csv`;
+    link.download = `wavevapes_bestellungen_mit_tracking_${new Date().toISOString().slice(0,10)}.csv`;
     link.click();
-    showToast("✅ Loyalty History als CSV exportiert!", "success");
+    showToast("✅ Export mit Tracking-Links heruntergeladen!", "success");
+    await logAction("orders_export_with_tracking");
 }
-// ====================== LOYALTY HISTORY MODAL ======================
-async function showLoyaltyHistory() {
-    const modalHTML = `
-    <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]">
-        <div class="bg-zinc-900 rounded-3xl p-8 max-w-3xl w-full mx-4 modal max-h-[90vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="text-3xl font-bold neon">Loyalty-Codes History</h3>
-                <div class="flex gap-3">
-                    <button onclick="exportLoyaltyHistory()" class="bg-emerald-600 hover:bg-emerald-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2">
-                        📤 Als CSV exportieren
-                    </button>
-                    <button onclick="closeEditModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
+// ====================== EDIT MODAL ======================
+async function openEditModal(id) {
+    currentEditId = id;
+    removeCurrentImage = false;
+    const doc = await db.collection('products').doc(id).get();
+    const p = doc.data();
+    const html = `
+    <div class="bg-zinc-900 rounded-3xl p-8 max-w-6xl w-full mx-4 modal max-h-[95vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-8">
+            <h3 class="text-3xl font-bold neon">Produkt bearbeiten</h3>
+            <button onclick="closeEditModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div>
+                <div id="preview-image" class="bg-zinc-950 border border-white/10 rounded-3xl overflow-hidden h-96 flex items-center justify-center">
+                    ${p.image ? `<img src="${p.image}" class="max-h-full w-full object-contain" loading="lazy">` : `<div class="text-center text-gray-500"><i class="fa-solid fa-image text-6xl mb-4"></i><br>Kein Bild</div>`}
+                </div>
+                ${p.image ? `<button onclick="removeImageInEdit()" class="mt-4 w-full bg-red-600/80 hover:bg-red-600 text-white py-3 rounded-2xl text-sm font-medium flex items-center justify-center gap-2">Bild entfernen</button>` : ''}
+            </div>
+            <div class="space-y-6">
+                <input id="edit-name" value="${p.name}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 text-lg">
+                <div class="grid grid-cols-2 gap-4">
+                    <input id="edit-price" type="number" step="0.01" value="${p.price}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
+                    <input id="edit-original-price" type="number" step="0.01" value="${p.originalPrice || ''}" placeholder="Alter Preis (Strikethrough)" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
+                </div>
+                <input id="edit-stock" type="number" value="${p.stock}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
+                <select id="edit-category-select" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4"></select>
+                <div class="flex items-center gap-6">
+                    <div class="flex items-center gap-3"><input id="edit-new" type="checkbox" ${p.isNew ? 'checked' : ''}><label>Neue Sorte</label></div>
+                    <div class="flex items-center gap-3"><input id="edit-unavailable" type="checkbox" ${p.available === false ? 'checked' : ''}><label>Nicht verfügbar</label></div>
+                    <div class="flex items-center gap-3"><input id="edit-has-nicotine" type="checkbox" ${p.hasNicotine !== false ? 'checked' : ''}><label>Nikotin enthalten</label></div>
+                </div>
+                <div><label class="text-xs text-gray-400 block mb-2">Produktbeschreibung</label><textarea id="edit-description" rows="8" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-3xl px-6 py-4">${p.description || ''}</textarea></div>
+                <div id="edit-dropzone" class="border-2 border-dashed border-cyan-400/50 hover:border-cyan-400 rounded-3xl p-8 text-center cursor-pointer">
+                    <i class="fa-solid fa-cloud-arrow-up text-4xl mb-3 text-cyan-400"></i>
+                    <p class="text-cyan-300">Neues Bild hochladen (klicken oder Drag & Drop)</p>
                 </div>
             </div>
-            <div id="loyalty-history-list" class="space-y-4"></div>
+        </div>
+        <div class="flex gap-4 mt-10">
+            <button onclick="saveEdit()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-5 rounded-3xl font-bold">Speichern</button>
+            <button onclick="closeEditModal()" class="flex-1 bg-zinc-700 hover:bg-zinc-600 py-5 rounded-3xl">Abbrechen</button>
         </div>
     </div>`;
-    document.getElementById('edit-modal').innerHTML = modalHTML;
+    document.getElementById('edit-modal').innerHTML = html;
     document.getElementById('edit-modal').classList.remove('hidden');
-    const listEl = document.getElementById('loyalty-history-list');
-    listEl.innerHTML = `<p class="text-center py-12 text-gray-400">Lade Loyalty-History...</p>`;
-    const usersSnap = await db.collection('users').where('redeemedLoyaltyCodes', '!=', []).get();
-    let html = '';
-    usersSnap.forEach(doc => {
-        const u = doc.data();
-        if (!u.redeemedLoyaltyCodes || u.redeemedLoyaltyCodes.length === 0) return;
-        html += `
-            <div class="bg-zinc-950 border border-violet-400/30 rounded-3xl p-6">
-                <div class="font-medium mb-3">${u.username || u.email}</div>
-                <div class="flex flex-wrap gap-2">
-                    ${u.redeemedLoyaltyCodes.map(code => `
-                        <span class="bg-violet-600 text-white text-xs px-4 py-1.5 rounded-2xl font-mono">${code}</span>
-                    `).join('')}
-                </div>
-            </div>`;
-    });
-    listEl.innerHTML = html || `<p class="text-center py-12 text-gray-400">Noch keine Loyalty-Codes eingelöst.</p>`;
+    populateCategorySelects();
+    setTimeout(() => {
+        const select = document.getElementById('edit-category-select');
+        if (select) select.value = p.category || '';
+    }, 100);
+    const dropzone = document.getElementById('edit-dropzone');
+    dropzone.onclick = () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = e => {
+            selectedFile = e.target.files[0];
+            removeCurrentImage = false;
+            const url = URL.createObjectURL(selectedFile);
+            document.getElementById('preview-image').innerHTML = `<img src="${url}" class="max-h-full w-full object-contain">`;
+        };
+        input.click();
+    };
 }
-// ====================== GUTSCHEINE ======================
-document.getElementById('add-coupon-form').addEventListener('submit', async e => {
-    e.preventDefault();
-    const code = document.getElementById('coupon-code').value.trim().toUpperCase();
-    const type = document.getElementById('coupon-type').value;
-    const value = parseFloat(document.getElementById('coupon-value').value);
-    const expiry = new Date(document.getElementById('coupon-expiry').value);
-    const oneTime = document.getElementById('coupon-onetime').checked;
-    await db.collection('coupons').add({
-        code, type, value, expiresAt: firebase.firestore.Timestamp.fromDate(expiry),
-        oneTimeUse: oneTime, usedBy: [], createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    await logAction("coupon_created", code);
-    e.target.reset();
-    showToast('✅ Gutschein erstellt!');
-    loadCoupons();
-});
-async function loadCoupons() {
-    const snap = await db.collection('coupons').orderBy('createdAt', 'desc').get();
-    allCoupons = snap.docs.map(d => ({id: d.id, ...d.data()}));
-    renderCouponsTable();
+function removeImageInEdit() {
+    removeCurrentImage = true;
+    document.getElementById('preview-image').innerHTML = `<div class="text-center text-red-400"><i class="fa-solid fa-trash text-6xl mb-4"></i><br>Bild wird beim Speichern entfernt</div>`;
 }
-function renderCouponsTable() {
-    const tbody = document.getElementById('coupons-tbody');
-    let html = '';
-    allCoupons.forEach(c => {
-        const expired = c.expiresAt.toDate() < new Date();
-        const usageCount = c.usedBy ? c.usedBy.length : 0;
-        html += `
-        <tr class="table-row-hover border-b border-white/10">
-            <td class="py-4 px-6 font-mono font-bold">${c.code}</td>
-            <td class="py-4 px-6 text-center">${c.type === 'percent' ? c.value + '%' : c.value + '€'}</td>
-            <td class="py-4 px-6 text-center ${expired ? 'text-red-400' : ''}">${c.expiresAt.toDate().toLocaleDateString('de-DE')}</td>
-            <td class="py-4 px-6 text-center font-bold text-emerald-400">${usageCount} / ${c.oneTimeUse ? '1' : '∞'}</td>
-            <td class="py-4 px-6 text-right space-x-3">
-                <button onclick="showCouponHistory('${c.id}')" class="text-cyan-400 hover:text-white flex items-center gap-1"><i class="fa-solid fa-history"></i> History</button>
-                <button onclick="deleteCoupon('${c.id}')" class="text-red-400 hover:text-white"><i class="fa-solid fa-trash"></i></button>
-            </td>
-        </tr>`;
-    });
-    tbody.innerHTML = html || `<tr><td colspan="5" class="text-center py-16 text-gray-400">Noch keine Gutscheine</td></tr>`;
-}
-async function showCouponHistory(couponId) {
-    const doc = await db.collection('coupons').doc(couponId).get();
-    if (!doc.exists) return showToast("Gutschein nicht gefunden", "error");
-    const coupon = doc.data();
-    let listHTML = '';
-    if (coupon.usedBy && coupon.usedBy.length > 0) {
-        for (let uid of coupon.usedBy) {
-            try {
-                const userDoc = await db.collection('users').doc(uid).get();
-                const user = userDoc.exists ? userDoc.data() : {};
-                const email = user.email || uid;
-                listHTML += `
-                    <div class="bg-zinc-950 border border-white/10 rounded-2xl p-5 mb-3 flex justify-between items-center">
-                        <div>
-                            <div class="font-medium text-white">${email}</div>
-                            <div class="text-xs text-gray-400">UID: ${uid}</div>
-                        </div>
-                        <div class="text-right">
-                            <span class="text-emerald-400 text-xs">verwendet</span>
-                        </div>
-                    </div>`;
-            } catch(e) {
-                listHTML += `<div class="bg-zinc-950 border border-white/10 rounded-2xl p-5 mb-3">UID: ${uid} (User nicht gefunden)</div>`;
-            }
-        }
-    } else {
-        listHTML = `<p class="text-center py-12 text-gray-400">Dieser Gutschein wurde noch von niemandem eingelöst.</p>`;
-    }
-    const modalHTML = `
-    <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]">
-        <div class="bg-zinc-900 rounded-3xl p-8 max-w-lg w-full mx-4 modal max-h-[85vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="text-3xl font-bold neon">Nutzungs-History: <span class="text-amber-400">${coupon.code}</span></h3>
-                <button onclick="closeEditModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
-            </div>
-            <div class="space-y-3">
-                ${listHTML}
-            </div>
-        </div>
-    </div>`;
-    document.getElementById('edit-modal').innerHTML = modalHTML;
-    document.getElementById('edit-modal').classList.remove('hidden');
-}
-async function deleteCoupon(id) {
-    if (confirm('Gutschein löschen?')) {
-        await db.collection('coupons').doc(id).delete();
-        await logAction("coupon_deleted", id);
-        loadCoupons();
-    }
-}
-// ====================== CLOSE MODAL FUNCTION ======================
 function closeEditModal() {
-    const modal = document.getElementById('edit-modal');
-    modal.classList.add('hidden');
-    modal.innerHTML = '';
+    document.getElementById('edit-modal').classList.add('hidden');
+    selectedFile = null;
+    removeCurrentImage = false;
 }
+async function saveEdit() {
+    if (!currentEditId) return;
+    const name = document.getElementById('edit-name').value;
+    const price = parseFloat(document.getElementById('edit-price').value);
+    const originalPrice = parseFloat(document.getElementById('edit-original-price').value) || null;
+    const stock = parseInt(document.getElementById('edit-stock').value);
+    const description = document.getElementById('edit-description').value;
+    const isNew = document.getElementById('edit-new').checked;
+    const unavailable = document.getElementById('edit-unavailable').checked;
+    const hasNicotine = document.getElementById('edit-has-nicotine').checked;
+    const categorySelect = document.getElementById('edit-category-select');
+    const category = categorySelect && categorySelect.value ? categorySelect.value : (isNew ? "Neue Sorten" : "Normale Sorten");
+    let data = { name, price, originalPrice, stock, category, description: description || "", isNew, available: !unavailable, hasNicotine };
+    if (removeCurrentImage && !selectedFile) data.image = null;
+    else if (selectedFile) {
+        const formData = new FormData();
+        formData.append("file", selectedFile);
+        formData.append("upload_preset", "wavevapes");
+        const res = await fetch("https://api.cloudinary.com/v1_1/dbbkmjsr5/image/upload", { method: "POST", body: formData });
+        const json = await res.json();
+        if (json.secure_url) data.image = json.secure_url;
+    }
+    await db.collection('products').doc(currentEditId).update(data);
+    await logAction("product_updated", currentEditId, { name, category });
+    closeEditModal();
+    showToast('✅ Produkt gespeichert! Kategorie manuell zugewiesen.');
+}
+// ====================== NEUES PRODUKT ======================
+document.getElementById('add-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const name = document.getElementById('prod-name').value.trim();
+    const price = parseFloat(document.getElementById('prod-price').value);
+    const originalPrice = parseFloat(document.getElementById('prod-original-price').value) || null;
+    const stock = parseInt(document.getElementById('prod-stock').value);
+    const isNew = document.getElementById('prod-new').checked;
+    const unavailable = document.getElementById('prod-unavailable').checked;
+    const hasNicotine = document.getElementById('prod-has-nicotine').checked;
+    const description = document.getElementById('prod-description').value.trim();
+    const categorySelect = document.getElementById('prod-category');
+    const category = categorySelect && categorySelect.value ? categorySelect.value : (isNew ? "Neue Sorten" : "Normale Sorten");
+    const docRef = await db.collection('products').add({
+        name, price, originalPrice, stock, category, isNew: isNew || false, available: !unavailable, hasNicotine, description: description || "", sold: 0
+    });
+    if (selectedFile) {
+        const formData = new FormData();
+        formData.append("file", selectedFile);
+        formData.append("upload_preset", "wavevapes");
+        const res = await fetch("https://api.cloudinary.com/v1_1/dbbkmjsr5/image/upload", { method: "POST", body: formData });
+        const json = await res.json();
+        if (json.secure_url) await docRef.update({ image: json.secure_url });
+    }
+    await logAction("product_created", docRef.id, { name, category });
+    e.target.reset();
+    document.getElementById('preview-thumb').classList.add('hidden');
+    selectedFile = null;
+    showToast('✅ Produkt erfolgreich angelegt!');
+});
+const dropzone = document.getElementById('dropzone');
+dropzone.addEventListener('click', () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = e => {
+        selectedFile = e.target.files[0];
+        const url = URL.createObjectURL(selectedFile);
+        document.getElementById('preview-thumb').src = url;
+        document.getElementById('preview-thumb').classList.remove('hidden');
+    };
+    input.click();
+});
 // ====================== CSV PRODUKTE ======================
 async function exportProductsToCSV() {
     const snapshot = await db.collection("products").get();
@@ -1209,6 +1138,101 @@ function populateAdminCategoryFilter() {
         select.appendChild(opt);
     });
 }
+// ====================== GUTSCHEINE + COUPON-NUTZUNGS-HISTORY ======================
+document.getElementById('add-coupon-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const code = document.getElementById('coupon-code').value.trim().toUpperCase();
+    const type = document.getElementById('coupon-type').value;
+    const value = parseFloat(document.getElementById('coupon-value').value);
+    const expiry = new Date(document.getElementById('coupon-expiry').value);
+    const oneTime = document.getElementById('coupon-onetime').checked;
+    await db.collection('coupons').add({
+        code, type, value, expiresAt: firebase.firestore.Timestamp.fromDate(expiry),
+        oneTimeUse: oneTime, usedBy: [], createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    await logAction("coupon_created", code);
+    e.target.reset();
+    showToast('✅ Gutschein erstellt!');
+    loadCoupons();
+});
+async function loadCoupons() {
+    const snap = await db.collection('coupons').orderBy('createdAt', 'desc').get();
+    allCoupons = snap.docs.map(d => ({id: d.id, ...d.data()}));
+    renderCouponsTable();
+}
+function renderCouponsTable() {
+    const tbody = document.getElementById('coupons-tbody');
+    let html = '';
+    allCoupons.forEach(c => {
+        const expired = c.expiresAt.toDate() < new Date();
+        const usageCount = c.usedBy ? c.usedBy.length : 0;
+        html += `
+        <tr class="table-row-hover border-b border-white/10">
+            <td class="py-4 px-6 font-mono font-bold">${c.code}</td>
+            <td class="py-4 px-6 text-center">${c.type === 'percent' ? c.value + '%' : c.value + '€'}</td>
+            <td class="py-4 px-6 text-center ${expired ? 'text-red-400' : ''}">${c.expiresAt.toDate().toLocaleDateString('de-DE')}</td>
+            <td class="py-4 px-6 text-center font-bold text-emerald-400">${usageCount} / ${c.oneTimeUse ? '1' : '∞'}</td>
+            <td class="py-4 px-6 text-right space-x-3">
+                <button onclick="showCouponHistory('${c.id}')" class="text-cyan-400 hover:text-white flex items-center gap-1"><i class="fa-solid fa-history"></i> History</button>
+                <button onclick="deleteCoupon('${c.id}')" class="text-red-400 hover:text-white"><i class="fa-solid fa-trash"></i></button>
+            </td>
+        </tr>`;
+    });
+    tbody.innerHTML = html || `<tr><td colspan="5" class="text-center py-16 text-gray-400">Noch keine Gutscheine</td></tr>`;
+}
+async function showCouponHistory(couponId) {
+    const doc = await db.collection('coupons').doc(couponId).get();
+    if (!doc.exists) return showToast("Gutschein nicht gefunden", "error");
+    const coupon = doc.data();
+    let listHTML = '';
+    if (coupon.usedBy && coupon.usedBy.length > 0) {
+        for (let uid of coupon.usedBy) {
+            try {
+                const userDoc = await db.collection('users').doc(uid).get();
+                const user = userDoc.exists ? userDoc.data() : {};
+                const email = user.email || uid;
+                listHTML += `
+                    <div class="bg-zinc-950 border border-white/10 rounded-2xl p-5 mb-3 flex justify-between items-center">
+                        <div>
+                            <div class="font-medium text-white">${email}</div>
+                            <div class="text-xs text-gray-400">UID: ${uid}</div>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-emerald-400 text-xs">verwendet</span>
+                        </div>
+                    </div>`;
+            } catch(e) {
+                listHTML += `<div class="bg-zinc-950 border border-white/10 rounded-2xl p-5 mb-3">UID: ${uid} (User nicht gefunden)</div>`;
+            }
+        }
+    } else {
+        listHTML = `<p class="text-center py-12 text-gray-400">Dieser Gutschein wurde noch von niemandem eingelöst.</p>`;
+    }
+    const modalHTML = `
+    <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]">
+        <div class="bg-zinc-900 rounded-3xl p-8 max-w-lg w-full mx-4 modal max-h-[85vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-3xl font-bold neon">Nutzungs-History: <span class="text-amber-400">${coupon.code}</span></h3>
+                <button onclick="closeEditModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
+            </div>
+            <div class="space-y-3">
+                ${listHTML}
+            </div>
+            <div class="mt-8 text-[10px] text-gray-500 text-center">
+                Hinweis: Zeitstempel werden automatisch gespeichert, sobald du den Shop-Frontend (index.html) ebenfalls aktualisierst.
+            </div>
+        </div>
+    </div>`;
+    document.getElementById('edit-modal').innerHTML = modalHTML;
+    document.getElementById('edit-modal').classList.remove('hidden');
+}
+async function deleteCoupon(id) {
+    if (confirm('Gutschein löschen?')) {
+        await db.collection('coupons').doc(id).delete();
+        await logAction("coupon_deleted", id);
+        loadCoupons();
+    }
+}
 // ====================== BESTELLUNGEN ======================
 function loadOrders() {
     const tbody = document.getElementById('orders-tbody');
@@ -1251,6 +1275,7 @@ async function showOrderModal(orderId) {
     const doc = await db.collection('orders').doc(orderId).get();
     const order = doc.data();
     const date = order.date ? order.date.toDate().toLocaleString('de-DE') : '—';
+    
     let itemsHTML = '';
     order.items.forEach(item => {
         itemsHTML += `
@@ -1259,6 +1284,7 @@ async function showOrderModal(orderId) {
                 <span>${(item.price * item.qty).toFixed(2)} €</span>
             </div>`;
     });
+
     const modalHTML = `
     <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]">
         <div class="bg-zinc-900 rounded-3xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto modal">
@@ -1274,16 +1300,18 @@ async function showOrderModal(orderId) {
                 <div><strong>Adresse:</strong><br>${order.address.street}<br>${order.address.zip} ${order.address.city}</div>
                 <div><strong>Artikel</strong>${itemsHTML}</div>
                 <div class="text-2xl font-bold">Gesamt: <span class="text-emerald-400">${order.total.toFixed(2)} €</span></div>
+                
                 <div class="mt-6">
                     <label class="block text-sm font-medium text-gray-400 mb-2 flex items-center gap-2">
                         <i class="fa-solid fa-note-sticky text-amber-400"></i>
                         Interne Notizen (nur für dich sichtbar)
                     </label>
-                    <textarea id="modal-internal-notes"
-                              rows="4"
+                    <textarea id="modal-internal-notes" 
+                              rows="4" 
                               placeholder="z. B. Kunde hat schon überwiesen, IBAN-Ende 5812, Betrag passt..."
                               class="w-full bg-zinc-800 border border-amber-400/30 focus:border-amber-400 rounded-2xl px-5 py-3 text-sm resize-y min-h-[100px]"></textarea>
                 </div>
+
                 <div class="bg-zinc-950 -mx-8 -mb-8 p-8 rounded-b-3xl border-t border-white/10">
                     <h4 class="font-bold mb-6 text-cyan-400 flex items-center gap-2"><i class="fa-solid fa-truck"></i> Admin-Steuerung</h4>
                     <select id="modal-status" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 mb-6">
@@ -1315,58 +1343,47 @@ async function showOrderModal(orderId) {
             </div>
         </div>
     </div>`;
+
     document.getElementById('order-modal-container').innerHTML = modalHTML;
     document.getElementById('modal-internal-notes').value = order.internalNotes || '';
 }
 function closeOrderModal() {
     document.getElementById('order-modal-container').innerHTML = '';
 }
-// ====================== SAVE ORDER CHANGES ======================
 async function saveOrderChanges() {
     const status = document.getElementById('modal-status').value;
     const carrier = document.getElementById('modal-carrier').value;
     const tracking = document.getElementById('modal-tracking').value.trim();
     const internalNotes = document.getElementById('modal-internal-notes').value.trim();
+
     await handleStockOnStatusChange(currentOrderId, status);
+    
     const updateData = {
         status,
         carrier,
         trackingNumber: tracking || firebase.firestore.FieldValue.delete()
     };
+    
     if (internalNotes) {
         updateData.internalNotes = internalNotes;
     } else {
         updateData.internalNotes = firebase.firestore.FieldValue.delete();
     }
+
     await db.collection('orders').doc(currentOrderId).update(updateData);
+    
     if (status === "Wird bearbeitet") await awardLoyaltyIfProcessed(currentOrderId);
     await logAction("order_updated", currentOrderId, { status, hasNotes: !!internalNotes });
+    
     showToast('Bestellung + interne Notizen aktualisiert');
     closeOrderModal();
 }
-// ====================== DELETE ORDER ======================
 async function deleteOrder() {
-    if (!confirm('⚠️ Bestellung WIRKLICH IRREVERSIBEL löschen?\n\nDer Lagerbestand wird automatisch wieder aufgefüllt\nund die Verkaufszahlen (sold) werden zurückgesetzt!')) return;
-    const doc = await db.collection('orders').doc(currentOrderId).get();
-    const order = doc.data();
-    if (order.status === "Wird bearbeitet" || order.status === "Versendet" || order.status === "Zugestellt") {
-        for (let item of order.items) {
-            if (item.id === 999) continue;
-            await db.collection("products").doc(item.id).update({
-                stock: firebase.firestore.FieldValue.increment(item.qty),
-                sold: firebase.firestore.FieldValue.increment(-item.qty)
-            });
-        }
-        showToast("✅ Lagerbestand + Verkaufszahlen wurden zurückgesetzt!", "success");
-    }
+    if (!confirm('Bestellung IRREVERSIBEL löschen?')) return;
     await db.collection('orders').doc(currentOrderId).delete();
-    await logAction("order_deleted_with_stock_restore", currentOrderId, {
-        status: order.status,
-        itemsRestored: order.items.length
-    });
-    showToast('Bestellung komplett gelöscht + Lager zurückgesetzt');
+    await logAction("order_deleted", currentOrderId);
+    showToast('Bestellung gelöscht');
     closeOrderModal();
-    loadOrders();
 }
 // ====================== BENUTZER ======================
 function loadUsers() {
@@ -1621,8 +1638,6 @@ async function loadSettings() {
         email_template: "Deine Bestellung wurde bestätigt..."
     };
     if (!doc.exists) await db.collection("settings").doc("main").set(data);
-    manualRevenueOverride = data.manualRevenueOverride !== undefined ? data.manualRevenueOverride : null;
-    manualSoldOverride = data.manualSoldOverride !== undefined ? data.manualSoldOverride : null;
     document.getElementById("set-bank-owner").value = data.bank_owner || "";
     document.getElementById("set-iban").value = data.iban || "";
     document.getElementById("set-bic").value = data.bic || "";
@@ -1868,21 +1883,6 @@ async function logout() {
         alert("Logout fehlgeschlagen: " + e.message);
     }
 }
-// ====================== LIVE ONLINE USERS ======================
-function loadLiveUsers() {
-    db.collection("presence").onSnapshot(snap => {
-        let count = 0;
-        const now = Date.now();
-        snap.forEach(doc => {
-            const data = doc.data();
-            if (data.lastSeen) {
-                const lastSeenTime = data.lastSeen.toDate().getTime();
-                if (now - lastSeenTime < 90000) count++;
-            }
-        });
-        document.getElementById('live-users-count').textContent = count;
-    });
-}
 // ====================== AUTH ======================
 auth.onAuthStateChanged(async (user) => {
     if (!user) return window.location.href = 'index.html';
@@ -1906,7 +1906,6 @@ window.onload = () => {
     setTimeout(() => {
         updateStats();
         populateAdminCategoryFilter();
-        loadLiveUsers();
     }, 500);
 };
 </script>

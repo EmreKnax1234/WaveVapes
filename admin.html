@@ -42,6 +42,8 @@
         .metric-card:hover { transform: translateY(-4px); }
         .metric-edit-btn { position: absolute; top: 12px; right: 12px; font-size: 11px; background: #27272a; padding: 4px 8px; border-radius: 9999px; cursor: pointer; opacity: 0.7; }
         .metric-edit-btn:hover { opacity: 1; background: #3b82f6; }
+        /* LIVE ONLINE CARD */
+        #live-users-card { background: linear-gradient(135deg, #0a0a0a, #1e1233); border: 2px solid #67e8f9; }
     </style>
 </head>
 <body class="min-h-screen">
@@ -86,9 +88,8 @@
                 <input type="file" id="csv-upload-products" accept=".csv" class="hidden" onchange="importProductsFromCSV(event)">
                 <p class="text-xs text-amber-400 mt-4 text-center">⚠️ Beim Import werden ALLE aktuellen Produkte gelöscht!</p>
             </div>
-
-            <!-- METRIK-KARTEN mit Edit-Buttons -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
+            <!-- METRIK-KARTEN -->
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-6 mb-12">
                 <div class="metric-card p-6 relative" style="cursor:pointer;">
                     <p class="text-gray-400 text-sm">Gesamtumsatz</p>
                     <p id="total-revenue" class="text-4xl font-bold text-emerald-400">0 €</p>
@@ -107,8 +108,13 @@
                     <p class="text-gray-400 text-sm">Top-Seller</p>
                     <p id="top-seller" class="text-2xl font-bold text-amber-400">—</p>
                 </div>
+                <!-- NEUE LIVE ONLINE CARD -->
+                <div id="live-users-card" class="metric-card p-8 text-center border border-cyan-400/30 bg-gradient-to-br from-cyan-950 to-zinc-900">
+                    <p class="text-gray-400 text-sm">LIVE ONLINE</p>
+                    <p id="live-users-count" class="text-6xl font-bold text-cyan-400 mt-2">0</p>
+                    <p class="text-xs text-cyan-300 mt-3">User auf wavevapes.de</p>
+                </div>
             </div>
-
             <div class="card p-8 mb-12 bg-red-950/30 border border-red-500/50">
                 <button onclick="resetAllStatistics()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-5 rounded-3xl text-xl flex items-center justify-center gap-3"><i class="fa-solid fa-warning"></i> ALLE STATISTIKEN ZURÜCKSETZEN</button>
             </div>
@@ -263,7 +269,7 @@
                 </div>
             </div>
         </div>
-        <!-- TAB 4: GUTSCHEINE + COUPON-NUTZUNGS-HISTORY -->
+        <!-- TAB 4: GUTSCHEINE -->
         <div id="tab-content-4" class="hidden">
             <div class="card p-8">
                 <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><i class="fa-solid fa-ticket"></i> Gutschein-Manager + Nutzungs-History</h2>
@@ -416,7 +422,6 @@
         </div>
     </div>
 </div>
-
 <!-- MANUELLER METRIK-EDIT MODAL -->
 <div id="manual-metrics-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]">
     <div class="bg-zinc-900 rounded-3xl p-8 max-w-md w-full mx-4 modal">
@@ -438,14 +443,12 @@
         </div>
     </div>
 </div>
-
 <!-- EDIT MODAL -->
 <div id="edit-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]"></div>
 <!-- ORDER MODAL -->
 <div id="order-modal-container"></div>
 <!-- TOAST -->
 <div id="toast-container" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[99999] flex flex-col gap-3"></div>
-
 <script>
 // ====================== FIREBASE CONFIG ======================
 const firebaseConfig = {
@@ -492,16 +495,14 @@ async function logAction(action, target = "", details = {}) {
         details: details || {}
     });
 }
-// ====================== STATS UPDATE (mit manuellen Overrides) ======================
+// ====================== STATS UPDATE ======================
 async function updateStats() {
     const active = allProducts.filter(p => p.available !== false).length;
     const soldTotal = allProducts.reduce((sum, p) => sum + (p.sold || 0), 0);
     const revenue = allProducts.reduce((sum, p) => sum + (p.sold || 0) * (p.price || 0), 0);
     const top = [...allProducts].sort((a, b) => (b.sold || 0) - (a.sold || 0))[0];
-
     const displayRevenue = manualRevenueOverride !== null ? manualRevenueOverride : revenue;
     const displaySold = manualSoldOverride !== null ? manualSoldOverride : soldTotal;
-
     document.getElementById('active-products').textContent = active;
     document.getElementById('total-sold').textContent = displaySold;
     document.getElementById('total-revenue').textContent = displayRevenue.toFixed(0) + ' €';
@@ -509,14 +510,10 @@ async function updateStats() {
 }
 // ====================== MANUELLE METRIK-BEARBEITUNG ======================
 async function editManualMetrics() {
-    const currentRevenue = manualRevenueOverride !== null ? manualRevenueOverride : 
-        allProducts.reduce((sum, p) => sum + (p.sold || 0) * (p.price || 0), 0);
-    const currentSold = manualSoldOverride !== null ? manualSoldOverride : 
-        allProducts.reduce((sum, p) => sum + (p.sold || 0), 0);
-
+    const currentRevenue = manualRevenueOverride !== null ? manualRevenueOverride : allProducts.reduce((sum, p) => sum + (p.sold || 0) * (p.price || 0), 0);
+    const currentSold = manualSoldOverride !== null ? manualSoldOverride : allProducts.reduce((sum, p) => sum + (p.sold || 0), 0);
     document.getElementById('manual-revenue-input').value = currentRevenue;
     document.getElementById('manual-sold-input').value = currentSold;
-
     const modal = document.getElementById('manual-metrics-modal');
     modal.classList.remove('hidden');
     modal.classList.add('flex');
@@ -529,15 +526,12 @@ function closeManualMetricsModal() {
 async function saveManualMetrics() {
     const revenue = parseFloat(document.getElementById('manual-revenue-input').value) || 0;
     const sold = parseInt(document.getElementById('manual-sold-input').value) || 0;
-
     manualRevenueOverride = revenue;
     manualSoldOverride = sold;
-
     await db.collection("settings").doc("main").set({
         manualRevenueOverride: revenue,
         manualSoldOverride: sold
     }, { merge: true });
-
     updateStats();
     closeManualMetricsModal();
     showToast("✅ Manuelle Werte gespeichert!", "success");
@@ -545,12 +539,10 @@ async function saveManualMetrics() {
 async function resetManualMetrics() {
     manualRevenueOverride = null;
     manualSoldOverride = null;
-
     await db.collection("settings").doc("main").set({
         manualRevenueOverride: firebase.firestore.FieldValue.delete(),
         manualSoldOverride: firebase.firestore.FieldValue.delete()
     }, { merge: true });
-
     updateStats();
     closeManualMetricsModal();
     showToast("✅ Zurück auf automatische Berechnung", "success");
@@ -1235,7 +1227,7 @@ function populateAdminCategoryFilter() {
         select.appendChild(opt);
     });
 }
-// ====================== GUTSCHEINE + COUPON-NUTZUNGS-HISTORY ======================
+// ====================== GUTSCHEINE ======================
 document.getElementById('add-coupon-form').addEventListener('submit', async e => {
     e.preventDefault();
     const code = document.getElementById('coupon-code').value.trim().toUpperCase();
@@ -1372,7 +1364,7 @@ async function showOrderModal(orderId) {
     const doc = await db.collection('orders').doc(orderId).get();
     const order = doc.data();
     const date = order.date ? order.date.toDate().toLocaleString('de-DE') : '—';
-    
+   
     let itemsHTML = '';
     order.items.forEach(item => {
         itemsHTML += `
@@ -1381,7 +1373,6 @@ async function showOrderModal(orderId) {
                 <span>${(item.price * item.qty).toFixed(2)} €</span>
             </div>`;
     });
-
     const modalHTML = `
     <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]">
         <div class="bg-zinc-900 rounded-3xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto modal">
@@ -1397,18 +1388,17 @@ async function showOrderModal(orderId) {
                 <div><strong>Adresse:</strong><br>${order.address.street}<br>${order.address.zip} ${order.address.city}</div>
                 <div><strong>Artikel</strong>${itemsHTML}</div>
                 <div class="text-2xl font-bold">Gesamt: <span class="text-emerald-400">${order.total.toFixed(2)} €</span></div>
-                
+               
                 <div class="mt-6">
                     <label class="block text-sm font-medium text-gray-400 mb-2 flex items-center gap-2">
                         <i class="fa-solid fa-note-sticky text-amber-400"></i>
                         Interne Notizen (nur für dich sichtbar)
                     </label>
-                    <textarea id="modal-internal-notes" 
-                              rows="4" 
+                    <textarea id="modal-internal-notes"
+                              rows="4"
                               placeholder="z. B. Kunde hat schon überwiesen, IBAN-Ende 5812, Betrag passt..."
                               class="w-full bg-zinc-800 border border-amber-400/30 focus:border-amber-400 rounded-2xl px-5 py-3 text-sm resize-y min-h-[100px]"></textarea>
                 </div>
-
                 <div class="bg-zinc-950 -mx-8 -mb-8 p-8 rounded-b-3xl border-t border-white/10">
                     <h4 class="font-bold mb-6 text-cyan-400 flex items-center gap-2"><i class="fa-solid fa-truck"></i> Admin-Steuerung</h4>
                     <select id="modal-status" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 mb-6">
@@ -1440,7 +1430,6 @@ async function showOrderModal(orderId) {
             </div>
         </div>
     </div>`;
-
     document.getElementById('order-modal-container').innerHTML = modalHTML;
     document.getElementById('modal-internal-notes').value = order.internalNotes || '';
 }
@@ -1453,36 +1442,32 @@ async function saveOrderChanges() {
     const carrier = document.getElementById('modal-carrier').value;
     const tracking = document.getElementById('modal-tracking').value.trim();
     const internalNotes = document.getElementById('modal-internal-notes').value.trim();
-
     await handleStockOnStatusChange(currentOrderId, status);
-    
+   
     const updateData = {
         status,
         carrier,
         trackingNumber: tracking || firebase.firestore.FieldValue.delete()
     };
-    
+   
     if (internalNotes) {
         updateData.internalNotes = internalNotes;
     } else {
         updateData.internalNotes = firebase.firestore.FieldValue.delete();
     }
-
     await db.collection('orders').doc(currentOrderId).update(updateData);
-    
+   
     if (status === "Wird bearbeitet") await awardLoyaltyIfProcessed(currentOrderId);
     await logAction("order_updated", currentOrderId, { status, hasNotes: !!internalNotes });
-    
+   
     showToast('Bestellung + interne Notizen aktualisiert');
     closeOrderModal();
 }
-// ====================== DELETE ORDER MIT LAGER- & STATISTIK-RÜCKSETZUNG ======================
+// ====================== DELETE ORDER ======================
 async function deleteOrder() {
     if (!confirm('⚠️ Bestellung WIRKLICH IRREVERSIBEL löschen?\n\nDer Lagerbestand wird automatisch wieder aufgefüllt\nund die Verkaufszahlen (sold) werden zurückgesetzt!')) return;
-
     const doc = await db.collection('orders').doc(currentOrderId).get();
     const order = doc.data();
-
     if (order.status === "Wird bearbeitet" || order.status === "Versendet" || order.status === "Zugestellt") {
         for (let item of order.items) {
             if (item.id === 999) continue;
@@ -1493,13 +1478,11 @@ async function deleteOrder() {
         }
         showToast("✅ Lagerbestand + Verkaufszahlen wurden zurückgesetzt!", "success");
     }
-
     await db.collection('orders').doc(currentOrderId).delete();
-    await logAction("order_deleted_with_stock_restore", currentOrderId, { 
-        status: order.status, 
-        itemsRestored: order.items.length 
+    await logAction("order_deleted_with_stock_restore", currentOrderId, {
+        status: order.status,
+        itemsRestored: order.items.length
     });
-
     showToast('Bestellung komplett gelöscht + Lager zurückgesetzt');
     closeOrderModal();
     loadOrders();
@@ -2004,6 +1987,21 @@ async function logout() {
         alert("Logout fehlgeschlagen: " + e.message);
     }
 }
+// ====================== LIVE ONLINE USERS ======================
+function loadLiveUsers() {
+    db.collection("presence").onSnapshot(snap => {
+        let count = 0;
+        const now = Date.now();
+        snap.forEach(doc => {
+            const data = doc.data();
+            if (data.lastSeen) {
+                const lastSeenTime = data.lastSeen.toDate().getTime();
+                if (now - lastSeenTime < 90000) count++;
+            }
+        });
+        document.getElementById('live-users-count').textContent = count;
+    });
+}
 // ====================== AUTH ======================
 auth.onAuthStateChanged(async (user) => {
     if (!user) return window.location.href = 'index.html';
@@ -2027,6 +2025,7 @@ window.onload = () => {
     setTimeout(() => {
         updateStats();
         populateAdminCategoryFilter();
+        loadLiveUsers();   // LIVE ONLINE COUNT
     }, 500);
 };
 </script>

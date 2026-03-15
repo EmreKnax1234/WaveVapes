@@ -414,7 +414,7 @@
                 </h2>
                 <p class="text-sm text-gray-400 mb-6">Klicke auf einen Button für automatische Sortierung.<br><strong>Neue AUTO-PRIORITÄT (überarbeitet):</strong><br>1. Neue Sorten (nur verfügbar) → 2. Normale Sorten (nur verfügbar) → 3. Alle Vapes (nur verfügbar) → 4. ALLE nicht verfügbaren Sachen (egal ob neu oder normal – immer ganz unten)</p>
                 <div class="flex flex-wrap gap-3 mb-8">
-                    <button onclick="openShopPreview()" 
+                    <button onclick="openShopPreview()"
                             class="px-8 py-4 bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold rounded-3xl text-base transition flex items-center gap-3 shadow-xl">
                         👀 Vorschau im Shop öffnen (neuer Tab)
                     </button>
@@ -431,7 +431,6 @@
         </div>
     </div>
 </div>
-
 <!-- MANUELLER METRIK-EDIT MODAL -->
 <div id="manual-metrics-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]">
     <div class="bg-zinc-900 rounded-3xl p-8 max-w-md w-full mx-4 modal">
@@ -453,16 +452,12 @@
         </div>
     </div>
 </div>
-
 <!-- EDIT MODAL (Bulk + Einzel-Edit + History-Modals) -->
 <div id="edit-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]"></div>
-
 <!-- ORDER MODAL -->
 <div id="order-modal-container"></div>
-
 <!-- TOAST -->
 <div id="toast-container" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[99999] flex flex-col gap-3"></div>
-
 <script>
 // ====================== FIREBASE CONFIG ======================
 const firebaseConfig = {
@@ -657,7 +652,48 @@ async function deleteProduct(id) {
         showToast('❌ Fehler beim Löschen: ' + e.message, 'error');
     }
 }
-// ====================== BULK-EDIT (mit Beschreibung + Bild löschen) ======================
+// ====================== NEU: SINGLE EDIT MODAL (fehlte vorher!) ======================
+async function openEditModal(id) {
+    const doc = await db.collection('products').doc(id).get();
+    const p = doc.data();
+    const html = `
+    <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]">
+        <div class="bg-zinc-900 rounded-3xl p-8 max-w-md w-full mx-4 modal">
+            <h3 class="text-3xl font-bold mb-6 neon">Produkt bearbeiten</h3>
+            <input id="edit-name" value="${p.name}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 mb-4">
+            <input id="edit-price" type="number" step="0.01" value="${p.price}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 mb-4">
+            <input id="edit-stock" type="number" value="${p.stock}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 mb-4">
+            <select id="edit-category" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 mb-4"></select>
+            <div class="flex items-center gap-3 mb-4"><input id="edit-new" type="checkbox" ${p.isNew ? 'checked' : ''} class="w-5 h-5 accent-lime-400"><label>Neue Sorte</label></div>
+            <div class="flex items-center gap-3 mb-8"><input id="edit-available" type="checkbox" ${p.available !== false ? 'checked' : ''} class="w-5 h-5 accent-cyan-400"><label>Verfügbar</label></div>
+            <div class="flex gap-4">
+                <button onclick="saveEditProduct('${id}')" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-5 rounded-3xl font-bold">Speichern</button>
+                <button onclick="closeEditModal()" class="flex-1 bg-zinc-700 hover:bg-zinc-600 py-5 rounded-3xl">Abbrechen</button>
+            </div>
+        </div>
+    </div>`;
+    document.getElementById('edit-modal').innerHTML = html;
+    document.getElementById('edit-modal').classList.remove('hidden');
+    populateCategorySelects(); // für den Edit-Select
+    const sel = document.getElementById('edit-category');
+    if (sel) sel.value = p.category || '';
+}
+async function saveEditProduct(id) {
+    const name = document.getElementById('edit-name').value.trim();
+    const price = parseFloat(document.getElementById('edit-price').value);
+    const stock = parseInt(document.getElementById('edit-stock').value);
+    const category = document.getElementById('edit-category').value;
+    const isNew = document.getElementById('edit-new').checked;
+    const available = document.getElementById('edit-available').checked;
+    await db.collection('products').doc(id).update({
+        name, price, stock, category, isNew, available
+    });
+    await logAction("product_updated", id);
+    closeEditModal();
+    showToast('✅ Produkt gespeichert');
+    loadProducts();
+}
+// ====================== BULK-EDIT ======================
 function toggleSelectAllProducts(cb) {
     document.querySelectorAll('.product-checkbox').forEach(ch => ch.checked = cb.checked);
 }
@@ -705,10 +741,8 @@ async function executeBulkEdit() {
     const isNew = document.getElementById('bulk-new').checked ? true : null;
     const deleteImage = document.getElementById('bulk-delete-image').checked;
     const category = document.getElementById('bulk-category').value || null;
-
     const batch = db.batch();
     let changed = 0;
-
     for (let id of selectedProductIds) {
         const updateData = {};
         if (price !== null) updateData.price = price;
@@ -718,7 +752,6 @@ async function executeBulkEdit() {
         if (isNew !== null) updateData.isNew = isNew;
         if (category) updateData.category = category;
         if (deleteImage) updateData.image = null;
-
         if (Object.keys(updateData).length > 0) {
             batch.update(db.collection('products').doc(id), updateData);
             changed++;
@@ -727,17 +760,50 @@ async function executeBulkEdit() {
     await batch.commit();
     await logAction("bulk_edit", "", { count: changed });
     closeBulkModal();
-    showToast(`✅ ${changed} Produkte erfolgreich bearbeitet! (Beschreibung + Bild-Löschung)`);
+    showToast(`✅ ${changed} Produkte erfolgreich bearbeitet!`);
     loadProducts();
 }
 function closeBulkModal() {
     document.getElementById('edit-modal').classList.add('hidden');
 }
+// ====================== NEU: enforceCategories ======================
+async function enforceCategories() {
+    if (!confirm("Automatische Kategoriezuteilung für alle Produkte durchführen?")) return;
+    const snap = await db.collection("products").get();
+    const batch = db.batch();
+    snap.forEach(doc => {
+        const p = doc.data();
+        let cat = p.category || "Normale Sorten";
+        if (p.isNew) cat = "Neue Sorten";
+        if (p.category === "WaveVapes Tornado 30000") cat = "WaveVapes Tornado 30000";
+        batch.update(doc.ref, { category: cat });
+    });
+    await batch.commit();
+    showToast("✅ Automatische Kategoriezuteilung abgeschlossen!");
+    loadProducts();
+}
+// ====================== NEU: exportOrdersWithTracking ======================
+async function exportOrdersWithTracking() {
+    const snapshot = await db.collection("orders").orderBy("date", "desc").get();
+    if (snapshot.empty) return alert("Keine Bestellungen vorhanden!");
+    let csv = "Bestellnr.,Datum,Kunde,Gesamt,Status,Tracking,Carrier\n";
+    snapshot.forEach(doc => {
+        const o = doc.data();
+        const dateStr = o.date ? o.date.toDate().toISOString().slice(0,10) : '';
+        csv += `"${o.orderNumber}","${dateStr}","${o.userEmail}","${o.total}","${o.status || '—'}","${o.trackingNumber || ''}","${o.carrier || ''}"\n`;
+    });
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `wavevapes_bestellungen_mit_tracking_${new Date().toISOString().slice(0,10)}.csv`;
+    link.click();
+    showToast("✅ Bestellungen mit Tracking-Links exportiert!", "success");
+}
 // ====================== SHOP VORSCHAU ======================
 function openShopPreview() {
     window.open('index.html?preview=1', '_blank');
 }
-// ====================== LOYALTY HISTORY EXPORT ======================
+// ====================== LOYALTY HISTORY ======================
 async function exportLoyaltyHistory() {
     const usersSnap = await db.collection('users').where('redeemedLoyaltyCodes', '!=', []).get();
     let csv = "E-Mail,Benutzername,Redeemed Codes,Anzahl\n";
@@ -753,7 +819,6 @@ async function exportLoyaltyHistory() {
     link.click();
     showToast("✅ Loyalty History als CSV exportiert!", "success");
 }
-// ====================== LOYALTY HISTORY MODAL ======================
 async function showLoyaltyHistory() {
     const modalHTML = `
     <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]">
@@ -1184,7 +1249,7 @@ function seedDefaultCategories() {
     showToast('✅ Standard-Kategorien angelegt!');
 }
 function populateCategorySelects() {
-    const selects = document.querySelectorAll('#prod-category, #edit-category-select, #bulk-category');
+    const selects = document.querySelectorAll('#prod-category, #edit-category, #bulk-category');
     selects.forEach(select => {
         if (!select) return;
         const currentValue = select.value;

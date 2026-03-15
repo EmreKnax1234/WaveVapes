@@ -617,7 +617,6 @@
             "LOYAL50": { type: "fixed", value: 50, points: 5000 }
         };
         const MYSTERY_ID = 999;
-        const fakeNames = ["Tim","Anna","Max","Sophie","Luca","Mia","Felix","Emma","Noah","Lena","Leon","Julia","Paul","Laura","Ben","Sarah","David","Hannah","Jonas","Lea"];
         const NICOTINE_OPTIONS = ["10 mg", "20 mg"];
         const BANK_OWNER = "Jakob David Hellrung";
         const BANK_IBAN = "DE38360200300003395812";
@@ -639,11 +638,6 @@
         let userAddress = JSON.parse(localStorage.getItem("wavevapes_address")) || {};
         let loyaltyPoints = 0;
         let currentCategoryFilter = "Alle";
-        let notificationList = [];
-        const NOTIFICATION_DURATION = 6500;
-        const HOUR_MS = 3600000;
-        let currentNotificationIndex = 0;
-        let notificationCyclePaused = false;
         let appliedDiscount = null;
         let ordersUnsubscribe = null;
         let userSnapshotUnsubscribe = null;
@@ -1279,15 +1273,7 @@
             }, 0);
         }
         function showDealToast() {
-            const toast = document.getElementById('notification-toast');
-            notificationCyclePaused = true;
-            toast.innerHTML = `⚡ <strong>4 FÜR 3 AKTION EINGELÖST!</strong>`;
-            toast.classList.add('visible');
-            setTimeout(() => {
-                toast.classList.remove('visible');
-                notificationCyclePaused = false;
-                showNextNotification();
-            }, 5000);
+            showToast(`⚡ <strong>4 FÜR 3 AKTION EINGELÖST!</strong>`, "success");
         }
         // ====================== UPDATECARTDISPLAY ======================
         function updateCartDisplay() {
@@ -1395,15 +1381,7 @@
             saveUserCart();
         }
         function showMysteryToast() {
-            const toast = document.getElementById('notification-toast');
-            notificationCyclePaused = true;
-            toast.innerHTML = `🎉 <strong>Mystery Vape gratis hinzugefügt!</strong>`;
-            toast.classList.add('visible');
-            setTimeout(() => {
-                toast.classList.remove('visible');
-                notificationCyclePaused = false;
-                showNextNotification();
-            }, 4800);
+            showToast(`🎉 <strong>Mystery Vape gratis hinzugefügt!</strong>`, "success");
         }
         function generateOrderNumber() {
             const now = new Date();
@@ -1618,42 +1596,6 @@
             toast.classList.add('visible');
             setTimeout(() => toast.classList.remove('visible'), 4000);
         }
-        function generateNotificationList() {
-            notificationList = [];
-            const available = allProducts;
-            for (let i = 0; i < 10; i++) {
-                const name = fakeNames[Math.floor(Math.random() * fakeNames.length)];
-                const prod = available[Math.floor(Math.random() * available.length)].name;
-                const min = Math.floor(Math.random() * 59) + 1;
-                const text = min === 1 ? "Minute" : "Minuten";
-                notificationList.push(`${name} bestellte vor ${min} ${text} ${prod}.`);
-            }
-            localStorage.setItem('wavevapes_notifications', JSON.stringify(notificationList));
-            localStorage.setItem('wavevapes_last_generate', Date.now());
-        }
-        function checkAndGenerateNotifications() {
-            const last = localStorage.getItem('wavevapes_last_generate');
-            if (!last || (Date.now() - last > HOUR_MS)) generateNotificationList();
-            else {
-                const stored = localStorage.getItem('wavevapes_notifications');
-                if (stored) notificationList = JSON.parse(stored);
-                else generateNotificationList();
-            }
-        }
-        function showNextNotification() {
-            if (notificationCyclePaused) return;
-            const toast = document.getElementById('notification-toast');
-            toast.textContent = notificationList[currentNotificationIndex];
-            toast.classList.add('visible');
-            setTimeout(() => toast.classList.remove('visible'), NOTIFICATION_DURATION - 700);
-            currentNotificationIndex = (currentNotificationIndex + 1) % notificationList.length;
-        }
-        function startNotificationCycle() {
-            checkAndGenerateNotifications();
-            showNextNotification();
-            setInterval(showNextNotification, NOTIFICATION_DURATION);
-            setInterval(checkAndGenerateNotifications, 60000);
-        }
         // ====================== DYNAMISCHE KATEGORIEN ======================
         async function renderCategoryTabs() {
             const snap = await db.collection("categories").orderBy("order").get();
@@ -1661,13 +1603,13 @@
             snap.forEach(doc => {
                 const c = doc.data();
                 const active = currentCategoryFilter === c.name ? 'tab-active' : '';
-           
+          
                 let extra = '';
                 if (c.special === true) {
                     const badgeText = c.specialText || "4 FÜR 3";
                     extra = ` <span class="bg-amber-400 text-black text-xs font-black px-4 py-1 rounded-2xl">${badgeText}</span> <i class="fa-solid fa-bolt animate-bolt text-2xl"></i>`;
                 }
-           
+          
                 html += `<button onclick="setCategoryFilter('${c.name}')" class="px-5 py-2 transition ${active}">${c.name}${extra}</button>`;
             });
             document.getElementById("category-tabs").innerHTML = html;
@@ -1772,7 +1714,7 @@
                                         <button onclick="modalQtyChange(1); event.stopImmediatePropagation()"
                                                 class="qty-btn w-12 h-12 text-3xl text-cyan-300 flex items-center justify-center rounded-r-3xl">+</button>
                                     </div>
-                                   
+                                  
                                     <button onclick="addFromDetailModal()"
                                             class="w-full bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-6 rounded-3xl text-2xl hover:scale-[1.03] transition-all shadow-xl">
                                         In den Warenkorb
@@ -1818,14 +1760,14 @@
                 }
                 cart.push(existing);
             }
-           
+          
             existing.qty += modalCurrentQty;
             manageMysteryVape();
             saveUserCart();
             updateCartDisplay();
             renderProducts();
             closeProductDetail();
-           
+          
             showToast(`✅ ${modalCurrentQty} × ${product.name} hinzugefügt!`);
             modalCurrentQty = 1;
         }
@@ -1947,8 +1889,6 @@
             updateLoyaltyDisplay();
             renderCategoryTabs();
             await loadProducts();
-            checkAndGenerateNotifications();
-            startNotificationCycle();
             checkAndAutoRedeemLoyalty();
             clearDiscountField();
             // LIVE FEATURES START
@@ -1959,6 +1899,7 @@
             updateLiveOnlineFooter();
             // NEU: Banner beim Start aktualisieren
             updateFreeShippingBanner();
+            // Fake-Bestell-Benachrichtigungen komplett entfernt
         }
         window.onload = initialize;
     </script>

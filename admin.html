@@ -300,7 +300,7 @@
                 </div>
                 <!-- LOYALTY HISTORY BUTTON -->
                 <div class="mt-8 pt-6 border-t border-white/10">
-                    <button onclick="showLoyaltyHistory()" 
+                    <button onclick="showLoyaltyHistory()"
                             class="bg-violet-600 hover:bg-violet-500 w-full py-5 rounded-3xl text-base font-medium flex items-center justify-center gap-3">
                         <i class="fa-solid fa-history"></i>
                         Loyalty-Codes History anzeigen (LOYAL5, LOYAL10, LOYAL15 ...)
@@ -414,6 +414,10 @@
                 </h2>
                 <p class="text-sm text-gray-400 mb-6">Klicke auf einen Button für automatische Sortierung.<br><strong>Neue AUTO-PRIORITÄT (überarbeitet):</strong><br>1. Neue Sorten (nur verfügbar) → 2. Normale Sorten (nur verfügbar) → 3. Alle Vapes (nur verfügbar) → 4. ALLE nicht verfügbaren Sachen (egal ob neu oder normal – immer ganz unten)</p>
                 <div class="flex flex-wrap gap-3 mb-8">
+                    <button onclick="openShopPreview()" 
+                            class="px-8 py-4 bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold rounded-3xl text-base transition flex items-center gap-3 shadow-xl">
+                        👀 Vorschau im Shop öffnen (neuer Tab)
+                    </button>
                     <button onclick="autoSort('alpha')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">📋 Alphabetisch A-Z</button>
                     <button onclick="autoSort('new')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">⭐ Neue Sorten zuerst</button>
                     <button onclick="autoSort('tornado')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">🌪️ Tornado zuerst</button>
@@ -427,6 +431,7 @@
         </div>
     </div>
 </div>
+
 <!-- MANUELLER METRIK-EDIT MODAL -->
 <div id="manual-metrics-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]">
     <div class="bg-zinc-900 rounded-3xl p-8 max-w-md w-full mx-4 modal">
@@ -448,12 +453,16 @@
         </div>
     </div>
 </div>
-<!-- EDIT MODAL -->
+
+<!-- EDIT MODAL (Bulk + Einzel-Edit) -->
 <div id="edit-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]"></div>
+
 <!-- ORDER MODAL -->
 <div id="order-modal-container"></div>
+
 <!-- TOAST -->
 <div id="toast-container" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[99999] flex flex-col gap-3"></div>
+
 <script>
 // ====================== FIREBASE CONFIG ======================
 const firebaseConfig = {
@@ -648,7 +657,7 @@ async function deleteProduct(id) {
         showToast('❌ Fehler beim Löschen: ' + e.message, 'error');
     }
 }
-// ====================== BULK-EDIT ======================
+// ====================== BULK-EDIT (mit Beschreibung + Bild löschen) ======================
 function toggleSelectAllProducts(cb) {
     document.querySelectorAll('.product-checkbox').forEach(ch => ch.checked = cb.checked);
 }
@@ -663,14 +672,16 @@ function openBulkEditModal() {
     }
     const html = `
     <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]">
-        <div class="bg-zinc-900 rounded-3xl p-8 max-w-lg w-full mx-4 modal">
+        <div class="bg-zinc-900 rounded-3xl p-8 max-w-2xl w-full mx-4 modal">
             <h3 class="text-3xl font-bold mb-6 neon">Bulk-Edit (${selectedProductIds.length} Produkte)</h3>
             <div class="space-y-6">
                 <div><label class="block text-sm text-gray-400 mb-2">Neuer Preis (€)</label><input id="bulk-price" type="number" step="0.01" placeholder="z.B. 7.99" class="w-full bg-zinc-800 rounded-2xl px-6 py-4"></div>
                 <div><label class="block text-sm text-gray-400 mb-2">Lagerbestand</label><input id="bulk-stock" type="number" placeholder="z.B. 50" class="w-full bg-zinc-800 rounded-2xl px-6 py-4"></div>
-                <div class="flex items-center gap-4">
+                <div><label class="block text-sm text-gray-400 mb-2">Beschreibung (überschreibt alle ausgewählten)</label><textarea id="bulk-description" rows="4" placeholder="Neue Beschreibung für alle..." class="w-full bg-zinc-800 border border-cyan-400/30 rounded-3xl px-6 py-4"></textarea></div>
+                <div class="flex items-center gap-6">
                     <label class="flex items-center gap-3"><input id="bulk-available" type="checkbox" class="w-5 h-5 accent-cyan-400"> Verfügbar</label>
                     <label class="flex items-center gap-3"><input id="bulk-new" type="checkbox" class="w-5 h-5 accent-lime-400"> Neue Sorte</label>
+                    <label class="flex items-center gap-3"><input id="bulk-delete-image" type="checkbox" class="w-5 h-5 accent-red-400"> Bild bei ALLEN löschen</label>
                 </div>
                 <div><label class="block text-sm text-gray-400 mb-2">Kategorie</label><select id="bulk-category" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4"></select></div>
             </div>
@@ -686,24 +697,28 @@ function openBulkEditModal() {
     const sel = document.getElementById('bulk-category');
     if (sel) sel.innerHTML = '<option value="">Kategorie nicht ändern</option>' + sel.innerHTML;
 }
-function closeBulkModal() {
-    document.getElementById('edit-modal').classList.add('hidden');
-}
 async function executeBulkEdit() {
     const price = document.getElementById('bulk-price').value ? parseFloat(document.getElementById('bulk-price').value) : null;
     const stock = document.getElementById('bulk-stock').value ? parseInt(document.getElementById('bulk-stock').value) : null;
+    const description = document.getElementById('bulk-description').value.trim() || null;
     const available = document.getElementById('bulk-available').checked ? true : null;
     const isNew = document.getElementById('bulk-new').checked ? true : null;
+    const deleteImage = document.getElementById('bulk-delete-image').checked;
     const category = document.getElementById('bulk-category').value || null;
+
     const batch = db.batch();
     let changed = 0;
+
     for (let id of selectedProductIds) {
         const updateData = {};
         if (price !== null) updateData.price = price;
         if (stock !== null) updateData.stock = stock;
+        if (description !== null) updateData.description = description;
         if (available !== null) updateData.available = available;
         if (isNew !== null) updateData.isNew = isNew;
         if (category) updateData.category = category;
+        if (deleteImage) updateData.image = null;
+
         if (Object.keys(updateData).length > 0) {
             batch.update(db.collection('products').doc(id), updateData);
             changed++;
@@ -712,206 +727,70 @@ async function executeBulkEdit() {
     await batch.commit();
     await logAction("bulk_edit", "", { count: changed });
     closeBulkModal();
-    showToast(`✅ ${changed} Produkte erfolgreich bearbeitet!`);
+    showToast(`✅ ${changed} Produkte erfolgreich bearbeitet! (Beschreibung + Bild-Löschung)`);
     loadProducts();
 }
-// ====================== AUTOMATISCHE KATEGORIEZUWEISUNG ======================
-async function enforceCategories() {
-    if (!confirm('Alle Produkte automatisch kategorisieren?\n\n• Neue Sorten → „Neue Sorten“\n• Alle anderen → „Normale Sorten“\n\nDas überschreibt bestehende Kategorien!')) return;
-    const snap = await db.collection('products').get();
-    const batch = db.batch();
-    let changed = 0;
-    snap.forEach(doc => {
-        const p = doc.data();
-        const targetCat = p.isNew === true ? "Neue Sorten" : "Normale Sorten";
-        if (p.category !== targetCat) {
-            batch.update(doc.ref, { category: targetCat });
-            changed++;
-        }
-    });
-    if (changed > 0) {
-        await batch.commit();
-        await logAction("auto_category_assignment", "", { changed });
-        showToast(`✅ ${changed} Produkte automatisch kategorisiert!`, "success");
-    } else {
-        showToast("✅ Alles war schon korrekt");
-    }
-    loadProducts();
+function closeBulkModal() {
+    document.getElementById('edit-modal').classList.add('hidden');
 }
-// ====================== BESTELL-EXPORT MIT TRACKING-LINKS ======================
-async function exportOrdersWithTracking() {
-    const snapshot = await db.collection("orders").orderBy("date", "desc").get();
-    if (snapshot.empty) return alert("Keine Bestellungen!");
-    let csv = "Bestellnr.,Datum,Kunde,Gesamt,Status,Tracking-Nummer,Tracking-Link\n";
-    snapshot.forEach(doc => {
-        const o = doc.data();
-        const dateStr = o.date ? o.date.toDate().toISOString().slice(0,19).replace('T',' ') : '';
-        const trackingLink = o.trackingNumber && o.carrier === "DHL"
-            ? `https://www.dhl.de/de/privatkunden/dhl-sendungsverfolgung.html?piececode=${encodeURIComponent(o.trackingNumber)}`
-            : (o.trackingNumber || '');
-        const row = [
-            `"${o.orderNumber || ''}"`,
-            `"${dateStr}"`,
-            `"${o.userEmail || ''}"`,
-            o.total || 0,
-            `"${o.status || ''}"`,
-            `"${o.trackingNumber || ''}"`,
-            `"${trackingLink}"`
-        ].join(",");
-        csv += row + "\n";
+// ====================== SHOP VORSCHAU ======================
+function openShopPreview() {
+    window.open('index.html?preview=1', '_blank');
+}
+// ====================== LOYALTY HISTORY EXPORT ======================
+async function exportLoyaltyHistory() {
+    const usersSnap = await db.collection('users').where('redeemedLoyaltyCodes', '!=', []).get();
+    let csv = "E-Mail,Benutzername,Redeemed Codes,Anzahl\n";
+    usersSnap.forEach(doc => {
+        const u = doc.data();
+        const codes = (u.redeemedLoyaltyCodes || []).join(' | ');
+        csv += `"${u.email || ''}","${u.username || ''}","${codes}",${(u.redeemedLoyaltyCodes || []).length}\n`;
     });
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `wavevapes_bestellungen_mit_tracking_${new Date().toISOString().slice(0,10)}.csv`;
+    link.download = `wavevapes_loyalty_history_${new Date().toISOString().slice(0,10)}.csv`;
     link.click();
-    showToast("✅ Export mit Tracking-Links heruntergeladen!", "success");
-    await logAction("orders_export_with_tracking");
+    showToast("✅ Loyalty History als CSV exportiert!", "success");
 }
-// ====================== EDIT MODAL ======================
-async function openEditModal(id) {
-    currentEditId = id;
-    removeCurrentImage = false;
-    const doc = await db.collection('products').doc(id).get();
-    const p = doc.data();
-    const html = `
-    <div class="bg-zinc-900 rounded-3xl p-8 max-w-6xl w-full mx-4 modal max-h-[95vh] overflow-y-auto">
-        <div class="flex justify-between items-center mb-8">
-            <h3 class="text-3xl font-bold neon">Produkt bearbeiten</h3>
-            <button onclick="closeEditModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
-        </div>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div>
-                <div id="preview-image" class="bg-zinc-950 border border-white/10 rounded-3xl overflow-hidden h-96 flex items-center justify-center">
-                    ${p.image ? `<img src="${p.image}" class="max-h-full w-full object-contain" loading="lazy">` : `<div class="text-center text-gray-500"><i class="fa-solid fa-image text-6xl mb-4"></i><br>Kein Bild</div>`}
-                </div>
-                ${p.image ? `<button onclick="removeImageInEdit()" class="mt-4 w-full bg-red-600/80 hover:bg-red-600 text-white py-3 rounded-2xl text-sm font-medium flex items-center justify-center gap-2">Bild entfernen</button>` : ''}
-            </div>
-            <div class="space-y-6">
-                <input id="edit-name" value="${p.name}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 text-lg">
-                <div class="grid grid-cols-2 gap-4">
-                    <input id="edit-price" type="number" step="0.01" value="${p.price}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
-                    <input id="edit-original-price" type="number" step="0.01" value="${p.originalPrice || ''}" placeholder="Alter Preis (Strikethrough)" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
-                </div>
-                <input id="edit-stock" type="number" value="${p.stock}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
-                <select id="edit-category-select" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4"></select>
-                <div class="flex items-center gap-6">
-                    <div class="flex items-center gap-3"><input id="edit-new" type="checkbox" ${p.isNew ? 'checked' : ''}><label>Neue Sorte</label></div>
-                    <div class="flex items-center gap-3"><input id="edit-unavailable" type="checkbox" ${p.available === false ? 'checked' : ''}><label>Nicht verfügbar</label></div>
-                    <div class="flex items-center gap-3"><input id="edit-has-nicotine" type="checkbox" ${p.hasNicotine !== false ? 'checked' : ''}><label>Nikotin enthalten</label></div>
-                </div>
-                <div><label class="text-xs text-gray-400 block mb-2">Produktbeschreibung</label><textarea id="edit-description" rows="8" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-3xl px-6 py-4">${p.description || ''}</textarea></div>
-                <div id="edit-dropzone" class="border-2 border-dashed border-cyan-400/50 hover:border-cyan-400 rounded-3xl p-8 text-center cursor-pointer">
-                    <i class="fa-solid fa-cloud-arrow-up text-4xl mb-3 text-cyan-400"></i>
-                    <p class="text-cyan-300">Neues Bild hochladen (klicken oder Drag & Drop)</p>
+// ====================== LOYALTY HISTORY MODAL (mit Export) ======================
+async function showLoyaltyHistory() {
+    const modalHTML = `
+    <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]">
+        <div class="bg-zinc-900 rounded-3xl p-8 max-w-3xl w-full mx-4 modal max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-3xl font-bold neon">Loyalty-Codes History</h3>
+                <div class="flex gap-3">
+                    <button onclick="exportLoyaltyHistory()" class="bg-emerald-600 hover:bg-emerald-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2">
+                        📤 Als CSV exportieren
+                    </button>
+                    <button onclick="closeEditModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
                 </div>
             </div>
-        </div>
-        <div class="flex gap-4 mt-10">
-            <button onclick="saveEdit()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-5 rounded-3xl font-bold">Speichern</button>
-            <button onclick="closeEditModal()" class="flex-1 bg-zinc-700 hover:bg-zinc-600 py-5 rounded-3xl">Abbrechen</button>
+            <div id="loyalty-history-list" class="space-y-4"></div>
         </div>
     </div>`;
-    document.getElementById('edit-modal').innerHTML = html;
+    document.getElementById('edit-modal').innerHTML = modalHTML;
     document.getElementById('edit-modal').classList.remove('hidden');
-    populateCategorySelects();
-    setTimeout(() => {
-        const select = document.getElementById('edit-category-select');
-        if (select) select.value = p.category || '';
-    }, 100);
-    const dropzone = document.getElementById('edit-dropzone');
-    dropzone.onclick = () => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'image/*';
-        input.onchange = e => {
-            selectedFile = e.target.files[0];
-            removeCurrentImage = false;
-            const url = URL.createObjectURL(selectedFile);
-            document.getElementById('preview-image').innerHTML = `<img src="${url}" class="max-h-full w-full object-contain">`;
-        };
-        input.click();
-    };
-}
-function removeImageInEdit() {
-    removeCurrentImage = true;
-    document.getElementById('preview-image').innerHTML = `<div class="text-center text-red-400"><i class="fa-solid fa-trash text-6xl mb-4"></i><br>Bild wird beim Speichern entfernt</div>`;
-}
-function closeEditModal() {
-    document.getElementById('edit-modal').classList.add('hidden');
-    selectedFile = null;
-    removeCurrentImage = false;
-}
-async function saveEdit() {
-    if (!currentEditId) return;
-    const name = document.getElementById('edit-name').value;
-    const price = parseFloat(document.getElementById('edit-price').value);
-    const originalPrice = parseFloat(document.getElementById('edit-original-price').value) || null;
-    const stock = parseInt(document.getElementById('edit-stock').value);
-    const description = document.getElementById('edit-description').value;
-    const isNew = document.getElementById('edit-new').checked;
-    const unavailable = document.getElementById('edit-unavailable').checked;
-    const hasNicotine = document.getElementById('edit-has-nicotine').checked;
-    const categorySelect = document.getElementById('edit-category-select');
-    const category = categorySelect && categorySelect.value ? categorySelect.value : (isNew ? "Neue Sorten" : "Normale Sorten");
-    let data = { name, price, originalPrice, stock, category, description: description || "", isNew, available: !unavailable, hasNicotine };
-    if (removeCurrentImage && !selectedFile) data.image = null;
-    else if (selectedFile) {
-        const formData = new FormData();
-        formData.append("file", selectedFile);
-        formData.append("upload_preset", "wavevapes");
-        const res = await fetch("https://api.cloudinary.com/v1_1/dbbkmjsr5/image/upload", { method: "POST", body: formData });
-        const json = await res.json();
-        if (json.secure_url) data.image = json.secure_url;
-    }
-    await db.collection('products').doc(currentEditId).update(data);
-    await logAction("product_updated", currentEditId, { name, category });
-    closeEditModal();
-    showToast('✅ Produkt gespeichert! Kategorie manuell zugewiesen.');
-}
-// ====================== NEUES PRODUKT ======================
-document.getElementById('add-form').addEventListener('submit', async e => {
-    e.preventDefault();
-    const name = document.getElementById('prod-name').value.trim();
-    const price = parseFloat(document.getElementById('prod-price').value);
-    const originalPrice = parseFloat(document.getElementById('prod-original-price').value) || null;
-    const stock = parseInt(document.getElementById('prod-stock').value);
-    const isNew = document.getElementById('prod-new').checked;
-    const unavailable = document.getElementById('prod-unavailable').checked;
-    const hasNicotine = document.getElementById('prod-has-nicotine').checked;
-    const description = document.getElementById('prod-description').value.trim();
-    const categorySelect = document.getElementById('prod-category');
-    const category = categorySelect && categorySelect.value ? categorySelect.value : (isNew ? "Neue Sorten" : "Normale Sorten");
-    const docRef = await db.collection('products').add({
-        name, price, originalPrice, stock, category, isNew: isNew || false, available: !unavailable, hasNicotine, description: description || "", sold: 0
+    const listEl = document.getElementById('loyalty-history-list');
+    listEl.innerHTML = `<p class="text-center py-12 text-gray-400">Lade Loyalty-History...</p>`;
+    const usersSnap = await db.collection('users').where('redeemedLoyaltyCodes', '!=', []).get();
+    let html = '';
+    usersSnap.forEach(doc => {
+        const u = doc.data();
+        if (!u.redeemedLoyaltyCodes || u.redeemedLoyaltyCodes.length === 0) return;
+        html += `
+            <div class="bg-zinc-950 border border-violet-400/30 rounded-3xl p-6">
+                <div class="font-medium mb-3">${u.username || u.email}</div>
+                <div class="flex flex-wrap gap-2">
+                    ${u.redeemedLoyaltyCodes.map(code => `
+                        <span class="bg-violet-600 text-white text-xs px-4 py-1.5 rounded-2xl font-mono">${code}</span>
+                    `).join('')}
+                </div>
+            </div>`;
     });
-    if (selectedFile) {
-        const formData = new FormData();
-        formData.append("file", selectedFile);
-        formData.append("upload_preset", "wavevapes");
-        const res = await fetch("https://api.cloudinary.com/v1_1/dbbkmjsr5/image/upload", { method: "POST", body: formData });
-        const json = await res.json();
-        if (json.secure_url) await docRef.update({ image: json.secure_url });
-    }
-    await logAction("product_created", docRef.id, { name, category });
-    e.target.reset();
-    document.getElementById('preview-thumb').classList.add('hidden');
-    selectedFile = null;
-    showToast('✅ Produkt erfolgreich angelegt!');
-});
-const dropzone = document.getElementById('dropzone');
-dropzone.addEventListener('click', () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = e => {
-        selectedFile = e.target.files[0];
-        const url = URL.createObjectURL(selectedFile);
-        document.getElementById('preview-thumb').src = url;
-        document.getElementById('preview-thumb').classList.remove('hidden');
-    };
-    input.click();
-});
+    listEl.innerHTML = html || `<p class="text-center py-12 text-gray-400">Noch keine Loyalty-Codes eingelöst.</p>`;
+}
 // ====================== CSV PRODUKTE ======================
 async function exportProductsToCSV() {
     const snapshot = await db.collection("products").get();
@@ -1323,39 +1202,6 @@ async function deleteCoupon(id) {
         await logAction("coupon_deleted", id);
         loadCoupons();
     }
-}
-// ====================== LOYALTY HISTORY ======================
-async function showLoyaltyHistory() {
-    const modalHTML = `
-    <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]">
-        <div class="bg-zinc-900 rounded-3xl p-8 max-w-3xl w-full mx-4 modal max-h-[90vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="text-3xl font-bold neon">Loyalty-Codes History</h3>
-                <button onclick="closeEditModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
-            </div>
-            <div id="loyalty-history-list" class="space-y-4"></div>
-        </div>
-    </div>`;
-    document.getElementById('edit-modal').innerHTML = modalHTML;
-    document.getElementById('edit-modal').classList.remove('hidden');
-    const listEl = document.getElementById('loyalty-history-list');
-    listEl.innerHTML = `<p class="text-center py-12 text-gray-400">Lade Loyalty-History...</p>`;
-    const usersSnap = await db.collection('users').where('redeemedLoyaltyCodes', '!=', []).get();
-    let html = '';
-    usersSnap.forEach(doc => {
-        const u = doc.data();
-        if (!u.redeemedLoyaltyCodes || u.redeemedLoyaltyCodes.length === 0) return;
-        html += `
-            <div class="bg-zinc-950 border border-violet-400/30 rounded-3xl p-6">
-                <div class="font-medium mb-3">${u.username || u.email}</div>
-                <div class="flex flex-wrap gap-2">
-                    ${u.redeemedLoyaltyCodes.map(code => `
-                        <span class="bg-violet-600 text-white text-xs px-4 py-1.5 rounded-2xl font-mono">${code}</span>
-                    `).join('')}
-                </div>
-            </div>`;
-    });
-    listEl.innerHTML = html || `<p class="text-center py-12 text-gray-400">Noch keine Loyalty-Codes eingelöst.</p>`;
 }
 // ====================== BESTELLUNGEN ======================
 function loadOrders() {

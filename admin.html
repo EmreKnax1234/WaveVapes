@@ -273,13 +273,11 @@
                 </div>
             </div>
         </div>
-        <!-- TAB 5: ANALYTICS (CLEAN MIT 2 LINENCHARTS) -->
+        <!-- TAB 5: ANALYTICS -->
         <div id="tab-content-5" class="hidden">
             <h2 class="text-4xl font-bold tracking-tighter neon mb-8 flex items-center gap-3">
                 <i class="fa-solid fa-chart-line"></i> Analytics Dashboard
             </h2>
-
-            <!-- KEY METRICS -->
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
                 <div class="metric-card p-8 rounded-3xl text-center">
                     <p class="text-gray-400 text-sm">Gesamtumsatz (30 Tage)</p>
@@ -298,33 +296,25 @@
                     <p id="metric-avg" class="text-5xl font-bold text-amber-400 mt-2">0 €</p>
                 </div>
             </div>
-
             <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                <!-- LINENCHART 1: Umsatz letzte 30 Tage -->
                 <div class="card p-8">
                     <h3 class="text-xl font-bold mb-6 flex items-center gap-2"><i class="fa-solid fa-euro-sign"></i> Umsatz letzte 30 Tage</h3>
                     <div id="revenue-chart-container" class="h-80">
                         <canvas id="revenueChart"></canvas>
                     </div>
                 </div>
-
-                <!-- LINENCHART 2: Bestellungen pro Tag (wie gewünscht) -->
                 <div class="card p-8">
                     <h3 class="text-xl font-bold mb-6 flex items-center gap-2"><i class="fa-solid fa-cart-shopping"></i> Bestellungen pro Tag</h3>
                     <div id="daily-orders-chart-container" class="h-80">
                         <canvas id="dailyOrdersChart"></canvas>
                     </div>
                 </div>
-
-                <!-- Top 10 Produkte -->
                 <div class="card p-8">
                     <h3 class="text-xl font-bold mb-6 flex items-center gap-2"><i class="fa-solid fa-trophy"></i> Top 10 Produkte</h3>
                     <div id="top-products-chart-container" class="h-80">
                         <canvas id="topProductsChart"></canvas>
                     </div>
                 </div>
-
-                <!-- Top Referrer -->
                 <div class="card p-8">
                     <h3 class="text-xl font-bold mb-6 flex items-center gap-2"><i class="fa-solid fa-share-nodes"></i> Top Referrer</h3>
                     <div id="referral-chart-container" class="h-80">
@@ -332,9 +322,7 @@
                     </div>
                 </div>
             </div>
-
-            <button onclick="generatePDFReport()"
-                    class="mt-12 w-full bg-gradient-to-r from-amber-400 to-orange-500 text-black font-bold py-7 rounded-3xl text-2xl flex items-center justify-center gap-4 hover:scale-105 transition-all shadow-xl">
+            <button onclick="generatePDFReport()" class="mt-12 w-full bg-gradient-to-r from-amber-400 to-orange-500 text-black font-bold py-7 rounded-3xl text-2xl flex items-center justify-center gap-4 hover:scale-105 transition-all shadow-xl">
                 <i class="fa-solid fa-file-pdf text-3xl"></i>
                 Monatsbericht als PDF herunterladen
             </button>
@@ -1228,12 +1216,13 @@ async function quickStatus(id, status) {
     await logAction("order_status_changed", id, { status });
     showToast(`Status auf „${status}“ gesetzt`);
 }
-// ====================== ORDER DETAIL MODAL ======================
+// ====================== ORDER DETAIL MODAL (MIT INTERNEN NOTIZEN) ======================
 async function showOrderModal(orderId) {
     currentOrderId = orderId;
     const doc = await db.collection('orders').doc(orderId).get();
     const order = doc.data();
     const date = order.date ? order.date.toDate().toLocaleString('de-DE') : '—';
+    
     let itemsHTML = '';
     order.items.forEach(item => {
         itemsHTML += `
@@ -1242,6 +1231,7 @@ async function showOrderModal(orderId) {
                 <span>${(item.price * item.qty).toFixed(2)} €</span>
             </div>`;
     });
+
     const modalHTML = `
     <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]">
         <div class="bg-zinc-900 rounded-3xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto modal">
@@ -1257,6 +1247,19 @@ async function showOrderModal(orderId) {
                 <div><strong>Adresse:</strong><br>${order.address.street}<br>${order.address.zip} ${order.address.city}</div>
                 <div><strong>Artikel</strong>${itemsHTML}</div>
                 <div class="text-2xl font-bold">Gesamt: <span class="text-emerald-400">${order.total.toFixed(2)} €</span></div>
+                
+                <!-- INTERNEN NOTIZEN -->
+                <div class="mt-6">
+                    <label class="block text-sm font-medium text-gray-400 mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-note-sticky text-amber-400"></i>
+                        Interne Notizen (nur für dich sichtbar)
+                    </label>
+                    <textarea id="modal-internal-notes" 
+                              rows="4" 
+                              placeholder="z. B. Kunde hat schon überwiesen, IBAN-Ende 5812, Betrag passt..."
+                              class="w-full bg-zinc-800 border border-amber-400/30 focus:border-amber-400 rounded-2xl px-5 py-3 text-sm resize-y min-h-[100px]"></textarea>
+                </div>
+
                 <div class="bg-zinc-950 -mx-8 -mb-8 p-8 rounded-b-3xl border-t border-white/10">
                     <h4 class="font-bold mb-6 text-cyan-400 flex items-center gap-2"><i class="fa-solid fa-truck"></i> Admin-Steuerung</h4>
                     <select id="modal-status" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 mb-6">
@@ -1266,19 +1269,21 @@ async function showOrderModal(orderId) {
                         <option value="Zugestellt" ${order.status === "Zugestellt" ? 'selected' : ''}>Zugestellt</option>
                         <option value="Storniert" ${order.status === "Storniert" ? 'selected' : ''}>Storniert</option>
                     </select>
-                    <div class="grid grid-cols-2 gap-6">
-                        <div><label class="text-xs block mb-2 text-gray-400">Versanddienst</label>
+                    <div class="grid grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <label class="text-xs block mb-2 text-gray-400">Versanddienst</label>
                             <select id="modal-carrier" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
                                 <option value="DHL" ${order.carrier === "DHL" ? 'selected' : ''}>DHL</option>
                                 <option value="Hermes" ${order.carrier === "Hermes" ? 'selected' : ''}>Hermes</option>
                                 <option value="DPD" ${order.carrier === "DPD" ? 'selected' : ''}>DPD</option>
                             </select>
                         </div>
-                        <div><label class="text-xs block mb-2 text-gray-400">Tracking-Nummer</label>
+                        <div>
+                            <label class="text-xs block mb-2 text-gray-400">Tracking-Nummer</label>
                             <input id="modal-tracking" value="${order.trackingNumber || ''}" placeholder="Tracking-Nummer" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
                         </div>
                     </div>
-                    <div class="flex gap-4 mt-8">
+                    <div class="flex gap-4">
                         <button onclick="saveOrderChanges()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-5 rounded-3xl font-bold">Änderungen speichern</button>
                         <button onclick="deleteOrder()" class="flex-1 bg-red-600 hover:bg-red-500 py-5 rounded-3xl font-bold">Bestellung löschen</button>
                     </div>
@@ -1286,20 +1291,42 @@ async function showOrderModal(orderId) {
             </div>
         </div>
     </div>`;
+
     document.getElementById('order-modal-container').innerHTML = modalHTML;
+
+    // Notizen laden
+    document.getElementById('modal-internal-notes').value = order.internalNotes || '';
 }
 function closeOrderModal() {
     document.getElementById('order-modal-container').innerHTML = '';
 }
+// ====================== SAVE ORDER CHANGES (MIT NOTIZEN) ======================
 async function saveOrderChanges() {
     const status = document.getElementById('modal-status').value;
     const carrier = document.getElementById('modal-carrier').value;
     const tracking = document.getElementById('modal-tracking').value.trim();
+    const internalNotes = document.getElementById('modal-internal-notes').value.trim();
+
     await handleStockOnStatusChange(currentOrderId, status);
-    await db.collection('orders').doc(currentOrderId).update({ status, carrier, trackingNumber: tracking });
+    
+    const updateData = {
+        status,
+        carrier,
+        trackingNumber: tracking || firebase.firestore.FieldValue.delete()
+    };
+    
+    if (internalNotes) {
+        updateData.internalNotes = internalNotes;
+    } else {
+        updateData.internalNotes = firebase.firestore.FieldValue.delete();
+    }
+
+    await db.collection('orders').doc(currentOrderId).update(updateData);
+    
     if (status === "Wird bearbeitet") await awardLoyaltyIfProcessed(currentOrderId);
-    await logAction("order_updated", currentOrderId, { status });
-    showToast('Bestellung aktualisiert');
+    await logAction("order_updated", currentOrderId, { status, hasNotes: !!internalNotes });
+    
+    showToast('Bestellung + interne Notizen aktualisiert');
     closeOrderModal();
 }
 async function deleteOrder() {
@@ -1416,41 +1443,32 @@ async function resetUserPoints(uid) {
         showToast("Fehler: " + e.message, "error");
     }
 }
-// ====================== ANALYTICS (2 LINENCHARTS) ======================
+// ====================== ANALYTICS ======================
 async function loadAnalytics() {
     const thirtyDaysAgo = firebase.firestore.Timestamp.fromDate(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
     const ordersSnap = await db.collection("orders").where("date", ">=", thirtyDaysAgo).get();
-
     let dailyRevenue = {};
     let dailyOrdersCount = {};
     let totalRevenue = 0;
     let totalOrders = 0;
     let productMap = new Map();
     let userMap = new Map();
-
     ordersSnap.forEach(doc => {
         const o = doc.data();
         const day = o.date.toDate().toISOString().slice(0,10);
-
         dailyRevenue[day] = (dailyRevenue[day] || 0) + o.total;
         dailyOrdersCount[day] = (dailyOrdersCount[day] || 0) + 1;
         totalRevenue += o.total;
         totalOrders++;
-
         o.items.forEach(item => {
             productMap.set(item.name, (productMap.get(item.name) || 0) + item.qty);
         });
-
         if (o.userEmail) userMap.set(o.userEmail, (userMap.get(o.userEmail) || 0) + 1);
     });
-
-    // Key Metrics
     document.getElementById('metric-revenue').textContent = totalRevenue.toFixed(0) + ' €';
     document.getElementById('metric-orders').textContent = totalOrders;
     document.getElementById('metric-users').textContent = userMap.size;
     document.getElementById('metric-avg').textContent = totalOrders > 0 ? (totalRevenue / totalOrders).toFixed(2) + ' €' : '0 €';
-
-    // LINENCHART 1: Umsatz
     const labels = Object.keys(dailyRevenue).sort();
     const revenueData = labels.map(d => dailyRevenue[d]);
     if (revenueChart) revenueChart.destroy();
@@ -1459,8 +1477,6 @@ async function loadAnalytics() {
         data: { labels, datasets: [{ label: "Umsatz €", data: revenueData, borderColor: "#67e8f9", tension: 0.4, fill: true, backgroundColor: "rgba(103,232,249,0.15)" }] },
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
     });
-
-    // LINENCHART 2: Bestellungen pro Tag (wie gewünscht)
     const ordersData = labels.map(d => dailyOrdersCount[d] || 0);
     if (dailyOrdersChart) dailyOrdersChart.destroy();
     dailyOrdersChart = new Chart(document.getElementById("dailyOrdersChart"), {
@@ -1468,8 +1484,6 @@ async function loadAnalytics() {
         data: { labels, datasets: [{ label: "Bestellungen", data: ordersData, borderColor: "#a78bfa", tension: 0.4, fill: true, backgroundColor: "rgba(167,139,250,0.15)" }] },
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
     });
-
-    // Top Produkte Pie
     const prodLabels = Array.from(productMap.keys()).slice(0,10);
     const prodData = prodLabels.map(name => productMap.get(name));
     if (topProductsChart) topProductsChart.destroy();
@@ -1477,8 +1491,6 @@ async function loadAnalytics() {
         type: "pie",
         data: { labels: prodLabels, datasets: [{ data: prodData, backgroundColor: ["#67e8f9","#a78bfa","#f472b6","#fb923c","#4ade80","#22d3ee","#eab308","#ec4899","#14b8a6","#8b5cf6"] }] }
     });
-
-    // Top Referrer Bar
     const usersSnap = await db.collection("users").orderBy("referralCount", "desc").limit(10).get();
     const refLabels = [], refData = [];
     usersSnap.forEach(doc => {
@@ -1662,7 +1674,7 @@ async function resetAllStatistics() {
         showToast("Fehler beim Zurücksetzen: " + e.message, "error");
     }
 }
-// ====================== SORTIERUNG + AUTO-SORT ======================
+// ====================== SORTIERUNG ======================
 async function loadProductOrder() {
     const doc = await db.collection('settings').doc('product_order').get();
     productOrder = doc.exists ? (doc.data().order || []) : [];

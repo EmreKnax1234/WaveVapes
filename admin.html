@@ -115,7 +115,7 @@
             <div class="card p-8 mb-12 bg-red-950/30 border border-red-500/50">
                 <button onclick="resetAllStatistics()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-5 rounded-3xl text-xl flex items-center justify-center gap-3"><i class="fa-solid fa-warning"></i> ALLE STATISTIKEN ZURÜCKSETZEN</button>
             </div>
-            <!-- NEUES PRODUKT HINZUFÜGEN – VOLLSTÄNDIG MIT BUNDLE -->
+            <!-- NEUES PRODUKT HINZUFÜGEN – KOMPLETT MIT SUBMIT -->
             <div class="card p-8 mb-12">
                 <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><i class="fa-solid fa-plus"></i> Neues Produkt hinzufügen</h2>
                 <form id="add-form" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -298,7 +298,7 @@
             </div>
         </div>
         
-        <!-- TAB 4: GUTSCHEINE + LOYALTY HISTORY -->
+        <!-- TAB 4: GUTSCHEINE -->
         <div id="tab-content-4" class="hidden">
             <div class="card p-8">
                 <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><i class="fa-solid fa-ticket"></i> Gutschein-Manager + Nutzungs-History</h2>
@@ -440,7 +440,7 @@
             </div>
         </div>
         
-        <!-- TAB 8: SORTIERUNG – DEINE NEUE LOGIK (MANUELLE SORTIERUNG IST IMMER DEFAULT) -->
+        <!-- TAB 8: SORTIERUNG -->
         <div id="tab-content-8" class="hidden">
             <div class="card p-8">
                 <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
@@ -453,7 +453,6 @@
                     <select id="sort-category-filter" onchange="changeSortCategoryFilter()" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-4 text-base">
                         <option value="Alle">Alle Produkte (globale Sortierung)</option>
                     </select>
-                    <p class="text-xs text-emerald-400 mt-3">Wähle eine Kategorie → Liste zeigt nur diese Produkte → Drag & Drop → Speichern ersetzt nur die Reihenfolge innerhalb dieser Kategorie (andere bleiben unverändert)</p>
                 </div>
                 <div class="flex flex-wrap gap-3 mb-8">
                     <button onclick="openShopPreview()" class="px-8 py-4 bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold rounded-3xl text-base transition flex items-center gap-3 shadow-xl">👀 Vorschau im Shop öffnen (neuer Tab)</button>
@@ -462,7 +461,7 @@
                     <button onclick="autoSort('tornado')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">🌪️ Tornado zuerst</button>
                     <button onclick="autoSort('available')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">✅ Verfügbare zuerst</button>
                     <button onclick="autoSort('stock')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">📦 Lagerbestand (hoch zuerst)</button>
-                    <button onclick="autoSortPriority()" class="px-6 py-3 bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold rounded-2xl text-sm transition">🔄 AUTO-PRIORITÄT<br><span class="text-xs font-normal">NEW (verfügbar) → Normal (verfügbar) → Vapes → ALLE nicht verfügbar (unten)</span></button>
+                    <button onclick="autoSortPriority()" class="px-6 py-3 bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold rounded-2xl text-sm transition">🔄 AUTO-PRIORITÄT</button>
                 </div>
                 <div id="sort-list" class="space-y-3 min-h-[500px] bg-zinc-950 rounded-3xl p-6"></div>
                 <button onclick="saveProductOrder()" class="mt-10 w-full bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-6 rounded-3xl text-xl hover:scale-105 transition">✅ Sortierung speichern & live übernehmen</button>
@@ -688,7 +687,6 @@ async function openEditModal(id) {
             <input id="edit-stock" type="number" value="${p.stock}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 mb-4">
             <select id="edit-category" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 mb-4"></select>
             
-            <!-- BUNDLE-FELDER IM EDIT MODAL -->
             <div class="flex items-center gap-3 mb-4">
                 <input id="edit-is-bundle" type="checkbox" ${p.isBundle ? 'checked' : ''} class="w-5 h-5 accent-purple-400">
                 <label class="font-medium">Ist Bundle</label>
@@ -747,6 +745,58 @@ async function saveEditProduct(id) {
     showToast('✅ Produkt gespeichert');
     loadProducts();
 }
+
+// ====================== ADD PRODUCT FORM SUBMIT ======================
+document.getElementById('add-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const name = document.getElementById('prod-name').value.trim();
+    const price = parseFloat(document.getElementById('prod-price').value);
+    const originalPrice = parseFloat(document.getElementById('prod-original-price').value) || null;
+    const stock = parseInt(document.getElementById('prod-stock').value);
+    const category = document.getElementById('prod-category').value;
+    const isNew = document.getElementById('prod-new').checked;
+    const available = !document.getElementById('prod-unavailable').checked;
+    const hasNicotine = document.getElementById('prod-has-nicotine').checked;
+    const description = document.getElementById('prod-description').value.trim();
+    
+    const isBundle = document.getElementById('prod-is-bundle').checked;
+    const bundleNumChoices = parseInt(document.getElementById('prod-bundle-num').value) || 3;
+    const bundleFreeExtra = document.getElementById('prod-bundle-free').checked;
+    
+    if (!name || isNaN(price) || isNaN(stock)) {
+        alert("Name, Preis und Lagerbestand sind Pflichtfelder!");
+        return;
+    }
+    
+    try {
+        await db.collection('products').add({
+            name,
+            price,
+            originalPrice,
+            stock,
+            category,
+            isNew,
+            available,
+            hasNicotine,
+            description,
+            image: null,
+            sold: 0,
+            isBundle,
+            bundleNumChoices,
+            bundleFreeExtra
+        });
+        
+        showToast('✅ Neues Produkt erfolgreich hinzugefügt!', 'success');
+        document.getElementById('add-form').reset();
+        document.getElementById('bundle-options').classList.add('hidden');
+        
+        loadProducts();
+        loadProductOrder(); // ← Sortierung bleibt erhalten
+    } catch (err) {
+        showToast('❌ Fehler beim Hinzufügen: ' + err.message, 'error');
+    }
+});
 
 // ====================== BUNDLE TOGGLE IM ADD-FORM ======================
 document.addEventListener('DOMContentLoaded', () => {
@@ -1894,7 +1944,7 @@ async function resetAllStatistics() {
     }
 }
 
-// ====================== SORTIERUNG – DEINE NEUE LOGIK (MANUELLE SORTIERUNG IMMER PRIORISIERT) ======================
+// ====================== SORTIERUNG ======================
 async function loadProductOrder() {
     const doc = await db.collection('settings').doc('product_order').get();
     productOrder = doc.exists ? (doc.data().order || []) : [];
@@ -1954,7 +2004,6 @@ async function toggleAvailableInSort(id, e) {
     renderSortList();
 }
 
-// AUTO-SORT BUTTONS SPEICHERN SOFORT ALS NEUE DEFAULT
 function autoSort(mode) {
     const container = document.getElementById('sort-list');
     let items = Array.from(container.children);
@@ -1974,7 +2023,7 @@ function autoSort(mode) {
         }
     });
     items.forEach(item => container.appendChild(item));
-    saveProductOrder(); // ← SOFORT SPEICHERN → wird neue Default
+    saveProductOrder();
     showToast('✅ Auto-Sortierung als neue Default gespeichert!', 'success');
 }
 
@@ -1999,7 +2048,7 @@ function autoSortPriority() {
         return pA.name.localeCompare(pB.name);
     });
     items.forEach(item => container.appendChild(item));
-    saveProductOrder(); // ← SOFORT SPEICHERN → wird neue Default
+    saveProductOrder();
     showToast('✅ AUTO-PRIORITÄT als neue Default gespeichert!', 'success');
 }
 

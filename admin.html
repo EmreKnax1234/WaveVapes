@@ -454,7 +454,7 @@
     </div>
 </div>
 
-<!-- EDIT MODAL (Bulk + Einzel-Edit) -->
+<!-- EDIT MODAL (Bulk + Einzel-Edit + History-Modals) -->
 <div id="edit-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]"></div>
 
 <!-- ORDER MODAL -->
@@ -753,7 +753,7 @@ async function exportLoyaltyHistory() {
     link.click();
     showToast("✅ Loyalty History als CSV exportiert!", "success");
 }
-// ====================== LOYALTY HISTORY MODAL (mit Export) ======================
+// ====================== LOYALTY HISTORY MODAL ======================
 async function showLoyaltyHistory() {
     const modalHTML = `
     <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]">
@@ -790,6 +790,104 @@ async function showLoyaltyHistory() {
             </div>`;
     });
     listEl.innerHTML = html || `<p class="text-center py-12 text-gray-400">Noch keine Loyalty-Codes eingelöst.</p>`;
+}
+// ====================== GUTSCHEINE ======================
+document.getElementById('add-coupon-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const code = document.getElementById('coupon-code').value.trim().toUpperCase();
+    const type = document.getElementById('coupon-type').value;
+    const value = parseFloat(document.getElementById('coupon-value').value);
+    const expiry = new Date(document.getElementById('coupon-expiry').value);
+    const oneTime = document.getElementById('coupon-onetime').checked;
+    await db.collection('coupons').add({
+        code, type, value, expiresAt: firebase.firestore.Timestamp.fromDate(expiry),
+        oneTimeUse: oneTime, usedBy: [], createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    await logAction("coupon_created", code);
+    e.target.reset();
+    showToast('✅ Gutschein erstellt!');
+    loadCoupons();
+});
+async function loadCoupons() {
+    const snap = await db.collection('coupons').orderBy('createdAt', 'desc').get();
+    allCoupons = snap.docs.map(d => ({id: d.id, ...d.data()}));
+    renderCouponsTable();
+}
+function renderCouponsTable() {
+    const tbody = document.getElementById('coupons-tbody');
+    let html = '';
+    allCoupons.forEach(c => {
+        const expired = c.expiresAt.toDate() < new Date();
+        const usageCount = c.usedBy ? c.usedBy.length : 0;
+        html += `
+        <tr class="table-row-hover border-b border-white/10">
+            <td class="py-4 px-6 font-mono font-bold">${c.code}</td>
+            <td class="py-4 px-6 text-center">${c.type === 'percent' ? c.value + '%' : c.value + '€'}</td>
+            <td class="py-4 px-6 text-center ${expired ? 'text-red-400' : ''}">${c.expiresAt.toDate().toLocaleDateString('de-DE')}</td>
+            <td class="py-4 px-6 text-center font-bold text-emerald-400">${usageCount} / ${c.oneTimeUse ? '1' : '∞'}</td>
+            <td class="py-4 px-6 text-right space-x-3">
+                <button onclick="showCouponHistory('${c.id}')" class="text-cyan-400 hover:text-white flex items-center gap-1"><i class="fa-solid fa-history"></i> History</button>
+                <button onclick="deleteCoupon('${c.id}')" class="text-red-400 hover:text-white"><i class="fa-solid fa-trash"></i></button>
+            </td>
+        </tr>`;
+    });
+    tbody.innerHTML = html || `<tr><td colspan="5" class="text-center py-16 text-gray-400">Noch keine Gutscheine</td></tr>`;
+}
+async function showCouponHistory(couponId) {
+    const doc = await db.collection('coupons').doc(couponId).get();
+    if (!doc.exists) return showToast("Gutschein nicht gefunden", "error");
+    const coupon = doc.data();
+    let listHTML = '';
+    if (coupon.usedBy && coupon.usedBy.length > 0) {
+        for (let uid of coupon.usedBy) {
+            try {
+                const userDoc = await db.collection('users').doc(uid).get();
+                const user = userDoc.exists ? userDoc.data() : {};
+                const email = user.email || uid;
+                listHTML += `
+                    <div class="bg-zinc-950 border border-white/10 rounded-2xl p-5 mb-3 flex justify-between items-center">
+                        <div>
+                            <div class="font-medium text-white">${email}</div>
+                            <div class="text-xs text-gray-400">UID: ${uid}</div>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-emerald-400 text-xs">verwendet</span>
+                        </div>
+                    </div>`;
+            } catch(e) {
+                listHTML += `<div class="bg-zinc-950 border border-white/10 rounded-2xl p-5 mb-3">UID: ${uid} (User nicht gefunden)</div>`;
+            }
+        }
+    } else {
+        listHTML = `<p class="text-center py-12 text-gray-400">Dieser Gutschein wurde noch von niemandem eingelöst.</p>`;
+    }
+    const modalHTML = `
+    <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]">
+        <div class="bg-zinc-900 rounded-3xl p-8 max-w-lg w-full mx-4 modal max-h-[85vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-3xl font-bold neon">Nutzungs-History: <span class="text-amber-400">${coupon.code}</span></h3>
+                <button onclick="closeEditModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
+            </div>
+            <div class="space-y-3">
+                ${listHTML}
+            </div>
+        </div>
+    </div>`;
+    document.getElementById('edit-modal').innerHTML = modalHTML;
+    document.getElementById('edit-modal').classList.remove('hidden');
+}
+async function deleteCoupon(id) {
+    if (confirm('Gutschein löschen?')) {
+        await db.collection('coupons').doc(id).delete();
+        await logAction("coupon_deleted", id);
+        loadCoupons();
+    }
+}
+// ====================== CLOSE MODAL FUNCTION ======================
+function closeEditModal() {
+    const modal = document.getElementById('edit-modal');
+    modal.classList.add('hidden');
+    modal.innerHTML = '';
 }
 // ====================== CSV PRODUKTE ======================
 async function exportProductsToCSV() {
@@ -1110,98 +1208,6 @@ function populateAdminCategoryFilter() {
         opt.textContent = cat.name;
         select.appendChild(opt);
     });
-}
-// ====================== GUTSCHEINE ======================
-document.getElementById('add-coupon-form').addEventListener('submit', async e => {
-    e.preventDefault();
-    const code = document.getElementById('coupon-code').value.trim().toUpperCase();
-    const type = document.getElementById('coupon-type').value;
-    const value = parseFloat(document.getElementById('coupon-value').value);
-    const expiry = new Date(document.getElementById('coupon-expiry').value);
-    const oneTime = document.getElementById('coupon-onetime').checked;
-    await db.collection('coupons').add({
-        code, type, value, expiresAt: firebase.firestore.Timestamp.fromDate(expiry),
-        oneTimeUse: oneTime, usedBy: [], createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    await logAction("coupon_created", code);
-    e.target.reset();
-    showToast('✅ Gutschein erstellt!');
-    loadCoupons();
-});
-async function loadCoupons() {
-    const snap = await db.collection('coupons').orderBy('createdAt', 'desc').get();
-    allCoupons = snap.docs.map(d => ({id: d.id, ...d.data()}));
-    renderCouponsTable();
-}
-function renderCouponsTable() {
-    const tbody = document.getElementById('coupons-tbody');
-    let html = '';
-    allCoupons.forEach(c => {
-        const expired = c.expiresAt.toDate() < new Date();
-        const usageCount = c.usedBy ? c.usedBy.length : 0;
-        html += `
-        <tr class="table-row-hover border-b border-white/10">
-            <td class="py-4 px-6 font-mono font-bold">${c.code}</td>
-            <td class="py-4 px-6 text-center">${c.type === 'percent' ? c.value + '%' : c.value + '€'}</td>
-            <td class="py-4 px-6 text-center ${expired ? 'text-red-400' : ''}">${c.expiresAt.toDate().toLocaleDateString('de-DE')}</td>
-            <td class="py-4 px-6 text-center font-bold text-emerald-400">${usageCount} / ${c.oneTimeUse ? '1' : '∞'}</td>
-            <td class="py-4 px-6 text-right space-x-3">
-                <button onclick="showCouponHistory('${c.id}')" class="text-cyan-400 hover:text-white flex items-center gap-1"><i class="fa-solid fa-history"></i> History</button>
-                <button onclick="deleteCoupon('${c.id}')" class="text-red-400 hover:text-white"><i class="fa-solid fa-trash"></i></button>
-            </td>
-        </tr>`;
-    });
-    tbody.innerHTML = html || `<tr><td colspan="5" class="text-center py-16 text-gray-400">Noch keine Gutscheine</td></tr>`;
-}
-async function showCouponHistory(couponId) {
-    const doc = await db.collection('coupons').doc(couponId).get();
-    if (!doc.exists) return showToast("Gutschein nicht gefunden", "error");
-    const coupon = doc.data();
-    let listHTML = '';
-    if (coupon.usedBy && coupon.usedBy.length > 0) {
-        for (let uid of coupon.usedBy) {
-            try {
-                const userDoc = await db.collection('users').doc(uid).get();
-                const user = userDoc.exists ? userDoc.data() : {};
-                const email = user.email || uid;
-                listHTML += `
-                    <div class="bg-zinc-950 border border-white/10 rounded-2xl p-5 mb-3 flex justify-between items-center">
-                        <div>
-                            <div class="font-medium text-white">${email}</div>
-                            <div class="text-xs text-gray-400">UID: ${uid}</div>
-                        </div>
-                        <div class="text-right">
-                            <span class="text-emerald-400 text-xs">verwendet</span>
-                        </div>
-                    </div>`;
-            } catch(e) {
-                listHTML += `<div class="bg-zinc-950 border border-white/10 rounded-2xl p-5 mb-3">UID: ${uid} (User nicht gefunden)</div>`;
-            }
-        }
-    } else {
-        listHTML = `<p class="text-center py-12 text-gray-400">Dieser Gutschein wurde noch von niemandem eingelöst.</p>`;
-    }
-    const modalHTML = `
-    <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]">
-        <div class="bg-zinc-900 rounded-3xl p-8 max-w-lg w-full mx-4 modal max-h-[85vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="text-3xl font-bold neon">Nutzungs-History: <span class="text-amber-400">${coupon.code}</span></h3>
-                <button onclick="closeEditModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
-            </div>
-            <div class="space-y-3">
-                ${listHTML}
-            </div>
-        </div>
-    </div>`;
-    document.getElementById('edit-modal').innerHTML = modalHTML;
-    document.getElementById('edit-modal').classList.remove('hidden');
-}
-async function deleteCoupon(id) {
-    if (confirm('Gutschein löschen?')) {
-        await db.collection('coupons').doc(id).delete();
-        await logAction("coupon_deleted", id);
-        loadCoupons();
-    }
 }
 // ====================== BESTELLUNGEN ======================
 function loadOrders() {

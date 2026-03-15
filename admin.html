@@ -42,7 +42,6 @@
         .metric-card:hover { transform: translateY(-4px); }
         .metric-edit-btn { position: absolute; top: 12px; right: 12px; font-size: 11px; background: #27272a; padding: 4px 8px; border-radius: 9999px; cursor: pointer; opacity: 0.7; }
         .metric-edit-btn:hover { opacity: 1; background: #3b82f6; }
-        /* LIVE ONLINE CARD */
         #live-users-card { background: linear-gradient(135deg, #0a0a0a, #1e1233); border: 2px solid #67e8f9; }
     </style>
 </head>
@@ -88,7 +87,6 @@
                 <input type="file" id="csv-upload-products" accept=".csv" class="hidden" onchange="importProductsFromCSV(event)">
                 <p class="text-xs text-amber-400 mt-4 text-center">⚠️ Beim Import werden ALLE aktuellen Produkte gelöscht!</p>
             </div>
-            <!-- METRIK-KARTEN -->
             <div class="grid grid-cols-2 md:grid-cols-5 gap-6 mb-12">
                 <div class="metric-card p-6 relative" style="cursor:pointer;">
                     <p class="text-gray-400 text-sm">Gesamtumsatz</p>
@@ -108,7 +106,6 @@
                     <p class="text-gray-400 text-sm">Top-Seller</p>
                     <p id="top-seller" class="text-2xl font-bold text-amber-400">—</p>
                 </div>
-                <!-- NEUE LIVE ONLINE CARD -->
                 <div id="live-users-card" class="metric-card p-8 text-center border border-cyan-400/30 bg-gradient-to-br from-cyan-950 to-zinc-900">
                     <p class="text-gray-400 text-sm">LIVE ONLINE</p>
                     <p id="live-users-count" class="text-6xl font-bold text-cyan-400 mt-2">0</p>
@@ -269,7 +266,7 @@
                 </div>
             </div>
         </div>
-        <!-- TAB 4: GUTSCHEINE -->
+        <!-- TAB 4: GUTSCHEINE + LOYALTY HISTORY -->
         <div id="tab-content-4" class="hidden">
             <div class="card p-8">
                 <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><i class="fa-solid fa-ticket"></i> Gutschein-Manager + Nutzungs-History</h2>
@@ -300,6 +297,14 @@
                         </thead>
                         <tbody id="coupons-tbody" class="text-sm"></tbody>
                     </table>
+                </div>
+                <!-- LOYALTY HISTORY BUTTON -->
+                <div class="mt-8 pt-6 border-t border-white/10">
+                    <button onclick="showLoyaltyHistory()" 
+                            class="bg-violet-600 hover:bg-violet-500 w-full py-5 rounded-3xl text-base font-medium flex items-center justify-center gap-3">
+                        <i class="fa-solid fa-history"></i>
+                        Loyalty-Codes History anzeigen (LOYAL5, LOYAL10, LOYAL15 ...)
+                    </button>
                 </div>
             </div>
         </div>
@@ -1307,9 +1312,6 @@ async function showCouponHistory(couponId) {
             <div class="space-y-3">
                 ${listHTML}
             </div>
-            <div class="mt-8 text-[10px] text-gray-500 text-center">
-                Hinweis: Zeitstempel werden automatisch gespeichert, sobald du den Shop-Frontend (index.html) ebenfalls aktualisierst.
-            </div>
         </div>
     </div>`;
     document.getElementById('edit-modal').innerHTML = modalHTML;
@@ -1321,6 +1323,39 @@ async function deleteCoupon(id) {
         await logAction("coupon_deleted", id);
         loadCoupons();
     }
+}
+// ====================== LOYALTY HISTORY ======================
+async function showLoyaltyHistory() {
+    const modalHTML = `
+    <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]">
+        <div class="bg-zinc-900 rounded-3xl p-8 max-w-3xl w-full mx-4 modal max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-3xl font-bold neon">Loyalty-Codes History</h3>
+                <button onclick="closeEditModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
+            </div>
+            <div id="loyalty-history-list" class="space-y-4"></div>
+        </div>
+    </div>`;
+    document.getElementById('edit-modal').innerHTML = modalHTML;
+    document.getElementById('edit-modal').classList.remove('hidden');
+    const listEl = document.getElementById('loyalty-history-list');
+    listEl.innerHTML = `<p class="text-center py-12 text-gray-400">Lade Loyalty-History...</p>`;
+    const usersSnap = await db.collection('users').where('redeemedLoyaltyCodes', '!=', []).get();
+    let html = '';
+    usersSnap.forEach(doc => {
+        const u = doc.data();
+        if (!u.redeemedLoyaltyCodes || u.redeemedLoyaltyCodes.length === 0) return;
+        html += `
+            <div class="bg-zinc-950 border border-violet-400/30 rounded-3xl p-6">
+                <div class="font-medium mb-3">${u.username || u.email}</div>
+                <div class="flex flex-wrap gap-2">
+                    ${u.redeemedLoyaltyCodes.map(code => `
+                        <span class="bg-violet-600 text-white text-xs px-4 py-1.5 rounded-2xl font-mono">${code}</span>
+                    `).join('')}
+                </div>
+            </div>`;
+    });
+    listEl.innerHTML = html || `<p class="text-center py-12 text-gray-400">Noch keine Loyalty-Codes eingelöst.</p>`;
 }
 // ====================== BESTELLUNGEN ======================
 function loadOrders() {
@@ -1364,7 +1399,6 @@ async function showOrderModal(orderId) {
     const doc = await db.collection('orders').doc(orderId).get();
     const order = doc.data();
     const date = order.date ? order.date.toDate().toLocaleString('de-DE') : '—';
-   
     let itemsHTML = '';
     order.items.forEach(item => {
         itemsHTML += `
@@ -1388,7 +1422,6 @@ async function showOrderModal(orderId) {
                 <div><strong>Adresse:</strong><br>${order.address.street}<br>${order.address.zip} ${order.address.city}</div>
                 <div><strong>Artikel</strong>${itemsHTML}</div>
                 <div class="text-2xl font-bold">Gesamt: <span class="text-emerald-400">${order.total.toFixed(2)} €</span></div>
-               
                 <div class="mt-6">
                     <label class="block text-sm font-medium text-gray-400 mb-2 flex items-center gap-2">
                         <i class="fa-solid fa-note-sticky text-amber-400"></i>
@@ -1443,23 +1476,19 @@ async function saveOrderChanges() {
     const tracking = document.getElementById('modal-tracking').value.trim();
     const internalNotes = document.getElementById('modal-internal-notes').value.trim();
     await handleStockOnStatusChange(currentOrderId, status);
-   
     const updateData = {
         status,
         carrier,
         trackingNumber: tracking || firebase.firestore.FieldValue.delete()
     };
-   
     if (internalNotes) {
         updateData.internalNotes = internalNotes;
     } else {
         updateData.internalNotes = firebase.firestore.FieldValue.delete();
     }
     await db.collection('orders').doc(currentOrderId).update(updateData);
-   
     if (status === "Wird bearbeitet") await awardLoyaltyIfProcessed(currentOrderId);
     await logAction("order_updated", currentOrderId, { status, hasNotes: !!internalNotes });
-   
     showToast('Bestellung + interne Notizen aktualisiert');
     closeOrderModal();
 }
@@ -2025,7 +2054,7 @@ window.onload = () => {
     setTimeout(() => {
         updateStats();
         populateAdminCategoryFilter();
-        loadLiveUsers();   // LIVE ONLINE COUNT
+        loadLiveUsers();
     }, 500);
 };
 </script>

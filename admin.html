@@ -10,6 +10,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
@@ -43,6 +44,8 @@
         .metric-edit-btn { position: absolute; top: 12px; right: 12px; font-size: 11px; background: #27272a; padding: 4px 8px; border-radius: 9999px; cursor: pointer; opacity: 0.7; }
         .metric-edit-btn:hover { opacity: 1; background: #3b82f6; }
         #live-users-card { background: linear-gradient(135deg, #0a0a0a, #1e1233); border: 2px solid #67e8f9; }
+        #dropzone { transition: all 0.3s; }
+        #dropzone.dragover { background: #22d3ee30; border-color: #22d3ee; }
     </style>
 </head>
 <body class="min-h-screen">
@@ -127,11 +130,16 @@
                     <div class="flex items-center gap-3"><input id="prod-unavailable" type="checkbox" class="w-5 h-5 accent-red-400"><label>Nicht verfügbar</label></div>
                     <div class="flex items-center gap-3"><input id="prod-has-nicotine" type="checkbox" checked class="w-5 h-5 accent-cyan-400"><label>Nikotin enthalten (10/20 mg Auswahl)</label></div>
                     <div class="col-span-full"><label class="text-xs text-gray-400 block mb-2">Produktbeschreibung</label><textarea id="prod-description" rows="4" placeholder="Intensiver Blue Raspberry Geschmack..." class="w-full bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-4"></textarea></div>
+                    
+                    <!-- BILD-UPLOAD -->
                     <div id="dropzone" class="col-span-full border-2 border-dashed border-cyan-400/50 hover:border-cyan-400 rounded-3xl p-10 text-center cursor-pointer">
-                        <i class="fa-solid fa-cloud-arrow-up text-5xl mb-4 text-cyan-400"></i><p class="text-cyan-300">Bild per Drag & Drop oder klicken</p>
+                        <i class="fa-solid fa-cloud-arrow-up text-5xl mb-4 text-cyan-400"></i>
+                        <p class="text-cyan-300">Bild per Drag & Drop oder klicken</p>
                         <img id="preview-thumb" class="hidden mx-auto mt-6 max-h-48 rounded-2xl border border-cyan-400/30">
                     </div>
-                    <button type="submit" class="lg:col-span-3 bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-5 rounded-3xl text-xl">Produkt speichern</button>
+                    <input type="file" id="image-upload" accept="image/*" class="hidden">
+
+                    <button type="submit" class="lg:col-span-3 bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-5 rounded-3xl text-xl">Produkt speichern & hochladen</button>
                 </form>
             </div>
             <div class="flex flex-wrap gap-3 mb-6">
@@ -433,6 +441,7 @@
         </div>
     </div>
 </div>
+
 <!-- MANUELLER METRIK-EDIT MODAL -->
 <div id="manual-metrics-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]">
     <div class="bg-zinc-900 rounded-3xl p-8 max-w-md w-full mx-4 modal">
@@ -460,6 +469,7 @@
 <div id="order-modal-container"></div>
 <!-- TOAST -->
 <div id="toast-container" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[99999] flex flex-col gap-3"></div>
+
 <script>
 // ====================== FIREBASE CONFIG ======================
 const firebaseConfig = {
@@ -473,9 +483,12 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
+const storage = firebase.storage();
+
 // ====================== GLOBALE VARIABLEN ======================
 let currentEditId = null;
 let selectedFile = null;
+let previewUrl = null;
 let currentOrderId = null;
 let removeCurrentImage = false;
 let allCategories = [];
@@ -497,6 +510,7 @@ let manualRevenueOverride = null;
 let manualSoldOverride = null;
 let ordersRevenue = 0;
 let ordersSold = 0;
+
 // ====================== LOG ACTION ======================
 async function logAction(action, target = "", details = {}) {
     if (!auth.currentUser) return;
@@ -508,6 +522,7 @@ async function logAction(action, target = "", details = {}) {
         details: details || {}
     });
 }
+
 // ====================== LIVE STATISTIKEN AUS ORDERS ======================
 function startLiveStatsListener() {
     db.collection("orders").onSnapshot(snap => {
@@ -520,35 +535,8 @@ function startLiveStatsListener() {
         });
         ordersRevenue = revenue;
         ordersSold = sold;
-        const productRevenue = allProducts.reduce((sum, p) => sum + (p.sold || 0) * (p.price || 0), 0);
-        const productSold = allProducts.reduce((sum, p) => sum + (p.sold || 0), 0);
-        if (Math.abs(ordersRevenue - productRevenue) > 0.01 || ordersSold !== productSold) {
-            correctProductStatsFromOrders();
-        }
         updateStatsDisplay();
     });
-}
-async function correctProductStatsFromOrders() {
-    const batch = db.batch();
-    const productMap = new Map();
-    const ordersSnap = await db.collection("orders").get();
-    ordersSnap.forEach(doc => {
-        const o = doc.data();
-        o.items.forEach(item => {
-            if (item.id && item.id !== 999) {
-                const current = productMap.get(item.id) || 0;
-                productMap.set(item.id, current + item.qty);
-            }
-        });
-    });
-    const productsSnap = await db.collection("products").get();
-    productsSnap.forEach(doc => {
-        const currentSold = productMap.get(doc.id) || 0;
-        batch.update(doc.ref, { sold: currentSold });
-    });
-    await batch.commit();
-    showToast("✅ Statistik automatisch korrigiert und gespeichert!", "success");
-    loadProducts();
 }
 function updateStatsDisplay() {
     const displayRevenue = manualRevenueOverride !== null ? manualRevenueOverride : ordersRevenue;
@@ -558,6 +546,82 @@ function updateStatsDisplay() {
     const top = [...allProducts].sort((a, b) => (b.sold || 0) - (a.sold || 0))[0];
     document.getElementById('top-seller').textContent = top ? `${top.name} (${top.sold || 0}×)` : '—';
 }
+
+// ====================== BILD-UPLOAD ======================
+function initDropzone() {
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('image-upload');
+    const preview = document.getElementById('preview-thumb');
+
+    dropzone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', e => {
+        if (e.target.files[0]) handleFile(e.target.files[0]);
+    });
+
+    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', e => {
+        e.preventDefault();
+        dropzone.classList.remove('dragover');
+        if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+    });
+
+    function handleFile(file) {
+        if (!file.type.startsWith('image/')) return alert('Nur Bilder erlaubt!');
+        selectedFile = file;
+        previewUrl = URL.createObjectURL(file);
+        preview.src = previewUrl;
+        preview.classList.remove('hidden');
+    }
+}
+
+// ====================== PRODUKT HINZUFÜGEN ======================
+document.getElementById('add-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const name = document.getElementById('prod-name').value.trim();
+    if (!name) return alert("Produktname fehlt!");
+
+    let imageUrl = null;
+    if (selectedFile) {
+        try {
+            const storageRef = storage.ref('products/' + Date.now() + '_' + selectedFile.name);
+            await storageRef.put(selectedFile);
+            imageUrl = await storageRef.getDownloadURL();
+        } catch (err) {
+            console.error(err);
+            alert("Bild-Upload fehlgeschlagen: " + err.message);
+            return;
+        }
+    }
+
+    const productData = {
+        name: name,
+        price: parseFloat(document.getElementById('prod-price').value) || 7.99,
+        originalPrice: document.getElementById('prod-original-price').value ? parseFloat(document.getElementById('prod-original-price').value) : null,
+        stock: parseInt(document.getElementById('prod-stock').value) || 0,
+        category: document.getElementById('prod-category').value || "Normale Sorten",
+        isNew: document.getElementById('prod-new').checked,
+        available: !document.getElementById('prod-unavailable').checked,
+        hasNicotine: document.getElementById('prod-has-nicotine').checked,
+        description: document.getElementById('prod-description').value.trim(),
+        image: imageUrl,
+        sold: 0
+    };
+
+    try {
+        await db.collection('products').add(productData);
+        showToast('✅ Produkt erfolgreich hinzugefügt + Bild hochgeladen!', 'success');
+        
+        // Formular zurücksetzen
+        document.getElementById('add-form').reset();
+        document.getElementById('preview-thumb').classList.add('hidden');
+        selectedFile = null;
+    } catch (err) {
+        alert("Fehler beim Speichern: " + err.message);
+    }
+});
+
 // ====================== PRODUKTE ======================
 function loadProducts() {
     db.collection('products').onSnapshot(snap => {
@@ -767,11 +831,9 @@ async function enforceCategories() {
     showToast("✅ Automatische Kategoriezuteilung abgeschlossen!");
     loadProducts();
 }
-// ====================== SHOP VORSCHAU ======================
 function openShopPreview() {
     window.open('index.html?preview=1', '_blank');
 }
-// ====================== LOYALTY HISTORY ======================
 async function exportLoyaltyHistory() {
     const usersSnap = await db.collection('users').where('redeemedLoyaltyCodes', '!=', []).get();
     let csv = "E-Mail,Benutzername,Redeemed Codes,Anzahl\n";
@@ -820,7 +882,6 @@ async function showLoyaltyHistory() {
     });
     listEl.innerHTML = html || `<p class="text-center py-12 text-gray-400">Noch keine Loyalty-Codes eingelöst.</p>`;
 }
-// ====================== GUTSCHEINE ======================
 document.getElementById('add-coupon-form').addEventListener('submit', async e => {
     e.preventDefault();
     const code = document.getElementById('coupon-code').value.trim().toUpperCase();
@@ -910,13 +971,11 @@ async function deleteCoupon(id) {
         loadCoupons();
     }
 }
-// ====================== CLOSE MODAL ======================
 function closeEditModal() {
     const modal = document.getElementById('edit-modal');
     modal.classList.add('hidden');
     modal.innerHTML = '';
 }
-// ====================== CSV PRODUKTE ======================
 async function exportProductsToCSV() {
     const snapshot = await db.collection("products").get();
     if (snapshot.empty) return alert("Keine Produkte vorhanden!");
@@ -988,7 +1047,6 @@ async function importProductsFromCSV(e) {
     reader.readAsText(file);
     e.target.value = "";
 }
-// ====================== CSV BESTELLUNGEN ======================
 async function exportOrdersToCSV() {
     const snapshot = await db.collection("orders").orderBy("date", "desc").get();
     if (snapshot.empty) return alert("Keine Bestellungen vorhanden!");
@@ -1074,7 +1132,6 @@ async function importOrdersFromCSV(e) {
     reader.readAsText(file);
     e.target.value = "";
 }
-// ====================== CSV BENUTZER ======================
 async function exportUsersToCSV() {
     const snapshot = await db.collection("users").get();
     if (snapshot.empty) return alert("Keine Benutzer vorhanden!");
@@ -1137,7 +1194,6 @@ async function importUsersFromCSV(e) {
 function parseCSVLine(line) {
     return line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(field => field.replace(/^"|"$/g, '').replace(/""/g, '"'));
 }
-// ====================== KATEGORIEN ======================
 function loadCategories() {
     db.collection('categories').orderBy('order').onSnapshot(snap => {
         allCategories = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -1172,11 +1228,11 @@ document.getElementById('add-category-form').addEventListener('submit', async e 
     const specialText = document.getElementById('cat-special-text').value.trim();
     const special = document.getElementById('cat-special').checked;
     if (!name) return alert("Name erforderlich");
-    await db.collection('categories').add({ 
-        name, 
-        order, 
-        special, 
-        specialText: specialText || null 
+    await db.collection('categories').add({
+        name,
+        order,
+        special,
+        specialText: specialText || null
     });
     await logAction("category_created", "", { name, specialText });
     e.target.reset();
@@ -1212,11 +1268,11 @@ async function saveEditCategory(id) {
     const order = parseInt(document.getElementById('edit-cat-order').value) || 999;
     const specialText = document.getElementById('edit-cat-special-text').value.trim();
     const special = document.getElementById('edit-cat-special').checked;
-    await db.collection('categories').doc(id).update({ 
-        name, 
-        order, 
-        special, 
-        specialText: specialText || null 
+    await db.collection('categories').doc(id).update({
+        name,
+        order,
+        special,
+        specialText: specialText || null
     });
     await logAction("category_updated", id, { name, specialText });
     closeEditModal();
@@ -1268,7 +1324,6 @@ function populateAdminCategoryFilter() {
         select.appendChild(opt);
     });
 }
-// ====================== BESTELLUNGEN ======================
 function loadOrders() {
     const tbody = document.getElementById('orders-tbody');
     db.collection('orders').orderBy('date', 'desc').onSnapshot(snap => {
@@ -1410,7 +1465,6 @@ async function deleteOrder() {
     closeOrderModal();
     loadOrders();
 }
-// ====================== BENUTZER ======================
 function loadUsers() {
     const tbody = document.getElementById('users-tbody');
     db.collection('users').onSnapshot(snapshot => {
@@ -1515,7 +1569,6 @@ async function resetUserPoints(uid) {
         showToast("Fehler: " + e.message, "error");
     }
 }
-// ====================== ANALYTICS ======================
 async function loadAnalytics() {
     const thirtyDaysAgo = firebase.firestore.Timestamp.fromDate(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
     const ordersSnap = await db.collection("orders").where("date", ">=", thirtyDaysAgo).get();
@@ -1623,7 +1676,6 @@ async function generatePDFReport() {
     await logAction("monthly_report_generated");
     showToast("✅ Vollständiger Monatsbericht als PDF heruntergeladen!", "success");
 }
-// ====================== ADMIN LOGS ======================
 function loadAdminLogs() {
     if (logsUnsubscribe) logsUnsubscribe();
     logsUnsubscribe = db.collection("admin_logs").orderBy("timestamp", "desc").limit(50).onSnapshot(snap => {
@@ -1644,7 +1696,6 @@ function loadAdminLogs() {
         });
     });
 }
-// ====================== SETTINGS ======================
 async function loadSettings() {
     const doc = await db.collection("settings").doc("main").get();
     let data = doc.exists ? doc.data() : {
@@ -1681,7 +1732,6 @@ async function saveSettings() {
     await logAction("settings_updated");
     showToast("✅ Einstellungen gespeichert", "success");
 }
-// ====================== STATUS & STOCK & LOYALTY ======================
 function getStatusClass(s) {
     switch(s || "Zahlung erwartet") {
         case "Zahlung erwartet": return "status-Zahlung";
@@ -1740,7 +1790,6 @@ async function resetAllStatistics() {
         showToast("Fehler beim Zurücksetzen: " + e.message, "error");
     }
 }
-// ====================== SORTIERUNG ======================
 async function loadProductOrder() {
     const doc = await db.collection('settings').doc('product_order').get();
     productOrder = doc.exists ? (doc.data().order || []) : [];
@@ -1842,7 +1891,6 @@ async function saveProductOrder() {
     await db.collection('settings').doc('product_order').set({ order: newOrder }, { merge: true });
     showToast('✅ Sortierung gespeichert! Der Shop zeigt jetzt die neue Reihenfolge.', 'success');
 }
-// ====================== TOAST ======================
 function showToast(msg, type = 'success') {
     const toast = document.createElement('div');
     toast.className = `toast flex items-center gap-3 px-8 py-4 rounded-3xl shadow-2xl text-sm font-medium ${type === 'error' ? 'bg-red-600' : 'bg-emerald-600'}`;
@@ -1850,7 +1898,6 @@ function showToast(msg, type = 'success') {
     document.getElementById('toast-container').appendChild(toast);
     setTimeout(() => toast.remove(), 3500);
 }
-// ====================== SIDEBAR & TABS ======================
 function switchTab(n) {
     document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('tab-active'));
     document.getElementById('sidebar-' + n).classList.add('tab-active');
@@ -1863,7 +1910,6 @@ function switchTab(n) {
 function toggleSidebar() {
     document.getElementById("sidebar").classList.toggle("-translate-x-full");
 }
-// ====================== LOGOUT ======================
 async function logout() {
     try {
         await auth.signOut();
@@ -1874,7 +1920,6 @@ async function logout() {
         alert("Logout fehlgeschlagen: " + e.message);
     }
 }
-// ====================== LIVE ONLINE USERS ======================
 function loadLiveUsers() {
     db.collection("presence").onSnapshot(snap => {
         let count = 0;
@@ -1889,7 +1934,6 @@ function loadLiveUsers() {
         document.getElementById('live-users-count').textContent = count;
     });
 }
-// ====================== AUTH ======================
 auth.onAuthStateChanged(async (user) => {
     if (!user) return window.location.href = 'index.html';
     document.getElementById('admin-email').textContent = user.email;
@@ -1902,7 +1946,6 @@ auth.onAuthStateChanged(async (user) => {
     loadSettings();
     switchTab(0);
 });
-// ====================== INIT ======================
 window.onload = () => {
     loadProducts();
     loadCategories();
@@ -1910,6 +1953,7 @@ window.onload = () => {
     loadOrders();
     loadUsers();
     startLiveStatsListener();
+    initDropzone();
     setTimeout(() => {
         updateStatsDisplay();
         populateAdminCategoryFilter();

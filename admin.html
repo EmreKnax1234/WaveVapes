@@ -126,25 +126,6 @@
                     <div class="flex items-center gap-3"><input id="prod-new" type="checkbox" class="w-5 h-5 accent-lime-400"><label>Neue Sorte</label></div>
                     <div class="flex items-center gap-3"><input id="prod-unavailable" type="checkbox" class="w-5 h-5 accent-red-400"><label>Nicht verfügbar</label></div>
                     <div class="flex items-center gap-3"><input id="prod-has-nicotine" type="checkbox" checked class="w-5 h-5 accent-cyan-400"><label>Nikotin enthalten (10/20 mg Auswahl)</label></div>
-
-                    <!-- BUNDLE SECTION -->
-                    <div class="col-span-full border border-purple-400/30 bg-purple-950/20 rounded-3xl p-6">
-                        <div class="flex items-center gap-3 mb-4">
-                            <input id="prod-is-bundle" type="checkbox" class="w-5 h-5 accent-purple-400">
-                            <label class="font-medium text-purple-300">Bundle aktivieren (Kunde wählt Liquids selbst aus)</label>
-                        </div>
-                        <div class="grid grid-cols-2 gap-6">
-                            <div>
-                                <label class="text-xs text-gray-400 block mb-1">Anzahl wählbarer Liquids</label>
-                                <input id="prod-bundle-num" type="number" value="3" min="1" class="w-full bg-zinc-900 border border-white/10 focus:border-purple-400 rounded-2xl px-6 py-4">
-                            </div>
-                            <div class="flex items-center gap-3">
-                                <input id="prod-bundle-free" type="checkbox" checked class="w-5 h-5 accent-purple-400">
-                                <label class="text-purple-300">+ 1 gratis Extra-Sorte der Wahl</label>
-                            </div>
-                        </div>
-                    </div>
-
                     <div class="col-span-full"><label class="text-xs text-gray-400 block mb-2">Produktbeschreibung</label><textarea id="prod-description" rows="4" placeholder="Intensiver Blue Raspberry Geschmack..." class="w-full bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-4"></textarea></div>
                     <div id="dropzone" class="col-span-full border-2 border-dashed border-cyan-400/50 hover:border-cyan-400 rounded-3xl p-10 text-center cursor-pointer">
                         <i class="fa-solid fa-cloud-arrow-up text-5xl mb-4 text-cyan-400"></i><p class="text-cyan-300">Bild per Drag & Drop oder klicken</p>
@@ -438,6 +419,7 @@
                 </h2>
                 <p class="text-sm text-gray-400 mb-6">Klicke auf einen Button für automatische Sortierung.<br><strong>Neue AUTO-PRIORITÄT (überarbeitet):</strong><br>1. Neue Sorten (nur verfügbar) → 2. Normale Sorten (nur verfügbar) → 3. Alle Vapes (nur verfügbar) → 4. ALLE nicht verfügbaren Sachen (egal ob neu oder normal – immer ganz unten)</p>
                 
+                <!-- NEU: Kategorie-Filter für Sortierung -->
                 <div class="mb-8 bg-zinc-900 border border-white/10 rounded-3xl p-6">
                     <label class="block text-sm text-gray-400 mb-3">Nur Produkte einer Kategorie sortieren</label>
                     <select id="sort-category-filter" onchange="changeSortCategoryFilter()" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-4 text-base">
@@ -525,7 +507,7 @@ let manualRevenueOverride = null;
 let manualSoldOverride = null;
 let ordersRevenue = 0;
 let ordersSold = 0;
-let currentSortCategoryFilter = "Alle";
+let currentSortCategoryFilter = "Alle";   // ← NEU für Kategorie-Sortierung
 // ====================== LOG ACTION ======================
 async function logAction(action, target = "", details = {}) {
     if (!auth.currentUser) return;
@@ -639,12 +621,11 @@ function renderProductTable() {
     filtered.forEach(p => {
         const neuBadge = p.isNew ? `<span class="px-3 py-1 bg-lime-400 text-black text-xs font-black rounded-2xl">NEW</span>` : '—';
         const originalPriceHTML = p.originalPrice ? `<span class="text-gray-400 line-through">${p.originalPrice.toFixed(2)} €</span>` : '—';
-        const bundleBadge = p.isBundle ? `<span class="px-3 py-1 bg-purple-500 text-white text-xs font-black rounded-2xl">BUNDLE</span>` : '';
         html += `
         <tr class="table-row-hover border-b border-white/10">
             <td class="py-5 px-6 text-center"><input type="checkbox" class="product-checkbox accent-cyan-400 w-5 h-5" data-id="${p.id}"></td>
             <td class="py-5 px-6">${p.image ? `<img src="${p.image}" class="w-12 h-12 object-cover rounded-xl" loading="lazy">` : '—'}</td>
-            <td class="py-5 px-6 font-medium">${p.name} ${bundleBadge}</td>
+            <td class="py-5 px-6 font-medium">${p.name}</td>
             <td class="py-5 px-6">${p.category || '—'}</td>
             <td class="py-5 px-6 text-center">${neuBadge}</td>
             <td class="py-5 px-6 text-center">${p.price.toFixed(2)} €</td>
@@ -689,26 +670,7 @@ async function openEditModal(id) {
             <input id="edit-stock" type="number" value="${p.stock}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 mb-4">
             <select id="edit-category" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 mb-4"></select>
             <div class="flex items-center gap-3 mb-4"><input id="edit-new" type="checkbox" ${p.isNew ? 'checked' : ''} class="w-5 h-5 accent-lime-400"><label>Neue Sorte</label></div>
-            <div class="flex items-center gap-3 mb-4"><input id="edit-available" type="checkbox" ${p.available !== false ? 'checked' : ''} class="w-5 h-5 accent-cyan-400"><label>Verfügbar</label></div>
-
-            <!-- BUNDLE EDIT -->
-            <div class="col-span-full border border-purple-400/30 bg-purple-950/20 rounded-3xl p-6 mb-6">
-                <div class="flex items-center gap-3 mb-4">
-                    <input id="edit-is-bundle" type="checkbox" ${p.isBundle ? 'checked' : ''} class="w-5 h-5 accent-purple-400">
-                    <label class="font-medium text-purple-300">Bundle aktivieren</label>
-                </div>
-                <div class="grid grid-cols-2 gap-6">
-                    <div>
-                        <label class="text-xs text-gray-400 block mb-1">Anzahl wählbarer Liquids</label>
-                        <input id="edit-bundle-num" type="number" value="${p.bundleNumChoices || 3}" min="1" class="w-full bg-zinc-900 border border-white/10 focus:border-purple-400 rounded-2xl px-6 py-4">
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <input id="edit-bundle-free" type="checkbox" ${p.bundleFreeExtra ? 'checked' : ''} class="w-5 h-5 accent-purple-400">
-                        <label class="text-purple-300">+ 1 gratis Extra-Sorte</label>
-                    </div>
-                </div>
-            </div>
-
+            <div class="flex items-center gap-3 mb-8"><input id="edit-available" type="checkbox" ${p.available !== false ? 'checked' : ''} class="w-5 h-5 accent-cyan-400"><label>Verfügbar</label></div>
             <div class="flex gap-4">
                 <button onclick="saveEditProduct('${id}')" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-5 rounded-3xl font-bold">Speichern</button>
                 <button onclick="closeEditModal()" class="flex-1 bg-zinc-700 hover:bg-zinc-600 py-5 rounded-3xl">Abbrechen</button>
@@ -728,15 +690,7 @@ async function saveEditProduct(id) {
     const category = document.getElementById('edit-category').value;
     const isNew = document.getElementById('edit-new').checked;
     const available = document.getElementById('edit-available').checked;
-
-    const isBundle = document.getElementById('edit-is-bundle').checked;
-    const bundleNum = parseInt(document.getElementById('edit-bundle-num').value) || 3;
-    const bundleFree = document.getElementById('edit-bundle-free').checked;
-
-    await db.collection('products').doc(id).update({ 
-        name, price, stock, category, isNew, available,
-        isBundle, bundleNumChoices: bundleNum, bundleFreeExtra: bundleFree
-    });
+    await db.collection('products').doc(id).update({ name, price, stock, category, isNew, available });
     await logAction("product_updated", id);
     closeEditModal();
     showToast('✅ Produkt gespeichert');
@@ -977,7 +931,7 @@ function closeEditModal() {
 async function exportProductsToCSV() {
     const snapshot = await db.collection("products").get();
     if (snapshot.empty) return alert("Keine Produkte vorhanden!");
-    let csv = "id,name,price,originalPrice,stock,category,isNew,available,hasNicotine,description,image,sold,isBundle,bundleNumChoices,bundleFreeExtra\n";
+    let csv = "id,name,price,originalPrice,stock,category,isNew,available,hasNicotine,description,image,sold\n";
     snapshot.forEach(doc => {
         const p = doc.data();
         const row = [
@@ -992,10 +946,7 @@ async function exportProductsToCSV() {
             p.hasNicotine !== false ? "true" : "false",
             `"${(p.description || "").replace(/"/g, '""').replace(/\n/g, "\\n")}"`,
             `"${p.image || ""}"`,
-            p.sold || 0,
-            p.isBundle === true ? "true" : "false",
-            p.bundleNumChoices || 0,
-            p.bundleFreeExtra === true ? "true" : "false"
+            p.sold || 0
         ].join(",");
         csv += row + "\n";
     });
@@ -1036,10 +987,7 @@ async function importProductsFromCSV(e) {
                 hasNicotine: values[8] === "true",
                 description: values[9],
                 image: values[10] || null,
-                sold: parseInt(values[11]) || 0,
-                isBundle: values[12] === "true",
-                bundleNumChoices: parseInt(values[13]) || 3,
-                bundleFreeExtra: values[14] === "true"
+                sold: parseInt(values[11]) || 0
             };
             const docRef = db.collection("products").doc(values[0]);
             batch.set(docRef, data);
@@ -1207,7 +1155,7 @@ function loadCategories() {
         renderCategoryTable();
         populateCategorySelects();
         populateAdminCategoryFilter();
-        populateSortCategoryFilter();
+        populateSortCategoryFilter();   // ← NEU
     });
 }
 function renderCategoryTable() {
@@ -1246,7 +1194,7 @@ document.getElementById('add-category-form').addEventListener('submit', async e 
     e.target.reset();
     populateCategorySelects();
     populateAdminCategoryFilter();
-    populateSortCategoryFilter();
+    populateSortCategoryFilter();   // ← NEU
     showToast('✅ Kategorie mit eigenem Badge-Text erstellt!');
 });
 async function openEditCategoryModal(id) {
@@ -1287,7 +1235,7 @@ async function saveEditCategory(id) {
     closeEditModal();
     populateCategorySelects();
     populateAdminCategoryFilter();
-    populateSortCategoryFilter();
+    populateSortCategoryFilter();   // ← NEU
     showToast('✅ Kategorie + Badge-Text gespeichert!');
 }
 async function deleteCategory(id) {
@@ -1296,7 +1244,7 @@ async function deleteCategory(id) {
     await logAction("category_deleted", id);
     populateCategorySelects();
     populateAdminCategoryFilter();
-    populateSortCategoryFilter();
+    populateSortCategoryFilter();   // ← NEU
     showToast('✅ Kategorie gelöscht');
 }
 function seedDefaultCategories() {
@@ -1335,7 +1283,7 @@ function populateAdminCategoryFilter() {
         select.appendChild(opt);
     });
 }
-// ====================== SORTIERUNG NUR PRO KATEGORIE ======================
+// ====================== NEU: SORTIERUNG NUR PRO KATEGORIE ======================
 function populateSortCategoryFilter() {
     const select = document.getElementById('sort-category-filter');
     if (!select) return;
@@ -1850,11 +1798,10 @@ function renderSortList() {
         div.dataset.id = p.id;
         const newBadge = p.isNew ? `<span onclick="toggleIsNew('${p.id}', event)" class="px-3 py-1 bg-lime-400 text-black text-xs font-black tracking-wider rounded-2xl cursor-pointer hover:scale-110 transition">NEW</span>` : '';
         const unavailableBadge = p.available === false ? `<span onclick="toggleAvailableInSort('${p.id}', event)" class="px-3 py-1 bg-red-500 text-white text-xs font-medium rounded-2xl cursor-pointer hover:scale-110 transition">NICHT VERFÜGBAR</span>` : '';
-        const bundleBadge = p.isBundle ? `<span class="px-3 py-1 bg-purple-500 text-white text-xs font-black rounded-2xl">BUNDLE</span>` : '';
         div.innerHTML = `
             ${p.image ? `<img src="${p.image}" class="w-14 h-14 object-cover rounded-2xl flex-shrink-0">` : '<div class="w-14 h-14 bg-zinc-800 rounded-2xl flex items-center justify-center text-2xl">📦</div>'}
             <div class="flex-1">
-                <div class="font-medium text-lg">${p.name} ${bundleBadge}</div>
+                <div class="font-medium text-lg">${p.name}</div>
                 <div class="flex items-center gap-2 mt-1">${newBadge}${unavailableBadge}</div>
             </div>
             <i class="fa-solid fa-grip-lines text-gray-400 text-2xl"></i>
@@ -1931,10 +1878,15 @@ async function saveProductOrder() {
     let fullOrder = [...productOrder];
 
     if (currentSortCategoryFilter !== "Alle") {
+        // Nur die IDs dieser Kategorie ersetzen
         const categoryIds = allProducts
             .filter(p => p.category === currentSortCategoryFilter)
             .map(p => p.id);
+
+        // Alle IDs dieser Kategorie aus der globalen Order entfernen
         fullOrder = fullOrder.filter(id => !categoryIds.includes(id));
+
+        // Position finden, an der die Kategorie ursprünglich begann
         let insertIndex = fullOrder.length;
         for (let i = 0; i < productOrder.length; i++) {
             if (categoryIds.includes(productOrder[i])) {
@@ -1942,14 +1894,17 @@ async function saveProductOrder() {
                 break;
             }
         }
+
+        // Neue Reihenfolge der Kategorie genau dort einfügen
         fullOrder.splice(insertIndex, 0, ...newDraggedIds);
     } else {
+        // Globale Sortierung
         fullOrder = newDraggedIds;
     }
 
     await db.collection('settings').doc('product_order').set({ order: fullOrder }, { merge: true });
     showToast('✅ Sortierung gespeichert! Der Shop zeigt jetzt die neue Reihenfolge.', 'success');
-    loadProductOrder();
+    loadProductOrder(); // neu laden
 }
 // ====================== TOAST ======================
 function showToast(msg, type = 'success') {

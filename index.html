@@ -207,6 +207,8 @@
             from { transform: scale(0.92); opacity: 0; }
             to { transform: scale(1); opacity: 1; }
         }
+        /* LIVE TODAY STATS */
+        #today-live-stats { font-size: 0.95rem; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); padding: 8px 16px; border-radius: 9999px; display: inline-flex; align-items: center; gap: 8px; }
     </style>
 </head>
 <body class="wave-bg text-white min-h-screen">
@@ -249,17 +251,23 @@
             <h2 class="hero-title text-5xl sm:text-6xl font-bold tracking-tighter neon-text mb-3">Bestelle deine Liquids und Vapes</h2>
             <p class="hero-subtitle text-xl sm:text-2xl text-cyan-200 max-w-md mx-auto">7,99 € pro Flasche • 10 ml • Nikotin frei wählbar (10 oder 20 mg)</p>
             <p class="text-base sm:text-lg text-gray-300 mt-4">Alle Liquids von ELFLIQ</p>
-   
+  
             <!-- MYSTERY VAPE BANNER -->
             <div class="mt-4 inline-flex items-center gap-3 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-400/30 hover:border-emerald-400 px-7 py-3 rounded-3xl text-emerald-300 text-base font-semibold transition-all">
                 <i class="fa-solid fa-gift text-2xl"></i>
                 <span>Ab 100€ Bestellwert gibt's eine <span class="text-white font-bold underline">Mystery Vape gratis</span> dazu! 🎁</span>
             </div>
-   
+  
             <!-- GRATIS VERSAND BANNER -->
             <div class="mt-4 inline-flex items-center gap-3 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-400/30 px-7 py-3 rounded-3xl text-amber-300 text-base font-semibold transition-all">
                 <i class="fa-solid fa-truck text-2xl"></i>
                 <span>Gratis Versand ab <span class="text-white font-bold">100 €</span> Bestellwert! 🚚</span>
+            </div>
+
+            <!-- LIVE TODAY STATS -->
+            <div id="today-live-stats" class="mt-6 inline-flex items-center gap-2 bg-emerald-900/30 text-emerald-400 px-6 py-2 rounded-3xl text-sm font-medium">
+                <div class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                Heute: <span id="today-units">0</span> Produkte • <span id="today-revenue">0 €</span> Umsatz
             </div>
         </div>
         <!-- USER BANNER -->
@@ -370,6 +378,11 @@
             </div>
             <p class="mt-8 text-[10px] text-gray-500">© 2026 WaveVapes • Wennemannstraße 1a • 45475 Mülheim an der Ruhr</p>
             <p class="text-[10px] text-gray-500 mt-1">Gesetzliche Altersbeschränkung: Nur für Personen ab 18 Jahren. Nikotinprodukte schädigen Ihre Gesundheit.</p>
+            <!-- LIVE ONLINE FOOTER -->
+            <div class="mt-6 text-[10px] text-cyan-400 flex items-center justify-center gap-1.5">
+                <div class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                <span id="live-online-count-footer">0</span> Vapern gerade online
+            </div>
         </footer>
     </div>
     <!-- CART SIDEBAR -->
@@ -864,6 +877,9 @@
                         updateCartDisplay();
                     }
                 });
+                // LIVE PRESENCE
+                updatePresence();
+                setInterval(updatePresence, 30000);
             } else {
                 cart = [];
                 if (userSnapshotUnsubscribe) userSnapshotUnsubscribe();
@@ -1642,13 +1658,13 @@
             snap.forEach(doc => {
                 const c = doc.data();
                 const active = currentCategoryFilter === c.name ? 'tab-active' : '';
-              
+             
                 let extra = '';
                 if (c.special === true) {
                     const badgeText = c.specialText || "4 FÜR 3";
                     extra = ` <span class="bg-amber-400 text-black text-xs font-black px-4 py-1 rounded-2xl">${badgeText}</span> <i class="fa-solid fa-bolt animate-bolt text-2xl"></i>`;
                 }
-              
+             
                 html += `<button onclick="setCategoryFilter('${c.name}')" class="px-5 py-2 transition ${active}">${c.name}${extra}</button>`;
             });
             document.getElementById("category-tabs").innerHTML = html;
@@ -1824,6 +1840,70 @@
             const field = document.getElementById("discount-input");
             if (field) field.value = "";
         }
+        // ====================== LIVE FEATURES ======================
+        // Presence (für Admin)
+        function updatePresence() {
+            if (!currentUser) return;
+            db.collection("presence").doc(currentUser.uid).set({
+                uid: currentUser.uid,
+                email: currentUser.email,
+                username: localStorage.getItem("wavevapes_username") || currentUser.email.split('@')[0],
+                lastSeen: firebase.firestore.FieldValue.serverTimestamp(),
+                page: "shop"
+            }, { merge: true });
+        }
+
+        // Live New Order Toast
+        let lastOrderTimestamp = 0;
+        function listenForNewOrders() {
+            db.collection("orders").orderBy("date", "desc").limit(1).onSnapshot(snap => {
+                snap.forEach(doc => {
+                    const o = doc.data();
+                    if (!o.date) return;
+                    const orderTime = o.date.toDate().getTime();
+                    if (orderTime > lastOrderTimestamp && lastOrderTimestamp !== 0) {
+                        showToast(`🔥 Jemand hat gerade ${o.total.toFixed(2)} € bestellt!`, "success");
+                    }
+                    lastOrderTimestamp = orderTime;
+                });
+            });
+        }
+
+        // Live Today Stats
+        function loadTodayStats() {
+            const todayStart = new Date();
+            todayStart.setHours(0, 0, 0, 0);
+            const startTimestamp = firebase.firestore.Timestamp.fromDate(todayStart);
+            db.collection("orders").where("date", ">=", startTimestamp).onSnapshot(snap => {
+                let revenue = 0;
+                let units = 0;
+                snap.forEach(doc => {
+                    const o = doc.data();
+                    revenue += o.total || 0;
+                    (o.items || []).forEach(item => units += (item.qty || 0));
+                });
+                document.getElementById("today-units").textContent = units;
+                document.getElementById("today-revenue").textContent = revenue.toFixed(0) + " €";
+            });
+        }
+
+        // Live Online Count in Footer
+        function updateLiveOnlineFooter() {
+            db.collection("presence").onSnapshot(snap => {
+                let count = 0;
+                const now = Date.now();
+                snap.forEach(doc => {
+                    const data = doc.data();
+                    if (data.lastSeen) {
+                        const last = data.lastSeen.toDate().getTime();
+                        if (now - last < 90000) count++;
+                    }
+                });
+                const el = document.getElementById("live-online-count-footer");
+                if (el) el.textContent = count;
+            });
+        }
+
         // ====================== INITIALISIERUNG ======================
         function initialize() {
             initEmailJS();
@@ -1838,6 +1918,13 @@
             startNotificationCycle();
             checkAndAutoRedeemLoyalty();
             clearDiscountField();
+
+            // LIVE FEATURES START
+            updatePresence();
+            setInterval(updatePresence, 30000);
+            listenForNewOrders();
+            loadTodayStats();
+            updateLiveOnlineFooter();
         }
         window.onload = initialize;
     </script>

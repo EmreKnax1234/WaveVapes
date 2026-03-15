@@ -208,8 +208,8 @@
             to { transform: scale(1); opacity: 1; }
         }
         /* BUNDLE STYLES */
-        .bundle-choice { background: #1f2937; border: 1px solid rgba(103,232,249,0.5); border-radius: 9999px; padding: 12px; margin-bottom: 12px; }
-        .bundle-choice select { width: 100%; }
+        .bundle-section { background: rgba(139, 92, 246, 0.1); border: 2px solid #a78bfa; border-radius: 24px; padding: 20px; margin: 24px 0; }
+        .bundle-choice { background: #1f2937; border: 1px solid #a78bfa; border-radius: 9999px; padding: 12px 16px; margin-bottom: 12px; }
     </style>
 </head>
 <body class="wave-bg text-white min-h-screen">
@@ -1142,14 +1142,12 @@
                         hasNicotine: data.hasNicotine !== false,
                         isBundle: data.isBundle || false,
                         bundleNumChoices: data.bundleNumChoices || 3,
-                        bundleFreeExtra: data.bundleFreeExtra || false
+                        bundleFreeExtra: data.bundleFreeExtra || false,
+                        bundleAllowedIds: data.bundleAllowedIds || []   // NEU: Admin-definierte Liste
                     });
                 });
                 renderProducts();
                 showToast("✅ Produkte aus Firestore geladen");
-
-                // === FIX FÜR SORTIERUNG: Sofort nach Produkten laden anwenden ===
-                loadAndApplyProductOrder();
             } catch (e) {
                 console.error(e);
                 showToast("⚠️ Firestore nicht erreichbar – prüfe Admin-Panel");
@@ -1230,19 +1228,6 @@
                     </div>`;
             });
             container.innerHTML = html || `<p class="col-span-full text-center py-16 text-gray-400">Keine Produkte gefunden.</p>`;
-        }
-        // ====================== NEUE FUNKTION FÜR SORTIERUNG ======================
-        async function loadAndApplyProductOrder() {
-            try {
-                const doc = await db.collection('settings').doc('product_order').get();
-                if (doc.exists) {
-                    productOrder = doc.data().order || [];
-                    console.log("✅ Sortierung geladen:", productOrder.length, "Produkte");
-                    renderProducts();
-                }
-            } catch (e) {
-                console.error("Sortierung laden fehlgeschlagen", e);
-            }
         }
         function updateNicotine(id, value) {
             let item = cart.find(i => i.id === id);
@@ -1685,7 +1670,7 @@
                 ? product.originalPrice.toFixed(2).replace('.', ',') + ' €'
                 : (isVape ? '35,99 €' : '10,99 €');
             const bundleHTML = product.isBundle ? `
-                <div class="mt-8 border-t border-white/10 pt-8">
+                <div class="mt-8 bundle-section">
                     <p class="text-xs text-purple-300 mb-4 font-medium">WÄHLE DEINE ${product.bundleNumChoices} LIQUIDS</p>
                     <div id="bundle-choices" class="space-y-6"></div>
                     ${product.bundleFreeExtra ? `
@@ -1767,13 +1752,16 @@
             const container = document.getElementById('bundle-choices');
             if (!container) return;
             container.innerHTML = '';
-            const liquids = allProducts.filter(p => !p.isBundle && p.hasNicotine !== false);
+            let availableLiquids = allProducts.filter(p => !p.isBundle && p.hasNicotine !== false);
+            if (product.bundleAllowedIds && product.bundleAllowedIds.length > 0) {
+                availableLiquids = availableLiquids.filter(p => product.bundleAllowedIds.includes(p.id));
+            }
             for (let i = 1; i <= (product.bundleNumChoices || 3); i++) {
                 const selectHTML = `
                     <div class="bundle-choice">
                         <select onchange="updateBundleChoice(this)" class="nicotine-select w-full text-lg py-4">
                             <option value="">— Liquid ${i} wählen —</option>
-                            ${liquids.map(l => `<option value="${l.id}">${l.name}</option>`).join('')}
+                            ${availableLiquids.map(l => `<option value="${l.id}">${l.name}</option>`).join('')}
                         </select>
                     </div>`;
                 container.innerHTML += selectHTML;
@@ -1782,12 +1770,12 @@
                 const freeSelect = document.getElementById('bundle-free-choice');
                 if (freeSelect) {
                     freeSelect.innerHTML = `<option value="">— Gratis Extra wählen —</option>` +
-                        liquids.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+                        availableLiquids.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
                 }
             }
         }
         function updateBundleChoice(select) {
-            // Nur für Live-Update im Modal (kein Speichern nötig)
+            // Live-Update (kein Speichern nötig)
         }
         function addFromDetailModal() {
             if (!modalProductId) return;

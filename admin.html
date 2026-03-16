@@ -41,7 +41,27 @@
         .metric-card { background: linear-gradient(135deg, #18181b, #27272a); transition: all 0.3s; }
         .metric-card:hover { transform: translateY(-4px); }
         .presence-card { background: #18181b; border: 1px solid #22d3ee; }
-        .user-edit-modal .form-input { background: #27272a; border: 1px solid #67e8f9; }
+        
+        /* === FIX FÜR DEN USER-EDIT MODAL === */
+        /* Weiße Felder + weiße Schrift → jetzt dunkel mit weißer Schrift */
+        .user-edit-modal input,
+        .user-edit-modal textarea {
+            background: #27272a !important;
+            color: #ffffff !important;
+            border: 1px solid #67e8f9 !important;
+            border-radius: 1rem !important;
+            padding: 1rem 1.5rem !important;
+            font-size: 1rem !important;
+            outline: none !important;
+        }
+        .user-edit-modal input:focus,
+        .user-edit-modal textarea:focus {
+            border-color: #22d3ee !important;
+            box-shadow: 0 0 0 3px rgba(34,211,238,0.3) !important;
+        }
+        .user-edit-modal label {
+            color: #9ca3af !important;
+        }
     </style>
 </head>
 <body class="min-h-screen">
@@ -1857,7 +1877,7 @@ async function bulkAddPoints() {
     await batch.commit();
     showToast(`${points} Punkte an ${selectedExtendedUserIds.length} User verteilt!`, 'success');
 }
-// ====================== EXTENDED USER EDIT MODAL MIT IP-BAN ======================
+// ====================== EXTENDED USER EDIT MODAL – JETZT MIT FIX FÜR WEISSE FELDER ======================
 async function openExtendedUserEditModal(uid) {
     const doc = await db.collection('users').doc(uid).get();
     const u = doc.data();
@@ -1865,23 +1885,36 @@ async function openExtendedUserEditModal(uid) {
     <div class="bg-zinc-900 rounded-3xl p-8 max-w-2xl w-full mx-4 modal">
         <h3 class="text-3xl font-bold mb-6 neon">User bearbeiten: ${u.email}</h3>
         <div class="grid grid-cols-2 gap-6">
-            <div><label class="block text-sm text-gray-400">Username</label><input id="edit-username" value="${u.username || ''}" class="user-edit-modal form-input w-full rounded-2xl px-6 py-4"></div>
-            <div><label class="block text-sm text-gray-400">Loyalty Punkte</label><input id="edit-points" type="number" value="${u.totalBonusPoints || 0}" class="user-edit-modal form-input w-full rounded-2xl px-6 py-4"></div>
-            <div><label class="block text-sm text-gray-400">Referral Code</label><input id="edit-referral" value="${u.referralCode || ''}" class="user-edit-modal form-input w-full rounded-2xl px-6 py-4"></div>
+            <div>
+                <label class="block text-sm text-gray-400 mb-2">Username</label>
+                <input id="edit-username" value="${u.username || ''}" class="bg-zinc-800 text-white border border-cyan-400/30 focus:border-cyan-400 w-full rounded-2xl px-6 py-4 outline-none">
+            </div>
+            <div>
+                <label class="block text-sm text-gray-400 mb-2">Loyalty Punkte</label>
+                <input id="edit-points" type="number" value="${u.totalBonusPoints || 0}" class="bg-zinc-800 text-white border border-cyan-400/30 focus:border-cyan-400 w-full rounded-2xl px-6 py-4 outline-none">
+            </div>
+            <div>
+                <label class="block text-sm text-gray-400 mb-2">Referral Code</label>
+                <input id="edit-referral" value="${u.referralCode || ''}" class="bg-zinc-800 text-white border border-cyan-400/30 focus:border-cyan-400 w-full rounded-2xl px-6 py-4 outline-none">
+            </div>
             <div class="flex items-center gap-4 mt-6">
-                <label><input id="edit-freeshipping" type="checkbox" ${u.freeShipping ? 'checked' : ''}> Gratis Versand</label>
-                <label><input id="edit-disabled" type="checkbox" ${u.disabled ? 'checked' : ''}> Gesperrt</label>
+                <label class="flex items-center gap-3 text-white">
+                    <input id="edit-freeshipping" type="checkbox" ${u.freeShipping ? 'checked' : ''} class="w-5 h-5 accent-emerald-400"> Gratis Versand
+                </label>
+                <label class="flex items-center gap-3 text-white">
+                    <input id="edit-disabled" type="checkbox" ${u.disabled ? 'checked' : ''} class="w-5 h-5 accent-red-400"> Gesperrt
+                </label>
             </div>
         </div>
         <div class="mt-8">
             <label class="block text-sm text-gray-400 mb-2">Interne Notizen</label>
-            <textarea id="edit-notes" rows="3" class="user-edit-modal form-input w-full rounded-2xl px-6 py-4">${u.internalNotes || ''}</textarea>
+            <textarea id="edit-notes" rows="3" class="bg-zinc-800 text-white border border-cyan-400/30 focus:border-cyan-400 w-full rounded-2xl px-6 py-4 outline-none">${u.internalNotes || ''}</textarea>
         </div>
         <div class="flex gap-4 mt-10">
-            <button onclick="saveExtendedUser('${uid}')" class="flex-1 bg-emerald-600 py-5 rounded-3xl font-bold">Speichern</button>
-            <button onclick="closeExtendedUserModal()" class="flex-1 bg-zinc-700 py-5 rounded-3xl">Abbrechen</button>
+            <button onclick="saveExtendedUser('${uid}')" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-5 rounded-3xl font-bold text-white">Speichern</button>
+            <button onclick="closeExtendedUserModal()" class="flex-1 bg-zinc-700 hover:bg-zinc-600 py-5 rounded-3xl">Abbrechen</button>
         </div>
-        <button onclick="showUserOrders('${uid}')" class="mt-6 w-full bg-cyan-600 hover:bg-cyan-500 py-4 rounded-3xl">Bestellungen dieses Users anzeigen</button>
+        <button onclick="showUserOrders('${uid}')" class="mt-6 w-full bg-cyan-600 hover:bg-cyan-500 py-4 rounded-3xl text-white">Bestellungen dieses Users anzeigen</button>
     </div>`;
     document.getElementById('extended-user-edit-modal').innerHTML = html;
     document.getElementById('extended-user-edit-modal').classList.remove('hidden');

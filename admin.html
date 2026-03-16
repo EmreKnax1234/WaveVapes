@@ -110,14 +110,14 @@
                     <div class="flex items-center gap-3"><input id="prod-unavailable" type="checkbox" class="w-5 h-5 accent-red-400"><label>Nicht verfügbar</label></div>
                     <div class="flex items-center gap-3"><input id="prod-has-nicotine" type="checkbox" checked class="w-5 h-5 accent-cyan-400"><label>Nikotin enthalten (10/20 mg Auswahl)</label></div>
                     <div class="col-span-full"><label class="text-xs text-gray-400 block mb-2">Produktbeschreibung</label><textarea id="prod-description" rows="4" placeholder="Intensiver Blue Raspberry Geschmack..." class="w-full bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-4"></textarea></div>
-                    
+                   
                     <!-- BILD-UPLOAD -->
                     <div id="dropzone" class="col-span-full border-2 border-dashed border-cyan-400/50 hover:border-cyan-400 rounded-3xl p-10 text-center cursor-pointer transition-all">
                         <i id="drop-icon" class="fa-solid fa-cloud-arrow-up text-5xl mb-4 text-cyan-400"></i>
                         <p id="drop-text" class="text-cyan-300">Bild per Drag & Drop oder klicken (JPG/PNG)</p>
                         <img id="preview-thumb" class="hidden mx-auto mt-6 max-h-48 rounded-2xl border border-cyan-400/30 shadow-xl">
                     </div>
-                    
+                   
                     <button type="submit" class="lg:col-span-3 bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-5 rounded-3xl text-xl">Produkt speichern</button>
                 </form>
             </div>
@@ -516,6 +516,8 @@ let presenceRefreshInterval = null;
 let extendedUsers = [];
 let selectedExtendedUserIds = [];
 let selectedImageFile = null;
+let selectedEditImageFile = null;
+let removeCurrentImageInEdit = false;
 // ====================== LOG ACTION ======================
 async function logAction(action, target = "", details = {}) {
     if (!auth.currentUser) return;
@@ -546,13 +548,12 @@ function loadProducts() {
         renderProductTable();
     });
 }
-// ====================== DROPZONE ======================
+// ====================== DROPZONE (NEU) ======================
 function initDropzone() {
     const dropzone = document.getElementById('dropzone');
     const preview = document.getElementById('preview-thumb');
     const icon = document.getElementById('drop-icon');
     const text = document.getElementById('drop-text');
-
     dropzone.addEventListener('click', () => {
         const input = document.createElement('input');
         input.type = 'file';
@@ -560,7 +561,6 @@ function initDropzone() {
         input.onchange = e => handleFile(e.target.files[0]);
         input.click();
     });
-
     dropzone.addEventListener('dragover', e => {
         e.preventDefault();
         dropzone.classList.add('dropzone-active');
@@ -571,7 +571,6 @@ function initDropzone() {
         dropzone.classList.remove('dropzone-active');
         if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
     });
-
     function handleFile(file) {
         if (!file || !file.type.startsWith('image/')) {
             alert("Nur Bilddateien erlaubt!");
@@ -584,12 +583,11 @@ function initDropzone() {
         text.textContent = file.name;
     }
 }
-// ====================== FORM SUBMIT ======================
+// ====================== FORM SUBMIT (NEU) ======================
 document.getElementById('add-form').addEventListener('submit', async function(e) {
     e.preventDefault();
     const name = document.getElementById('prod-name').value.trim();
     if (!name) return alert("Name erforderlich!");
-
     let imageUrl = null;
     if (selectedImageFile) {
         const filename = Date.now() + '_' + selectedImageFile.name;
@@ -597,7 +595,6 @@ document.getElementById('add-form').addEventListener('submit', async function(e)
         const snapshot = await ref.put(selectedImageFile);
         imageUrl = await snapshot.ref.getDownloadURL();
     }
-
     const newProduct = {
         name: name,
         price: parseFloat(document.getElementById('prod-price').value),
@@ -611,17 +608,14 @@ document.getElementById('add-form').addEventListener('submit', async function(e)
         image: imageUrl,
         sold: 0
     };
-
     await db.collection('products').add(newProduct);
     await logAction("product_created", name, { imageUploaded: !!imageUrl });
-
     alert("✅ Produkt + Bild erfolgreich gespeichert!");
     this.reset();
     document.getElementById('preview-thumb').classList.add('hidden');
     document.getElementById('drop-icon').classList.remove('hidden');
     document.getElementById('drop-text').textContent = "Bild per Drag & Drop oder klicken (JPG/PNG)";
     selectedImageFile = null;
-
     loadProducts();
 });
 // ====================== KATEGORIE-SELECT ======================
@@ -1437,25 +1431,6 @@ async function cleanupOldPresence() {
     });
     await batch.commit();
 }
-// ====================== SWITCH TAB ======================
-function switchTab(n) {
-    document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('tab-active'));
-    document.getElementById('sidebar-' + n).classList.add('tab-active');
-    document.querySelectorAll('[id^="tab-content-"]').forEach(el => el.classList.add('hidden'));
-    document.getElementById('tab-content-' + n).classList.remove('hidden');
-    if (n === 5) loadAnalytics();
-    if (n === 6) loadAdminLogs();
-    if (n === 8) loadProductOrder();
-    if (n === 9) loadPresence();
-    if (n === 10) loadExtendedUsers();
-}
-function toggleSidebar() {
-    document.getElementById("sidebar").classList.toggle("-translate-x-full");
-}
-async function logout() {
-    await auth.signOut();
-    window.location.href = "index.html";
-}
 // ====================== ERWEITERTE BENUTZERVERWALTUNG ======================
 async function loadExtendedUsers() {
     db.collection('users').onSnapshot(async snap => {
@@ -1601,11 +1576,9 @@ async function saveExtendedUser(uid) {
     const isAdmin = document.getElementById('edit-role-admin').checked;
     const banIp = document.getElementById('edit-ip-ban').checked;
     const notes = document.getElementById('edit-notes').value.trim();
-
     const userRef = db.collection('users').doc(uid);
     const userDoc = await userRef.get();
     const currentIp = userDoc.data()?.lastIp;
-
     await userRef.update({
         username,
         totalBonusPoints: points,
@@ -1615,7 +1588,6 @@ async function saveExtendedUser(uid) {
         role: isAdmin ? 'admin' : firebase.firestore.FieldValue.delete(),
         internalNotes: notes || firebase.firestore.FieldValue.delete()
     });
-
     if (currentIp) {
         if (disabled && banIp) {
             await db.collection("banned_ips").doc(currentIp).set({
@@ -1628,7 +1600,6 @@ async function saveExtendedUser(uid) {
             await db.collection("banned_ips").doc(currentIp).delete();
         }
     }
-
     closeExtendedUserModal();
     showToast(`✅ User gespeichert!${disabled && banIp ? ' + IP gesperrt' : ''}`, 'success');
 }
@@ -1650,6 +1621,168 @@ function toggleSidebar() {
 async function logout() {
     await auth.signOut();
     window.location.href = "index.html";
+}
+// ====================== PRODUCT EDIT MODAL (JETZT FUNKTIONIERT!) ======================
+async function openEditModal(id) {
+    currentEditId = id;
+    const doc = await db.collection('products').doc(id).get();
+    if (!doc.exists) return alert("Produkt nicht gefunden!");
+
+    const p = doc.data();
+
+    const html = `
+    <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999] p-4">
+        <div class="bg-zinc-900 rounded-3xl p-8 max-w-2xl w-full mx-auto modal max-h-[95vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-3xl font-bold neon">Produkt bearbeiten</h3>
+                <button onclick="closeEditModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- Bild -->
+                <div>
+                    <label class="block text-sm text-gray-400 mb-3">Aktuelles Bild</label>
+                    ${p.image ? `<img src="${p.image}" id="current-image-preview" class="w-full rounded-3xl mb-4 shadow-xl">` : `<div class="w-full h-48 bg-zinc-800 rounded-3xl flex items-center justify-center text-5xl mb-4">📦</div>`}
+                    
+                    <div id="edit-dropzone" class="border-2 border-dashed border-cyan-400/50 hover:border-cyan-400 rounded-3xl p-10 text-center cursor-pointer transition-all">
+                        <i class="fa-solid fa-cloud-arrow-up text-5xl mb-4 text-cyan-400"></i>
+                        <p class="text-cyan-300">Neues Bild hochladen (ersetzt das alte)</p>
+                    </div>
+                    
+                    <button onclick="removeImageInEdit()" class="mt-4 text-red-400 hover:text-red-300 text-sm flex items-center gap-2">
+                        <i class="fa-solid fa-trash"></i> Bild komplett entfernen
+                    </button>
+                </div>
+
+                <!-- Daten -->
+                <div class="space-y-6">
+                    <div><label class="block text-sm text-gray-400 mb-2">Name</label>
+                        <input id="edit-name" value="${p.name || ''}" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-2xl px-6 py-4 text-lg">
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div><label class="block text-sm text-gray-400 mb-2">Preis (€)</label>
+                            <input id="edit-price" type="number" step="0.01" value="${p.price || 7.99}" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-2xl px-6 py-4">
+                        </div>
+                        <div><label class="block text-sm text-gray-400 mb-2">Alter Preis (€)</label>
+                            <input id="edit-original-price" type="number" step="0.01" value="${p.originalPrice || ''}" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-2xl px-6 py-4">
+                        </div>
+                    </div>
+
+                    <div><label class="block text-sm text-gray-400 mb-2">Lagerbestand</label>
+                        <input id="edit-stock" type="number" value="${p.stock || 0}" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-2xl px-6 py-4">
+                    </div>
+
+                    <div><label class="block text-sm text-gray-400 mb-2">Kategorie</label>
+                        <select id="edit-category" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-2xl px-6 py-4"></select>
+                    </div>
+
+                    <div class="flex flex-wrap gap-6">
+                        <label class="flex items-center gap-3"><input id="edit-isnew" type="checkbox" ${p.isNew ? 'checked' : ''} class="w-5 h-5 accent-lime-400"> Neue Sorte</label>
+                        <label class="flex items-center gap-3"><input id="edit-available" type="checkbox" ${p.available !== false ? 'checked' : ''} class="w-5 h-5 accent-emerald-400"> Verfügbar</label>
+                        <label class="flex items-center gap-3"><input id="edit-nicotine" type="checkbox" ${p.hasNicotine !== false ? 'checked' : ''} class="w-5 h-5 accent-cyan-400"> Nikotin (10/20 mg)</label>
+                    </div>
+
+                    <div><label class="block text-sm text-gray-400 mb-2">Beschreibung</label>
+                        <textarea id="edit-description" rows="4" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-4">${p.description || ''}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <button onclick="saveProductEdit()" class="mt-10 w-full bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-6 rounded-3xl text-xl hover:scale-105 transition-all">
+                ✅ Änderungen speichern
+            </button>
+        </div>
+    </div>`;
+
+    document.getElementById('edit-modal').innerHTML = html;
+    document.getElementById('edit-modal').classList.remove('hidden');
+
+    // Kategorien füllen
+    const catSelect = document.getElementById('edit-category');
+    catSelect.innerHTML = '<option value="">Kategorie wählen...</option>';
+    allCategories.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.name;
+        opt.textContent = c.name;
+        if (c.name === p.category) opt.selected = true;
+        catSelect.appendChild(opt);
+    });
+
+    initEditDropzone();
+}
+
+function initEditDropzone() {
+    const dz = document.getElementById('edit-dropzone');
+    dz.addEventListener('click', () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = e => e.target.files[0] && handleEditImage(e.target.files[0]);
+        input.click();
+    });
+    dz.addEventListener('drop', e => {
+        e.preventDefault();
+        if (e.dataTransfer.files[0]) handleEditImage(e.dataTransfer.files[0]);
+    });
+}
+
+function handleEditImage(file) {
+    if (!file.type.startsWith('image/')) return alert("Nur Bilder erlaubt!");
+    selectedEditImageFile = file;
+    showToast("✅ Neues Bild ausgewählt – wird beim Speichern hochgeladen", "success");
+}
+
+async function removeImageInEdit() {
+    if (!confirm("Bild wirklich dauerhaft entfernen?")) return;
+    removeCurrentImageInEdit = true;
+    const preview = document.getElementById('current-image-preview');
+    if (preview) preview.style.display = 'none';
+    showToast("Bild wird beim Speichern gelöscht", "success");
+}
+
+function closeEditModal() {
+    document.getElementById('edit-modal').classList.add('hidden');
+    currentEditId = null;
+    selectedEditImageFile = null;
+    removeCurrentImageInEdit = false;
+}
+
+async function saveProductEdit() {
+    if (!currentEditId) return;
+
+    const name = document.getElementById('edit-name').value.trim();
+    if (!name) return alert("Name erforderlich!");
+
+    let imageUrl = null;
+    const updateData = {
+        name,
+        price: parseFloat(document.getElementById('edit-price').value) || 7.99,
+        originalPrice: document.getElementById('edit-original-price').value ? parseFloat(document.getElementById('edit-original-price').value) : null,
+        stock: parseInt(document.getElementById('edit-stock').value) || 0,
+        category: document.getElementById('edit-category').value,
+        isNew: document.getElementById('edit-isnew').checked,
+        available: document.getElementById('edit-available').checked,
+        hasNicotine: document.getElementById('edit-nicotine').checked,
+        description: document.getElementById('edit-description').value.trim()
+    };
+
+    // Bild-Handling
+    if (selectedEditImageFile) {
+        const filename = Date.now() + '_' + selectedEditImageFile.name;
+        const ref = storage.ref('products/' + filename);
+        const snapshot = await ref.put(selectedEditImageFile);
+        imageUrl = await snapshot.ref.getDownloadURL();
+        updateData.image = imageUrl;
+    } else if (removeCurrentImageInEdit) {
+        updateData.image = null;
+    }
+
+    await db.collection('products').doc(currentEditId).update(updateData);
+    await logAction("product_updated", name);
+
+    showToast("✅ Produkt erfolgreich gespeichert!", "success");
+    closeEditModal();
+    loadProducts(); // Tabelle neu laden
 }
 // ====================== INITIALISIERUNG ======================
 auth.onAuthStateChanged(async (user) => {

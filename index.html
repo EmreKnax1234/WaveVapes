@@ -207,8 +207,6 @@
             from { transform: scale(0.92); opacity: 0; }
             to { transform: scale(1); opacity: 1; }
         }
-        /* LIVE TODAY STATS */
-        #today-live-stats { font-size: 0.95rem; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); padding: 8px 16px; border-radius: 9999px; display: inline-flex; align-items: center; gap: 8px; }
     </style>
 </head>
 <body class="wave-bg text-white min-h-screen">
@@ -251,19 +249,19 @@
             <h2 class="hero-title text-5xl sm:text-6xl font-bold tracking-tighter neon-text mb-3">Bestelle deine Liquids und Vapes</h2>
             <p class="hero-subtitle text-xl sm:text-2xl text-cyan-200 max-w-md mx-auto">7,99 € pro Flasche • 10 ml • Nikotin frei wählbar (10 oder 20 mg)</p>
             <p class="text-base sm:text-lg text-gray-300 mt-4">Alle Liquids von ELFLIQ</p>
-  
+ 
             <!-- MYSTERY VAPE BANNER -->
             <div class="mt-4 inline-flex items-center gap-3 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-400/30 hover:border-emerald-400 px-7 py-3 rounded-3xl text-emerald-300 text-base font-semibold transition-all">
                 <i class="fa-solid fa-gift text-2xl"></i>
                 <span>Ab 100€ Bestellwert gibt's eine <span class="text-white font-bold underline">Mystery Vape gratis</span> dazu! 🎁</span>
             </div>
-  
+ 
             <!-- GRATIS VERSAND BANNER -->
             <div class="mt-4 inline-flex items-center gap-3 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-400/30 px-7 py-3 rounded-3xl text-amber-300 text-base font-semibold transition-all">
                 <i class="fa-solid fa-truck text-2xl"></i>
                 <span>Gratis Versand ab <span class="text-white font-bold">100 €</span> Bestellwert! 🚚</span>
             </div>
-            
+           
         </div>
         <!-- USER BANNER -->
         <div id="user-banner" class="mb-10 bg-gradient-to-r from-zinc-900 to-purple-950 border border-cyan-300/30 hover:border-cyan-300 rounded-3xl p-5 cursor-pointer transition-all group" onclick="showAuthModal()">
@@ -648,6 +646,7 @@
         let myReferralCode = "";
         let userHasFreeShipping = false;
         let productOrder = [];
+        let pendingNicotine = {}; // FIX: Nicotine vor dem ersten Add
         // ====================== FIREBASE ======================
         const firebaseConfig = {
             apiKey: "AIzaSyDsIUl-iYmH42MPbusFLhGhj5oGLh01BzI",
@@ -869,6 +868,7 @@
                         loyaltyPoints = data.totalBonusPoints || 0;
                         userHasFreeShipping = data.freeShipping === true;
                         updateLoyaltyDisplay();
+                        checkAndAutoRedeemLoyalty();
                         updateCartDisplay();
                     }
                 });
@@ -1068,11 +1068,12 @@
         function checkAndAutoRedeemLoyalty() {
             for (let r of REWARDS) {
                 if (loyaltyPoints >= r.points && !appliedDiscount) {
-                    const alreadyRedeemed = currentUser ? (localStorage.getItem(`redeemed_${r.code}`) === "true") : false;
+                    const alreadyRedeemed = localStorage.getItem(`redeemed_${r.code}`) === "true";
                     if (!alreadyRedeemed) {
                         if (confirm(`🎉 Du hast genug Punkte für ${r.text}!\nJetzt einlösen?`)) {
                             document.getElementById("discount-input").value = r.code;
                             applyDiscountCode();
+                            localStorage.setItem(`redeemed_${r.code}`, "true");
                             return;
                         }
                     }
@@ -1185,7 +1186,7 @@
             filtered.forEach(product => {
                 const cartItem = cart.find(i => i.id === product.id);
                 const qty = cartItem ? cartItem.qty : 0;
-                const nicotine = cartItem?.nicotine || "20 mg";
+                const nicotine = pendingNicotine[product.id] || cartItem?.nicotine || "20 mg";
                 const isVape = product.category === "WaveVapes Tornado 30000";
                 const imageHTML = product.image
                     ? `<img src="${product.image}" class="tornado-image" alt="${product.name} – WaveVapes Disposable Vape" loading="lazy" decoding="async" width="400" height="160">`
@@ -1199,7 +1200,9 @@
                 let unavailableTagHTML = !product.available ? `<div class="unavailable-tag">Aktuell NICHT verfügbar</div>` : '';
                 let nicotineHTML = '';
                 if (!isVape && product.available && product.hasNicotine) {
-                    nicotineHTML = `<select class="nicotine-select" onclick="event.stopImmediatePropagation()" onchange="updateNicotine('${product.id}', this.value); event.stopImmediatePropagation()">${NICOTINE_OPTIONS.map(opt => `<option value="${opt}" ${nicotine === opt ? 'selected' : ''}>${opt}</option>`).join('')}</select>`;
+                    nicotineHTML = `<select class="nicotine-select" onchange="updateNicotine('${product.id}', this.value)">
+                        ${NICOTINE_OPTIONS.map(opt => `<option value="${opt}" ${nicotine === opt ? 'selected' : ''}>${opt}</option>`).join('')}
+                    </select>`;
                 }
                 let qtyHTML = product.available ? `
                     <div class="flex items-center bg-zinc-800 rounded-3xl" onclick="event.stopImmediatePropagation()">
@@ -1240,6 +1243,7 @@
             container.innerHTML = html || `<p class="col-span-full text-center py-16 text-gray-400">Keine Produkte gefunden.</p>`;
         }
         function updateNicotine(id, value) {
+            pendingNicotine[id] = value;
             let item = cart.find(i => i.id === id);
             if (item) item.nicotine = value;
             updateCartDisplay();
@@ -1253,7 +1257,7 @@
             }
             let existing = cart.find(item => item.id === id);
             if (!existing) {
-                existing = { id, name: product.name, qty: 0, price: product.price, nicotine: product.hasNicotine ? "20 mg" : "" };
+                existing = { id, name: product.name, qty: 0, price: product.price, nicotine: pendingNicotine[id] || (product.hasNicotine ? "20 mg" : "") };
                 cart.push(existing);
             }
             existing.qty = Math.max(0, existing.qty + delta);
@@ -1352,6 +1356,7 @@
         function removeCartItem(id) {
             if (id === MYSTERY_ID) return;
             cart = cart.filter(item => item.id !== id);
+            delete pendingNicotine[id];
             manageMysteryVape();
             saveUserCart();
             updateCartDisplay();
@@ -1361,6 +1366,7 @@
             if (confirm("Wirklich ganzen Warenkorb leeren?")) {
                 cart = [];
                 appliedDiscount = null;
+                pendingNicotine = {};
                 document.getElementById("discount-status").innerHTML = "";
                 saveUserCart();
                 updateCartDisplay();
@@ -1448,6 +1454,7 @@
                     loyaltyEarned: loyaltyEarned
                 });
                 cart = [];
+                pendingNicotine = {};
                 await saveUserCart();
                 showSuccessModal(orderNumber, finalTotal, loyaltyEarned);
                 await loadProducts();
@@ -1653,13 +1660,13 @@
             snap.forEach(doc => {
                 const c = doc.data();
                 const active = currentCategoryFilter === c.name ? 'tab-active' : '';
-             
+            
                 let extra = '';
                 if (c.special === true) {
                     const badgeText = c.specialText || "4 FÜR 3";
                     extra = ` <span class="bg-amber-400 text-black text-xs font-black px-4 py-1 rounded-2xl">${badgeText}</span> <i class="fa-solid fa-bolt animate-bolt text-2xl"></i>`;
                 }
-             
+            
                 html += `<button onclick="setCategoryFilter('${c.name}')" class="px-5 py-2 transition ${active}">${c.name}${extra}</button>`;
             });
             document.getElementById("category-tabs").innerHTML = html;
@@ -1783,20 +1790,23 @@
             const product = allProducts.find(p => p.id === id);
             if (!product || !product.available) return;
             let existing = cart.find(item => item.id === id);
+            const select = document.getElementById("modal-nicotine");
+            const chosenNic = select ? select.value : (pendingNicotine[id] || "20 mg");
             if (!existing) {
                 existing = { id, name: product.name, qty: 0, price: product.price };
-                if (product.hasNicotine) existing.nicotine = "20 mg";
+                if (product.hasNicotine) existing.nicotine = chosenNic;
                 cart.push(existing);
+            } else {
+                existing.nicotine = chosenNic; // FIX: auch bestehendes Item updaten
             }
-            const select = document.getElementById("modal-nicotine");
-            if (select && product.hasNicotine) existing.nicotine = select.value;
+            pendingNicotine[id] = chosenNic;
             existing.qty = (existing.qty || 0) + 1;
             manageMysteryVape();
             saveUserCart();
             updateCartDisplay();
             renderProducts();
             closeProductDetail();
-            showToast(`✅ ${product.name} wurde hinzugefügt!`);
+            showToast(`✅ ${product.name} (${chosenNic}) wurde hinzugefügt!`);
         }
         // ====================== SETTINGS SYNC ======================
         db.collection("settings").doc("main").onSnapshot(doc => {
@@ -1847,7 +1857,6 @@
                 page: "shop"
             }, { merge: true });
         }
-
         // Live New Order Toast
         let lastOrderTimestamp = 0;
         function listenForNewOrders() {
@@ -1863,7 +1872,6 @@
                 });
             });
         }
-
         // Live Today Stats
         function loadTodayStats() {
             const todayStart = new Date();
@@ -1881,7 +1889,6 @@
                 document.getElementById("today-revenue").textContent = revenue.toFixed(0) + " €";
             });
         }
-
         // Live Online Count in Footer
         function updateLiveOnlineFooter() {
             db.collection("presence").onSnapshot(snap => {
@@ -1898,7 +1905,6 @@
                 if (el) el.textContent = count;
             });
         }
-
         // ====================== INITIALISIERUNG ======================
         function initialize() {
             initEmailJS();
@@ -1913,7 +1919,6 @@
             startNotificationCycle();
             checkAndAutoRedeemLoyalty();
             clearDiscountField();
-
             // LIVE FEATURES START
             updatePresence();
             setInterval(updatePresence, 30000);

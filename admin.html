@@ -405,13 +405,13 @@
                 <button onclick="saveProductOrder()" class="mt-10 w-full bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-6 rounded-3xl text-xl hover:scale-105 transition">✅ Sortierung für aktuelle Kategorie speichern & live übernehmen</button>
             </div>
         </div>
-        <!-- TAB 9: LIVE ONLINE -->
+        <!-- TAB 9: LIVE ONLINE (JETZT ECHTZEIT + AUTO-CLEANUP) -->
         <div id="tab-content-9" class="hidden">
             <div class="card overflow-hidden">
                 <div class="p-6 border-b border-white/10 flex items-center justify-between">
                     <h2 class="text-2xl font-bold flex items-center gap-3"><i class="fa-solid fa-users-viewfinder"></i> Live Online (User + Gäste)</h2>
                     <button onclick="cleanupOldPresence()" class="bg-red-600 hover:bg-red-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2">
-                        <i class="fa-solid fa-broom"></i> Alte Einträge löschen (>5 Min)
+                        <i class="fa-solid fa-broom"></i> Alte Einträge löschen
                     </button>
                 </div>
                 <div class="p-6">
@@ -491,7 +491,7 @@ function loadProducts() {
         renderProductTable();
     });
 }
-// ====================== KATEGORIE-SELECT FÜR SORTIERUNG ======================
+// ====================== KATEGORIE-SELECT ======================
 function populateSortCategorySelect() {
     const select = document.getElementById('sort-category-select');
     select.innerHTML = '<option value="global">Alle Produkte (globale Sortierung)</option>';
@@ -623,7 +623,7 @@ function autoSortPriority() {
     items.forEach(item => container.appendChild(item));
     showToast('✅ Automatische Prioritätssortierung angewendet!', 'success');
 }
-// ====================== ALLE ANDEREN FUNKTIONEN ======================
+// ====================== ALLE ANDEREN FUNKTIONEN (vollständig) ======================
 function toggleSelectAllProducts(cb) {
     document.querySelectorAll('.product-checkbox').forEach(ch => ch.checked = cb.checked);
 }
@@ -1267,9 +1267,6 @@ async function showCouponHistory(couponId) {
             <div class="space-y-3">
                 ${listHTML}
             </div>
-            <div class="mt-8 text-[10px] text-gray-500 text-center">
-                Hinweis: Zeitstempel werden automatisch gespeichert, sobald du den Shop-Frontend (index.html) ebenfalls aktualisierst.
-            </div>
         </div>
     </div>`;
     document.getElementById('edit-modal').innerHTML = modalHTML;
@@ -1346,7 +1343,6 @@ async function showOrderModal(orderId) {
                 <div><strong>Adresse:</strong><br>${order.address.street}<br>${order.address.zip} ${order.address.city}</div>
                 <div><strong>Artikel</strong>${itemsHTML}</div>
                 <div class="text-2xl font-bold">Gesamt: <span class="text-emerald-400">${order.total.toFixed(2)} €</span></div>
-              
                 <div class="mt-6">
                     <label class="block text-sm font-medium text-gray-400 mb-2 flex items-center gap-2">
                         <i class="fa-solid fa-note-sticky text-amber-400"></i>
@@ -1400,23 +1396,19 @@ async function saveOrderChanges() {
     const tracking = document.getElementById('modal-tracking').value.trim();
     const internalNotes = document.getElementById('modal-internal-notes').value.trim();
     await handleStockOnStatusChange(currentOrderId, status);
-  
     const updateData = {
         status,
         carrier,
         trackingNumber: tracking || firebase.firestore.FieldValue.delete()
     };
-  
     if (internalNotes) {
         updateData.internalNotes = internalNotes;
     } else {
         updateData.internalNotes = firebase.firestore.FieldValue.delete();
     }
     await db.collection('orders').doc(currentOrderId).update(updateData);
-  
     if (status === "Wird bearbeitet") await awardLoyaltyIfProcessed(currentOrderId);
     await logAction("order_updated", currentOrderId, { status, hasNotes: !!internalNotes });
-  
     showToast('Bestellung + interne Notizen aktualisiert');
     closeOrderModal();
 }
@@ -1767,7 +1759,7 @@ function showToast(msg, type = 'success') {
     document.getElementById('toast-container').appendChild(toast);
     setTimeout(() => toast.remove(), 3500);
 }
-// ====================== LIVE PRESENCE (TAB 9) ======================
+// ====================== LIVE PRESENCE TAB 9 (ECHTZEIT + AUTO-CLEANUP) ======================
 function loadPresence() {
     const container = document.getElementById("presence-list");
     container.innerHTML = '<p class="text-center py-8 text-gray-400">Lade Live-Besucher...</p>';
@@ -1781,7 +1773,7 @@ function loadPresence() {
             const data = doc.data();
             if (!data.lastSeen) return;
             const last = data.lastSeen.toDate().getTime();
-            if (now - last > 90000) return;
+            if (now - last > 60000) return;   // 60 Sekunden = schneller offline
 
             count++;
             const isGuest = data.isGuest === true || !data.uid;
@@ -1806,7 +1798,6 @@ function loadPresence() {
 }
 
 async function cleanupOldPresence() {
-    if (!confirm("Wirklich alle Presence-Einträge älter als 5 Minuten löschen?")) return;
     const snap = await db.collection("presence").get();
     const batch = db.batch();
     const now = Date.now();
@@ -1814,11 +1805,21 @@ async function cleanupOldPresence() {
         const data = doc.data();
         if (data.lastSeen) {
             const last = data.lastSeen.toDate().getTime();
-            if (now - last > 300000) batch.delete(doc.ref);
+            if (now - last > 60000) batch.delete(doc.ref);   // 60 Sekunden
         }
     });
     await batch.commit();
-    showToast("✅ Alte Einträge gelöscht – Datenbank sauber!", "success");
+}
+
+// Automatischer Cleanup alle 30 Sekunden, wenn Tab 9 offen ist
+let cleanupInterval = null;
+function startPresenceCleanup() {
+    if (cleanupInterval) clearInterval(cleanupInterval);
+    cleanupInterval = setInterval(() => {
+        if (!document.getElementById('tab-content-9').classList.contains('hidden')) {
+            cleanupOldPresence();
+        }
+    }, 30000);
 }
 // ====================== SWITCH TAB ======================
 function switchTab(n) {
@@ -1830,7 +1831,10 @@ function switchTab(n) {
     if (n === 5) loadAnalytics();
     if (n === 6) loadAdminLogs();
     if (n === 8) loadProductOrder();
-    if (n === 9) loadPresence();
+    if (n === 9) {
+        loadPresence();
+        startPresenceCleanup();
+    }
 }
 function toggleSidebar() {
     document.getElementById("sidebar").classList.toggle("-translate-x-full");

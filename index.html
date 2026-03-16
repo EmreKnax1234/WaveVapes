@@ -249,19 +249,16 @@
             <h2 class="hero-title text-5xl sm:text-6xl font-bold tracking-tighter neon-text mb-3">Bestelle deine Liquids und Vapes</h2>
             <p class="hero-subtitle text-xl sm:text-2xl text-cyan-200 max-w-md mx-auto">7,99 € pro Flasche • 10 ml • Nikotin frei wählbar (10 oder 20 mg)</p>
             <p class="text-base sm:text-lg text-gray-300 mt-4">Alle Liquids von ELFLIQ</p>
- 
             <!-- MYSTERY VAPE BANNER -->
             <div class="mt-4 inline-flex items-center gap-3 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-400/30 hover:border-emerald-400 px-7 py-3 rounded-3xl text-emerald-300 text-base font-semibold transition-all">
                 <i class="fa-solid fa-gift text-2xl"></i>
                 <span>Ab 100€ Bestellwert gibt's eine <span class="text-white font-bold underline">Mystery Vape gratis</span> dazu! 🎁</span>
             </div>
- 
             <!-- GRATIS VERSAND BANNER -->
             <div class="mt-4 inline-flex items-center gap-3 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-400/30 px-7 py-3 rounded-3xl text-amber-300 text-base font-semibold transition-all">
                 <i class="fa-solid fa-truck text-2xl"></i>
                 <span>Gratis Versand ab <span class="text-white font-bold">100 €</span> Bestellwert! 🚚</span>
             </div>
-           
         </div>
         <!-- USER BANNER -->
         <div id="user-banner" class="mb-10 bg-gradient-to-r from-zinc-900 to-purple-950 border border-cyan-300/30 hover:border-cyan-300 rounded-3xl p-5 cursor-pointer transition-all group" onclick="showAuthModal()">
@@ -646,7 +643,14 @@
         let myReferralCode = "";
         let userHasFreeShipping = false;
         let productOrder = [];
-        let pendingNicotine = {}; // FIX: Nicotine vor dem ersten Add
+        let pendingNicotine = {};
+        
+        // ==================== NEU: ECHTE LIVE ONLINE ZÄHLUNG (Gäste + User) ====================
+        let sessionId = localStorage.getItem("wavevapes_sessionId");
+        if (!sessionId) {
+            sessionId = "guest_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem("wavevapes_sessionId", sessionId);
+        }
         // ====================== FIREBASE ======================
         const firebaseConfig = {
             apiKey: "AIzaSyDsIUl-iYmH42MPbusFLhGhj5oGLh01BzI",
@@ -872,7 +876,6 @@
                         updateCartDisplay();
                     }
                 });
-                // LIVE PRESENCE
                 updatePresence();
                 setInterval(updatePresence, 30000);
             } else {
@@ -1660,13 +1663,13 @@
             snap.forEach(doc => {
                 const c = doc.data();
                 const active = currentCategoryFilter === c.name ? 'tab-active' : '';
-            
+           
                 let extra = '';
                 if (c.special === true) {
                     const badgeText = c.specialText || "4 FÜR 3";
                     extra = ` <span class="bg-amber-400 text-black text-xs font-black px-4 py-1 rounded-2xl">${badgeText}</span> <i class="fa-solid fa-bolt animate-bolt text-2xl"></i>`;
                 }
-            
+           
                 html += `<button onclick="setCategoryFilter('${c.name}')" class="px-5 py-2 transition ${active}">${c.name}${extra}</button>`;
             });
             document.getElementById("category-tabs").innerHTML = html;
@@ -1797,7 +1800,7 @@
                 if (product.hasNicotine) existing.nicotine = chosenNic;
                 cart.push(existing);
             } else {
-                existing.nicotine = chosenNic; // FIX: auch bestehendes Item updaten
+                existing.nicotine = chosenNic;
             }
             pendingNicotine[id] = chosenNic;
             existing.qty = (existing.qty || 0) + 1;
@@ -1846,15 +1849,18 @@
             if (field) field.value = "";
         }
         // ====================== LIVE FEATURES ======================
-        // Presence (für Admin)
+        // ECHTE LIVE PRESENCE (Gäste + User)
         function updatePresence() {
-            if (!currentUser) return;
-            db.collection("presence").doc(currentUser.uid).set({
-                uid: currentUser.uid,
-                email: currentUser.email,
-                username: localStorage.getItem("wavevapes_username") || currentUser.email.split('@')[0],
+            const docId = currentUser ? currentUser.uid : sessionId;
+            db.collection("presence").doc(docId).set({
+                uid: currentUser ? currentUser.uid : null,
+                email: currentUser ? currentUser.email : null,
+                username: currentUser 
+                    ? (localStorage.getItem("wavevapes_username") || currentUser.email.split('@')[0]) 
+                    : "Gast",
                 lastSeen: firebase.firestore.FieldValue.serverTimestamp(),
-                page: "shop"
+                page: "shop",
+                isGuest: !currentUser
             }, { merge: true });
         }
         // Live New Order Toast
@@ -1889,7 +1895,7 @@
                 document.getElementById("today-revenue").textContent = revenue.toFixed(0) + " €";
             });
         }
-        // Live Online Count in Footer
+        // ECHTE LIVE ONLINE COUNT (Gäste + User)
         function updateLiveOnlineFooter() {
             db.collection("presence").onSnapshot(snap => {
                 let count = 0;

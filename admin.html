@@ -519,8 +519,10 @@ function renderProductTable() {
         html += `
         <tr class="table-row-hover border-b border-white/10">
             <td class="py-5 px-6 text-center"><input type="checkbox" class="product-checkbox accent-cyan-400 w-5 h-5" data-id="${p.id}"></td>
-            <td class="py-5 px-6">${p.image ? `<img src="${p.image}" class="w-12 h-12 object-cover rounded-xl" loading="lazy">` : '—'}</td>
-            <td class="py-5 px-6 font-medium">${p.name}</td>
+            <td class="py-5 px-6 flex items-center gap-3">
+                ${p.image ? `<img src="${p.image}" class="w-12 h-12 object-cover rounded-xl flex-shrink-0" loading="lazy">` : '<div class="w-12 h-12 bg-zinc-800 rounded-xl flex items-center justify-center text-xl flex-shrink-0">📦</div>'}
+                <span class="font-medium">${p.name}</span>
+            </td>
             <td class="py-5 px-6">${p.category || '—'}</td>
             <td class="py-5 px-6 text-center">${neuBadge}</td>
             <td class="py-5 px-6 text-center">${p.price.toFixed(2)} €</td>
@@ -1275,7 +1277,7 @@ async function showOrderModal(orderId) {
     const doc = await db.collection('orders').doc(orderId).get();
     const order = doc.data();
     const date = order.date ? order.date.toDate().toLocaleString('de-DE') : '—';
-    
+   
     let itemsHTML = '';
     order.items.forEach(item => {
         itemsHTML += `
@@ -1284,7 +1286,6 @@ async function showOrderModal(orderId) {
                 <span>${(item.price * item.qty).toFixed(2)} €</span>
             </div>`;
     });
-
     const modalHTML = `
     <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]">
         <div class="bg-zinc-900 rounded-3xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto modal">
@@ -1300,18 +1301,17 @@ async function showOrderModal(orderId) {
                 <div><strong>Adresse:</strong><br>${order.address.street}<br>${order.address.zip} ${order.address.city}</div>
                 <div><strong>Artikel</strong>${itemsHTML}</div>
                 <div class="text-2xl font-bold">Gesamt: <span class="text-emerald-400">${order.total.toFixed(2)} €</span></div>
-                
+               
                 <div class="mt-6">
                     <label class="block text-sm font-medium text-gray-400 mb-2 flex items-center gap-2">
                         <i class="fa-solid fa-note-sticky text-amber-400"></i>
                         Interne Notizen (nur für dich sichtbar)
                     </label>
-                    <textarea id="modal-internal-notes" 
-                              rows="4" 
+                    <textarea id="modal-internal-notes"
+                              rows="4"
                               placeholder="z. B. Kunde hat schon überwiesen, IBAN-Ende 5812, Betrag passt..."
                               class="w-full bg-zinc-800 border border-amber-400/30 focus:border-amber-400 rounded-2xl px-5 py-3 text-sm resize-y min-h-[100px]"></textarea>
                 </div>
-
                 <div class="bg-zinc-950 -mx-8 -mb-8 p-8 rounded-b-3xl border-t border-white/10">
                     <h4 class="font-bold mb-6 text-cyan-400 flex items-center gap-2"><i class="fa-solid fa-truck"></i> Admin-Steuerung</h4>
                     <select id="modal-status" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 mb-6">
@@ -1343,7 +1343,6 @@ async function showOrderModal(orderId) {
             </div>
         </div>
     </div>`;
-
     document.getElementById('order-modal-container').innerHTML = modalHTML;
     document.getElementById('modal-internal-notes').value = order.internalNotes || '';
 }
@@ -1355,26 +1354,24 @@ async function saveOrderChanges() {
     const carrier = document.getElementById('modal-carrier').value;
     const tracking = document.getElementById('modal-tracking').value.trim();
     const internalNotes = document.getElementById('modal-internal-notes').value.trim();
-
     await handleStockOnStatusChange(currentOrderId, status);
-    
+   
     const updateData = {
         status,
         carrier,
         trackingNumber: tracking || firebase.firestore.FieldValue.delete()
     };
-    
+   
     if (internalNotes) {
         updateData.internalNotes = internalNotes;
     } else {
         updateData.internalNotes = firebase.firestore.FieldValue.delete();
     }
-
     await db.collection('orders').doc(currentOrderId).update(updateData);
-    
+   
     if (status === "Wird bearbeitet") await awardLoyaltyIfProcessed(currentOrderId);
     await logAction("order_updated", currentOrderId, { status, hasNotes: !!internalNotes });
-    
+   
     showToast('Bestellung + interne Notizen aktualisiert');
     closeOrderModal();
 }

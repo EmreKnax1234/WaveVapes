@@ -405,14 +405,17 @@
                 <button onclick="saveProductOrder()" class="mt-10 w-full bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-6 rounded-3xl text-xl hover:scale-105 transition">✅ Sortierung für aktuelle Kategorie speichern & live übernehmen</button>
             </div>
         </div>
-        <!-- TAB 9: LIVE ONLINE (JETZT ECHTZEIT + AUTO-CLEANUP) -->
+        <!-- TAB 9: LIVE ONLINE (ECHTZEIT + SERVER-POLLING) -->
         <div id="tab-content-9" class="hidden">
             <div class="card overflow-hidden">
                 <div class="p-6 border-b border-white/10 flex items-center justify-between">
                     <h2 class="text-2xl font-bold flex items-center gap-3"><i class="fa-solid fa-users-viewfinder"></i> Live Online (User + Gäste)</h2>
-                    <button onclick="cleanupOldPresence()" class="bg-red-600 hover:bg-red-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2">
-                        <i class="fa-solid fa-broom"></i> Alte Einträge löschen
-                    </button>
+                    <div class="flex gap-3">
+                        <button onclick="loadPresence()" class="bg-cyan-600 hover:bg-cyan-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2"><i class="fa-solid fa-sync"></i> Jetzt aktualisieren</button>
+                        <button onclick="cleanupOldPresence()" class="bg-red-600 hover:bg-red-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2">
+                            <i class="fa-solid fa-broom"></i> Alte Einträge löschen
+                        </button>
+                    </div>
                 </div>
                 <div class="p-6">
                     <div id="presence-list" class="space-y-4 max-h-[70vh] overflow-y-auto"></div>
@@ -461,6 +464,7 @@ let adminCategoryFilter = 'Alle';
 let adminStatusFilter = '';
 let selectedProductIds = [];
 let currentSortCategory = "global";
+let presenceRefreshInterval = null;
 // ====================== LOG ACTION ======================
 async function logAction(action, target = "", details = {}) {
     if (!auth.currentUser) return;
@@ -623,7 +627,7 @@ function autoSortPriority() {
     items.forEach(item => container.appendChild(item));
     showToast('✅ Automatische Prioritätssortierung angewendet!', 'success');
 }
-// ====================== ALLE ANDEREN FUNKTIONEN (vollständig) ======================
+// ====================== ALLE ANDEREN FUNKTIONEN ======================
 function toggleSelectAllProducts(cb) {
     document.querySelectorAll('.product-checkbox').forEach(ch => ch.checked = cb.checked);
 }
@@ -1759,7 +1763,7 @@ function showToast(msg, type = 'success') {
     document.getElementById('toast-container').appendChild(toast);
     setTimeout(() => toast.remove(), 3500);
 }
-// ====================== LIVE PRESENCE TAB 9 (ECHTZEIT + AUTO-CLEANUP) ======================
+// ====================== LIVE PRESENCE TAB 9 (ECHTZEIT + SERVER-POLLING) ======================
 function loadPresence() {
     const container = document.getElementById("presence-list");
     container.innerHTML = '<p class="text-center py-8 text-gray-400">Lade Live-Besucher...</p>';
@@ -1773,7 +1777,7 @@ function loadPresence() {
             const data = doc.data();
             if (!data.lastSeen) return;
             const last = data.lastSeen.toDate().getTime();
-            if (now - last > 60000) return;   // 60 Sekunden = schneller offline
+            if (now - last > 45000) return;   // 45 Sekunden = schneller offline
 
             count++;
             const isGuest = data.isGuest === true || !data.uid;
@@ -1805,23 +1809,12 @@ async function cleanupOldPresence() {
         const data = doc.data();
         if (data.lastSeen) {
             const last = data.lastSeen.toDate().getTime();
-            if (now - last > 60000) batch.delete(doc.ref);   // 60 Sekunden
+            if (now - last > 45000) batch.delete(doc.ref);
         }
     });
     await batch.commit();
 }
-
-// Automatischer Cleanup alle 30 Sekunden, wenn Tab 9 offen ist
-let cleanupInterval = null;
-function startPresenceCleanup() {
-    if (cleanupInterval) clearInterval(cleanupInterval);
-    cleanupInterval = setInterval(() => {
-        if (!document.getElementById('tab-content-9').classList.contains('hidden')) {
-            cleanupOldPresence();
-        }
-    }, 30000);
-}
-// ====================== SWITCH TAB ======================
+// ====================== SWITCH TAB (mit Echtzeit-Refresh) ======================
 function switchTab(n) {
     document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('tab-active'));
     document.getElementById('sidebar-' + n).classList.add('tab-active');
@@ -1833,7 +1826,17 @@ function switchTab(n) {
     if (n === 8) loadProductOrder();
     if (n === 9) {
         loadPresence();
-        startPresenceCleanup();
+        if (presenceRefreshInterval) clearInterval(presenceRefreshInterval);
+        presenceRefreshInterval = setInterval(() => {
+            if (!document.getElementById('tab-content-9').classList.contains('hidden')) {
+                loadPresence();
+            }
+        }, 5000); // alle 5 Sekunden Refresh als Backup
+    } else {
+        if (presenceRefreshInterval) {
+            clearInterval(presenceRefreshInterval);
+            presenceRefreshInterval = null;
+        }
     }
 }
 function toggleSidebar() {

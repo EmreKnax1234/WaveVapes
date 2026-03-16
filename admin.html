@@ -41,7 +41,7 @@
         .metric-card { background: linear-gradient(135deg, #18181b, #27272a); transition: all 0.3s; }
         .metric-card:hover { transform: translateY(-4px); }
         .presence-card { background: #18181b; border: 1px solid #22d3ee; }
-      
+     
         /* === FIX FÜR DEN USER-EDIT MODAL === */
         .user-edit-modal input,
         .user-edit-modal textarea {
@@ -1269,31 +1269,25 @@ async function handleStockOnStatusChange(orderId, newStatus) {
     const orderDoc = await orderRef.get();
     const order = orderDoc.data();
     const oldStatus = order.status || "Zahlung erwartet";
-
     if (newStatus === "Wird bearbeitet" && oldStatus !== "Wird bearbeitet") {
         try {
             await db.runTransaction(async (transaction) => {
                 const orderSnap = await transaction.get(orderRef);
                 const currentOrder = orderSnap.data();
-
                 for (let item of currentOrder.items) {
                     if (item.id === 999) continue; // Mystery Vape
-
                     const prodRef = db.collection("products").doc(item.id);
                     const prodSnap = await transaction.get(prodRef);
                     const currentStock = prodSnap.data().stock || 0;
-
                     if (currentStock < item.qty) {
                         throw new Error(`Nicht genug Lager für ${item.name} (nur ${currentStock} verfügbar)`);
                     }
-
                     transaction.update(prodRef, {
                         stock: firebase.firestore.FieldValue.increment(-item.qty),
                         sold: firebase.firestore.FieldValue.increment(item.qty)
                     });
                 }
             });
-
             showToast("✅ Lager erfolgreich abgezogen!", "success");
             return true;
         } catch (error) {
@@ -1302,7 +1296,6 @@ async function handleStockOnStatusChange(orderId, newStatus) {
             return false; // verhindert Status-Änderung
         }
     }
-
     // Stornierung (einfacher, da keine Prüfung nötig)
     if (newStatus === "Storniert" && oldStatus === "Wird bearbeitet") {
         for (let item of order.items) {
@@ -1402,11 +1395,9 @@ async function saveOrderChanges() {
     const status = document.getElementById('modal-status').value;
     const success = await handleStockOnStatusChange(currentOrderId, status);
     if (!success) return;
-
     const carrier = document.getElementById('modal-carrier').value;
     const tracking = document.getElementById('modal-tracking').value.trim();
     const internalNotes = document.getElementById('modal-internal-notes').value.trim();
-
     const updateData = {
         status,
         carrier,
@@ -1872,37 +1863,77 @@ function toggleExtendedSelect() {
 function updateSelectedExtendedIds() {
     selectedExtendedUserIds = Array.from(document.querySelectorAll('#extended-users-tbody input[type="checkbox"]:checked')).map(ch => ch.dataset.id);
 }
+// ====================== NEUE BULK-SPERRFUNKTION MIT IP-CHECKBOX ======================
 async function bulkDisableSelected(disable) {
     if (selectedExtendedUserIds.length === 0) return alert("Keine User ausgewählt");
-    if (!confirm(`Wirklich ${selectedExtendedUserIds.length} User ${disable ? 'PERMANENT SPERREN + IP BAN' : 'entsperren'}?`)) return;
+
+    const action = disable ? "sperren" : "entsperren";
+    const modalHTML = `
+    <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]">
+        <div class="bg-zinc-900 rounded-3xl p-8 max-w-md w-full mx-4 modal">
+            <h3 class="text-3xl font-bold mb-6">Bulk-Aktion: ${disable ? 'Sperren' : 'Entsperren'}</h3>
+            <p class="mb-8 text-gray-300">${selectedExtendedUserIds.length} Benutzer werden ${action}.</p>
+            
+            <div class="flex items-center gap-3 mb-8">
+                <input id="bulk-ip-ban" type="checkbox" class="w-6 h-6 accent-red-500" ${disable ? 'checked' : ''}>
+                <label class="text-lg font-medium">Auch IP-Adresse(n) sperren / freigeben</label>
+            </div>
+
+            <div class="flex gap-4">
+                <button onclick="executeBulkDisable(${disable})" 
+                        class="flex-1 bg-red-600 hover:bg-red-500 py-5 rounded-3xl font-bold text-white">
+                    ${disable ? 'JETZT SPERREN' : 'JETZT ENTSPERREN'}
+                </button>
+                <button onclick="closeBulkIpModal()" 
+                        class="flex-1 bg-zinc-700 hover:bg-zinc-600 py-5 rounded-3xl">
+                    Abbrechen
+                </button>
+            </div>
+        </div>
+    </div>`;
+
+    document.getElementById('extended-user-edit-modal').innerHTML = modalHTML;
+    document.getElementById('extended-user-edit-modal').classList.remove('hidden');
+}
+
+async function executeBulkDisable(disable) {
+    const banIp = document.getElementById('bulk-ip-ban').checked;
     const batch = db.batch();
+
     for (let uid of selectedExtendedUserIds) {
-        const userDoc = await db.collection('users').doc(uid).get();
-        const u = userDoc.data();
-      
-        batch.update(db.collection('users').doc(uid), { disabled: disable });
-        if (disable && u.lastIp) {
-            await db.collection("banned_ips").doc(u.lastIp).set({
-                ip: u.lastIp,
-                bannedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                reason: "Admin-Ban via erweiterte Verwaltung"
-            });
+        const userRef = db.collection('users').doc(uid);
+        const userDoc = await userRef.get();
+        const userData = userDoc.data();
+
+        batch.update(userRef, { disabled: disable });
+
+        if (banIp && userData.lastIp) {
+            if (disable) {
+                // IP sperren
+                await db.collection("banned_ips").doc(userData.lastIp).set({
+                    ip: userData.lastIp,
+                    bannedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    reason: "Admin-Bulk-Ban",
+                    bannedBy: auth.currentUser.email
+                });
+            } else {
+                // IP freigeben
+                await db.collection("banned_ips").doc(userData.lastIp).delete();
+            }
         }
     }
+
     await batch.commit();
-    showToast(`${selectedExtendedUserIds.length} User ${disable ? 'permanent gesperrt + IP gebannt' : 'entsperrt'}!`, 'success');
+    closeBulkIpModal();
+
+    showToast(`${selectedExtendedUserIds.length} User ${disable ? 'gesperrt' : 'entsperrt'}!${banIp ? ' + IP-Ban' : ''}`, 'success');
+    renderExtendedUsersTable();
 }
-async function bulkAddPoints() {
-    if (selectedExtendedUserIds.length === 0) return alert("Keine User ausgewählt");
-    const points = prompt("Wie viele Punkte sollen alle ausgewählten User bekommen?", "500");
-    if (!points) return;
-    const batch = db.batch();
-    selectedExtendedUserIds.forEach(id => {
-        batch.update(db.collection('users').doc(id), { totalBonusPoints: firebase.firestore.FieldValue.increment(parseInt(points)) });
-    });
-    await batch.commit();
-    showToast(`${points} Punkte an ${selectedExtendedUserIds.length} User verteilt!`, 'success');
+
+function closeBulkIpModal() {
+    document.getElementById('extended-user-edit-modal').classList.add('hidden');
 }
+// ====================== NEUER EXTENDED USER EDIT MODAL ======================
 async function openExtendedUserEditModal(uid) {
     const doc = await db.collection('users').doc(uid).get();
     const u = doc.data();
@@ -1929,12 +1960,21 @@ async function openExtendedUserEditModal(uid) {
                 <label class="flex items-center gap-3 text-white">
                     <input id="edit-disabled" type="checkbox" ${u.disabled ? 'checked' : ''} class="w-5 h-5 accent-red-400"> Gesperrt
                 </label>
-                <!-- NEU: Admin-Rolle -->
                 <label class="flex items-center gap-3 text-white">
                     <input id="edit-role-admin" type="checkbox" ${u.role === 'admin' ? 'checked' : ''} class="w-5 h-5 accent-purple-400"> Admin-Rolle
                 </label>
             </div>
         </div>
+
+        <!-- NEU: IP-Ban Checkbox -->
+        <div class="mt-8 bg-red-950/30 border border-red-500/30 rounded-2xl p-6">
+            <label class="flex items-center gap-3 text-white font-medium">
+                <input id="edit-ip-ban" type="checkbox" ${u.disabled ? 'checked' : ''} class="w-5 h-5 accent-red-500">
+                <span>IP-Adresse ebenfalls sperren (bei Aktivierung)</span>
+            </label>
+            <p class="text-xs text-red-400 mt-2">Wird automatisch freigegeben, wenn du den User entsperrst.</p>
+        </div>
+
         <div class="mt-8">
             <label class="block text-sm text-gray-400 mb-2">Interne Notizen</label>
             <textarea id="edit-notes" rows="3" class="bg-zinc-800 text-white border border-cyan-400/30 focus:border-cyan-400 w-full rounded-2xl px-6 py-4 outline-none">${u.internalNotes || ''}</textarea>
@@ -1958,8 +1998,14 @@ async function saveExtendedUser(uid) {
     const freeShipping = document.getElementById('edit-freeshipping').checked;
     const disabled = document.getElementById('edit-disabled').checked;
     const isAdmin = document.getElementById('edit-role-admin').checked;
+    const banIp = document.getElementById('edit-ip-ban').checked;
     const notes = document.getElementById('edit-notes').value.trim();
-    await db.collection('users').doc(uid).update({
+
+    const userRef = db.collection('users').doc(uid);
+    const userDoc = await userRef.get();
+    const currentIp = userDoc.data()?.lastIp;
+
+    await userRef.update({
         username,
         totalBonusPoints: points,
         referralCode,
@@ -1968,13 +2014,23 @@ async function saveExtendedUser(uid) {
         role: isAdmin ? 'admin' : firebase.firestore.FieldValue.delete(),
         internalNotes: notes || firebase.firestore.FieldValue.delete()
     });
-    if (!isAdmin) {
-        const userDoc = await db.collection('users').doc(uid).get();
-        const u = userDoc.data();
-        if (u.lastIp) await db.collection("banned_ips").doc(u.lastIp).delete();
+
+    // IP-Handling
+    if (currentIp) {
+        if (disabled && banIp) {
+            await db.collection("banned_ips").doc(currentIp).set({
+                ip: currentIp,
+                bannedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                reason: "Admin-Sperre (Einzel)",
+                bannedBy: auth.currentUser.email
+            });
+        } else {
+            await db.collection("banned_ips").doc(currentIp).delete();
+        }
     }
+
     closeExtendedUserModal();
-    showToast('✅ User + Admin-Rolle erfolgreich gespeichert!', 'success');
+    showToast(`✅ User gespeichert!${disabled && banIp ? ' + IP gesperrt' : disabled ? ' (nur User)' : ''}`, 'success');
 }
 async function showUserOrders(uid) {
     showToast('Bestellungen dieses Users werden in Tab 1 angezeigt (filtere nach User)', 'success');

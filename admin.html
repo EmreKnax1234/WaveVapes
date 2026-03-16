@@ -41,7 +41,7 @@
         .metric-card { background: linear-gradient(135deg, #18181b, #27272a); transition: all 0.3s; }
         .metric-card:hover { transform: translateY(-4px); }
         .presence-card { background: #18181b; border: 1px solid #22d3ee; }
-       
+      
         /* === FIX FÜR DEN USER-EDIT MODAL === */
         .user-edit-modal input,
         .user-edit-modal textarea {
@@ -1263,8 +1263,61 @@ function loadOrders() {
 }
 document.getElementById('order-search').addEventListener('input', loadOrders);
 document.getElementById('status-filter').addEventListener('change', loadOrders);
+// ====================== LAGERABZUG NUR BEI "WIRD BEARBEITET" (MIT TRANSACTION + LAGERPRÜFUNG) ======================
+async function handleStockOnStatusChange(orderId, newStatus) {
+    const orderRef = db.collection('orders').doc(orderId);
+    const orderDoc = await orderRef.get();
+    const order = orderDoc.data();
+    const oldStatus = order.status || "Zahlung erwartet";
+
+    if (newStatus === "Wird bearbeitet" && oldStatus !== "Wird bearbeitet") {
+        try {
+            await db.runTransaction(async (transaction) => {
+                const orderSnap = await transaction.get(orderRef);
+                const currentOrder = orderSnap.data();
+
+                for (let item of currentOrder.items) {
+                    if (item.id === 999) continue; // Mystery Vape
+
+                    const prodRef = db.collection("products").doc(item.id);
+                    const prodSnap = await transaction.get(prodRef);
+                    const currentStock = prodSnap.data().stock || 0;
+
+                    if (currentStock < item.qty) {
+                        throw new Error(`Nicht genug Lager für ${item.name} (nur ${currentStock} verfügbar)`);
+                    }
+
+                    transaction.update(prodRef, {
+                        stock: firebase.firestore.FieldValue.increment(-item.qty),
+                        sold: firebase.firestore.FieldValue.increment(item.qty)
+                    });
+                }
+            });
+
+            showToast("✅ Lager erfolgreich abgezogen!", "success");
+            return true;
+        } catch (error) {
+            console.error(error);
+            showToast("❌ " + error.message, "error");
+            return false; // verhindert Status-Änderung
+        }
+    }
+
+    // Stornierung (einfacher, da keine Prüfung nötig)
+    if (newStatus === "Storniert" && oldStatus === "Wird bearbeitet") {
+        for (let item of order.items) {
+            if (item.id === 999) continue;
+            await db.collection("products").doc(item.id).update({
+                stock: firebase.firestore.FieldValue.increment(item.qty)
+            });
+        }
+        showToast("✅ Lager wiederhergestellt", "success");
+    }
+    return true;
+}
 async function quickStatus(id, status) {
-    await handleStockOnStatusChange(id, status);
+    const success = await handleStockOnStatusChange(id, status);
+    if (!success) return;
     await db.collection('orders').doc(id).update({ status });
     if (status === "Wird bearbeitet") await awardLoyaltyIfProcessed(id);
     await logAction("order_status_changed", id, { status });
@@ -1347,10 +1400,13 @@ function closeOrderModal() {
 }
 async function saveOrderChanges() {
     const status = document.getElementById('modal-status').value;
+    const success = await handleStockOnStatusChange(currentOrderId, status);
+    if (!success) return;
+
     const carrier = document.getElementById('modal-carrier').value;
     const tracking = document.getElementById('modal-tracking').value.trim();
     const internalNotes = document.getElementById('modal-internal-notes').value.trim();
-    await handleStockOnStatusChange(currentOrderId, status);
+
     const updateData = {
         status,
         carrier,
@@ -1646,30 +1702,6 @@ async function awardLoyaltyIfProcessed(orderId) {
     await db.collection('orders').doc(orderId).update({ loyaltyCredited: true });
     showToast(`🎉 +${points} Loyalty-Punkte gutgeschrieben!`, 'success');
 }
-async function handleStockOnStatusChange(orderId, newStatus) {
-    const doc = await db.collection('orders').doc(orderId).get();
-    const order = doc.data();
-    const oldStatus = order.status || "Zahlung erwartet";
-    if (newStatus === "Wird bearbeitet" && oldStatus !== "Wird bearbeitet") {
-        for (let item of order.items) {
-            if (item.id === 999) continue;
-            await db.collection("products").doc(item.id).update({
-                stock: firebase.firestore.FieldValue.increment(-item.qty),
-                sold: firebase.firestore.FieldValue.increment(item.qty)
-            });
-        }
-        showToast("✅ Lager & Verkaufszahlen aktualisiert", "success");
-    }
-    if (newStatus === "Storniert" && oldStatus === "Wird bearbeitet") {
-        for (let item of order.items) {
-            if (item.id === 999) continue;
-            await db.collection("products").doc(item.id).update({
-                stock: firebase.firestore.FieldValue.increment(item.qty)
-            });
-        }
-        showToast("✅ Lager wiederhergestellt", "success");
-    }
-}
 async function resetAllStatistics() {
     if (!confirm("⚠️ WIRKLICH ALLE STATISTIKEN ZURÜCKSETZEN?\n\nsold wird bei ALLEN Produkten auf 0 gesetzt.\nUmsatz und Top-Seller gehen auf Null.\nDas ist UNWIDERRUFLICH!")) {
         return;
@@ -1840,7 +1872,6 @@ function toggleExtendedSelect() {
 function updateSelectedExtendedIds() {
     selectedExtendedUserIds = Array.from(document.querySelectorAll('#extended-users-tbody input[type="checkbox"]:checked')).map(ch => ch.dataset.id);
 }
-// ====================== BULK DISABLE MIT IP-BAN ======================
 async function bulkDisableSelected(disable) {
     if (selectedExtendedUserIds.length === 0) return alert("Keine User ausgewählt");
     if (!confirm(`Wirklich ${selectedExtendedUserIds.length} User ${disable ? 'PERMANENT SPERREN + IP BAN' : 'entsperren'}?`)) return;
@@ -1848,7 +1879,7 @@ async function bulkDisableSelected(disable) {
     for (let uid of selectedExtendedUserIds) {
         const userDoc = await db.collection('users').doc(uid).get();
         const u = userDoc.data();
-       
+      
         batch.update(db.collection('users').doc(uid), { disabled: disable });
         if (disable && u.lastIp) {
             await db.collection("banned_ips").doc(u.lastIp).set({
@@ -1872,7 +1903,6 @@ async function bulkAddPoints() {
     await batch.commit();
     showToast(`${points} Punkte an ${selectedExtendedUserIds.length} User verteilt!`, 'success');
 }
-// ====================== EXTENDED USER EDIT MODAL – MIT ADMIN-ROLLE ======================
 async function openExtendedUserEditModal(uid) {
     const doc = await db.collection('users').doc(uid).get();
     const u = doc.data();
@@ -1929,7 +1959,6 @@ async function saveExtendedUser(uid) {
     const disabled = document.getElementById('edit-disabled').checked;
     const isAdmin = document.getElementById('edit-role-admin').checked;
     const notes = document.getElementById('edit-notes').value.trim();
-
     await db.collection('users').doc(uid).update({
         username,
         totalBonusPoints: points,
@@ -1939,13 +1968,11 @@ async function saveExtendedUser(uid) {
         role: isAdmin ? 'admin' : firebase.firestore.FieldValue.delete(),
         internalNotes: notes || firebase.firestore.FieldValue.delete()
     });
-
     if (!isAdmin) {
         const userDoc = await db.collection('users').doc(uid).get();
         const u = userDoc.data();
         if (u.lastIp) await db.collection("banned_ips").doc(u.lastIp).delete();
     }
-
     closeExtendedUserModal();
     showToast('✅ User + Admin-Rolle erfolgreich gespeichert!', 'success');
 }

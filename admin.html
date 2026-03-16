@@ -189,14 +189,17 @@
             </div>
             <input type="file" id="csv-upload-orders" accept=".csv" class="hidden" onchange="importOrdersFromCSV(event)">
         </div>
-        <!-- TAB 2: BENUTZER (einfach) – nur noch Übersicht (keine Sperr-Buttons mehr) -->
+        <!-- TAB 2: BENUTZER (einfach) -->
         <div id="tab-content-2" class="hidden">
+            <div class="card p-8 mb-12 bg-red-950/30 border border-red-500/50">
+                <button onclick="resetAllLoyaltyPoints()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-5 rounded-3xl text-xl transition-all flex items-center justify-center gap-3"><i class="fa-solid fa-warning"></i> ALLE LOYALTY-PUNKTE AUF 0 SETZEN</button>
+            </div>
             <div class="card overflow-hidden">
                 <div class="p-6 border-b border-white/10 flex items-center justify-between">
-                    <h2 class="text-2xl font-bold flex items-center gap-3"><i class="fa-solid fa-users"></i> Benutzer (nur Übersicht)</h2>
+                    <h2 class="text-2xl font-bold flex items-center gap-3"><i class="fa-solid fa-users"></i> Benutzer verwalten</h2>
                     <div class="flex gap-3">
                         <button onclick="exportUsersToCSV()" class="bg-emerald-600 hover:bg-emerald-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2"><i class="fa-solid fa-file-csv"></i> CSV Export</button>
-                        <button onclick="document.getElementById('csv-upload-users').click()" class="bg-orange-600 hover:bg-orange-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2"><i class="fa-solid fa-file-import"></i> CSV Import</button>
+                        <button onclick="document.getElementById('csv-upload-users').click()" class="bg-orange-600 hover:bg-orange-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2"><i class="fa-solid fa-file-import"></i> CSV Import (Wiederherstellen)</button>
                     </div>
                     <input id="user-search" placeholder="E-Mail oder Username suchen..." class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-3 w-96">
                 </div>
@@ -209,8 +212,8 @@
                                 <th class="py-5 px-6 text-center">Referral-Code</th>
                                 <th class="py-5 px-6 text-center">Loyalty-Punkte</th>
                                 <th class="py-5 px-6 text-center">Gratisversand</th>
-                                <th class="py-5 px-6 text-center">Bestellungen</th>
-                                <th class="py-5 px-6 text-center">Umsatz</th>
+                                <th class="py-5 px-6 text-center">Status</th>
+                                <th class="py-5 px-6 text-right">Aktionen</th>
                             </tr>
                         </thead>
                         <tbody id="users-tbody" class="text-sm"></tbody>
@@ -1352,7 +1355,7 @@ async function deleteOrder() {
     showToast('Bestellung gelöscht');
     closeOrderModal();
 }
-// ====================== BENUTZER (einfach) ======================
+// ====================== BENUTZER (einfach) – SPERR-BUTTONS ENTFERNT ======================
 function loadUsers() {
     const tbody = document.getElementById('users-tbody');
     db.collection('users').onSnapshot(snapshot => {
@@ -1365,7 +1368,9 @@ function loadUsers() {
             const refCode = u.referralCode || '—';
             const points = u.totalBonusPoints || 0;
             const freeShipping = u.freeShipping === true;
+
             if (search && !email.toLowerCase().includes(search) && !username.toLowerCase().includes(search)) return;
+
             html += `
             <tr class="table-row-hover border-b border-white/10">
                 <td class="py-5 px-6 font-medium">${email}</td>
@@ -1377,8 +1382,13 @@ function loadUsers() {
                            onchange="toggleFreeShipping('${doc.id}', this.checked)"
                            class="accent-emerald-400 w-5 h-5 cursor-pointer">
                 </td>
-                <td class="py-5 px-6 text-center">${u.orderCount || 0}</td>
-                <td class="py-5 px-6 text-center">${(u.totalSpent || 0).toFixed(2)} €</td>
+                <td class="py-5 px-6 text-center">
+                    <span class="status-badge ${u.disabled === true ? 'bg-red-600 text-white' : 'bg-emerald-600 text-white'}">${u.disabled === true ? 'GESPERRT' : 'AKTIV'}</span>
+                </td>
+                <td class="py-5 px-6 text-right">
+                    <button onclick="resetPassword('${email}')" class="text-amber-400 hover:text-amber-300 text-sm font-medium">PW zurücksetzen</button>
+                    <button onclick="resetUserPoints('${doc.id}')" class="text-red-400 hover:text-red-300 text-sm font-medium">Punkte resetten</button>
+                </td>
             </tr>`;
         });
         tbody.innerHTML = html || `<tr><td colspan="7" class="text-center py-16 text-gray-400">Keine Benutzer gefunden</td></tr>`;
@@ -1389,6 +1399,47 @@ async function toggleFreeShipping(uid, enable) {
     await db.collection('users').doc(uid).update({ freeShipping: enable });
     await logAction(enable ? "free_shipping_enabled" : "free_shipping_disabled", uid);
     showToast(enable ? '✅ Gratisversand für diesen User AKTIVIERT' : 'Gratisversand deaktiviert', 'success');
+}
+async function resetPassword(email) {
+    if (!confirm(`Passwort-Zurücksetzen-E-Mail an ${email} senden?`)) return;
+    try {
+        const userSnapshot = await db.collection('users').where('email', '==', email).limit(1).get();
+        if (!userSnapshot.empty) {
+            const uid = userSnapshot.docs[0].id;
+            await db.collection('users').doc(uid).update({ passwordResetRequested: true, passwordResetTimestamp: firebase.firestore.FieldValue.serverTimestamp() });
+        }
+        await auth.sendPasswordResetEmail(email);
+        showToast(`✅ Reset-E-Mail wurde an ${email} gesendet!`);
+        await logAction("password_reset_requested", email);
+    } catch (e) {
+        showToast("Fehler: " + e.message, "error");
+    }
+}
+async function resetAllLoyaltyPoints() {
+    if (!confirm("⚠️ WIRKLICH ALLE Loyalty-Punkte auf 0 setzen?\n\nDas betrifft JEDEN Benutzer und ist unwiderruflich!")) return;
+    if (!confirm("LETZTE WARNUNG – alle Punkte werden gelöscht!")) return;
+    try {
+        const snapshot = await db.collection("users").get();
+        const batch = db.batch();
+        snapshot.forEach(doc => batch.update(doc.ref, { totalBonusPoints: 0 }));
+        await batch.commit();
+        showToast("✅ Alle Loyalty-Punkte wurden auf 0 zurückgesetzt!", "success");
+        await logAction("all_loyalty_reset");
+        loadUsers();
+    } catch (e) {
+        showToast("Fehler: " + e.message, "error");
+    }
+}
+async function resetUserPoints(uid) {
+    if (!confirm("Punkte dieses Benutzers auf 0 setzen?")) return;
+    try {
+        await db.collection("users").doc(uid).update({ totalBonusPoints: 0 });
+        showToast("✅ Punkte auf 0 gesetzt");
+        await logAction("user_loyalty_reset", uid);
+        loadUsers();
+    } catch (e) {
+        showToast("Fehler: " + e.message, "error");
+    }
 }
 // ====================== ANALYTICS ======================
 async function loadAnalytics() {
@@ -1772,13 +1823,28 @@ function toggleExtendedSelect() {
 function updateSelectedExtendedIds() {
     selectedExtendedUserIds = Array.from(document.querySelectorAll('#extended-users-tbody input[type="checkbox"]:checked')).map(ch => ch.dataset.id);
 }
+// ====================== BULK DISABLE MIT IP-BAN ======================
 async function bulkDisableSelected(disable) {
     if (selectedExtendedUserIds.length === 0) return alert("Keine User ausgewählt");
-    if (!confirm(`Wirklich ${selectedExtendedUserIds.length} User ${disable ? 'sperren' : 'entsperren'}?`)) return;
+    if (!confirm(`Wirklich ${selectedExtendedUserIds.length} User ${disable ? 'PERMANENT SPERREN + IP BAN' : 'entsperren'}?`)) return;
+
     const batch = db.batch();
-    selectedExtendedUserIds.forEach(id => batch.update(db.collection('users').doc(id), { disabled: disable }));
+    for (let uid of selectedExtendedUserIds) {
+        const userDoc = await db.collection('users').doc(uid).get();
+        const u = userDoc.data();
+        
+        batch.update(db.collection('users').doc(uid), { disabled: disable });
+
+        if (disable && u.lastIp) {
+            await db.collection("banned_ips").doc(u.lastIp).set({
+                ip: u.lastIp,
+                bannedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                reason: "Admin-Ban via erweiterte Verwaltung"
+            });
+        }
+    }
     await batch.commit();
-    showToast(`${selectedExtendedUserIds.length} User ${disable ? 'gesperrt' : 'entsperrt'}!`, 'success');
+    showToast(`${selectedExtendedUserIds.length} User ${disable ? 'permanent gesperrt + IP gebannt' : 'entsperrt'}!`, 'success');
 }
 async function bulkAddPoints() {
     if (selectedExtendedUserIds.length === 0) return alert("Keine User ausgewählt");
@@ -1791,6 +1857,7 @@ async function bulkAddPoints() {
     await batch.commit();
     showToast(`${points} Punkte an ${selectedExtendedUserIds.length} User verteilt!`, 'success');
 }
+// ====================== EXTENDED USER EDIT MODAL MIT IP-BAN ======================
 async function openExtendedUserEditModal(uid) {
     const doc = await db.collection('users').doc(uid).get();
     const u = doc.data();
@@ -1801,15 +1868,11 @@ async function openExtendedUserEditModal(uid) {
             <div><label class="block text-sm text-gray-400">Username</label><input id="edit-username" value="${u.username || ''}" class="user-edit-modal form-input w-full rounded-2xl px-6 py-4"></div>
             <div><label class="block text-sm text-gray-400">Loyalty Punkte</label><input id="edit-points" type="number" value="${u.totalBonusPoints || 0}" class="user-edit-modal form-input w-full rounded-2xl px-6 py-4"></div>
             <div><label class="block text-sm text-gray-400">Referral Code</label><input id="edit-referral" value="${u.referralCode || ''}" class="user-edit-modal form-input w-full rounded-2xl px-6 py-4"></div>
-            <div><label class="block text-sm text-gray-400">Letzte bekannte IP</label><input id="edit-lastip" value="${u.lastIp || '—'}" readonly class="user-edit-modal form-input w-full rounded-2xl px-6 py-4 bg-zinc-800"></div>
+            <div class="flex items-center gap-4 mt-6">
+                <label><input id="edit-freeshipping" type="checkbox" ${u.freeShipping ? 'checked' : ''}> Gratis Versand</label>
+                <label><input id="edit-disabled" type="checkbox" ${u.disabled ? 'checked' : ''}> Gesperrt</label>
+            </div>
         </div>
-        <div class="flex items-center gap-4 mt-6">
-            <label><input id="edit-freeshipping" type="checkbox" ${u.freeShipping ? 'checked' : ''}> Gratis Versand</label>
-            <label><input id="edit-disabled" type="checkbox" ${u.disabled ? 'checked' : ''}> **PERMANENT GEBANNT**</label>
-        </div>
-        <button onclick="banUserIP('${uid}', '${u.lastIp || ''}')" class="mt-6 w-full bg-red-600 hover:bg-red-700 py-4 rounded-3xl font-bold text-lg">
-            <i class="fa-solid fa-ban"></i> Diese IP permanent bannen (zusätzlich zum Account)
-        </button>
         <div class="mt-8">
             <label class="block text-sm text-gray-400 mb-2">Interne Notizen</label>
             <textarea id="edit-notes" rows="3" class="user-edit-modal form-input w-full rounded-2xl px-6 py-4">${u.internalNotes || ''}</textarea>
@@ -1818,6 +1881,7 @@ async function openExtendedUserEditModal(uid) {
             <button onclick="saveExtendedUser('${uid}')" class="flex-1 bg-emerald-600 py-5 rounded-3xl font-bold">Speichern</button>
             <button onclick="closeExtendedUserModal()" class="flex-1 bg-zinc-700 py-5 rounded-3xl">Abbrechen</button>
         </div>
+        <button onclick="showUserOrders('${uid}')" class="mt-6 w-full bg-cyan-600 hover:bg-cyan-500 py-4 rounded-3xl">Bestellungen dieses Users anzeigen</button>
     </div>`;
     document.getElementById('extended-user-edit-modal').innerHTML = html;
     document.getElementById('extended-user-edit-modal').classList.remove('hidden');
@@ -1832,6 +1896,10 @@ async function saveExtendedUser(uid) {
     const freeShipping = document.getElementById('edit-freeshipping').checked;
     const disabled = document.getElementById('edit-disabled').checked;
     const notes = document.getElementById('edit-notes').value.trim();
+
+    const userDoc = await db.collection('users').doc(uid).get();
+    const u = userDoc.data();
+
     await db.collection('users').doc(uid).update({
         username,
         totalBonusPoints: points,
@@ -1840,24 +1908,20 @@ async function saveExtendedUser(uid) {
         disabled,
         internalNotes: notes || firebase.firestore.FieldValue.delete()
     });
+
+    if (disabled && u.lastIp) {
+        await db.collection("banned_ips").doc(u.lastIp).set({
+            ip: u.lastIp,
+            bannedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            reason: "Admin-Ban via Einzel-Edit"
+        });
+    }
+
     closeExtendedUserModal();
     showToast('✅ User erfolgreich aktualisiert!', 'success');
 }
-async function banUserIP(uid, ip) {
-    if (!ip || ip === '—') return alert("Keine IP gespeichert.");
-    if (!confirm(`IP ${ip} PERMANENT bannen?\n\nDer User wird zusätzlich zum Account-Ban auch über diese IP blockiert.`)) return;
-    
-    await db.collection("banned_ips").add({
-        ip: ip,
-        bannedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        bannedBy: auth.currentUser.email,
-        reason: "Admin-IP-Ban via erweiterte Benutzerverwaltung"
-    });
-    // User auch sperren
-    await db.collection('users').doc(uid).update({ disabled: true });
-    
-    showToast(`✅ IP ${ip} permanent gebannt + Account gesperrt!`, "success");
-    closeExtendedUserModal();
+async function showUserOrders(uid) {
+    showToast('Bestellungen dieses Users werden in Tab 1 angezeigt (filtere nach User)', 'success');
 }
 // ====================== INITIALISIERUNG ======================
 auth.onAuthStateChanged(async (user) => {

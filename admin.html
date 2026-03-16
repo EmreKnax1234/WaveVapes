@@ -382,6 +382,17 @@
                 <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
                     <i class="fa-solid fa-sort"></i> Produkt-Sortierung (Drag & Drop + Auto-Sort)
                 </h2>
+                <p class="text-sm text-gray-400 mb-4">Wähle eine Kategorie aus – du kannst jetzt **pro Kategorie** separat sortieren!</p>
+                
+                <!-- NEUE KATEGORIE-AUSWAHL -->
+                <div class="mb-8">
+                    <label class="block text-sm text-gray-400 mb-2">Sortierung für:</label>
+                    <select id="sort-category-select" onchange="loadSortListForCategory()" 
+                            class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-3 w-full text-base">
+                        <option value="global">Alle Produkte (globale Sortierung)</option>
+                    </select>
+                </div>
+
                 <p class="text-sm text-gray-400 mb-6">Klicke auf einen Button für automatische Sortierung.<br><strong>Neue AUTO-PRIORITÄT (überarbeitet):</strong><br>1. Neue Sorten (nur verfügbar) → 2. Normale Sorten (nur verfügbar) → 3. Alle Vapes (nur verfügbar) → 4. ALLE nicht verfügbaren Sachen (egal ob neu oder normal – immer ganz unten)</p>
                 <div class="flex flex-wrap gap-3 mb-8">
                     <button onclick="autoSort('alpha')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">📋 Alphabetisch A-Z</button>
@@ -392,17 +403,18 @@
                     <button onclick="autoSortPriority()" class="px-6 py-3 bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold rounded-2xl text-sm transition">🔄 AUTO-PRIORITÄT<br><span class="text-xs font-normal">NEW (verfügbar) → Normal (verfügbar) → Vapes → ALLE nicht verfügbar (unten)</span></button>
                 </div>
                 <div id="sort-list" class="space-y-3 min-h-[500px] bg-zinc-950 rounded-3xl p-6"></div>
-                <button onclick="saveProductOrder()" class="mt-10 w-full bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-6 rounded-3xl text-xl hover:scale-105 transition">✅ Sortierung speichern & live übernehmen</button>
+                <button onclick="saveProductOrder()" class="mt-10 w-full bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-6 rounded-3xl text-xl hover:scale-105 transition">✅ Sortierung für aktuelle Kategorie speichern & live übernehmen</button>
             </div>
         </div>
     </div>
 </div>
-<!-- EDIT MODAL (wird auch für Coupon-History verwendet) -->
+<!-- EDIT MODAL -->
 <div id="edit-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]"></div>
 <!-- ORDER MODAL -->
 <div id="order-modal-container"></div>
 <!-- TOAST -->
 <div id="toast-container" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[99999] flex flex-col gap-3"></div>
+
 <script>
 // ====================== FIREBASE CONFIG ======================
 const firebaseConfig = {
@@ -416,6 +428,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
+
 // ====================== GLOBALE VARIABLEN ======================
 let currentEditId = null;
 let selectedFile = null;
@@ -429,13 +442,15 @@ let topProductsChart = null;
 let referralChart = null;
 let logsUnsubscribe = null;
 let allProducts = [];
-let productOrder = [];
+let productOrderMap = {};           // NEU: { "global": [], "WaveVapes Tornado 30000": [], ... }
 let sortableInstance = null;
 let adminSortColumn = 'name';
 let adminSortDirection = 'asc';
 let adminCategoryFilter = 'Alle';
 let adminStatusFilter = '';
 let selectedProductIds = [];
+let currentSortCategory = "global"; // NEU für Sortierung-Tab
+
 // ====================== LOG ACTION ======================
 async function logAction(action, target = "", details = {}) {
     if (!auth.currentUser) return;
@@ -447,6 +462,7 @@ async function logAction(action, target = "", details = {}) {
         details: details || {}
     });
 }
+
 // ====================== STATS UPDATE ======================
 function updateStats() {
     const active = allProducts.filter(p => p.available !== false).length;
@@ -458,6 +474,7 @@ function updateStats() {
     document.getElementById('total-revenue').textContent = revenue.toFixed(0) + ' €';
     document.getElementById('top-seller').textContent = top ? `${top.name} (${top.sold || 0}×)` : '—';
 }
+
 // ====================== PRODUKTE ======================
 function loadProducts() {
     db.collection('products').onSnapshot(snap => {
@@ -466,109 +483,165 @@ function loadProducts() {
         renderProductTable();
     });
 }
-function applyAdminFilters() {
-    adminCategoryFilter = document.getElementById('admin-category-filter').value;
-    adminStatusFilter = document.getElementById('admin-status-filter').value;
-    renderProductTable();
+
+// ====================== KATEGORIE-SELECT FÜR SORTIERUNG ======================
+function populateSortCategorySelect() {
+    const select = document.getElementById('sort-category-select');
+    select.innerHTML = '<option value="global">Alle Produkte (globale Sortierung)</option>';
+    allCategories.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.name;
+        opt.textContent = c.name;
+        select.appendChild(opt);
+    });
 }
-function sortAdminTable(column) {
-    if (adminSortColumn === column) {
-        adminSortDirection = adminSortDirection === 'asc' ? 'desc' : 'asc';
-    } else {
-        adminSortColumn = column;
-        adminSortDirection = 'asc';
+
+function loadSortListForCategory() {
+    currentSortCategory = document.getElementById('sort-category-select').value;
+    renderSortList();
+}
+
+// ====================== SORTIERUNG (NEU: pro Kategorie) ======================
+async function loadProductOrder() {
+    const doc = await db.collection('settings').doc('product_order').get();
+    productOrderMap = doc.exists ? (doc.data() || {}) : {};
+    renderSortList();
+}
+
+function renderSortList() {
+    const container = document.getElementById('sort-list');
+    container.innerHTML = '';
+
+    let filtered = allProducts;
+    if (currentSortCategory !== "global") {
+        filtered = allProducts.filter(p => p.category === currentSortCategory);
     }
-    renderProductTable();
-}
-function renderProductTable() {
-    const tbody = document.getElementById('products-tbody');
-    const searchTerm = (document.getElementById('product-search').value || '').toLowerCase().trim();
-    let filtered = allProducts.filter(p => {
-        const matchesSearch = !searchTerm || p.name.toLowerCase().includes(searchTerm);
-        const matchesCategory = adminCategoryFilter === 'Alle' || p.category === adminCategoryFilter;
-        let matchesStatus = true;
-        if (adminStatusFilter === 'available') matchesStatus = p.available !== false;
-        if (adminStatusFilter === 'unavailable') matchesStatus = p.available === false;
-        if (adminStatusFilter === 'new') matchesStatus = p.isNew === true;
-        if (adminStatusFilter === 'tornado') matchesStatus = p.category === "WaveVapes Tornado 30000";
-        return matchesSearch && matchesCategory && matchesStatus;
+
+    const currentOrder = productOrderMap[currentSortCategory] || [];
+
+    const sorted = [...filtered].sort((a, b) => {
+        const idxA = currentOrder.indexOf(a.id);
+        const idxB = currentOrder.indexOf(b.id);
+        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+        if (idxA !== -1) return -1;
+        if (idxB !== -1) return 1;
+        return a.name.localeCompare(b.name);
     });
-    filtered.sort((a, b) => {
-        let valA, valB;
-        switch(adminSortColumn) {
-            case 'name': valA = a.name; valB = b.name; break;
-            case 'category': valA = a.category || ''; valB = b.category || ''; break;
-            case 'price': valA = a.price; valB = b.price; break;
-            case 'originalPrice': valA = a.originalPrice || 0; valB = b.originalPrice || 0; break;
-            case 'stock': valA = a.stock || 0; valB = b.stock || 0; break;
-            case 'sold': valA = a.sold || 0; valB = b.sold || 0; break;
-            case 'revenue': valA = (a.sold || 0) * a.price; valB = (b.sold || 0) * b.price; break;
-            case 'isNew': valA = a.isNew ? 1 : 0; valB = b.isNew ? 1 : 0; break;
-            case 'available': valA = a.available !== false ? 1 : 0; valB = b.available !== false ? 1 : 0; break;
-            default: valA = a.name; valB = b.name;
+
+    sorted.forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'sortable-item flex items-center gap-4 bg-zinc-900 border border-white/10 rounded-3xl p-5 cursor-move select-none';
+        div.dataset.id = p.id;
+        const newBadge = p.isNew ? `<span onclick="toggleIsNew('${p.id}', event)" class="px-3 py-1 bg-lime-400 text-black text-xs font-black tracking-wider rounded-2xl cursor-pointer hover:scale-110 transition">NEW</span>` : '';
+        const unavailableBadge = p.available === false ? `<span onclick="toggleAvailableInSort('${p.id}', event)" class="px-3 py-1 bg-red-500 text-white text-xs font-medium rounded-2xl cursor-pointer hover:scale-110 transition">NICHT VERFÜGBAR</span>` : '';
+        div.innerHTML = `
+            ${p.image ? `<img src="${p.image}" class="w-14 h-14 object-cover rounded-2xl flex-shrink-0">` : '<div class="w-14 h-14 bg-zinc-800 rounded-2xl flex items-center justify-center text-2xl">📦</div>'}
+            <div class="flex-1">
+                <div class="font-medium text-lg">${p.name}</div>
+                <div class="flex items-center gap-2 mt-1">
+                    ${newBadge}
+                    ${unavailableBadge}
+                </div>
+            </div>
+            <i class="fa-solid fa-grip-lines text-gray-400 text-2xl"></i>
+        `;
+        container.appendChild(div);
+    });
+
+    if (sortableInstance) sortableInstance.destroy();
+    sortableInstance = new Sortable(container, {
+        animation: 180,
+        ghostClass: 'bg-cyan-900/60',
+        forceFallback: true
+    });
+}
+
+async function saveProductOrder() {
+    const items = document.querySelectorAll('#sort-list .sortable-item');
+    const newOrder = Array.from(items).map(item => item.dataset.id);
+
+    const docRef = db.collection('settings').doc('product_order');
+    let currentData = (await docRef.get()).exists ? (await docRef.get()).data() : {};
+    currentData[currentSortCategory] = newOrder;
+
+    await docRef.set(currentData, { merge: true });
+    showToast(`✅ Sortierung für <strong>${currentSortCategory === "global" ? "Alle Produkte" : currentSortCategory}</strong> gespeichert!`, "success");
+}
+
+// ====================== RESTLICHE FUNKTIONEN ======================
+async function toggleIsNew(id, e) {
+    e.stopImmediatePropagation();
+    const doc = await db.collection('products').doc(id).get();
+    const current = doc.data().isNew || false;
+    await db.collection('products').doc(id).update({ isNew: !current });
+    showToast(`NEW-Status umgeschaltet → ${!current ? 'aktiv' : 'deaktiviert'}`);
+    renderSortList();
+}
+
+async function toggleAvailableInSort(id, e) {
+    e.stopImmediatePropagation();
+    const doc = await db.collection('products').doc(id).get();
+    const current = doc.data().available !== false;
+    await db.collection('products').doc(id).update({ available: !current });
+    showToast(`Verfügbarkeit umgeschaltet → ${!current ? 'NICHT verfügbar' : 'verfügbar'}`);
+    renderSortList();
+}
+
+function autoSort(mode) {
+    const container = document.getElementById('sort-list');
+    let items = Array.from(container.children);
+    items.sort((a, b) => {
+        const idA = a.dataset.id;
+        const idB = b.dataset.id;
+        const pA = allProducts.find(p => p.id === idA);
+        const pB = allProducts.find(p => p.id === idB);
+        if (!pA || !pB) return 0;
+        switch(mode) {
+            case 'alpha': return pA.name.localeCompare(pB.name);
+            case 'new': return (pB.isNew ? 1 : 0) - (pA.isNew ? 1 : 0);
+            case 'tornado': return (pA.category === "WaveVapes Tornado 30000" ? 0 : 1) - (pB.category === "WaveVapes Tornado 30000" ? 0 : 1);
+            case 'available': return (pB.available !== false ? 1 : 0) - (pA.available !== false ? 1 : 0);
+            case 'stock': return (pB.stock || 0) - (pA.stock || 0);
+            default: return 0;
         }
-        if (typeof valA === 'string') {
-            return adminSortDirection === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
-        }
-        return adminSortDirection === 'asc' ? valA - valB : valB - valA;
     });
-    let html = '';
-    filtered.forEach(p => {
-        const neuBadge = p.isNew ? `<span class="px-3 py-1 bg-lime-400 text-black text-xs font-black rounded-2xl">NEW</span>` : '—';
-        const originalPriceHTML = p.originalPrice ? `<span class="text-gray-400 line-through">${p.originalPrice.toFixed(2)} €</span>` : '—';
-        html += `
-        <tr class="table-row-hover border-b border-white/10">
-            <td class="py-5 px-6 text-center"><input type="checkbox" class="product-checkbox accent-cyan-400 w-5 h-5" data-id="${p.id}"></td>
-            <td class="py-5 px-6 flex items-center gap-3">
-                ${p.image ? `<img src="${p.image}" class="w-12 h-12 object-cover rounded-xl flex-shrink-0" loading="lazy">` : '<div class="w-12 h-12 bg-zinc-800 rounded-xl flex items-center justify-center text-xl flex-shrink-0">📦</div>'}
-                <span class="font-medium">${p.name}</span>
-            </td>
-            <td class="py-5 px-6">${p.category || '—'}</td>
-            <td class="py-5 px-6 text-center">${neuBadge}</td>
-            <td class="py-5 px-6 text-center">${p.price.toFixed(2)} €</td>
-            <td class="py-5 px-6 text-center">${originalPriceHTML}</td>
-            <td class="py-5 px-6 text-center">${p.stock}</td>
-            <td class="py-5 px-6 text-center">${p.hasNicotine !== false ? '✅' : '❌'}</td>
-            <td class="py-5 px-6 text-center"><input type="checkbox" ${p.available !== false ? 'checked' : ''} onchange="toggleAvailable('${p.id}', this.checked)" class="accent-cyan-400 w-5 h-5"></td>
-            <td class="py-5 px-6 text-right font-bold text-purple-400">${p.sold || 0}</td>
-            <td class="py-5 px-6 text-right font-medium text-emerald-400">${((p.sold || 0) * p.price).toFixed(2)} €</td>
-            <td class="py-5 px-6 text-right space-x-4">
-                <button onclick="openEditModal('${p.id}')" class="text-cyan-400 hover:text-white"><i class="fa-solid fa-pen"></i></button>
-                <button onclick="deleteProduct('${p.id}')" class="text-red-400 hover:text-white"><i class="fa-solid fa-trash"></i></button>
-            </td>
-        </tr>`;
+    items.forEach(item => container.appendChild(item));
+    showToast('✅ Liste automatisch sortiert!', 'success');
+}
+
+function autoSortPriority() {
+    const container = document.getElementById('sort-list');
+    let items = Array.from(container.children);
+    items.sort((a, b) => {
+        const idA = a.dataset.id;
+        const idB = b.dataset.id;
+        const pA = allProducts.find(p => p.id === idA);
+        const pB = allProducts.find(p => p.id === idB);
+        if (!pA || !pB) return 0;
+        const getPriority = (p) => {
+            if (p.available === false || (p.stock || 0) <= 0) return 4;
+            if (p.isNew === true) return 1;
+            if (p.category !== "WaveVapes Tornado 30000") return 2;
+            return 3;
+        };
+        const prioA = getPriority(pA);
+        const prioB = getPriority(pB);
+        if (prioA !== prioB) return prioA - prioB;
+        return pA.name.localeCompare(pB.name);
     });
-    tbody.innerHTML = html || `<tr><td colspan="12" class="text-center py-16 text-gray-400">Keine Produkte gefunden</td></tr>`;
+    items.forEach(item => container.appendChild(item));
+    showToast('✅ Automatische Prioritätssortierung angewendet!', 'success');
 }
-document.getElementById('product-search').addEventListener('input', applyAdminFilters);
-async function toggleAvailable(id, val) {
-    await db.collection('products').doc(id).update({ available: val });
-    await logAction("product_availability_changed", id, { available: val });
-    showToast('Verfügbarkeit aktualisiert');
-}
-async function deleteProduct(id) {
-    if (!confirm('⚠️ Produkt WIRKLICH PERMANENT löschen?\n\nDas kann nicht rückgängig gemacht werden!')) return;
-    try {
-        await db.collection('products').doc(id).delete();
-        await logAction("product_deleted", id);
-        showToast('✅ Produkt erfolgreich gelöscht');
-    } catch (e) {
-        showToast('❌ Fehler beim Löschen: ' + e.message, 'error');
-    }
-}
-// ====================== BULK-EDIT ======================
+
+// ====================== ALLE ANDEREN FUNKTIONEN (vollständig) ======================
 function toggleSelectAllProducts(cb) {
     document.querySelectorAll('.product-checkbox').forEach(ch => ch.checked = cb.checked);
 }
+
 function openBulkEditModal() {
     selectedProductIds = [];
-    document.querySelectorAll('.product-checkbox:checked').forEach(cb => {
-        selectedProductIds.push(cb.dataset.id);
-    });
-    if (selectedProductIds.length === 0) {
-        alert("Bitte zuerst Produkte per Checkbox auswählen!");
-        return;
-    }
+    document.querySelectorAll('.product-checkbox:checked').forEach(cb => selectedProductIds.push(cb.dataset.id));
+    if (selectedProductIds.length === 0) return alert("Bitte zuerst Produkte per Checkbox auswählen!");
     const html = `
     <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]">
         <div class="bg-zinc-900 rounded-3xl p-8 max-w-lg w-full mx-4 modal">
@@ -594,9 +667,11 @@ function openBulkEditModal() {
     const sel = document.getElementById('bulk-category');
     if (sel) sel.innerHTML = '<option value="">Kategorie nicht ändern</option>' + sel.innerHTML;
 }
+
 function closeBulkModal() {
     document.getElementById('edit-modal').classList.add('hidden');
 }
+
 async function executeBulkEdit() {
     const price = document.getElementById('bulk-price').value ? parseFloat(document.getElementById('bulk-price').value) : null;
     const stock = document.getElementById('bulk-stock').value ? parseInt(document.getElementById('bulk-stock').value) : null;
@@ -623,7 +698,7 @@ async function executeBulkEdit() {
     showToast(`✅ ${changed} Produkte erfolgreich bearbeitet!`);
     loadProducts();
 }
-// ====================== AUTOMATISCHE KATEGORIEZUWEISUNG ======================
+
 async function enforceCategories() {
     if (!confirm('Alle Produkte automatisch kategorisieren?\n\n• Neue Sorten → „Neue Sorten“\n• Alle anderen → „Normale Sorten“\n\nDas überschreibt bestehende Kategorien!')) return;
     const snap = await db.collection('products').get();
@@ -646,7 +721,7 @@ async function enforceCategories() {
     }
     loadProducts();
 }
-// ====================== BESTELL-EXPORT MIT TRACKING-LINKS ======================
+
 async function exportOrdersWithTracking() {
     const snapshot = await db.collection("orders").orderBy("date", "desc").get();
     if (snapshot.empty) return alert("Keine Bestellungen!");
@@ -654,18 +729,8 @@ async function exportOrdersWithTracking() {
     snapshot.forEach(doc => {
         const o = doc.data();
         const dateStr = o.date ? o.date.toDate().toISOString().slice(0,19).replace('T',' ') : '';
-        const trackingLink = o.trackingNumber && o.carrier === "DHL"
-            ? `https://www.dhl.de/de/privatkunden/dhl-sendungsverfolgung.html?piececode=${encodeURIComponent(o.trackingNumber)}`
-            : (o.trackingNumber || '');
-        const row = [
-            `"${o.orderNumber || ''}"`,
-            `"${dateStr}"`,
-            `"${o.userEmail || ''}"`,
-            o.total || 0,
-            `"${o.status || ''}"`,
-            `"${o.trackingNumber || ''}"`,
-            `"${trackingLink}"`
-        ].join(",");
+        const trackingLink = o.trackingNumber && o.carrier === "DHL" ? `https://www.dhl.de/de/privatkunden/dhl-sendungsverfolgung.html?piececode=${encodeURIComponent(o.trackingNumber)}` : (o.trackingNumber || '');
+        const row = [`"${o.orderNumber || ''}"`,`"${dateStr}"`,`"${o.userEmail || ''}"`,o.total || 0,`"${o.status || ''}"`,`"${o.trackingNumber || ''}"`,`"${trackingLink}"`].join(",");
         csv += row + "\n";
     });
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
@@ -676,7 +741,7 @@ async function exportOrdersWithTracking() {
     showToast("✅ Export mit Tracking-Links heruntergeladen!", "success");
     await logAction("orders_export_with_tracking");
 }
-// ====================== EDIT MODAL ======================
+
 async function openEditModal(id) {
     currentEditId = id;
     removeCurrentImage = false;
@@ -741,15 +806,18 @@ async function openEditModal(id) {
         input.click();
     };
 }
+
 function removeImageInEdit() {
     removeCurrentImage = true;
     document.getElementById('preview-image').innerHTML = `<div class="text-center text-red-400"><i class="fa-solid fa-trash text-6xl mb-4"></i><br>Bild wird beim Speichern entfernt</div>`;
 }
+
 function closeEditModal() {
     document.getElementById('edit-modal').classList.add('hidden');
     selectedFile = null;
     removeCurrentImage = false;
 }
+
 async function saveEdit() {
     if (!currentEditId) return;
     const name = document.getElementById('edit-name').value;
@@ -777,7 +845,7 @@ async function saveEdit() {
     closeEditModal();
     showToast('✅ Produkt gespeichert! Kategorie manuell zugewiesen.');
 }
-// ====================== NEUES PRODUKT ======================
+
 document.getElementById('add-form').addEventListener('submit', async e => {
     e.preventDefault();
     const name = document.getElementById('prod-name').value.trim();
@@ -807,6 +875,7 @@ document.getElementById('add-form').addEventListener('submit', async e => {
     selectedFile = null;
     showToast('✅ Produkt erfolgreich angelegt!');
 });
+
 const dropzone = document.getElementById('dropzone');
 dropzone.addEventListener('click', () => {
     const input = document.createElement('input');
@@ -820,7 +889,7 @@ dropzone.addEventListener('click', () => {
     };
     input.click();
 });
-// ====================== CSV PRODUKTE ======================
+
 async function exportProductsToCSV() {
     const snapshot = await db.collection("products").get();
     if (snapshot.empty) return alert("Keine Produkte vorhanden!");
@@ -851,6 +920,7 @@ async function exportProductsToCSV() {
     link.click();
     showToast("✅ CSV-Datei wurde heruntergeladen!", "success");
 }
+
 async function importProductsFromCSV(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -893,7 +963,7 @@ async function importProductsFromCSV(e) {
     reader.readAsText(file);
     e.target.value = "";
 }
-// ====================== CSV BESTELLUNGEN ======================
+
 async function exportOrdersToCSV() {
     const snapshot = await db.collection("orders").orderBy("date", "desc").get();
     if (snapshot.empty) return alert("Keine Bestellungen vorhanden!");
@@ -922,6 +992,7 @@ async function exportOrdersToCSV() {
     link.click();
     showToast("✅ Bestellungen als CSV exportiert!", "success");
 }
+
 async function importOrdersFromCSV(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -963,7 +1034,7 @@ async function importOrdersFromCSV(e) {
     reader.readAsText(file);
     e.target.value = "";
 }
-// ====================== CSV BENUTZER ======================
+
 async function exportUsersToCSV() {
     const snapshot = await db.collection("users").get();
     if (snapshot.empty) return alert("Keine Benutzer vorhanden!");
@@ -989,6 +1060,7 @@ async function exportUsersToCSV() {
     link.click();
     showToast("✅ Benutzer als CSV exportiert!", "success");
 }
+
 async function importUsersFromCSV(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -1023,18 +1095,21 @@ async function importUsersFromCSV(e) {
     reader.readAsText(file);
     e.target.value = "";
 }
+
 function parseCSVLine(line) {
     return line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(field => field.replace(/^"|"$/g, '').replace(/""/g, '"'));
 }
-// ====================== KATEGORIEN ======================
+
 function loadCategories() {
     db.collection('categories').orderBy('order').onSnapshot(snap => {
         allCategories = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         renderCategoryTable();
         populateCategorySelects();
         populateAdminCategoryFilter();
+        populateSortCategorySelect();
     });
 }
+
 function renderCategoryTable() {
     const tbody = document.getElementById('categories-tbody');
     let html = '';
@@ -1052,6 +1127,7 @@ function renderCategoryTable() {
     });
     tbody.innerHTML = html || `<tr><td colspan="4" class="text-center py-16 text-gray-400">Noch keine Kategorien</td></tr>`;
 }
+
 document.getElementById('add-category-form').addEventListener('submit', async e => {
     e.preventDefault();
     const name = document.getElementById('cat-name').value.trim();
@@ -1063,8 +1139,10 @@ document.getElementById('add-category-form').addEventListener('submit', async e 
     e.target.reset();
     populateCategorySelects();
     populateAdminCategoryFilter();
+    populateSortCategorySelect();
     showToast('✅ Kategorie erstellt und Dropdowns aktualisiert!');
 });
+
 async function openEditCategoryModal(id) {
     const doc = await db.collection('categories').doc(id).get();
     const c = doc.data();
@@ -1085,6 +1163,7 @@ async function openEditCategoryModal(id) {
     document.getElementById('edit-modal').innerHTML = html;
     document.getElementById('edit-modal').classList.remove('hidden');
 }
+
 async function saveEditCategory(id) {
     const name = document.getElementById('edit-cat-name').value.trim();
     const order = parseInt(document.getElementById('edit-cat-order').value) || 999;
@@ -1094,16 +1173,20 @@ async function saveEditCategory(id) {
     document.getElementById('edit-modal').classList.add('hidden');
     populateCategorySelects();
     populateAdminCategoryFilter();
+    populateSortCategorySelect();
     showToast('✅ Kategorie gespeichert und Dropdowns aktualisiert');
 }
+
 async function deleteCategory(id) {
     if (!confirm('Kategorie wirklich löschen? Produkte bleiben erhalten.')) return;
     await db.collection('categories').doc(id).delete();
     await logAction("category_deleted", id);
     populateCategorySelects();
     populateAdminCategoryFilter();
+    populateSortCategorySelect();
     showToast('✅ Kategorie gelöscht');
 }
+
 function seedDefaultCategories() {
     if (allCategories.length > 0 && !confirm('Es existieren bereits Kategorien. Trotzdem Standard-Kategorien laden?')) return;
     const defaults = [
@@ -1114,6 +1197,7 @@ function seedDefaultCategories() {
     defaults.forEach(d => db.collection('categories').add(d));
     showToast('✅ Standard-Kategorien angelegt!');
 }
+
 function populateCategorySelects() {
     const selects = document.querySelectorAll('#prod-category, #edit-category-select, #bulk-category');
     selects.forEach(select => {
@@ -1129,6 +1213,7 @@ function populateCategorySelects() {
         if (currentValue) select.value = currentValue;
     });
 }
+
 function populateAdminCategoryFilter() {
     const select = document.getElementById('admin-category-filter');
     if (!select) return;
@@ -1140,7 +1225,7 @@ function populateAdminCategoryFilter() {
         select.appendChild(opt);
     });
 }
-// ====================== GUTSCHEINE + COUPON-NUTZUNGS-HISTORY ======================
+
 document.getElementById('add-coupon-form').addEventListener('submit', async e => {
     e.preventDefault();
     const code = document.getElementById('coupon-code').value.trim().toUpperCase();
@@ -1157,11 +1242,13 @@ document.getElementById('add-coupon-form').addEventListener('submit', async e =>
     showToast('✅ Gutschein erstellt!');
     loadCoupons();
 });
+
 async function loadCoupons() {
     const snap = await db.collection('coupons').orderBy('createdAt', 'desc').get();
     allCoupons = snap.docs.map(d => ({id: d.id, ...d.data()}));
     renderCouponsTable();
 }
+
 function renderCouponsTable() {
     const tbody = document.getElementById('coupons-tbody');
     let html = '';
@@ -1182,6 +1269,7 @@ function renderCouponsTable() {
     });
     tbody.innerHTML = html || `<tr><td colspan="5" class="text-center py-16 text-gray-400">Noch keine Gutscheine</td></tr>`;
 }
+
 async function showCouponHistory(couponId) {
     const doc = await db.collection('coupons').doc(couponId).get();
     if (!doc.exists) return showToast("Gutschein nicht gefunden", "error");
@@ -1228,6 +1316,7 @@ async function showCouponHistory(couponId) {
     document.getElementById('edit-modal').innerHTML = modalHTML;
     document.getElementById('edit-modal').classList.remove('hidden');
 }
+
 async function deleteCoupon(id) {
     if (confirm('Gutschein löschen?')) {
         await db.collection('coupons').doc(id).delete();
@@ -1235,7 +1324,7 @@ async function deleteCoupon(id) {
         loadCoupons();
     }
 }
-// ====================== BESTELLUNGEN ======================
+
 function loadOrders() {
     const tbody = document.getElementById('orders-tbody');
     db.collection('orders').orderBy('date', 'desc').onSnapshot(snap => {
@@ -1262,8 +1351,10 @@ function loadOrders() {
         tbody.innerHTML = html || `<tr><td colspan="6" class="text-center py-16 text-gray-400">Noch keine Bestellungen</td></tr>`;
     });
 }
+
 document.getElementById('order-search').addEventListener('input', loadOrders);
 document.getElementById('status-filter').addEventListener('change', loadOrders);
+
 async function quickStatus(id, status) {
     await handleStockOnStatusChange(id, status);
     await db.collection('orders').doc(id).update({ status });
@@ -1271,7 +1362,7 @@ async function quickStatus(id, status) {
     await logAction("order_status_changed", id, { status });
     showToast(`Status auf „${status}“ gesetzt`);
 }
-// ====================== ORDER DETAIL MODAL ======================
+
 async function showOrderModal(orderId) {
     currentOrderId = orderId;
     const doc = await db.collection('orders').doc(orderId).get();
@@ -1346,9 +1437,11 @@ async function showOrderModal(orderId) {
     document.getElementById('order-modal-container').innerHTML = modalHTML;
     document.getElementById('modal-internal-notes').value = order.internalNotes || '';
 }
+
 function closeOrderModal() {
     document.getElementById('order-modal-container').innerHTML = '';
 }
+
 async function saveOrderChanges() {
     const status = document.getElementById('modal-status').value;
     const carrier = document.getElementById('modal-carrier').value;
@@ -1375,6 +1468,7 @@ async function saveOrderChanges() {
     showToast('Bestellung + interne Notizen aktualisiert');
     closeOrderModal();
 }
+
 async function deleteOrder() {
     if (!confirm('Bestellung IRREVERSIBEL löschen?')) return;
     await db.collection('orders').doc(currentOrderId).delete();
@@ -1382,7 +1476,7 @@ async function deleteOrder() {
     showToast('Bestellung gelöscht');
     closeOrderModal();
 }
-// ====================== BENUTZER ======================
+
 function loadUsers() {
     const tbody = document.getElementById('users-tbody');
     db.collection('users').onSnapshot(snapshot => {
@@ -1422,12 +1516,15 @@ function loadUsers() {
         tbody.innerHTML = html || `<tr><td colspan="7" class="text-center py-16 text-gray-400">Keine Benutzer gefunden</td></tr>`;
     });
 }
+
 document.getElementById('user-search').addEventListener('input', loadUsers);
+
 async function toggleFreeShipping(uid, enable) {
     await db.collection('users').doc(uid).update({ freeShipping: enable });
     await logAction(enable ? "free_shipping_enabled" : "free_shipping_disabled", uid);
     showToast(enable ? '✅ Gratisversand für diesen User AKTIVIERT' : 'Gratisversand deaktiviert', 'success');
 }
+
 async function resetPassword(email) {
     if (!confirm(`Passwort-Zurücksetzen-E-Mail an ${email} senden?`)) return;
     try {
@@ -1443,11 +1540,13 @@ async function resetPassword(email) {
         showToast("Fehler: " + e.message, "error");
     }
 }
+
 async function toggleDisable(uid, disable) {
     await db.collection('users').doc(uid).update({ disabled: disable });
     await logAction(disable ? "user_disabled" : "user_enabled", uid);
     showToast(disable ? '✅ Benutzer gesperrt' : '✅ Benutzer entsperrt');
 }
+
 async function deleteUser(uid, email) {
     if (!confirm(`⚠️ Account von ${email} WIRKLICH LÖSCHEN?\n\nAlle Bestellungen werden ebenfalls gelöscht!`)) return;
     if (!confirm('LETZTE WARNUNG – unwiderruflich!')) return;
@@ -1463,6 +1562,7 @@ async function deleteUser(uid, email) {
         showToast("Fehler: " + e.message, "error");
     }
 }
+
 async function resetAllLoyaltyPoints() {
     if (!confirm("⚠️ WIRKLICH ALLE Loyalty-Punkte auf 0 setzen?\n\nDas betrifft JEDEN Benutzer und ist unwiderruflich!")) return;
     if (!confirm("LETZTE WARNUNG – alle Punkte werden gelöscht!")) return;
@@ -1478,6 +1578,7 @@ async function resetAllLoyaltyPoints() {
         showToast("Fehler: " + e.message, "error");
     }
 }
+
 async function resetUserPoints(uid) {
     if (!confirm("Punkte dieses Benutzers auf 0 setzen?")) return;
     try {
@@ -1489,7 +1590,7 @@ async function resetUserPoints(uid) {
         showToast("Fehler: " + e.message, "error");
     }
 }
-// ====================== ANALYTICS ======================
+
 async function loadAnalytics() {
     const thirtyDaysAgo = firebase.firestore.Timestamp.fromDate(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
     const ordersSnap = await db.collection("orders").where("date", ">=", thirtyDaysAgo).get();
@@ -1550,6 +1651,7 @@ async function loadAnalytics() {
         data: { labels: refLabels, datasets: [{ label: "Geworbene Freunde", data: refData, backgroundColor: "#a78bfa" }] }
     });
 }
+
 async function generatePDFReport() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
@@ -1601,7 +1703,7 @@ async function generatePDFReport() {
     await logAction("monthly_report_generated");
     showToast("✅ Vollständiger Monatsbericht als PDF heruntergeladen!", "success");
 }
-// ====================== ADMIN LOGS ======================
+
 function loadAdminLogs() {
     if (logsUnsubscribe) logsUnsubscribe();
     logsUnsubscribe = db.collection("admin_logs").orderBy("timestamp", "desc").limit(50).onSnapshot(snap => {
@@ -1622,7 +1724,7 @@ function loadAdminLogs() {
         });
     });
 }
-// ====================== SETTINGS ======================
+
 async function loadSettings() {
     const doc = await db.collection("settings").doc("main").get();
     let data = doc.exists ? doc.data() : {
@@ -1643,6 +1745,7 @@ async function loadSettings() {
     document.getElementById("set-closed").checked = data.shop_closed || false;
     document.getElementById("set-email-template").value = data.email_template || "";
 }
+
 async function saveSettings() {
     const data = {
         bank_owner: document.getElementById("set-bank-owner").value,
@@ -1657,7 +1760,7 @@ async function saveSettings() {
     await logAction("settings_updated");
     showToast("✅ Einstellungen gespeichert", "success");
 }
-// ====================== STATUS & STOCK & LOYALTY ======================
+
 function getStatusClass(s) {
     switch(s || "Zahlung erwartet") {
         case "Zahlung erwartet": return "status-Zahlung";
@@ -1668,6 +1771,7 @@ function getStatusClass(s) {
         default: return "status-Zahlung";
     }
 }
+
 async function awardLoyaltyIfProcessed(orderId) {
     const doc = await db.collection('orders').doc(orderId).get();
     const order = doc.data();
@@ -1678,6 +1782,7 @@ async function awardLoyaltyIfProcessed(orderId) {
     await db.collection('orders').doc(orderId).update({ loyaltyCredited: true });
     showToast(`🎉 +${points} Loyalty-Punkte gutgeschrieben!`, 'success');
 }
+
 async function handleStockOnStatusChange(orderId, newStatus) {
     const doc = await db.collection('orders').doc(orderId).get();
     const order = doc.data();
@@ -1702,6 +1807,7 @@ async function handleStockOnStatusChange(orderId, newStatus) {
         showToast("✅ Lager wiederhergestellt", "success");
     }
 }
+
 async function resetAllStatistics() {
     if (!confirm("⚠️ WIRKLICH ALLE STATISTIKEN ZURÜCKSETZEN?\n\nsold wird bei ALLEN Produkten auf 0 gesetzt.\nUmsatz und Top-Seller gehen auf Null.\nDas ist UNWIDERRUFLICH!")) {
         return;
@@ -1720,133 +1826,7 @@ async function resetAllStatistics() {
         showToast("Fehler beim Zurücksetzen: " + e.message, "error");
     }
 }
-// ====================== SORTIERUNG ======================
-async function loadProductOrder() {
-    const doc = await db.collection('settings').doc('product_order').get();
-    productOrder = doc.exists ? (doc.data().order || []) : [];
-    renderSortList();
-}
-function renderSortList() {
-    const container = document.getElementById('sort-list');
-    container.innerHTML = '';
-    const sorted = [...allProducts].sort((a, b) => {
-        const idxA = productOrder.indexOf(a.id);
-        const idxB = productOrder.indexOf(b.id);
-        if (idxA === -1 && idxB === -1) return a.name.localeCompare(b.name);
-        if (idxA === -1) return 1;
-        if (idxB === -1) return -1;
-        return idxA - idxB;
-    });
-    sorted.forEach(p => {
-        const div = document.createElement('div');
-        div.className = 'sortable-item flex items-center gap-4 bg-zinc-900 border border-white/10 rounded-3xl p-5 cursor-move select-none';
-        div.dataset.id = p.id;
-        const newBadge = p.isNew
-            ? `<span onclick="toggleIsNew('${p.id}', event)" class="px-3 py-1 bg-lime-400 text-black text-xs font-black tracking-wider rounded-2xl cursor-pointer hover:scale-110 transition">NEW</span>`
-            : '';
-        const unavailableBadge = p.available === false
-            ? `<span onclick="toggleAvailableInSort('${p.id}', event)" class="px-3 py-1 bg-red-500 text-white text-xs font-medium rounded-2xl cursor-pointer hover:scale-110 transition">NICHT VERFÜGBAR</span>`
-            : '';
-        div.innerHTML = `
-            ${p.image ? `<img src="${p.image}" class="w-14 h-14 object-cover rounded-2xl flex-shrink-0">` : '<div class="w-14 h-14 bg-zinc-800 rounded-2xl flex items-center justify-center text-2xl">📦</div>'}
-            <div class="flex-1">
-                <div class="font-medium text-lg">${p.name}</div>
-                <div class="flex items-center gap-2 mt-1">
-                    ${newBadge}
-                    ${unavailableBadge}
-                </div>
-            </div>
-            <i class="fa-solid fa-grip-lines text-gray-400 text-2xl"></i>
-        `;
-        container.appendChild(div);
-    });
-    if (sortableInstance) sortableInstance.destroy();
-    sortableInstance = new Sortable(container, {
-        animation: 180,
-        ghostClass: 'bg-cyan-900/60',
-        forceFallback: true
-    });
-}
-async function toggleIsNew(id, e) {
-    e.stopImmediatePropagation();
-    const doc = await db.collection('products').doc(id).get();
-    const current = doc.data().isNew || false;
-    const newIsNew = !current;
-    await db.collection('products').doc(id).update({ isNew: newIsNew });
-    showToast(`NEW-Status umgeschaltet → ${newIsNew ? 'aktiv' : 'deaktiviert'}`);
-    renderSortList();
-}
-async function toggleAvailableInSort(id, e) {
-    e.stopImmediatePropagation();
-    const doc = await db.collection('products').doc(id).get();
-    const current = doc.data().available !== false;
-    await db.collection('products').doc(id).update({ available: !current });
-    showToast(`Verfügbarkeit umgeschaltet → ${!current ? 'NICHT verfügbar' : 'verfügbar'}`);
-    renderSortList();
-}
-function autoSort(mode) {
-    const container = document.getElementById('sort-list');
-    let items = Array.from(container.children);
-    items.sort((a, b) => {
-        const idA = a.dataset.id;
-        const idB = b.dataset.id;
-        const pA = allProducts.find(p => p.id === idA);
-        const pB = allProducts.find(p => p.id === idB);
-        if (!pA || !pB) return 0;
-        switch(mode) {
-            case 'alpha':
-                return pA.name.localeCompare(pB.name);
-            case 'new':
-                if (pA.isNew && !pB.isNew) return -1;
-                if (!pA.isNew && pB.isNew) return 1;
-                return 0;
-            case 'tornado':
-                const catA = (pA.category === "WaveVapes Tornado 30000") ? 0 : 1;
-                const catB = (pB.category === "WaveVapes Tornado 30000") ? 0 : 1;
-                return catA - catB;
-            case 'available':
-                const availA = (pA.available !== false) ? 0 : 1;
-                const availB = (pB.available !== false) ? 0 : 1;
-                return availA - availB;
-            case 'stock':
-                return (pB.stock || 0) - (pA.stock || 0);
-            default:
-                return 0;
-        }
-    });
-    items.forEach(item => container.appendChild(item));
-    showToast('✅ Liste automatisch sortiert!', 'success');
-}
-function autoSortPriority() {
-    const container = document.getElementById('sort-list');
-    let items = Array.from(container.children);
-    items.sort((a, b) => {
-        const idA = a.dataset.id;
-        const idB = b.dataset.id;
-        const pA = allProducts.find(p => p.id === idA);
-        const pB = allProducts.find(p => p.id === idB);
-        if (!pA || !pB) return 0;
-        const getPriority = (p) => {
-            if (p.available === false || (p.stock || 0) <= 0) return 4;
-            if (p.isNew === true) return 1;
-            if (p.category !== "WaveVapes Tornado 30000") return 2;
-            return 3;
-        };
-        const prioA = getPriority(pA);
-        const prioB = getPriority(pB);
-        if (prioA !== prioB) return prioA - prioB;
-        return pA.name.localeCompare(pB.name);
-    });
-    items.forEach(item => container.appendChild(item));
-    showToast('✅ Automatische Prioritätssortierung angewendet!', 'success');
-}
-async function saveProductOrder() {
-    const items = document.querySelectorAll('#sort-list .sortable-item');
-    const newOrder = Array.from(items).map(item => item.dataset.id);
-    await db.collection('settings').doc('product_order').set({ order: newOrder }, { merge: true });
-    showToast('✅ Sortierung gespeichert! Der Shop zeigt jetzt die neue Reihenfolge.', 'success');
-}
-// ====================== TOAST ======================
+
 function showToast(msg, type = 'success') {
     const toast = document.createElement('div');
     toast.className = `toast flex items-center gap-3 px-8 py-4 rounded-3xl shadow-2xl text-sm font-medium ${type === 'error' ? 'bg-red-600' : 'bg-emerald-600'}`;
@@ -1854,7 +1834,7 @@ function showToast(msg, type = 'success') {
     document.getElementById('toast-container').appendChild(toast);
     setTimeout(() => toast.remove(), 3500);
 }
-// ====================== SIDEBAR & TABS ======================
+
 function switchTab(n) {
     document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('tab-active'));
     document.getElementById('sidebar-' + n).classList.add('tab-active');
@@ -1864,10 +1844,11 @@ function switchTab(n) {
     if (n === 6) loadAdminLogs();
     if (n === 8) loadProductOrder();
 }
+
 function toggleSidebar() {
     document.getElementById("sidebar").classList.toggle("-translate-x-full");
 }
-// ====================== LOGOUT ======================
+
 async function logout() {
     try {
         await auth.signOut();
@@ -1880,7 +1861,7 @@ async function logout() {
         alert("Logout fehlgeschlagen: " + e.message);
     }
 }
-// ====================== AUTH ======================
+
 auth.onAuthStateChanged(async (user) => {
     if (!user) return window.location.href = 'index.html';
     document.getElementById('admin-email').textContent = user.email;
@@ -1893,16 +1874,18 @@ auth.onAuthStateChanged(async (user) => {
     loadSettings();
     switchTab(0);
 });
-// ====================== INIT ======================
+
 window.onload = () => {
     loadProducts();
     loadCategories();
     loadCoupons();
     loadOrders();
     loadUsers();
+    loadProductOrder();
     setTimeout(() => {
         updateStats();
         populateAdminCategoryFilter();
+        populateSortCategorySelect();
     }, 500);
 };
 </script>

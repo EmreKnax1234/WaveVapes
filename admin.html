@@ -10,6 +10,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
@@ -41,26 +42,7 @@
         .metric-card { background: linear-gradient(135deg, #18181b, #27272a); transition: all 0.3s; }
         .metric-card:hover { transform: translateY(-4px); }
         .presence-card { background: #18181b; border: 1px solid #22d3ee; }
-     
-        /* === FIX FÜR DEN USER-EDIT MODAL === */
-        .user-edit-modal input,
-        .user-edit-modal textarea {
-            background: #27272a !important;
-            color: #ffffff !important;
-            border: 1px solid #67e8f9 !important;
-            border-radius: 1rem !important;
-            padding: 1rem 1.5rem !important;
-            font-size: 1rem !important;
-            outline: none !important;
-        }
-        .user-edit-modal input:focus,
-        .user-edit-modal textarea:focus {
-            border-color: #22d3ee !important;
-            box-shadow: 0 0 0 3px rgba(34,211,238,0.3) !important;
-        }
-        .user-edit-modal label {
-            color: #9ca3af !important;
-        }
+        .dropzone-active { border-color: #22d3ee; background: rgba(103,232,249,0.1); }
     </style>
 </head>
 <body class="min-h-screen">
@@ -128,10 +110,14 @@
                     <div class="flex items-center gap-3"><input id="prod-unavailable" type="checkbox" class="w-5 h-5 accent-red-400"><label>Nicht verfügbar</label></div>
                     <div class="flex items-center gap-3"><input id="prod-has-nicotine" type="checkbox" checked class="w-5 h-5 accent-cyan-400"><label>Nikotin enthalten (10/20 mg Auswahl)</label></div>
                     <div class="col-span-full"><label class="text-xs text-gray-400 block mb-2">Produktbeschreibung</label><textarea id="prod-description" rows="4" placeholder="Intensiver Blue Raspberry Geschmack..." class="w-full bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-4"></textarea></div>
-                    <div id="dropzone" class="col-span-full border-2 border-dashed border-cyan-400/50 hover:border-cyan-400 rounded-3xl p-10 text-center cursor-pointer">
-                        <i class="fa-solid fa-cloud-arrow-up text-5xl mb-4 text-cyan-400"></i><p class="text-cyan-300">Bild per Drag & Drop oder klicken</p>
-                        <img id="preview-thumb" class="hidden mx-auto mt-6 max-h-48 rounded-2xl border border-cyan-400/30">
+                    
+                    <!-- BILD-UPLOAD -->
+                    <div id="dropzone" class="col-span-full border-2 border-dashed border-cyan-400/50 hover:border-cyan-400 rounded-3xl p-10 text-center cursor-pointer transition-all">
+                        <i id="drop-icon" class="fa-solid fa-cloud-arrow-up text-5xl mb-4 text-cyan-400"></i>
+                        <p id="drop-text" class="text-cyan-300">Bild per Drag & Drop oder klicken (JPG/PNG)</p>
+                        <img id="preview-thumb" class="hidden mx-auto mt-6 max-h-48 rounded-2xl border border-cyan-400/30 shadow-xl">
                     </div>
+                    
                     <button type="submit" class="lg:col-span-3 bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-5 rounded-3xl text-xl">Produkt speichern</button>
                 </form>
             </div>
@@ -504,6 +490,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
+const storage = firebase.storage();
 // ====================== GLOBALE VARIABLEN ======================
 let currentEditId = null;
 let selectedFile = null;
@@ -526,9 +513,9 @@ let adminStatusFilter = '';
 let selectedProductIds = [];
 let currentSortCategory = "global";
 let presenceRefreshInterval = null;
-// ====================== NEUE VARIABLEN FÜR TAB 10 ======================
 let extendedUsers = [];
 let selectedExtendedUserIds = [];
+let selectedImageFile = null;
 // ====================== LOG ACTION ======================
 async function logAction(action, target = "", details = {}) {
     if (!auth.currentUser) return;
@@ -559,6 +546,84 @@ function loadProducts() {
         renderProductTable();
     });
 }
+// ====================== DROPZONE ======================
+function initDropzone() {
+    const dropzone = document.getElementById('dropzone');
+    const preview = document.getElementById('preview-thumb');
+    const icon = document.getElementById('drop-icon');
+    const text = document.getElementById('drop-text');
+
+    dropzone.addEventListener('click', () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = e => handleFile(e.target.files[0]);
+        input.click();
+    });
+
+    dropzone.addEventListener('dragover', e => {
+        e.preventDefault();
+        dropzone.classList.add('dropzone-active');
+    });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dropzone-active'));
+    dropzone.addEventListener('drop', e => {
+        e.preventDefault();
+        dropzone.classList.remove('dropzone-active');
+        if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
+    });
+
+    function handleFile(file) {
+        if (!file || !file.type.startsWith('image/')) {
+            alert("Nur Bilddateien erlaubt!");
+            return;
+        }
+        selectedImageFile = file;
+        preview.src = URL.createObjectURL(file);
+        preview.classList.remove('hidden');
+        icon.classList.add('hidden');
+        text.textContent = file.name;
+    }
+}
+// ====================== FORM SUBMIT ======================
+document.getElementById('add-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const name = document.getElementById('prod-name').value.trim();
+    if (!name) return alert("Name erforderlich!");
+
+    let imageUrl = null;
+    if (selectedImageFile) {
+        const filename = Date.now() + '_' + selectedImageFile.name;
+        const ref = storage.ref('products/' + filename);
+        const snapshot = await ref.put(selectedImageFile);
+        imageUrl = await snapshot.ref.getDownloadURL();
+    }
+
+    const newProduct = {
+        name: name,
+        price: parseFloat(document.getElementById('prod-price').value),
+        originalPrice: document.getElementById('prod-original-price').value ? parseFloat(document.getElementById('prod-original-price').value) : null,
+        stock: parseInt(document.getElementById('prod-stock').value),
+        category: document.getElementById('prod-category').value,
+        isNew: document.getElementById('prod-new').checked,
+        available: !document.getElementById('prod-unavailable').checked,
+        hasNicotine: document.getElementById('prod-has-nicotine').checked,
+        description: document.getElementById('prod-description').value.trim(),
+        image: imageUrl,
+        sold: 0
+    };
+
+    await db.collection('products').add(newProduct);
+    await logAction("product_created", name, { imageUploaded: !!imageUrl });
+
+    alert("✅ Produkt + Bild erfolgreich gespeichert!");
+    this.reset();
+    document.getElementById('preview-thumb').classList.add('hidden');
+    document.getElementById('drop-icon').classList.remove('hidden');
+    document.getElementById('drop-text').textContent = "Bild per Drag & Drop oder klicken (JPG/PNG)";
+    selectedImageFile = null;
+
+    loadProducts();
+});
 // ====================== KATEGORIE-SELECT ======================
 function populateSortCategorySelect() {
     const select = document.getElementById('sort-category-select');
@@ -584,9 +649,7 @@ function renderSortList() {
     const container = document.getElementById('sort-list');
     container.innerHTML = '';
     let filtered = allProducts;
-    if (currentSortCategory !== "global") {
-        filtered = allProducts.filter(p => p.category === currentSortCategory);
-    }
+    if (currentSortCategory !== "global") filtered = allProducts.filter(p => p.category === currentSortCategory);
     const currentOrder = productOrderMap[currentSortCategory] || [];
     const sorted = [...filtered].sort((a, b) => {
         const idxA = currentOrder.indexOf(a.id);
@@ -600,27 +663,15 @@ function renderSortList() {
         const div = document.createElement('div');
         div.className = 'sortable-item flex items-center gap-4 bg-zinc-900 border border-white/10 rounded-3xl p-5 cursor-move select-none';
         div.dataset.id = p.id;
-        const newBadge = p.isNew ? `<span onclick="toggleIsNew('${p.id}', event)" class="px-3 py-1 bg-lime-400 text-black text-xs font-black tracking-wider rounded-2xl cursor-pointer hover:scale-110 transition">NEW</span>` : '';
-        const unavailableBadge = p.available === false ? `<span onclick="toggleAvailableInSort('${p.id}', event)" class="px-3 py-1 bg-red-500 text-white text-xs font-medium rounded-2xl cursor-pointer hover:scale-110 transition">NICHT VERFÜGBAR</span>` : '';
         div.innerHTML = `
             ${p.image ? `<img src="${p.image}" class="w-14 h-14 object-cover rounded-2xl flex-shrink-0">` : '<div class="w-14 h-14 bg-zinc-800 rounded-2xl flex items-center justify-center text-2xl">📦</div>'}
-            <div class="flex-1">
-                <div class="font-medium text-lg">${p.name}</div>
-                <div class="flex items-center gap-2 mt-1">
-                    ${newBadge}
-                    ${unavailableBadge}
-                </div>
-            </div>
+            <div class="flex-1"><div class="font-medium text-lg">${p.name}</div></div>
             <i class="fa-solid fa-grip-lines text-gray-400 text-2xl"></i>
         `;
         container.appendChild(div);
     });
     if (sortableInstance) sortableInstance.destroy();
-    sortableInstance = new Sortable(container, {
-        animation: 180,
-        ghostClass: 'bg-cyan-900/60',
-        forceFallback: true
-    });
+    sortableInstance = new Sortable(container, { animation: 180, ghostClass: 'bg-cyan-900/60' });
 }
 async function saveProductOrder() {
     const items = document.querySelectorAll('#sort-list .sortable-item');
@@ -630,66 +681,6 @@ async function saveProductOrder() {
     currentData[currentSortCategory] = newOrder;
     await docRef.set(currentData, { merge: true });
     showToast(`✅ Sortierung für <strong>${currentSortCategory === "global" ? "Alle Produkte" : currentSortCategory}</strong> gespeichert!`, "success");
-}
-async function toggleIsNew(id, e) {
-    e.stopImmediatePropagation();
-    const doc = await db.collection('products').doc(id).get();
-    const current = doc.data().isNew || false;
-    await db.collection('products').doc(id).update({ isNew: !current });
-    showToast(`NEW-Status umgeschaltet → ${!current ? 'aktiv' : 'deaktiviert'}`);
-    renderSortList();
-}
-async function toggleAvailableInSort(id, e) {
-    e.stopImmediatePropagation();
-    const doc = await db.collection('products').doc(id).get();
-    const current = doc.data().available !== false;
-    await db.collection('products').doc(id).update({ available: !current });
-    showToast(`Verfügbarkeit umgeschaltet → ${!current ? 'NICHT verfügbar' : 'verfügbar'}`);
-    renderSortList();
-}
-function autoSort(mode) {
-    const container = document.getElementById('sort-list');
-    let items = Array.from(container.children);
-    items.sort((a, b) => {
-        const idA = a.dataset.id;
-        const idB = b.dataset.id;
-        const pA = allProducts.find(p => p.id === idA);
-        const pB = allProducts.find(p => p.id === idB);
-        if (!pA || !pB) return 0;
-        switch(mode) {
-            case 'alpha': return pA.name.localeCompare(pB.name);
-            case 'new': return (pB.isNew ? 1 : 0) - (pA.isNew ? 1 : 0);
-            case 'tornado': return (pA.category === "WaveVapes Tornado 30000" ? 0 : 1) - (pB.category === "WaveVapes Tornado 30000" ? 0 : 1);
-            case 'available': return (pB.available !== false ? 1 : 0) - (pA.available !== false ? 1 : 0);
-            case 'stock': return (pB.stock || 0) - (pA.stock || 0);
-            default: return 0;
-        }
-    });
-    items.forEach(item => container.appendChild(item));
-    showToast('✅ Liste automatisch sortiert!', 'success');
-}
-function autoSortPriority() {
-    const container = document.getElementById('sort-list');
-    let items = Array.from(container.children);
-    items.sort((a, b) => {
-        const idA = a.dataset.id;
-        const idB = b.dataset.id;
-        const pA = allProducts.find(p => p.id === idA);
-        const pB = allProducts.find(p => p.id === idB);
-        if (!pA || !pB) return 0;
-        const getPriority = (p) => {
-            if (p.available === false || (p.stock || 0) <= 0) return 4;
-            if (p.isNew === true) return 1;
-            if (p.category !== "WaveVapes Tornado 30000") return 2;
-            return 3;
-        };
-        const prioA = getPriority(pA);
-        const prioB = getPriority(pB);
-        if (prioA !== prioB) return prioA - prioB;
-        return pA.name.localeCompare(pB.name);
-    });
-    items.forEach(item => container.appendChild(item));
-    showToast('✅ Automatische Prioritätssortierung angewendet!', 'success');
 }
 // ====================== PRODUKT-TABELLE RENDER ======================
 function renderProductTable() {
@@ -747,8 +738,6 @@ function openBulkEditModal() {
     document.getElementById('edit-modal').innerHTML = html;
     document.getElementById('edit-modal').classList.remove('hidden');
     populateCategorySelects();
-    const sel = document.getElementById('bulk-category');
-    if (sel) sel.innerHTML = '<option value="">Kategorie nicht ändern</option>' + sel.innerHTML;
 }
 function closeBulkModal() {
     document.getElementById('edit-modal').classList.add('hidden');
@@ -780,7 +769,7 @@ async function executeBulkEdit() {
     loadProducts();
 }
 async function enforceCategories() {
-    if (!confirm('Alle Produkte automatisch kategorisieren?\n\n• Neue Sorten → „Neue Sorten“\n• Alle anderen → „Normale Sorten“\n\nDas überschreibt bestehende Kategorien!')) return;
+    if (!confirm('Alle Produkte automatisch kategorisieren?')) return;
     const snap = await db.collection('products').get();
     const batch = db.batch();
     let changed = 0;
@@ -794,36 +783,14 @@ async function enforceCategories() {
     });
     if (changed > 0) {
         await batch.commit();
-        await logAction("auto_category_assignment", "", { changed });
         showToast(`✅ ${changed} Produkte automatisch kategorisiert!`, "success");
-    } else {
-        showToast("✅ Alles war schon korrekt");
     }
     loadProducts();
 }
 // ====================== EXPORT / IMPORT ======================
-async function exportOrdersWithTracking() {
-    const snapshot = await db.collection("orders").orderBy("date", "desc").get();
-    if (snapshot.empty) return alert("Keine Bestellungen!");
-    let csv = "Bestellnr.,Datum,Kunde,Gesamt,Status,Tracking-Nummer,Tracking-Link\n";
-    snapshot.forEach(doc => {
-        const o = doc.data();
-        const dateStr = o.date ? o.date.toDate().toISOString().slice(0,19).replace('T',' ') : '';
-        const trackingLink = o.trackingNumber && o.carrier === "DHL" ? `https://www.dhl.de/de/privatkunden/dhl-sendungsverfolgung.html?piececode=${encodeURIComponent(o.trackingNumber)}` : (o.trackingNumber || '');
-        const row = [`"${o.orderNumber || ''}"`,`"${dateStr}"`,`"${o.userEmail || ''}"`,o.total || 0,`"${o.status || ''}"`,`"${o.trackingNumber || ''}"`,`"${trackingLink}"`].join(",");
-        csv += row + "\n";
-    });
-    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `wavevapes_bestellungen_mit_tracking_${new Date().toISOString().slice(0,10)}.csv`;
-    link.click();
-    showToast("✅ Export mit Tracking-Links heruntergeladen!", "success");
-    await logAction("orders_export_with_tracking");
-}
 async function exportProductsToCSV() {
     const snapshot = await db.collection("products").get();
-    if (snapshot.empty) return alert("Keine Produkte vorhanden!");
+    if (snapshot.empty) return alert("Keine Produkte!");
     let csv = "id,name,price,originalPrice,stock,category,isNew,available,hasNicotine,description,image,sold\n";
     snapshot.forEach(doc => {
         const p = doc.data();
@@ -845,19 +812,15 @@ async function exportProductsToCSV() {
     });
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
-    const date = new Date().toISOString().slice(0,10);
     link.href = URL.createObjectURL(blob);
-    link.download = `wavevapes_products_backup_${date}.csv`;
+    link.download = `wavevapes_products_backup_${new Date().toISOString().slice(0,10)}.csv`;
     link.click();
-    showToast("✅ CSV-Datei wurde heruntergeladen!", "success");
+    showToast("✅ CSV exportiert!", "success");
 }
 async function importProductsFromCSV(e) {
     const file = e.target.files[0];
     if (!file) return;
-    if (!confirm("⚠️ WARNUNG!\n\nAlle aktuellen Produkte werden GELÖSCHT und durch die CSV ersetzt.\n\nWirklich fortfahren?")) {
-        e.target.value = "";
-        return;
-    }
+    if (!confirm("Alle aktuellen Produkte werden GELÖSCHT! Fortfahren?")) return;
     const reader = new FileReader();
     reader.onload = async function(event) {
         const text = event.target.result;
@@ -887,142 +850,11 @@ async function importProductsFromCSV(e) {
             batch.set(docRef, data);
         }
         await batch.commit();
-        showToast("✅ Alle Produkte wurden erfolgreich wiederhergestellt!", "success");
+        showToast("✅ Produkte importiert!", "success");
         loadProducts();
     };
     reader.readAsText(file);
     e.target.value = "";
-}
-async function exportOrdersToCSV() {
-    const snapshot = await db.collection("orders").orderBy("date", "desc").get();
-    if (snapshot.empty) return alert("Keine Bestellungen vorhanden!");
-    let csv = "docId,orderNumber,datum,email,gesamt,status,items,address\n";
-    snapshot.forEach(doc => {
-        const o = doc.data();
-        const dateStr = o.date ? o.date.toDate().toISOString().slice(0,19).replace('T',' ') : '';
-        const itemsStr = o.items.map(i => `${i.name} x${i.qty}${i.nicotine ? ' ('+i.nicotine+')' : ''}`).join(' | ');
-        const addressStr = `${o.address.street || ''}, ${o.address.zip || ''} ${o.address.city || ''}`;
-        const row = [
-            `"${doc.id}"`,
-            `"${o.orderNumber || ''}"`,
-            `"${dateStr}"`,
-            `"${o.userEmail || ''}"`,
-            o.total || 0,
-            `"${o.status || 'Zahlung erwartet'}"`,
-            `"${itemsStr.replace(/"/g, '""')}"`,
-            `"${addressStr.replace(/"/g, '""')}"`
-        ].join(",");
-        csv += row + "\n";
-    });
-    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `wavevapes_bestellungen_${new Date().toISOString().slice(0,10)}.csv`;
-    link.click();
-    showToast("✅ Bestellungen als CSV exportiert!", "success");
-}
-async function importOrdersFromCSV(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    if (!confirm("⚠️ WARNUNG!\n\nDie importierten Bestellungen werden ZUSÄTZLICH zu den bestehenden hinzugefügt.\n\nWirklich fortfahren?")) {
-        e.target.value = "";
-        return;
-    }
-    const reader = new FileReader();
-    reader.onload = async function(event) {
-        const text = event.target.result;
-        const rows = text.trim().split("\n");
-        const batch = db.batch();
-        for (let i = 1; i < rows.length; i++) {
-            if (!rows[i].trim()) continue;
-            const values = parseCSVLine(rows[i]);
-            const data = {
-                orderNumber: values[1],
-                date: firebase.firestore.Timestamp.fromDate(new Date(values[2])),
-                userEmail: values[3],
-                total: parseFloat(values[4]),
-                status: values[5],
-                items: values[6].split(' | ').map(item => {
-                    const parts = item.match(/(.*?) x(\d+)(?:\s*\((.*)\))?/);
-                    return parts ? { name: parts[1].trim(), qty: parseInt(parts[2]), nicotine: parts[3] || "" } : {};
-                }).filter(Boolean),
-                address: {
-                    street: values[7].split(',')[0] || "",
-                    zip: values[7].split(',')[1] ? values[7].split(',')[1].trim().split(' ')[0] : "",
-                    city: values[7].split(',')[1] ? values[7].split(',')[1].trim().split(' ').slice(1).join(' ') : ""
-                }
-            };
-            const docRef = db.collection("orders").doc(values[0]);
-            batch.set(docRef, data);
-        }
-        await batch.commit();
-        showToast("✅ Bestellungen erfolgreich importiert!", "success");
-        loadOrders();
-    };
-    reader.readAsText(file);
-    e.target.value = "";
-}
-async function exportUsersToCSV() {
-    const snapshot = await db.collection("users").get();
-    if (snapshot.empty) return alert("Keine Benutzer vorhanden!");
-    let csv = "uid,email,username,referralCode,loyaltyPoints,freeShipping,disabled,referralCount\n";
-    snapshot.forEach(doc => {
-        const u = doc.data();
-        const row = [
-            `"${doc.id}"`,
-            `"${u.email || ''}"`,
-            `"${u.username || ''}"`,
-            `"${u.referralCode || ''}"`,
-            u.totalBonusPoints || 0,
-            u.freeShipping === true ? "JA" : "NEIN",
-            u.disabled === true ? "JA" : "NEIN",
-            u.referralCount || 0
-        ].join(",");
-        csv += row + "\n";
-    });
-    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `wavevapes_benutzer_${new Date().toISOString().slice(0,10)}.csv`;
-    link.click();
-    showToast("✅ Benutzer als CSV exportiert!", "success");
-}
-async function importUsersFromCSV(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    if (!confirm("⚠️ WARNUNG!\n\nDie importierten Benutzer werden ZUSÄTZLICH zu den bestehenden hinzugefügt.\n\nWirklich fortfahren?")) {
-        e.target.value = "";
-        return;
-    }
-    const reader = new FileReader();
-    reader.onload = async function(event) {
-        const text = event.target.result;
-        const rows = text.trim().split("\n");
-        const batch = db.batch();
-        for (let i = 1; i < rows.length; i++) {
-            if (!rows[i].trim()) continue;
-            const values = parseCSVLine(rows[i]);
-            const data = {
-                email: values[1],
-                username: values[2],
-                referralCode: values[3],
-                totalBonusPoints: parseInt(values[4]),
-                freeShipping: values[5] === "JA",
-                disabled: values[6] === "JA",
-                referralCount: parseInt(values[7]) || 0
-            };
-            const docRef = db.collection("users").doc(values[0]);
-            batch.set(docRef, data);
-        }
-        await batch.commit();
-        showToast("✅ Benutzer erfolgreich importiert!", "success");
-        loadUsers();
-    };
-    reader.readAsText(file);
-    e.target.value = "";
-}
-function parseCSVLine(line) {
-    return line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(field => field.replace(/^"|"$/g, '').replace(/""/g, '"'));
 }
 // ====================== KATEGORIEN ======================
 function loadCategories() {
@@ -1058,12 +890,11 @@ document.getElementById('add-category-form').addEventListener('submit', async e 
     const special = document.getElementById('cat-special').checked;
     if (!name) return alert("Name erforderlich");
     await db.collection('categories').add({ name, order, special });
-    await logAction("category_created", "", { name });
     e.target.reset();
     populateCategorySelects();
     populateAdminCategoryFilter();
     populateSortCategorySelect();
-    showToast('✅ Kategorie erstellt und Dropdowns aktualisiert!');
+    showToast('✅ Kategorie erstellt!');
 });
 async function openEditCategoryModal(id) {
     const doc = await db.collection('categories').doc(id).get();
@@ -1090,24 +921,21 @@ async function saveEditCategory(id) {
     const order = parseInt(document.getElementById('edit-cat-order').value) || 999;
     const special = document.getElementById('edit-cat-special').checked;
     await db.collection('categories').doc(id).update({ name, order, special });
-    await logAction("category_updated", id, { name });
     document.getElementById('edit-modal').classList.add('hidden');
     populateCategorySelects();
     populateAdminCategoryFilter();
     populateSortCategorySelect();
-    showToast('✅ Kategorie gespeichert und Dropdowns aktualisiert');
+    showToast('✅ Kategorie gespeichert');
 }
 async function deleteCategory(id) {
-    if (!confirm('Kategorie wirklich löschen? Produkte bleiben erhalten.')) return;
+    if (!confirm('Kategorie löschen?')) return;
     await db.collection('categories').doc(id).delete();
-    await logAction("category_deleted", id);
     populateCategorySelects();
     populateAdminCategoryFilter();
     populateSortCategorySelect();
     showToast('✅ Kategorie gelöscht');
 }
 function seedDefaultCategories() {
-    if (allCategories.length > 0 && !confirm('Es existieren bereits Kategorien. Trotzdem Standard-Kategorien laden?')) return;
     const defaults = [
         { name: "WaveVapes Tornado 30000", order: 1, special: true },
         { name: "Normale Sorten", order: 2, special: false },
@@ -1117,7 +945,7 @@ function seedDefaultCategories() {
     showToast('✅ Standard-Kategorien angelegt!');
 }
 function populateCategorySelects() {
-    const selects = document.querySelectorAll('#prod-category, #edit-category-select, #bulk-category');
+    const selects = document.querySelectorAll('#prod-category, #bulk-category');
     selects.forEach(select => {
         if (!select) return;
         const currentValue = select.value;
@@ -1154,7 +982,6 @@ document.getElementById('add-coupon-form').addEventListener('submit', async e =>
         code, type, value, expiresAt: firebase.firestore.Timestamp.fromDate(expiry),
         oneTimeUse: oneTime, usedBy: [], createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
-    await logAction("coupon_created", code);
     e.target.reset();
     showToast('✅ Gutschein erstellt!');
     loadCoupons();
@@ -1186,42 +1013,20 @@ function renderCouponsTable() {
 }
 async function showCouponHistory(couponId) {
     const doc = await db.collection('coupons').doc(couponId).get();
-    if (!doc.exists) return showToast("Gutschein nicht gefunden", "error");
     const coupon = doc.data();
-    let listHTML = '';
-    if (coupon.usedBy && coupon.usedBy.length > 0) {
+    let listHTML = coupon.usedBy && coupon.usedBy.length > 0 ? '' : `<p class="text-center py-12 text-gray-400">Noch nicht verwendet.</p>`;
+    if (coupon.usedBy) {
         for (let uid of coupon.usedBy) {
-            try {
-                const userDoc = await db.collection('users').doc(uid).get();
-                const user = userDoc.exists ? userDoc.data() : {};
-                const email = user.email || uid;
-                listHTML += `
-                    <div class="bg-zinc-950 border border-white/10 rounded-2xl p-5 mb-3 flex justify-between items-center">
-                        <div>
-                            <div class="font-medium text-white">${email}</div>
-                            <div class="text-xs text-gray-400">UID: ${uid}</div>
-                        </div>
-                        <div class="text-right">
-                            <span class="text-emerald-400 text-xs">verwendet</span>
-                        </div>
-                    </div>`;
-            } catch(e) {
-                listHTML += `<div class="bg-zinc-950 border border-white/10 rounded-2xl p-5 mb-3">UID: ${uid} (User nicht gefunden)</div>`;
-            }
+            const userDoc = await db.collection('users').doc(uid).get();
+            const user = userDoc.exists ? userDoc.data() : {};
+            listHTML += `<div class="bg-zinc-950 border border-white/10 rounded-2xl p-5 mb-3">${user.email || uid}</div>`;
         }
-    } else {
-        listHTML = `<p class="text-center py-12 text-gray-400">Dieser Gutschein wurde noch von niemandem eingelöst.</p>`;
     }
     const modalHTML = `
     <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]">
         <div class="bg-zinc-900 rounded-3xl p-8 max-w-lg w-full mx-4 modal max-h-[85vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="text-3xl font-bold neon">Nutzungs-History: <span class="text-amber-400">${coupon.code}</span></h3>
-                <button onclick="closeEditModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
-            </div>
-            <div class="space-y-3">
-                ${listHTML}
-            </div>
+            <h3 class="text-3xl font-bold neon mb-6">History: ${coupon.code}</h3>
+            <div class="space-y-3">${listHTML}</div>
         </div>
     </div>`;
     document.getElementById('edit-modal').innerHTML = modalHTML;
@@ -1230,13 +1035,11 @@ async function showCouponHistory(couponId) {
 async function deleteCoupon(id) {
     if (confirm('Gutschein löschen?')) {
         await db.collection('coupons').doc(id).delete();
-        await logAction("coupon_deleted", id);
         loadCoupons();
     }
 }
 // ====================== BESTELLUNGEN ======================
 function loadOrders() {
-    const tbody = document.getElementById('orders-tbody');
     db.collection('orders').orderBy('date', 'desc').onSnapshot(snap => {
         let html = '';
         snap.forEach(doc => {
@@ -1258,12 +1061,11 @@ function loadOrders() {
                 </td>
             </tr>`;
         });
-        tbody.innerHTML = html || `<tr><td colspan="6" class="text-center py-16 text-gray-400">Noch keine Bestellungen</td></tr>`;
+        document.getElementById('orders-tbody').innerHTML = html || `<tr><td colspan="6" class="text-center py-16 text-gray-400">Noch keine Bestellungen</td></tr>`;
     });
 }
 document.getElementById('order-search').addEventListener('input', loadOrders);
 document.getElementById('status-filter').addEventListener('change', loadOrders);
-// ====================== LAGERABZUG NUR BEI "WIRD BEARBEITET" (MIT TRANSACTION + LAGERPRÜFUNG) ======================
 async function handleStockOnStatusChange(orderId, newStatus) {
     const orderRef = db.collection('orders').doc(orderId);
     const orderDoc = await orderRef.get();
@@ -1275,36 +1077,22 @@ async function handleStockOnStatusChange(orderId, newStatus) {
                 const orderSnap = await transaction.get(orderRef);
                 const currentOrder = orderSnap.data();
                 for (let item of currentOrder.items) {
-                    if (item.id === 999) continue; // Mystery Vape
+                    if (item.id === 999) continue;
                     const prodRef = db.collection("products").doc(item.id);
                     const prodSnap = await transaction.get(prodRef);
                     const currentStock = prodSnap.data().stock || 0;
-                    if (currentStock < item.qty) {
-                        throw new Error(`Nicht genug Lager für ${item.name} (nur ${currentStock} verfügbar)`);
-                    }
+                    if (currentStock < item.qty) throw new Error(`Nicht genug Lager für ${item.name}`);
                     transaction.update(prodRef, {
                         stock: firebase.firestore.FieldValue.increment(-item.qty),
                         sold: firebase.firestore.FieldValue.increment(item.qty)
                     });
                 }
             });
-            showToast("✅ Lager erfolgreich abgezogen!", "success");
             return true;
         } catch (error) {
-            console.error(error);
             showToast("❌ " + error.message, "error");
-            return false; // verhindert Status-Änderung
+            return false;
         }
-    }
-    // Stornierung (einfacher, da keine Prüfung nötig)
-    if (newStatus === "Storniert" && oldStatus === "Wird bearbeitet") {
-        for (let item of order.items) {
-            if (item.id === 999) continue;
-            await db.collection("products").doc(item.id).update({
-                stock: firebase.firestore.FieldValue.increment(item.qty)
-            });
-        }
-        showToast("✅ Lager wiederhergestellt", "success");
     }
     return true;
 }
@@ -1313,7 +1101,6 @@ async function quickStatus(id, status) {
     if (!success) return;
     await db.collection('orders').doc(id).update({ status });
     if (status === "Wird bearbeitet") await awardLoyaltyIfProcessed(id);
-    await logAction("order_status_changed", id, { status });
     showToast(`Status auf „${status}“ gesetzt`);
 }
 async function showOrderModal(orderId) {
@@ -1323,11 +1110,7 @@ async function showOrderModal(orderId) {
     const date = order.date ? order.date.toDate().toLocaleString('de-DE') : '—';
     let itemsHTML = '';
     order.items.forEach(item => {
-        itemsHTML += `
-            <div class="flex justify-between py-3 border-b border-white/10">
-                <span>${item.name} × ${item.qty} ${item.nicotine ? `(${item.nicotine})` : ''}</span>
-                <span>${(item.price * item.qty).toFixed(2)} €</span>
-            </div>`;
+        itemsHTML += `<div class="flex justify-between py-3 border-b border-white/10"><span>${item.name} × ${item.qty}</span><span>${(item.price * item.qty).toFixed(2)} €</span></div>`;
     });
     const modalHTML = `
     <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]">
@@ -1344,18 +1127,7 @@ async function showOrderModal(orderId) {
                 <div><strong>Adresse:</strong><br>${order.address.street}<br>${order.address.zip} ${order.address.city}</div>
                 <div><strong>Artikel</strong>${itemsHTML}</div>
                 <div class="text-2xl font-bold">Gesamt: <span class="text-emerald-400">${order.total.toFixed(2)} €</span></div>
-                <div class="mt-6">
-                    <label class="block text-sm font-medium text-gray-400 mb-2 flex items-center gap-2">
-                        <i class="fa-solid fa-note-sticky text-amber-400"></i>
-                        Interne Notizen (nur für dich sichtbar)
-                    </label>
-                    <textarea id="modal-internal-notes"
-                              rows="4"
-                              placeholder="z. B. Kunde hat schon überwiesen, IBAN-Ende 5812, Betrag passt..."
-                              class="w-full bg-zinc-800 border border-amber-400/30 focus:border-amber-400 rounded-2xl px-5 py-3 text-sm resize-y min-h-[100px]"></textarea>
-                </div>
                 <div class="bg-zinc-950 -mx-8 -mb-8 p-8 rounded-b-3xl border-t border-white/10">
-                    <h4 class="font-bold mb-6 text-cyan-400 flex items-center gap-2"><i class="fa-solid fa-truck"></i> Admin-Steuerung</h4>
                     <select id="modal-status" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 mb-6">
                         <option value="Zahlung erwartet" ${order.status === "Zahlung erwartet" ? 'selected' : ''}>Zahlung erwartet</option>
                         <option value="Wird bearbeitet" ${order.status === "Wird bearbeitet" ? 'selected' : ''}>Wird bearbeitet</option>
@@ -1363,30 +1135,15 @@ async function showOrderModal(orderId) {
                         <option value="Zugestellt" ${order.status === "Zugestellt" ? 'selected' : ''}>Zugestellt</option>
                         <option value="Storniert" ${order.status === "Storniert" ? 'selected' : ''}>Storniert</option>
                     </select>
-                    <div class="grid grid-cols-2 gap-6 mb-6">
-                        <div>
-                            <label class="text-xs block mb-2 text-gray-400">Versanddienst</label>
-                            <select id="modal-carrier" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
-                                <option value="DHL" ${order.carrier === "DHL" ? 'selected' : ''}>DHL</option>
-                                <option value="Hermes" ${order.carrier === "Hermes" ? 'selected' : ''}>Hermes</option>
-                                <option value="DPD" ${order.carrier === "DPD" ? 'selected' : ''}>DPD</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="text-xs block mb-2 text-gray-400">Tracking-Nummer</label>
-                            <input id="modal-tracking" value="${order.trackingNumber || ''}" placeholder="Tracking-Nummer" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
-                        </div>
-                    </div>
                     <div class="flex gap-4">
-                        <button onclick="saveOrderChanges()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-5 rounded-3xl font-bold">Änderungen speichern</button>
-                        <button onclick="deleteOrder()" class="flex-1 bg-red-600 hover:bg-red-500 py-5 rounded-3xl font-bold">Bestellung löschen</button>
+                        <button onclick="saveOrderChanges()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-5 rounded-3xl font-bold">Speichern</button>
+                        <button onclick="deleteOrder()" class="flex-1 bg-red-600 hover:bg-red-500 py-5 rounded-3xl font-bold">Löschen</button>
                     </div>
                 </div>
             </div>
         </div>
     </div>`;
     document.getElementById('order-modal-container').innerHTML = modalHTML;
-    document.getElementById('modal-internal-notes').value = order.internalNotes || '';
 }
 function closeOrderModal() {
     document.getElementById('order-modal-container').innerHTML = '';
@@ -1395,115 +1152,55 @@ async function saveOrderChanges() {
     const status = document.getElementById('modal-status').value;
     const success = await handleStockOnStatusChange(currentOrderId, status);
     if (!success) return;
-    const carrier = document.getElementById('modal-carrier').value;
-    const tracking = document.getElementById('modal-tracking').value.trim();
-    const internalNotes = document.getElementById('modal-internal-notes').value.trim();
-    const updateData = {
-        status,
-        carrier,
-        trackingNumber: tracking || firebase.firestore.FieldValue.delete()
-    };
-    if (internalNotes) {
-        updateData.internalNotes = internalNotes;
-    } else {
-        updateData.internalNotes = firebase.firestore.FieldValue.delete();
-    }
-    await db.collection('orders').doc(currentOrderId).update(updateData);
+    await db.collection('orders').doc(currentOrderId).update({ status });
     if (status === "Wird bearbeitet") await awardLoyaltyIfProcessed(currentOrderId);
-    await logAction("order_updated", currentOrderId, { status, hasNotes: !!internalNotes });
-    showToast('Bestellung + interne Notizen aktualisiert');
+    showToast('Bestellung aktualisiert');
     closeOrderModal();
 }
 async function deleteOrder() {
-    if (!confirm('Bestellung IRREVERSIBEL löschen?')) return;
+    if (!confirm('Bestellung löschen?')) return;
     await db.collection('orders').doc(currentOrderId).delete();
-    await logAction("order_deleted", currentOrderId);
     showToast('Bestellung gelöscht');
     closeOrderModal();
 }
-// ====================== BENUTZER (einfach) – SPERR-BUTTONS ENTFERNT ======================
+// ====================== BENUTZER ======================
 function loadUsers() {
-    const tbody = document.getElementById('users-tbody');
     db.collection('users').onSnapshot(snapshot => {
         let html = '';
         const search = (document.getElementById('user-search').value || '').toLowerCase();
         snapshot.forEach(doc => {
             const u = doc.data();
             const email = u.email || '—';
-            const username = u.username || '—';
-            const refCode = u.referralCode || '—';
-            const points = u.totalBonusPoints || 0;
-            const freeShipping = u.freeShipping === true;
-            if (search && !email.toLowerCase().includes(search) && !username.toLowerCase().includes(search)) return;
+            if (search && !email.toLowerCase().includes(search)) return;
             html += `
             <tr class="table-row-hover border-b border-white/10">
                 <td class="py-5 px-6 font-medium">${email}</td>
-                <td class="py-5 px-6">${username}</td>
-                <td class="py-5 px-6 text-center font-mono text-cyan-300">${refCode}</td>
-                <td class="py-5 px-6 text-center font-bold text-emerald-400">${points}</td>
+                <td class="py-5 px-6">${u.username || '—'}</td>
+                <td class="py-5 px-6 text-center font-mono text-cyan-300">${u.referralCode || '—'}</td>
+                <td class="py-5 px-6 text-center font-bold text-emerald-400">${u.totalBonusPoints || 0}</td>
                 <td class="py-5 px-6 text-center">
-                    <input type="checkbox" ${freeShipping ? 'checked' : ''}
-                           onchange="toggleFreeShipping('${doc.id}', this.checked)"
-                           class="accent-emerald-400 w-5 h-5 cursor-pointer">
+                    <input type="checkbox" ${u.freeShipping ? 'checked' : ''} onchange="toggleFreeShipping('${doc.id}', this.checked)" class="accent-emerald-400 w-5 h-5 cursor-pointer">
                 </td>
                 <td class="py-5 px-6 text-center">
                     <span class="status-badge ${u.disabled === true ? 'bg-red-600 text-white' : 'bg-emerald-600 text-white'}">${u.disabled === true ? 'GESPERRT' : 'AKTIV'}</span>
                 </td>
                 <td class="py-5 px-6 text-right">
-                    <button onclick="resetPassword('${email}')" class="text-amber-400 hover:text-amber-300 text-sm font-medium">PW zurücksetzen</button>
-                    <button onclick="resetUserPoints('${doc.id}')" class="text-red-400 hover:text-red-300 text-sm font-medium">Punkte resetten</button>
+                    <button onclick="resetPassword('${email}')" class="text-amber-400 hover:text-amber-300 text-sm font-medium">PW reset</button>
                 </td>
             </tr>`;
         });
-        tbody.innerHTML = html || `<tr><td colspan="7" class="text-center py-16 text-gray-400">Keine Benutzer gefunden</td></tr>`;
+        document.getElementById('users-tbody').innerHTML = html || `<tr><td colspan="7" class="text-center py-16 text-gray-400">Keine Benutzer</td></tr>`;
     });
 }
 document.getElementById('user-search').addEventListener('input', loadUsers);
 async function toggleFreeShipping(uid, enable) {
     await db.collection('users').doc(uid).update({ freeShipping: enable });
-    await logAction(enable ? "free_shipping_enabled" : "free_shipping_disabled", uid);
-    showToast(enable ? '✅ Gratisversand für diesen User AKTIVIERT' : 'Gratisversand deaktiviert', 'success');
+    showToast(enable ? 'Gratisversand AKTIVIERT' : 'Gratisversand deaktiviert', 'success');
 }
 async function resetPassword(email) {
-    if (!confirm(`Passwort-Zurücksetzen-E-Mail an ${email} senden?`)) return;
-    try {
-        const userSnapshot = await db.collection('users').where('email', '==', email).limit(1).get();
-        if (!userSnapshot.empty) {
-            const uid = userSnapshot.docs[0].id;
-            await db.collection('users').doc(uid).update({ passwordResetRequested: true, passwordResetTimestamp: firebase.firestore.FieldValue.serverTimestamp() });
-        }
-        await auth.sendPasswordResetEmail(email);
-        showToast(`✅ Reset-E-Mail wurde an ${email} gesendet!`);
-        await logAction("password_reset_requested", email);
-    } catch (e) {
-        showToast("Fehler: " + e.message, "error");
-    }
-}
-async function resetAllLoyaltyPoints() {
-    if (!confirm("⚠️ WIRKLICH ALLE Loyalty-Punkte auf 0 setzen?\n\nDas betrifft JEDEN Benutzer und ist unwiderruflich!")) return;
-    if (!confirm("LETZTE WARNUNG – alle Punkte werden gelöscht!")) return;
-    try {
-        const snapshot = await db.collection("users").get();
-        const batch = db.batch();
-        snapshot.forEach(doc => batch.update(doc.ref, { totalBonusPoints: 0 }));
-        await batch.commit();
-        showToast("✅ Alle Loyalty-Punkte wurden auf 0 zurückgesetzt!", "success");
-        await logAction("all_loyalty_reset");
-        loadUsers();
-    } catch (e) {
-        showToast("Fehler: " + e.message, "error");
-    }
-}
-async function resetUserPoints(uid) {
-    if (!confirm("Punkte dieses Benutzers auf 0 setzen?")) return;
-    try {
-        await db.collection("users").doc(uid).update({ totalBonusPoints: 0 });
-        showToast("✅ Punkte auf 0 gesetzt");
-        await logAction("user_loyalty_reset", uid);
-        loadUsers();
-    } catch (e) {
-        showToast("Fehler: " + e.message, "error");
-    }
+    if (!confirm(`Reset-E-Mail an ${email}?`)) return;
+    await auth.sendPasswordResetEmail(email);
+    showToast(`Reset-E-Mail gesendet an ${email}`);
 }
 // ====================== ANALYTICS ======================
 async function loadAnalytics() {
@@ -1631,7 +1328,6 @@ function loadAdminLogs() {
                 <div>
                     <div class="font-mono text-xs text-cyan-300">${l.adminEmail}</div>
                     <div class="text-lg font-semibold">${l.action}</div>
-                    <div class="text-sm text-gray-400">${l.target}</div>
                 </div>
                 <div class="text-right text-xs text-gray-500">${time}</div>
             </div>`;
@@ -1641,23 +1337,13 @@ function loadAdminLogs() {
 // ====================== SETTINGS ======================
 async function loadSettings() {
     const doc = await db.collection("settings").doc("main").get();
-    let data = doc.exists ? doc.data() : {
-        bank_owner: "Jakob David Hellrung",
-        iban: "DE38360200300003395812",
-        bic: "NBAGDE3EXXX",
-        shipping_cost: 4.99,
-        free_shipping_threshold: 100,
-        shop_closed: false,
-        email_template: "Deine Bestellung wurde bestätigt..."
-    };
-    if (!doc.exists) await db.collection("settings").doc("main").set(data);
+    let data = doc.exists ? doc.data() : { bank_owner: "Jakob David Hellrung", iban: "DE38360200300003395812", bic: "NBAGDE3EXXX", shipping_cost: 4.99, free_shipping_threshold: 100, shop_closed: false };
     document.getElementById("set-bank-owner").value = data.bank_owner || "";
     document.getElementById("set-iban").value = data.iban || "";
     document.getElementById("set-bic").value = data.bic || "";
     document.getElementById("set-shipping").value = data.shipping_cost || 4.99;
     document.getElementById("set-free-threshold").value = data.free_shipping_threshold || 100;
     document.getElementById("set-closed").checked = data.shop_closed || false;
-    document.getElementById("set-email-template").value = data.email_template || "";
 }
 async function saveSettings() {
     const data = {
@@ -1666,11 +1352,9 @@ async function saveSettings() {
         bic: document.getElementById("set-bic").value,
         shipping_cost: parseFloat(document.getElementById("set-shipping").value),
         free_shipping_threshold: parseFloat(document.getElementById("set-free-threshold").value),
-        shop_closed: document.getElementById("set-closed").checked,
-        email_template: document.getElementById("set-email-template").value
+        shop_closed: document.getElementById("set-closed").checked
     };
     await db.collection("settings").doc("main").set(data, {merge: true});
-    await logAction("settings_updated");
     showToast("✅ Einstellungen gespeichert", "success");
 }
 function getStatusClass(s) {
@@ -1686,30 +1370,19 @@ function getStatusClass(s) {
 async function awardLoyaltyIfProcessed(orderId) {
     const doc = await db.collection('orders').doc(orderId).get();
     const order = doc.data();
-    if (!order || order.status !== "Wird bearbeitet" || order.loyaltyCredited === true) return;
-    const points = order.loyaltyEarned || 0;
-    if (points <= 0) return;
-    await db.collection('users').doc(order.userId).update({ totalBonusPoints: firebase.firestore.FieldValue.increment(points) });
-    await db.collection('orders').doc(orderId).update({ loyaltyCredited: true });
-    showToast(`🎉 +${points} Loyalty-Punkte gutgeschrieben!`, 'success');
+    if (order && order.status === "Wird bearbeitet" && !order.loyaltyCredited) {
+        await db.collection('users').doc(order.userId).update({ totalBonusPoints: firebase.firestore.FieldValue.increment(order.loyaltyEarned || 0) });
+        await db.collection('orders').doc(orderId).update({ loyaltyCredited: true });
+    }
 }
 async function resetAllStatistics() {
-    if (!confirm("⚠️ WIRKLICH ALLE STATISTIKEN ZURÜCKSETZEN?\n\nsold wird bei ALLEN Produkten auf 0 gesetzt.\nUmsatz und Top-Seller gehen auf Null.\nDas ist UNWIDERRUFLICH!")) {
-        return;
-    }
-    try {
-        const snapshot = await db.collection("products").get();
-        const batch = db.batch();
-        snapshot.forEach(doc => {
-            batch.update(doc.ref, { sold: 0 });
-        });
-        await batch.commit();
-        showToast("✅ Alle Statistiken wurden zurückgesetzt! (verkaufte Einheiten = 0)", "success");
-        await logAction("all_statistics_reset");
-        loadProducts();
-    } catch (e) {
-        showToast("Fehler beim Zurücksetzen: " + e.message, "error");
-    }
+    if (!confirm("⚠️ WIRKLICH ALLE STATISTIKEN ZURÜCKSETZEN?")) return;
+    const snapshot = await db.collection("products").get();
+    const batch = db.batch();
+    snapshot.forEach(doc => batch.update(doc.ref, { sold: 0 }));
+    await batch.commit();
+    showToast("✅ Alle Statistiken zurückgesetzt!", "success");
+    loadProducts();
 }
 function showToast(msg, type = 'success') {
     const toast = document.createElement('div');
@@ -1773,13 +1446,7 @@ function switchTab(n) {
     if (n === 5) loadAnalytics();
     if (n === 6) loadAdminLogs();
     if (n === 8) loadProductOrder();
-    if (n === 9) {
-        loadPresence();
-        if (presenceRefreshInterval) clearInterval(presenceRefreshInterval);
-        presenceRefreshInterval = setInterval(() => {
-            if (!document.getElementById('tab-content-9').classList.contains('hidden')) loadPresence();
-        }, 5000);
-    }
+    if (n === 9) loadPresence();
     if (n === 10) loadExtendedUsers();
 }
 function toggleSidebar() {
@@ -1789,10 +1456,8 @@ async function logout() {
     await auth.signOut();
     window.location.href = "index.html";
 }
-// ====================== ERWEITERTE BENUTZERVERWALTUNG (Tab 10) ======================
+// ====================== ERWEITERTE BENUTZERVERWALTUNG ======================
 async function loadExtendedUsers() {
-    const tbody = document.getElementById('extended-users-tbody');
-    tbody.innerHTML = '<tr><td colspan="11" class="text-center py-12 text-gray-400">Lade Benutzer...</td></tr>';
     db.collection('users').onSnapshot(async snap => {
         extendedUsers = [];
         for (let doc of snap.docs) {
@@ -1804,12 +1469,7 @@ async function loadExtendedUsers() {
                 orderCount++;
                 totalSpent += o.data().total || 0;
             });
-            extendedUsers.push({
-                id: doc.id,
-                ...u,
-                orderCount,
-                totalSpent: totalSpent.toFixed(2)
-            });
+            extendedUsers.push({ id: doc.id, ...u, orderCount, totalSpent: totalSpent.toFixed(2) });
         }
         renderExtendedUsersTable();
     });
@@ -1817,23 +1477,12 @@ async function loadExtendedUsers() {
 function renderExtendedUsersTable() {
     const tbody = document.getElementById('extended-users-tbody');
     const search = (document.getElementById('extended-user-search').value || '').toLowerCase();
-    const filter = document.getElementById('extended-filter').value;
     let filtered = extendedUsers.filter(u => {
-        const matchSearch = !search ||
-            (u.email && u.email.toLowerCase().includes(search)) ||
-            (u.username && u.username.toLowerCase().includes(search));
-        if (!matchSearch) return false;
-        if (filter === 'active' && u.disabled === true) return false;
-        if (filter === 'disabled' && u.disabled !== true) return false;
-        if (filter === 'highpoints' && (u.totalBonusPoints || 0) <= 1000) return false;
-        return true;
+        return !search || (u.email && u.email.toLowerCase().includes(search)) || (u.username && u.username.toLowerCase().includes(search));
     });
     let html = '';
     filtered.forEach(u => {
         const disabled = u.disabled === true;
-        const statusHTML = disabled
-            ? `<span class="status-badge bg-red-600 text-white">GESPERRT</span>`
-            : `<span class="status-badge bg-emerald-600 text-white">AKTIV</span>`;
         html += `
         <tr class="table-row-hover border-b border-white/10">
             <td class="py-5 px-6"><input type="checkbox" data-id="${u.id}" onclick="toggleExtendedSelect(this)" class="accent-cyan-400 w-5 h-5"></td>
@@ -1844,8 +1493,8 @@ function renderExtendedUsersTable() {
             <td class="py-5 px-6 text-center">${u.referralCount || 0}</td>
             <td class="py-5 px-6 text-center">${u.orderCount}</td>
             <td class="py-5 px-6 text-center">${u.totalSpent} €</td>
-            <td class="py-5 px-6 text-center text-xs text-gray-400">${u.createdAt ? u.createdAt.toDate().toLocaleDateString('de-DE') : '—'}</td>
-            <td class="py-5 px-6 text-center">${statusHTML}</td>
+            <td class="py-5 px-6 text-center">${u.createdAt ? u.createdAt.toDate().toLocaleDateString('de-DE') : '—'}</td>
+            <td class="py-5 px-6 text-center"><span class="status-badge ${disabled ? 'bg-red-600 text-white' : 'bg-emerald-600 text-white'}">${disabled ? 'GESPERRT' : 'AKTIV'}</span></td>
             <td class="py-5 px-6 text-right">
                 <button onclick="openExtendedUserEditModal('${u.id}')" class="text-cyan-400 hover:text-white"><i class="fa-solid fa-pen"></i></button>
             </td>
@@ -1863,53 +1512,36 @@ function toggleExtendedSelect() {
 function updateSelectedExtendedIds() {
     selectedExtendedUserIds = Array.from(document.querySelectorAll('#extended-users-tbody input[type="checkbox"]:checked')).map(ch => ch.dataset.id);
 }
-// ====================== NEUE BULK-SPERRFUNKTION MIT IP-CHECKBOX ======================
 async function bulkDisableSelected(disable) {
     if (selectedExtendedUserIds.length === 0) return alert("Keine User ausgewählt");
-
-    const action = disable ? "sperren" : "entsperren";
     const modalHTML = `
     <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]">
         <div class="bg-zinc-900 rounded-3xl p-8 max-w-md w-full mx-4 modal">
-            <h3 class="text-3xl font-bold mb-6">Bulk-Aktion: ${disable ? 'Sperren' : 'Entsperren'}</h3>
-            <p class="mb-8 text-gray-300">${selectedExtendedUserIds.length} Benutzer werden ${action}.</p>
-            
+            <h3 class="text-3xl font-bold mb-6">Bulk: ${disable ? 'Sperren' : 'Entsperren'}</h3>
+            <p class="mb-8 text-gray-300">${selectedExtendedUserIds.length} Benutzer werden ${disable ? 'gesperrt' : 'entsperrt'}.</p>
             <div class="flex items-center gap-3 mb-8">
                 <input id="bulk-ip-ban" type="checkbox" class="w-6 h-6 accent-red-500" ${disable ? 'checked' : ''}>
                 <label class="text-lg font-medium">Auch IP-Adresse(n) sperren / freigeben</label>
             </div>
-
             <div class="flex gap-4">
-                <button onclick="executeBulkDisable(${disable})" 
-                        class="flex-1 bg-red-600 hover:bg-red-500 py-5 rounded-3xl font-bold text-white">
-                    ${disable ? 'JETZT SPERREN' : 'JETZT ENTSPERREN'}
-                </button>
-                <button onclick="closeBulkIpModal()" 
-                        class="flex-1 bg-zinc-700 hover:bg-zinc-600 py-5 rounded-3xl">
-                    Abbrechen
-                </button>
+                <button onclick="executeBulkDisable(${disable})" class="flex-1 bg-red-600 hover:bg-red-500 py-5 rounded-3xl font-bold text-white">${disable ? 'JETZT SPERREN' : 'JETZT ENTSPERREN'}</button>
+                <button onclick="closeBulkIpModal()" class="flex-1 bg-zinc-700 hover:bg-zinc-600 py-5 rounded-3xl">Abbrechen</button>
             </div>
         </div>
     </div>`;
-
     document.getElementById('extended-user-edit-modal').innerHTML = modalHTML;
     document.getElementById('extended-user-edit-modal').classList.remove('hidden');
 }
-
 async function executeBulkDisable(disable) {
     const banIp = document.getElementById('bulk-ip-ban').checked;
     const batch = db.batch();
-
     for (let uid of selectedExtendedUserIds) {
         const userRef = db.collection('users').doc(uid);
         const userDoc = await userRef.get();
         const userData = userDoc.data();
-
         batch.update(userRef, { disabled: disable });
-
         if (banIp && userData.lastIp) {
             if (disable) {
-                // IP sperren
                 await db.collection("banned_ips").doc(userData.lastIp).set({
                     ip: userData.lastIp,
                     bannedAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -1917,23 +1549,18 @@ async function executeBulkDisable(disable) {
                     bannedBy: auth.currentUser.email
                 });
             } else {
-                // IP freigeben
                 await db.collection("banned_ips").doc(userData.lastIp).delete();
             }
         }
     }
-
     await batch.commit();
     closeBulkIpModal();
-
     showToast(`${selectedExtendedUserIds.length} User ${disable ? 'gesperrt' : 'entsperrt'}!${banIp ? ' + IP-Ban' : ''}`, 'success');
     renderExtendedUsersTable();
 }
-
 function closeBulkIpModal() {
     document.getElementById('extended-user-edit-modal').classList.add('hidden');
 }
-// ====================== NEUER EXTENDED USER EDIT MODAL ======================
 async function openExtendedUserEditModal(uid) {
     const doc = await db.collection('users').doc(uid).get();
     const u = doc.data();
@@ -1941,49 +1568,23 @@ async function openExtendedUserEditModal(uid) {
     <div class="bg-zinc-900 rounded-3xl p-8 max-w-2xl w-full mx-4 modal">
         <h3 class="text-3xl font-bold mb-6 neon">User bearbeiten: ${u.email}</h3>
         <div class="grid grid-cols-2 gap-6">
-            <div>
-                <label class="block text-sm text-gray-400 mb-2">Username</label>
-                <input id="edit-username" value="${u.username || ''}" class="bg-zinc-800 text-white border border-cyan-400/30 focus:border-cyan-400 w-full rounded-2xl px-6 py-4 outline-none">
-            </div>
-            <div>
-                <label class="block text-sm text-gray-400 mb-2">Loyalty Punkte</label>
-                <input id="edit-points" type="number" value="${u.totalBonusPoints || 0}" class="bg-zinc-800 text-white border border-cyan-400/30 focus:border-cyan-400 w-full rounded-2xl px-6 py-4 outline-none">
-            </div>
-            <div>
-                <label class="block text-sm text-gray-400 mb-2">Referral Code</label>
-                <input id="edit-referral" value="${u.referralCode || ''}" class="bg-zinc-800 text-white border border-cyan-400/30 focus:border-cyan-400 w-full rounded-2xl px-6 py-4 outline-none">
-            </div>
+            <div><label class="block text-sm text-gray-400 mb-2">Username</label><input id="edit-username" value="${u.username || ''}" class="bg-zinc-800 text-white border border-cyan-400/30 focus:border-cyan-400 w-full rounded-2xl px-6 py-4 outline-none"></div>
+            <div><label class="block text-sm text-gray-400 mb-2">Loyalty Punkte</label><input id="edit-points" type="number" value="${u.totalBonusPoints || 0}" class="bg-zinc-800 text-white border border-cyan-400/30 focus:border-cyan-400 w-full rounded-2xl px-6 py-4 outline-none"></div>
+            <div><label class="block text-sm text-gray-400 mb-2">Referral Code</label><input id="edit-referral" value="${u.referralCode || ''}" class="bg-zinc-800 text-white border border-cyan-400/30 focus:border-cyan-400 w-full rounded-2xl px-6 py-4 outline-none"></div>
             <div class="flex items-center gap-4 mt-6">
-                <label class="flex items-center gap-3 text-white">
-                    <input id="edit-freeshipping" type="checkbox" ${u.freeShipping ? 'checked' : ''} class="w-5 h-5 accent-emerald-400"> Gratis Versand
-                </label>
-                <label class="flex items-center gap-3 text-white">
-                    <input id="edit-disabled" type="checkbox" ${u.disabled ? 'checked' : ''} class="w-5 h-5 accent-red-400"> Gesperrt
-                </label>
-                <label class="flex items-center gap-3 text-white">
-                    <input id="edit-role-admin" type="checkbox" ${u.role === 'admin' ? 'checked' : ''} class="w-5 h-5 accent-purple-400"> Admin-Rolle
-                </label>
+                <label class="flex items-center gap-3 text-white"><input id="edit-freeshipping" type="checkbox" ${u.freeShipping ? 'checked' : ''} class="w-5 h-5 accent-emerald-400"> Gratis Versand</label>
+                <label class="flex items-center gap-3 text-white"><input id="edit-disabled" type="checkbox" ${u.disabled ? 'checked' : ''} class="w-5 h-5 accent-red-400"> Gesperrt</label>
+                <label class="flex items-center gap-3 text-white"><input id="edit-role-admin" type="checkbox" ${u.role === 'admin' ? 'checked' : ''} class="w-5 h-5 accent-purple-400"> Admin-Rolle</label>
             </div>
         </div>
-
-        <!-- NEU: IP-Ban Checkbox -->
         <div class="mt-8 bg-red-950/30 border border-red-500/30 rounded-2xl p-6">
-            <label class="flex items-center gap-3 text-white font-medium">
-                <input id="edit-ip-ban" type="checkbox" ${u.disabled ? 'checked' : ''} class="w-5 h-5 accent-red-500">
-                <span>IP-Adresse ebenfalls sperren (bei Aktivierung)</span>
-            </label>
-            <p class="text-xs text-red-400 mt-2">Wird automatisch freigegeben, wenn du den User entsperrst.</p>
+            <label class="flex items-center gap-3 text-white font-medium"><input id="edit-ip-ban" type="checkbox" ${u.disabled ? 'checked' : ''} class="w-5 h-5 accent-red-500"> IP-Adresse ebenfalls sperren</label>
         </div>
-
-        <div class="mt-8">
-            <label class="block text-sm text-gray-400 mb-2">Interne Notizen</label>
-            <textarea id="edit-notes" rows="3" class="bg-zinc-800 text-white border border-cyan-400/30 focus:border-cyan-400 w-full rounded-2xl px-6 py-4 outline-none">${u.internalNotes || ''}</textarea>
-        </div>
+        <div class="mt-8"><label class="block text-sm text-gray-400 mb-2">Interne Notizen</label><textarea id="edit-notes" rows="3" class="bg-zinc-800 text-white border border-cyan-400/30 focus:border-cyan-400 w-full rounded-2xl px-6 py-4 outline-none">${u.internalNotes || ''}</textarea></div>
         <div class="flex gap-4 mt-10">
             <button onclick="saveExtendedUser('${uid}')" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-5 rounded-3xl font-bold text-white">Speichern</button>
             <button onclick="closeExtendedUserModal()" class="flex-1 bg-zinc-700 hover:bg-zinc-600 py-5 rounded-3xl">Abbrechen</button>
         </div>
-        <button onclick="showUserOrders('${uid}')" class="mt-6 w-full bg-cyan-600 hover:bg-cyan-500 py-4 rounded-3xl text-white">Bestellungen dieses Users anzeigen</button>
     </div>`;
     document.getElementById('extended-user-edit-modal').innerHTML = html;
     document.getElementById('extended-user-edit-modal').classList.remove('hidden');
@@ -2015,7 +1616,6 @@ async function saveExtendedUser(uid) {
         internalNotes: notes || firebase.firestore.FieldValue.delete()
     });
 
-    // IP-Handling
     if (currentIp) {
         if (disabled && banIp) {
             await db.collection("banned_ips").doc(currentIp).set({
@@ -2030,10 +1630,26 @@ async function saveExtendedUser(uid) {
     }
 
     closeExtendedUserModal();
-    showToast(`✅ User gespeichert!${disabled && banIp ? ' + IP gesperrt' : disabled ? ' (nur User)' : ''}`, 'success');
+    showToast(`✅ User gespeichert!${disabled && banIp ? ' + IP gesperrt' : ''}`, 'success');
 }
-async function showUserOrders(uid) {
-    showToast('Bestellungen dieses Users werden in Tab 1 angezeigt (filtere nach User)', 'success');
+// ====================== SWITCH TAB ======================
+function switchTab(n) {
+    document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('tab-active'));
+    document.getElementById('sidebar-' + n).classList.add('tab-active');
+    document.querySelectorAll('[id^="tab-content-"]').forEach(el => el.classList.add('hidden'));
+    document.getElementById('tab-content-' + n).classList.remove('hidden');
+    if (n === 5) loadAnalytics();
+    if (n === 6) loadAdminLogs();
+    if (n === 8) loadProductOrder();
+    if (n === 9) loadPresence();
+    if (n === 10) loadExtendedUsers();
+}
+function toggleSidebar() {
+    document.getElementById("sidebar").classList.toggle("-translate-x-full");
+}
+async function logout() {
+    await auth.signOut();
+    window.location.href = "index.html";
 }
 // ====================== INITIALISIERUNG ======================
 auth.onAuthStateChanged(async (user) => {
@@ -2047,6 +1663,7 @@ auth.onAuthStateChanged(async (user) => {
     }
     loadSettings();
     switchTab(0);
+    initDropzone();
 });
 window.onload = () => {
     loadProducts();

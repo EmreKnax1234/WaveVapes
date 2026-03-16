@@ -639,7 +639,7 @@
         let userHasFreeShipping = false;
         let productOrder = [];
         let pendingNicotine = {};
-       
+      
         // ==================== NEU: ECHTE LIVE ONLINE ZÄHLUNG (Gäste + User) ====================
         let sessionId = localStorage.getItem("wavevapes_sessionId");
         if (!sessionId) {
@@ -839,40 +839,60 @@
                 console.error("Cart speichern fehlgeschlagen", e);
             }
         }
-        // ====================== AUTH + LOYALTY SYNC ======================
+        // ====================== AUTH + LOYALTY SYNC + LIVE BAN + IP-BAN ======================
         auth.onAuthStateChanged(async (user) => {
             currentUser = user;
             updateAuthUI();
             updateUserDisplay();
+
             if (user) {
-                const userDoc = await db.collection("users").doc(user.uid).get();
-                if (userDoc.exists && userDoc.data().disabled === true) {
-                    await auth.signOut();
-                    showToast("❌ Dein Account wurde permanent gesperrt.", "error");
-                    return;
-                }
-                if (userDoc.exists && userDoc.data().passwordResetRequested === true) {
-                    await db.collection("users").doc(user.uid).update({
-                        passwordResetRequested: false
-                    });
-                    showToast("🔑 Dein Passwort wurde zurückgesetzt, bitte gib ein neues ein.", "success");
-                }
+                const userRef = db.collection("users").doc(user.uid);
+
+                // === LIVE SPERR-CHECK (sofort ausloggen) ===
+                if (userSnapshotUnsubscribe) userSnapshotUnsubscribe();
+                userSnapshotUnsubscribe = userRef.onSnapshot(async doc => {
+                    if (!doc.exists) return;
+
+                    const data = doc.data();
+
+                    // PERMANENT BAN + LIVE LOGOUT
+                    if (data.disabled === true) {
+                        await auth.signOut();
+                        showToast("❌ Dein Account wurde permanent gesperrt.", "error");
+                        return;
+                    }
+
+                    // normale Syncs
+                    loyaltyPoints = data.totalBonusPoints || 0;
+                    userHasFreeShipping = data.freeShipping === true;
+                    updateLoyaltyDisplay();
+                    checkAndAutoRedeemLoyalty();
+                    updateCartDisplay();
+                });
+
                 await createOrUpdateUserProfile();
                 await loadUserCart();
                 loadUserOrders();
-                if (userSnapshotUnsubscribe) userSnapshotUnsubscribe();
-                userSnapshotUnsubscribe = db.collection("users").doc(user.uid).onSnapshot(doc => {
-                    if (doc.exists) {
-                        const data = doc.data();
-                        loyaltyPoints = data.totalBonusPoints || 0;
-                        userHasFreeShipping = data.freeShipping === true;
-                        updateLoyaltyDisplay();
-                        checkAndAutoRedeemLoyalty();
-                        updateCartDisplay();
-                    }
-                });
                 updatePresence();
-                setInterval(updatePresence, 30000);
+
+                // === IP SPEICHERN + BAN-CHECK ===
+                try {
+                    const ipRes = await fetch('https://api.ipify.org?format=json');
+                    const { ip } = await ipRes.json();
+
+                    // IP im User-Doc speichern
+                    await userRef.set({ lastIp: ip }, { merge: true });
+
+                    // Prüfen ob IP global gebannt ist
+                    const bannedSnap = await db.collection("banned_ips").where("ip", "==", ip).get();
+                    if (!bannedSnap.empty) {
+                        await auth.signOut();
+                        showToast("❌ Deine IP wurde gesperrt.", "error");
+                    }
+                } catch(e) {
+                    console.log("IP konnte nicht ermittelt werden");
+                }
+
             } else {
                 cart = [];
                 if (userSnapshotUnsubscribe) userSnapshotUnsubscribe();
@@ -1658,13 +1678,13 @@
             snap.forEach(doc => {
                 const c = doc.data();
                 const active = currentCategoryFilter === c.name ? 'tab-active' : '';
-          
+         
                 let extra = '';
                 if (c.special === true) {
                     const badgeText = c.specialText || "4 FÜR 3";
                     extra = ` <span class="bg-amber-400 text-black text-xs font-black px-4 py-1 rounded-2xl">${badgeText}</span> <i class="fa-solid fa-bolt animate-bolt text-2xl"></i>`;
                 }
-          
+         
                 html += `<button onclick="setCategoryFilter('${c.name}')" class="px-5 py-2 transition ${active}">${c.name}${extra}</button>`;
             });
             document.getElementById("category-tabs").innerHTML = html;

@@ -89,15 +89,7 @@
                 <input type="file" id="csv-upload-products" accept=".csv" class="hidden" onchange="importProductsFromCSV(event)">
                 <p class="text-xs text-amber-400 mt-4 text-center">⚠️ Beim Import werden ALLE aktuellen Produkte gelöscht!</p>
             </div>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
-                <div class="card p-6"><p class="text-gray-400 text-sm">Gesamtumsatz</p><p id="total-revenue" class="text-4xl font-bold text-emerald-400">0 €</p></div>
-                <div class="card p-6"><p class="text-gray-400 text-sm">Aktive Produkte</p><p id="active-products" class="text-4xl font-bold text-cyan-400">0</p></div>
-                <div class="card p-6"><p class="text-gray-400 text-sm">Verkaufte Einheiten</p><p id="total-sold" class="text-4xl font-bold text-purple-400">0</p></div>
-                <div class="card p-6 bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-400/30"><p class="text-gray-400 text-sm">Top-Seller</p><p id="top-seller" class="text-2xl font-bold text-amber-400">—</p></div>
-            </div>
-            <div class="card p-8 mb-12 bg-red-950/30 border border-red-500/50">
-                <button onclick="resetAllStatistics()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-5 rounded-3xl text-xl flex items-center justify-center gap-3"><i class="fa-solid fa-warning"></i> ALLE STATISTIKEN ZURÜCKSETZEN</button>
-            </div>
+
             <div class="card p-8 mb-12">
                 <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><i class="fa-solid fa-plus"></i> Neues Produkt hinzufügen</h2>
                 <form id="add-form" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -105,22 +97,23 @@
                     <input id="prod-price" type="number" step="0.01" placeholder="Aktueller Preis (€)" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4" required>
                     <input id="prod-original-price" type="number" step="0.01" placeholder="Alter Preis (Strikethrough z.B. 35.99)" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4">
                     <input id="prod-stock" type="number" placeholder="Lagerbestand" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4" required>
-                    <select id="prod-category" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4 text-lg"></select>
+                    <select id="prod-category" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4 text-lg" required></select>
                     <div class="flex items-center gap-3"><input id="prod-new" type="checkbox" class="w-5 h-5 accent-lime-400"><label>Neue Sorte</label></div>
                     <div class="flex items-center gap-3"><input id="prod-unavailable" type="checkbox" class="w-5 h-5 accent-red-400"><label>Nicht verfügbar</label></div>
                     <div class="flex items-center gap-3"><input id="prod-has-nicotine" type="checkbox" checked class="w-5 h-5 accent-cyan-400"><label>Nikotin enthalten (10/20 mg Auswahl)</label></div>
                     <div class="col-span-full"><label class="text-xs text-gray-400 block mb-2">Produktbeschreibung</label><textarea id="prod-description" rows="4" placeholder="Intensiver Blue Raspberry Geschmack..." class="w-full bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-4"></textarea></div>
-                   
+                  
                     <!-- BILD-UPLOAD -->
                     <div id="dropzone" class="col-span-full border-2 border-dashed border-cyan-400/50 hover:border-cyan-400 rounded-3xl p-10 text-center cursor-pointer transition-all">
                         <i id="drop-icon" class="fa-solid fa-cloud-arrow-up text-5xl mb-4 text-cyan-400"></i>
                         <p id="drop-text" class="text-cyan-300">Bild per Drag & Drop oder klicken (JPG/PNG)</p>
                         <img id="preview-thumb" class="hidden mx-auto mt-6 max-h-48 rounded-2xl border border-cyan-400/30 shadow-xl">
                     </div>
-                   
+                  
                     <button type="submit" class="lg:col-span-3 bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-5 rounded-3xl text-xl">Produkt speichern</button>
                 </form>
             </div>
+
             <div class="flex flex-wrap gap-3 mb-6">
                 <button onclick="openBulkEditModal()" class="bg-violet-600 hover:bg-violet-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2"><i class="fa-solid fa-list-check"></i> Bulk-Edit (mehrere Produkte)</button>
                 <button onclick="enforceCategories()" class="bg-amber-600 hover:bg-amber-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2"><i class="fa-solid fa-magic"></i> Automatische Kategoriezuteilung</button>
@@ -163,6 +156,7 @@
                 </div>
             </div>
         </div>
+
         <!-- TAB 1: BESTELLUNGEN -->
         <div id="tab-content-1" class="hidden">
             <div class="card overflow-hidden">
@@ -194,6 +188,7 @@
             </div>
             <input type="file" id="csv-upload-orders" accept=".csv" class="hidden" onchange="importOrdersFromCSV(event)">
         </div>
+
         <!-- TAB 2: BENUTZER (einfach) -->
         <div id="tab-content-2" class="hidden">
             <div class="card p-8 mb-12 bg-red-950/30 border border-red-500/50">
@@ -227,6 +222,7 @@
             </div>
             <input type="file" id="csv-upload-users" accept=".csv" class="hidden" onchange="importUsersFromCSV(event)">
         </div>
+
         <!-- TAB 3: KATEGORIEN -->
         <div id="tab-content-3" class="hidden">
             <div class="card p-8 mb-12">
@@ -253,6 +249,7 @@
                 </div>
             </div>
         </div>
+
         <!-- TAB 4: GUTSCHEINE -->
         <div id="tab-content-4" class="hidden">
             <div class="card p-8">
@@ -287,6 +284,7 @@
                 </div>
             </div>
         </div>
+
         <!-- TAB 5: ANALYTICS -->
         <div id="tab-content-5" class="hidden">
             <h2 class="text-4xl font-bold tracking-tighter neon mb-8 flex items-center gap-3">
@@ -341,11 +339,13 @@
                 Monatsbericht als PDF herunterladen
             </button>
         </div>
+
         <!-- TAB 6: ADMIN LOGS -->
         <div id="tab-content-6" class="hidden">
             <h2 class="text-3xl font-bold mb-6">Admin Activity Log (Live)</h2>
             <div id="logs-container" class="space-y-4 max-h-[70vh] overflow-y-auto"></div>
         </div>
+
         <!-- TAB 7: SETTINGS -->
         <div id="tab-content-7" class="hidden">
             <h2 class="text-3xl font-bold mb-8">Shop Settings</h2>
@@ -385,6 +385,7 @@
                 </div>
             </div>
         </div>
+
         <!-- TAB 8: SORTIERUNG -->
         <div id="tab-content-8" class="hidden">
             <div class="card p-8">
@@ -412,6 +413,7 @@
                 <button onclick="saveProductOrder()" class="mt-10 w-full bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-6 rounded-3xl text-xl hover:scale-105 transition">✅ Sortierung für aktuelle Kategorie speichern & live übernehmen</button>
             </div>
         </div>
+
         <!-- TAB 9: LIVE ONLINE -->
         <div id="tab-content-9" class="hidden">
             <div class="card overflow-hidden">
@@ -429,6 +431,7 @@
                 </div>
             </div>
         </div>
+
         <!-- TAB 10: ERWEITERTE BENUTZERVERWALTUNG -->
         <div id="tab-content-10" class="hidden">
             <div class="card p-8">
@@ -469,6 +472,7 @@
         </div>
     </div>
 </div>
+
 <!-- EDIT MODAL (Produkte) -->
 <div id="edit-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]"></div>
 <!-- ORDER MODAL -->
@@ -477,6 +481,7 @@
 <div id="extended-user-edit-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]"></div>
 <!-- TOAST -->
 <div id="toast-container" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[99999] flex flex-col gap-3"></div>
+
 <script>
 // ====================== FIREBASE CONFIG ======================
 const firebaseConfig = {
@@ -491,11 +496,12 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 const storage = firebase.storage();
+
 // ====================== GLOBALE VARIABLEN ======================
 let currentEditId = null;
-let selectedFile = null;
-let currentOrderId = null;
-let removeCurrentImage = false;
+let selectedImageFile = null;
+let selectedEditImageFile = null;
+let removeCurrentImageInEdit = false;
 let allCategories = [];
 let allCoupons = [];
 let revenueChart = null;
@@ -515,9 +521,7 @@ let currentSortCategory = "global";
 let presenceRefreshInterval = null;
 let extendedUsers = [];
 let selectedExtendedUserIds = [];
-let selectedImageFile = null;
-let selectedEditImageFile = null;
-let removeCurrentImageInEdit = false;
+
 // ====================== LOG ACTION ======================
 async function logAction(action, target = "", details = {}) {
     if (!auth.currentUser) return;
@@ -529,6 +533,7 @@ async function logAction(action, target = "", details = {}) {
         details: details || {}
     });
 }
+
 // ====================== STATS UPDATE ======================
 function updateStats() {
     const active = allProducts.filter(p => p.available !== false).length;
@@ -540,6 +545,7 @@ function updateStats() {
     document.getElementById('total-revenue').textContent = revenue.toFixed(0) + ' €';
     document.getElementById('top-seller').textContent = top ? `${top.name} (${top.sold || 0}×)` : '—';
 }
+
 // ====================== PRODUKTE ======================
 function loadProducts() {
     db.collection('products').onSnapshot(snap => {
@@ -548,12 +554,14 @@ function loadProducts() {
         renderProductTable();
     });
 }
-// ====================== DROPZONE (NEU) ======================
+
+// ====================== DROPZONE (FIXED) ======================
 function initDropzone() {
     const dropzone = document.getElementById('dropzone');
     const preview = document.getElementById('preview-thumb');
     const icon = document.getElementById('drop-icon');
     const text = document.getElementById('drop-text');
+
     dropzone.addEventListener('click', () => {
         const input = document.createElement('input');
         input.type = 'file';
@@ -561,6 +569,7 @@ function initDropzone() {
         input.onchange = e => handleFile(e.target.files[0]);
         input.click();
     });
+
     dropzone.addEventListener('dragover', e => {
         e.preventDefault();
         dropzone.classList.add('dropzone-active');
@@ -571,6 +580,7 @@ function initDropzone() {
         dropzone.classList.remove('dropzone-active');
         if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
     });
+
     function handleFile(file) {
         if (!file || !file.type.startsWith('image/')) {
             alert("Nur Bilddateien erlaubt!");
@@ -583,41 +593,61 @@ function initDropzone() {
         text.textContent = file.name;
     }
 }
-// ====================== FORM SUBMIT (NEU) ======================
+
+// ====================== ADD FORM – KOMPLETT FIXIERT ======================
 document.getElementById('add-form').addEventListener('submit', async function(e) {
     e.preventDefault();
+
     const name = document.getElementById('prod-name').value.trim();
-    if (!name) return alert("Name erforderlich!");
+    const category = document.getElementById('prod-category').value.trim();
+
+    if (!name) return alert("Produktname erforderlich!");
+    if (!category) return alert("Bitte eine Kategorie auswählen!");
+
     let imageUrl = null;
-    if (selectedImageFile) {
-        const filename = Date.now() + '_' + selectedImageFile.name;
-        const ref = storage.ref('products/' + filename);
-        const snapshot = await ref.put(selectedImageFile);
-        imageUrl = await snapshot.ref.getDownloadURL();
+
+    try {
+        if (selectedImageFile) {
+            const filename = Date.now() + '_' + selectedImageFile.name;
+            const ref = storage.ref('products/' + filename);
+            const snapshot = await ref.put(selectedImageFile);
+            imageUrl = await snapshot.ref.getDownloadURL();
+        }
+
+        const newProduct = {
+            name: name,
+            price: parseFloat(document.getElementById('prod-price').value) || 7.99,
+            originalPrice: document.getElementById('prod-original-price').value ? parseFloat(document.getElementById('prod-original-price').value) : null,
+            stock: parseInt(document.getElementById('prod-stock').value) || 0,
+            category: category,
+            isNew: document.getElementById('prod-new').checked,
+            available: !document.getElementById('prod-unavailable').checked,
+            hasNicotine: document.getElementById('prod-has-nicotine').checked,
+            description: document.getElementById('prod-description').value.trim(),
+            image: imageUrl,
+            sold: 0
+        };
+
+        await db.collection('products').add(newProduct);
+        await logAction("product_created", name, { imageUploaded: !!imageUrl });
+
+        showToast("✅ Produkt + Bild erfolgreich gespeichert!", "success");
+
+        // Form zurücksetzen
+        this.reset();
+        document.getElementById('preview-thumb').classList.add('hidden');
+        document.getElementById('drop-icon').classList.remove('hidden');
+        document.getElementById('drop-text').textContent = "Bild per Drag & Drop oder klicken (JPG/PNG)";
+        selectedImageFile = null;
+
+        loadProducts();
+    } catch (err) {
+        console.error(err);
+        alert("Fehler beim Speichern: " + err.message);
+        showToast("❌ Fehler beim Speichern: " + err.message, "error");
     }
-    const newProduct = {
-        name: name,
-        price: parseFloat(document.getElementById('prod-price').value),
-        originalPrice: document.getElementById('prod-original-price').value ? parseFloat(document.getElementById('prod-original-price').value) : null,
-        stock: parseInt(document.getElementById('prod-stock').value),
-        category: document.getElementById('prod-category').value,
-        isNew: document.getElementById('prod-new').checked,
-        available: !document.getElementById('prod-unavailable').checked,
-        hasNicotine: document.getElementById('prod-has-nicotine').checked,
-        description: document.getElementById('prod-description').value.trim(),
-        image: imageUrl,
-        sold: 0
-    };
-    await db.collection('products').add(newProduct);
-    await logAction("product_created", name, { imageUploaded: !!imageUrl });
-    alert("✅ Produkt + Bild erfolgreich gespeichert!");
-    this.reset();
-    document.getElementById('preview-thumb').classList.add('hidden');
-    document.getElementById('drop-icon').classList.remove('hidden');
-    document.getElementById('drop-text').textContent = "Bild per Drag & Drop oder klicken (JPG/PNG)";
-    selectedImageFile = null;
-    loadProducts();
 });
+
 // ====================== KATEGORIE-SELECT ======================
 function populateSortCategorySelect() {
     const select = document.getElementById('sort-category-select');
@@ -633,6 +663,7 @@ function loadSortListForCategory() {
     currentSortCategory = document.getElementById('sort-category-select').value;
     renderSortList();
 }
+
 // ====================== SORTIERUNG ======================
 async function loadProductOrder() {
     const doc = await db.collection('settings').doc('product_order').get();
@@ -676,6 +707,7 @@ async function saveProductOrder() {
     await docRef.set(currentData, { merge: true });
     showToast(`✅ Sortierung für <strong>${currentSortCategory === "global" ? "Alle Produkte" : currentSortCategory}</strong> gespeichert!`, "success");
 }
+
 // ====================== PRODUKT-TABELLE RENDER ======================
 function renderProductTable() {
     const tbody = document.getElementById('products-tbody');
@@ -702,6 +734,7 @@ function renderProductTable() {
         tbody.appendChild(row);
     });
 }
+
 // ====================== BULK EDIT ======================
 function toggleSelectAllProducts(cb) {
     document.querySelectorAll('.product-checkbox').forEach(ch => ch.checked = cb.checked);
@@ -781,6 +814,7 @@ async function enforceCategories() {
     }
     loadProducts();
 }
+
 // ====================== EXPORT / IMPORT ======================
 async function exportProductsToCSV() {
     const snapshot = await db.collection("products").get();
@@ -850,6 +884,7 @@ async function importProductsFromCSV(e) {
     reader.readAsText(file);
     e.target.value = "";
 }
+
 // ====================== KATEGORIEN ======================
 function loadCategories() {
     db.collection('categories').orderBy('order').onSnapshot(snap => {
@@ -964,6 +999,7 @@ function populateAdminCategoryFilter() {
         select.appendChild(opt);
     });
 }
+
 // ====================== GUTSCHEINE ======================
 document.getElementById('add-coupon-form').addEventListener('submit', async e => {
     e.preventDefault();
@@ -1032,6 +1068,7 @@ async function deleteCoupon(id) {
         loadCoupons();
     }
 }
+
 // ====================== BESTELLUNGEN ======================
 function loadOrders() {
     db.collection('orders').orderBy('date', 'desc').onSnapshot(snap => {
@@ -1157,6 +1194,7 @@ async function deleteOrder() {
     showToast('Bestellung gelöscht');
     closeOrderModal();
 }
+
 // ====================== BENUTZER ======================
 function loadUsers() {
     db.collection('users').onSnapshot(snapshot => {
@@ -1196,6 +1234,7 @@ async function resetPassword(email) {
     await auth.sendPasswordResetEmail(email);
     showToast(`Reset-E-Mail gesendet an ${email}`);
 }
+
 // ====================== ANALYTICS ======================
 async function loadAnalytics() {
     const thirtyDaysAgo = firebase.firestore.Timestamp.fromDate(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
@@ -1308,6 +1347,7 @@ async function generatePDFReport() {
     await logAction("monthly_report_generated");
     showToast("✅ Vollständiger Monatsbericht als PDF heruntergeladen!", "success");
 }
+
 // ====================== ADMIN LOGS ======================
 function loadAdminLogs() {
     if (logsUnsubscribe) logsUnsubscribe();
@@ -1328,6 +1368,7 @@ function loadAdminLogs() {
         });
     });
 }
+
 // ====================== SETTINGS ======================
 async function loadSettings() {
     const doc = await db.collection("settings").doc("main").get();
@@ -1385,6 +1426,7 @@ function showToast(msg, type = 'success') {
     document.getElementById('toast-container').appendChild(toast);
     setTimeout(() => toast.remove(), 3500);
 }
+
 // ====================== LIVE PRESENCE ======================
 function loadPresence() {
     const container = document.getElementById("presence-list");
@@ -1431,6 +1473,7 @@ async function cleanupOldPresence() {
     });
     await batch.commit();
 }
+
 // ====================== ERWEITERTE BENUTZERVERWALTUNG ======================
 async function loadExtendedUsers() {
     db.collection('users').onSnapshot(async snap => {
@@ -1603,6 +1646,7 @@ async function saveExtendedUser(uid) {
     closeExtendedUserModal();
     showToast(`✅ User gespeichert!${disabled && banIp ? ' + IP gesperrt' : ''}`, 'success');
 }
+
 // ====================== SWITCH TAB ======================
 function switchTab(n) {
     document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('tab-active'));
@@ -1622,14 +1666,13 @@ async function logout() {
     await auth.signOut();
     window.location.href = "index.html";
 }
-// ====================== PRODUCT EDIT MODAL (JETZT FUNKTIONIERT!) ======================
+
+// ====================== PRODUCT EDIT MODAL ======================
 async function openEditModal(id) {
     currentEditId = id;
     const doc = await db.collection('products').doc(id).get();
     if (!doc.exists) return alert("Produkt nicht gefunden!");
-
     const p = doc.data();
-
     const html = `
     <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999] p-4">
         <div class="bg-zinc-900 rounded-3xl p-8 max-w-2xl w-full mx-auto modal max-h-[95vh] overflow-y-auto">
@@ -1642,23 +1685,22 @@ async function openEditModal(id) {
                 <div>
                     <label class="block text-sm text-gray-400 mb-3">Aktuelles Bild</label>
                     ${p.image ? `<img src="${p.image}" id="current-image-preview" class="w-full rounded-3xl mb-4 shadow-xl">` : `<div class="w-full h-48 bg-zinc-800 rounded-3xl flex items-center justify-center text-5xl mb-4">📦</div>`}
-                    
+                   
                     <div id="edit-dropzone" class="border-2 border-dashed border-cyan-400/50 hover:border-cyan-400 rounded-3xl p-10 text-center cursor-pointer transition-all">
                         <i class="fa-solid fa-cloud-arrow-up text-5xl mb-4 text-cyan-400"></i>
                         <p class="text-cyan-300">Neues Bild hochladen (ersetzt das alte)</p>
                     </div>
-                    
+                   
                     <button onclick="removeImageInEdit()" class="mt-4 text-red-400 hover:text-red-300 text-sm flex items-center gap-2">
                         <i class="fa-solid fa-trash"></i> Bild komplett entfernen
                     </button>
                 </div>
-
                 <!-- Daten -->
                 <div class="space-y-6">
                     <div><label class="block text-sm text-gray-400 mb-2">Name</label>
                         <input id="edit-name" value="${p.name || ''}" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-2xl px-6 py-4 text-lg">
                     </div>
-                    
+                   
                     <div class="grid grid-cols-2 gap-4">
                         <div><label class="block text-sm text-gray-400 mb-2">Preis (€)</label>
                             <input id="edit-price" type="number" step="0.01" value="${p.price || 7.99}" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-2xl px-6 py-4">
@@ -1667,37 +1709,29 @@ async function openEditModal(id) {
                             <input id="edit-original-price" type="number" step="0.01" value="${p.originalPrice || ''}" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-2xl px-6 py-4">
                         </div>
                     </div>
-
                     <div><label class="block text-sm text-gray-400 mb-2">Lagerbestand</label>
                         <input id="edit-stock" type="number" value="${p.stock || 0}" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-2xl px-6 py-4">
                     </div>
-
                     <div><label class="block text-sm text-gray-400 mb-2">Kategorie</label>
                         <select id="edit-category" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-2xl px-6 py-4"></select>
                     </div>
-
                     <div class="flex flex-wrap gap-6">
                         <label class="flex items-center gap-3"><input id="edit-isnew" type="checkbox" ${p.isNew ? 'checked' : ''} class="w-5 h-5 accent-lime-400"> Neue Sorte</label>
                         <label class="flex items-center gap-3"><input id="edit-available" type="checkbox" ${p.available !== false ? 'checked' : ''} class="w-5 h-5 accent-emerald-400"> Verfügbar</label>
                         <label class="flex items-center gap-3"><input id="edit-nicotine" type="checkbox" ${p.hasNicotine !== false ? 'checked' : ''} class="w-5 h-5 accent-cyan-400"> Nikotin (10/20 mg)</label>
                     </div>
-
                     <div><label class="block text-sm text-gray-400 mb-2">Beschreibung</label>
                         <textarea id="edit-description" rows="4" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-4">${p.description || ''}</textarea>
                     </div>
                 </div>
             </div>
-
             <button onclick="saveProductEdit()" class="mt-10 w-full bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-6 rounded-3xl text-xl hover:scale-105 transition-all">
                 ✅ Änderungen speichern
             </button>
         </div>
     </div>`;
-
     document.getElementById('edit-modal').innerHTML = html;
     document.getElementById('edit-modal').classList.remove('hidden');
-
-    // Kategorien füllen
     const catSelect = document.getElementById('edit-category');
     catSelect.innerHTML = '<option value="">Kategorie wählen...</option>';
     allCategories.forEach(c => {
@@ -1707,10 +1741,8 @@ async function openEditModal(id) {
         if (c.name === p.category) opt.selected = true;
         catSelect.appendChild(opt);
     });
-
     initEditDropzone();
 }
-
 function initEditDropzone() {
     const dz = document.getElementById('edit-dropzone');
     dz.addEventListener('click', () => {
@@ -1725,13 +1757,11 @@ function initEditDropzone() {
         if (e.dataTransfer.files[0]) handleEditImage(e.dataTransfer.files[0]);
     });
 }
-
 function handleEditImage(file) {
     if (!file.type.startsWith('image/')) return alert("Nur Bilder erlaubt!");
     selectedEditImageFile = file;
     showToast("✅ Neues Bild ausgewählt – wird beim Speichern hochgeladen", "success");
 }
-
 async function removeImageInEdit() {
     if (!confirm("Bild wirklich dauerhaft entfernen?")) return;
     removeCurrentImageInEdit = true;
@@ -1739,20 +1769,16 @@ async function removeImageInEdit() {
     if (preview) preview.style.display = 'none';
     showToast("Bild wird beim Speichern gelöscht", "success");
 }
-
 function closeEditModal() {
     document.getElementById('edit-modal').classList.add('hidden');
     currentEditId = null;
     selectedEditImageFile = null;
     removeCurrentImageInEdit = false;
 }
-
 async function saveProductEdit() {
     if (!currentEditId) return;
-
     const name = document.getElementById('edit-name').value.trim();
     if (!name) return alert("Name erforderlich!");
-
     let imageUrl = null;
     const updateData = {
         name,
@@ -1765,8 +1791,6 @@ async function saveProductEdit() {
         hasNicotine: document.getElementById('edit-nicotine').checked,
         description: document.getElementById('edit-description').value.trim()
     };
-
-    // Bild-Handling
     if (selectedEditImageFile) {
         const filename = Date.now() + '_' + selectedEditImageFile.name;
         const ref = storage.ref('products/' + filename);
@@ -1776,14 +1800,13 @@ async function saveProductEdit() {
     } else if (removeCurrentImageInEdit) {
         updateData.image = null;
     }
-
     await db.collection('products').doc(currentEditId).update(updateData);
     await logAction("product_updated", name);
-
     showToast("✅ Produkt erfolgreich gespeichert!", "success");
     closeEditModal();
-    loadProducts(); // Tabelle neu laden
+    loadProducts();
 }
+
 // ====================== INITIALISIERUNG ======================
 auth.onAuthStateChanged(async (user) => {
     if (!user) return window.location.href = 'index.html';

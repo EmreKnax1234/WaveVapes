@@ -639,7 +639,7 @@
         let userHasFreeShipping = false;
         let productOrder = [];
         let pendingNicotine = {};
-      
+     
         // ==================== NEU: ECHTE LIVE ONLINE ZÄHLUNG (Gäste + User) ====================
         let sessionId = localStorage.getItem("wavevapes_sessionId");
         if (!sessionId) {
@@ -844,24 +844,19 @@
             currentUser = user;
             updateAuthUI();
             updateUserDisplay();
-
             if (user) {
                 const userRef = db.collection("users").doc(user.uid);
-
                 // === LIVE SPERR-CHECK (sofort ausloggen) ===
                 if (userSnapshotUnsubscribe) userSnapshotUnsubscribe();
                 userSnapshotUnsubscribe = userRef.onSnapshot(async doc => {
                     if (!doc.exists) return;
-
                     const data = doc.data();
-
                     // PERMANENT BAN + LIVE LOGOUT
                     if (data.disabled === true) {
                         await auth.signOut();
                         showToast("❌ Dein Account wurde permanent gesperrt.", "error");
                         return;
                     }
-
                     // normale Syncs
                     loyaltyPoints = data.totalBonusPoints || 0;
                     userHasFreeShipping = data.freeShipping === true;
@@ -869,20 +864,16 @@
                     checkAndAutoRedeemLoyalty();
                     updateCartDisplay();
                 });
-
                 await createOrUpdateUserProfile();
                 await loadUserCart();
                 loadUserOrders();
                 updatePresence();
-
                 // === IP SPEICHERN + BAN-CHECK ===
                 try {
                     const ipRes = await fetch('https://api.ipify.org?format=json');
                     const { ip } = await ipRes.json();
-
                     // IP im User-Doc speichern
                     await userRef.set({ lastIp: ip }, { merge: true });
-
                     // Prüfen ob IP global gebannt ist
                     const bannedSnap = await db.collection("banned_ips").where("ip", "==", ip).get();
                     if (!bannedSnap.empty) {
@@ -892,7 +883,6 @@
                 } catch(e) {
                     console.log("IP konnte nicht ermittelt werden");
                 }
-
             } else {
                 cart = [];
                 if (userSnapshotUnsubscribe) userSnapshotUnsubscribe();
@@ -1136,9 +1126,17 @@
             }
             return total;
         }
+        // ====================== FIX: GRATIS VERSAND AB 100 € WARENWERT (VOR RABATT) ======================
         function getShippingCost() {
             if (userHasFreeShipping) return 0;
-            return getProductTotal() >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_COST;
+            
+            // RAW Warenwert VOR Rabatten und 4-für-3 (das war der Bug!)
+            const rawSubtotal = cart.reduce((sum, item) => {
+                if (item.id === MYSTERY_ID) return sum;
+                return sum + item.qty * (item.price || 7.99);
+            }, 0);
+            
+            return rawSubtotal >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_COST;
         }
         function calculateCartTotal() {
             return getProductTotal() + getShippingCost();
@@ -1357,7 +1355,7 @@
                 <div class="flex justify-between items-center bg-zinc-900 border ${isFree ? 'border-emerald-400/30' : 'border-white/10'} rounded-3xl p-5 mt-3">
                     <div>
                         <div class="font-medium">${isFree ? 'Gratis Versand' : 'Versand (DHL)'}</div>
-                        ${isFree ? `<div class="text-xs text-emerald-400">ab 100 € oder für dich aktiviert</div>` : ''}
+                        ${isFree ? `<div class="text-xs text-emerald-400">ab 100 € Warenwert oder für dich aktiviert</div>` : ''}
                     </div>
                     <div class="font-bold text-xl ${isFree ? 'text-emerald-400' : ''}">
                         ${isFree ? '0,00' : shippingCost.toFixed(2).replace('.', ',')} €
@@ -1678,13 +1676,13 @@
             snap.forEach(doc => {
                 const c = doc.data();
                 const active = currentCategoryFilter === c.name ? 'tab-active' : '';
-         
+        
                 let extra = '';
                 if (c.special === true) {
                     const badgeText = c.specialText || "4 FÜR 3";
                     extra = ` <span class="bg-amber-400 text-black text-xs font-black px-4 py-1 rounded-2xl">${badgeText}</span> <i class="fa-solid fa-bolt animate-bolt text-2xl"></i>`;
                 }
-         
+        
                 html += `<button onclick="setCategoryFilter('${c.name}')" class="px-5 py-2 transition ${active}">${c.name}${extra}</button>`;
             });
             document.getElementById("category-tabs").innerHTML = html;

@@ -10,9 +10,6 @@
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
-    <!-- Cloudinary Upload Widget – jetzt mit deinem echten Cloud Name -->
-    <script src="https://upload-widget.cloudinary.com/global/all.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
@@ -43,8 +40,6 @@
         th.sortable.desc:after { content: '↓'; opacity: 1; color: #67e8f9; }
         .metric-card { background: linear-gradient(135deg, #18181b, #27272a); transition: all 0.3s; }
         .metric-card:hover { transform: translateY(-4px); }
-        .presence-card { background: #18181b; border: 1px solid #22d3ee; }
-        .dropzone-active { border-color: #22d3ee; background: rgba(103,232,249,0.1); }
     </style>
 </head>
 <body class="min-h-screen">
@@ -67,15 +62,13 @@
         <div class="p-6 space-y-1">
             <div onclick="switchTab(0)" id="sidebar-0" class="sidebar-item flex items-center gap-3 px-6 py-4 rounded-2xl cursor-pointer tab-active"><i class="fa-solid fa-box"></i><span>Produkte</span></div>
             <div onclick="switchTab(1)" id="sidebar-1" class="sidebar-item flex items-center gap-3 px-6 py-4 rounded-2xl cursor-pointer"><i class="fa-solid fa-receipt"></i><span>Bestellungen</span></div>
-            <div onclick="switchTab(2)" id="sidebar-2" class="sidebar-item flex items-center gap-3 px-6 py-4 rounded-2xl cursor-pointer"><i class="fa-solid fa-users"></i><span>Benutzer (einfach)</span></div>
+            <div onclick="switchTab(2)" id="sidebar-2" class="sidebar-item flex items-center gap-3 px-6 py-4 rounded-2xl cursor-pointer"><i class="fa-solid fa-users"></i><span>Benutzer</span></div>
             <div onclick="switchTab(3)" id="sidebar-3" class="sidebar-item flex items-center gap-3 px-6 py-4 rounded-2xl cursor-pointer"><i class="fa-solid fa-tags"></i><span>Kategorien</span></div>
             <div onclick="switchTab(4)" id="sidebar-4" class="sidebar-item flex items-center gap-3 px-6 py-4 rounded-2xl cursor-pointer"><i class="fa-solid fa-ticket"></i><span>Gutscheine</span></div>
             <div onclick="switchTab(5)" id="sidebar-5" class="sidebar-item flex items-center gap-3 px-6 py-4 rounded-2xl cursor-pointer"><i class="fa-solid fa-chart-line"></i><span>Analytics</span></div>
             <div onclick="switchTab(6)" id="sidebar-6" class="sidebar-item flex items-center gap-3 px-6 py-4 rounded-2xl cursor-pointer"><i class="fa-solid fa-list-check"></i><span>Admin Logs</span></div>
             <div onclick="switchTab(7)" id="sidebar-7" class="sidebar-item flex items-center gap-3 px-6 py-4 rounded-2xl cursor-pointer"><i class="fa-solid fa-cog"></i><span>Settings</span></div>
             <div onclick="switchTab(8)" id="sidebar-8" class="sidebar-item flex items-center gap-3 px-6 py-4 rounded-2xl cursor-pointer"><i class="fa-solid fa-sort"></i><span>Sortierung</span></div>
-            <div onclick="switchTab(9)" id="sidebar-9" class="sidebar-item flex items-center gap-3 px-6 py-4 rounded-2xl cursor-pointer"><i class="fa-solid fa-users-viewfinder"></i><span>Live Online</span></div>
-            <div onclick="switchTab(10)" id="sidebar-10" class="sidebar-item flex items-center gap-3 px-6 py-4 rounded-2xl cursor-pointer bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold"><i class="fa-solid fa-users-cog"></i><span>Erweiterte Benutzerverwaltung</span></div>
         </div>
     </div>
     <!-- MAIN CONTENT -->
@@ -91,6 +84,15 @@
                 <input type="file" id="csv-upload-products" accept=".csv" class="hidden" onchange="importProductsFromCSV(event)">
                 <p class="text-xs text-amber-400 mt-4 text-center">⚠️ Beim Import werden ALLE aktuellen Produkte gelöscht!</p>
             </div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
+                <div class="card p-6"><p class="text-gray-400 text-sm">Gesamtumsatz</p><p id="total-revenue" class="text-4xl font-bold text-emerald-400">0 €</p></div>
+                <div class="card p-6"><p class="text-gray-400 text-sm">Aktive Produkte</p><p id="active-products" class="text-4xl font-bold text-cyan-400">0</p></div>
+                <div class="card p-6"><p class="text-gray-400 text-sm">Verkaufte Einheiten</p><p id="total-sold" class="text-4xl font-bold text-purple-400">0</p></div>
+                <div class="card p-6 bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-400/30"><p class="text-gray-400 text-sm">Top-Seller</p><p id="top-seller" class="text-2xl font-bold text-amber-400">—</p></div>
+            </div>
+            <div class="card p-8 mb-12 bg-red-950/30 border border-red-500/50">
+                <button onclick="resetAllStatistics()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-5 rounded-3xl text-xl flex items-center justify-center gap-3"><i class="fa-solid fa-warning"></i> ALLE STATISTIKEN ZURÜCKSETZEN</button>
+            </div>
             <div class="card p-8 mb-12">
                 <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><i class="fa-solid fa-plus"></i> Neues Produkt hinzufügen</h2>
                 <form id="add-form" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -98,20 +100,16 @@
                     <input id="prod-price" type="number" step="0.01" placeholder="Aktueller Preis (€)" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4" required>
                     <input id="prod-original-price" type="number" step="0.01" placeholder="Alter Preis (Strikethrough z.B. 35.99)" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4">
                     <input id="prod-stock" type="number" placeholder="Lagerbestand" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4" required>
-                    <select id="prod-category" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4 text-lg" required></select>
+                    <select id="prod-category" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-2xl px-6 py-4 text-lg"></select>
                     <div class="flex items-center gap-3"><input id="prod-new" type="checkbox" class="w-5 h-5 accent-lime-400"><label>Neue Sorte</label></div>
                     <div class="flex items-center gap-3"><input id="prod-unavailable" type="checkbox" class="w-5 h-5 accent-red-400"><label>Nicht verfügbar</label></div>
                     <div class="flex items-center gap-3"><input id="prod-has-nicotine" type="checkbox" checked class="w-5 h-5 accent-cyan-400"><label>Nikotin enthalten (10/20 mg Auswahl)</label></div>
                     <div class="col-span-full"><label class="text-xs text-gray-400 block mb-2">Produktbeschreibung</label><textarea id="prod-description" rows="4" placeholder="Intensiver Blue Raspberry Geschmack..." class="w-full bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-4"></textarea></div>
-                
-                    <!-- CLOUDINARY DROPZONE -->
-                    <div id="cloudinary-dropzone" class="col-span-full border-2 border-dashed border-cyan-400/50 hover:border-cyan-400 rounded-3xl p-10 text-center cursor-pointer transition-all">
-                        <i class="fa-solid fa-cloud-arrow-up text-5xl mb-4 text-cyan-400"></i>
-                        <p class="text-cyan-300 font-medium">Bild per Drag & Drop oder klicken (JPG/PNG/WebP)</p>
-                        <p id="cloudinary-filename" class="text-xs text-emerald-400 mt-3 font-medium"></p>
+                    <div id="dropzone" class="col-span-full border-2 border-dashed border-cyan-400/50 hover:border-cyan-400 rounded-3xl p-10 text-center cursor-pointer">
+                        <i class="fa-solid fa-cloud-arrow-up text-5xl mb-4 text-cyan-400"></i><p class="text-cyan-300">Bild per Drag & Drop oder klicken</p>
+                        <img id="preview-thumb" class="hidden mx-auto mt-6 max-h-48 rounded-2xl border border-cyan-400/30">
                     </div>
-                
-                    <button type="submit" id="submit-btn" class="lg:col-span-3 bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-5 rounded-3xl text-xl">Produkt speichern</button>
+                    <button type="submit" class="lg:col-span-3 bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-5 rounded-3xl text-xl">Produkt speichern</button>
                 </form>
             </div>
             <div class="flex flex-wrap gap-3 mb-6">
@@ -187,7 +185,7 @@
             </div>
             <input type="file" id="csv-upload-orders" accept=".csv" class="hidden" onchange="importOrdersFromCSV(event)">
         </div>
-        <!-- TAB 2: BENUTZER (einfach) -->
+        <!-- TAB 2: BENUTZER -->
         <div id="tab-content-2" class="hidden">
             <div class="card p-8 mb-12 bg-red-950/30 border border-red-500/50">
                 <button onclick="resetAllLoyaltyPoints()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-5 rounded-3xl text-xl transition-all flex items-center justify-center gap-3"><i class="fa-solid fa-warning"></i> ALLE LOYALTY-PUNKTE AUF 0 SETZEN</button>
@@ -246,7 +244,7 @@
                 </div>
             </div>
         </div>
-        <!-- TAB 4: GUTSCHEINE -->
+        <!-- TAB 4: GUTSCHEINE + NEUE COUPON-NUTZUNGS-HISTORY -->
         <div id="tab-content-4" class="hidden">
             <div class="card p-8">
                 <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><i class="fa-solid fa-ticket"></i> Gutschein-Manager + Nutzungs-History</h2>
@@ -384,14 +382,6 @@
                 <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
                     <i class="fa-solid fa-sort"></i> Produkt-Sortierung (Drag & Drop + Auto-Sort)
                 </h2>
-                <p class="text-sm text-gray-400 mb-4">Wähle eine Kategorie aus – du kannst jetzt **pro Kategorie** separat sortieren!</p>
-                <div class="mb-8">
-                    <label class="block text-sm text-gray-400 mb-2">Sortierung für:</label>
-                    <select id="sort-category-select" onchange="loadSortListForCategory()"
-                            class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-3 w-full text-base">
-                        <option value="global">Alle Produkte (globale Sortierung)</option>
-                    </select>
-                </div>
                 <p class="text-sm text-gray-400 mb-6">Klicke auf einen Button für automatische Sortierung.<br><strong>Neue AUTO-PRIORITÄT (überarbeitet):</strong><br>1. Neue Sorten (nur verfügbar) → 2. Normale Sorten (nur verfügbar) → 3. Alle Vapes (nur verfügbar) → 4. ALLE nicht verfügbaren Sachen (egal ob neu oder normal – immer ganz unten)</p>
                 <div class="flex flex-wrap gap-3 mb-8">
                     <button onclick="autoSort('alpha')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">📋 Alphabetisch A-Z</button>
@@ -402,72 +392,15 @@
                     <button onclick="autoSortPriority()" class="px-6 py-3 bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold rounded-2xl text-sm transition">🔄 AUTO-PRIORITÄT<br><span class="text-xs font-normal">NEW (verfügbar) → Normal (verfügbar) → Vapes → ALLE nicht verfügbar (unten)</span></button>
                 </div>
                 <div id="sort-list" class="space-y-3 min-h-[500px] bg-zinc-950 rounded-3xl p-6"></div>
-                <button onclick="saveProductOrder()" class="mt-10 w-full bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-6 rounded-3xl text-xl hover:scale-105 transition">✅ Sortierung für aktuelle Kategorie speichern & live übernehmen</button>
-            </div>
-        </div>
-        <!-- TAB 9: LIVE ONLINE -->
-        <div id="tab-content-9" class="hidden">
-            <div class="card overflow-hidden">
-                <div class="p-6 border-b border-white/10 flex items-center justify-between">
-                    <h2 class="text-2xl font-bold flex items-center gap-3"><i class="fa-solid fa-users-viewfinder"></i> Live Online (User + Gäste)</h2>
-                    <div class="flex gap-3">
-                        <button onclick="loadPresence()" class="bg-cyan-600 hover:bg-cyan-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2"><i class="fa-solid fa-sync"></i> Jetzt aktualisieren</button>
-                        <button onclick="cleanupOldPresence()" class="bg-red-600 hover:bg-red-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2">
-                            <i class="fa-solid fa-broom"></i> Alte Einträge löschen
-                        </button>
-                    </div>
-                </div>
-                <div class="p-6">
-                    <div id="presence-list" class="space-y-4 max-h-[70vh] overflow-y-auto"></div>
-                </div>
-            </div>
-        </div>
-        <!-- TAB 10: ERWEITERTE BENUTZERVERWALTUNG -->
-        <div id="tab-content-10" class="hidden">
-            <div class="card p-8">
-                <h2 class="text-3xl font-bold mb-6 flex items-center gap-3"><i class="fa-solid fa-users-cog"></i> Erweiterte Benutzerverwaltung</h2>
-                <div class="flex flex-wrap gap-4 mb-6">
-                    <input id="extended-user-search" placeholder="E-Mail oder Username suchen..." class="flex-1 bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-3" onkeyup="renderExtendedUsersTable()">
-                    <select id="extended-filter" onchange="renderExtendedUsersTable()" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-3">
-                        <option value="">Alle User</option>
-                        <option value="active">Nur aktive</option>
-                        <option value="disabled">Nur gesperrte</option>
-                        <option value="highpoints">Punkte > 1000</option>
-                    </select>
-                    <button onclick="bulkDisableSelected(true)" class="bg-red-600 hover:bg-red-500 px-6 py-3 rounded-3xl text-sm font-medium">Ausgewählte sperren</button>
-                    <button onclick="bulkDisableSelected(false)" class="bg-emerald-600 hover:bg-emerald-500 px-6 py-3 rounded-3xl text-sm font-medium">Ausgewählte entsperren</button>
-                    <button onclick="bulkAddPoints()" class="bg-purple-600 hover:bg-purple-500 px-6 py-3 rounded-3xl text-sm font-medium">Punkte +500 (Bulk)</button>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full">
-                        <thead class="bg-zinc-950 sticky top-0">
-                            <tr>
-                                <th class="py-5 px-6 w-12"><input type="checkbox" id="select-all-extended" onclick="toggleSelectAllExtended(this)" class="accent-cyan-400 w-5 h-5"></th>
-                                <th class="py-5 px-6 text-left">E-Mail</th>
-                                <th class="py-5 px-6 text-left">Username</th>
-                                <th class="py-5 px-6 text-center">Referral</th>
-                                <th class="py-5 px-6 text-center">Punkte</th>
-                                <th class="py-5 px-6 text-center">Geworbene</th>
-                                <th class="py-5 px-6 text-center">Bestellungen</th>
-                                <th class="py-5 px-6 text-center">Umsatz</th>
-                                <th class="py-5 px-6 text-center">Erstellt</th>
-                                <th class="py-5 px-6 text-center">Status</th>
-                                <th class="py-5 px-6 text-right">Aktionen</th>
-                            </tr>
-                        </thead>
-                        <tbody id="extended-users-tbody" class="text-sm"></tbody>
-                    </table>
-                </div>
+                <button onclick="saveProductOrder()" class="mt-10 w-full bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-6 rounded-3xl text-xl hover:scale-105 transition">✅ Sortierung speichern & live übernehmen</button>
             </div>
         </div>
     </div>
 </div>
-<!-- EDIT MODAL (Produkte) -->
+<!-- EDIT MODAL (wird auch für Coupon-History verwendet) -->
 <div id="edit-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]"></div>
 <!-- ORDER MODAL -->
 <div id="order-modal-container"></div>
-<!-- EXTENDED USER EDIT MODAL -->
-<div id="extended-user-edit-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]"></div>
 <!-- TOAST -->
 <div id="toast-container" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[99999] flex flex-col gap-3"></div>
 <script>
@@ -483,14 +416,11 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
-const storage = firebase.storage();
-// ====================== CLOUDINARY CONFIG (DEIN ECHTER ACCOUNT) ======================
-let cloudinaryWidget = null;
-let selectedCloudinaryUrl = null;
-const CLOUD_NAME = "dbbkmjsr5";
-const UPLOAD_PRESET = "wavevapes_products";
 // ====================== GLOBALE VARIABLEN ======================
 let currentEditId = null;
+let selectedFile = null;
+let currentOrderId = null;
+let removeCurrentImage = false;
 let allCategories = [];
 let allCoupons = [];
 let revenueChart = null;
@@ -499,15 +429,13 @@ let topProductsChart = null;
 let referralChart = null;
 let logsUnsubscribe = null;
 let allProducts = [];
-let productOrderMap = {};
+let productOrder = [];
 let sortableInstance = null;
 let adminSortColumn = 'name';
 let adminSortDirection = 'asc';
+let adminCategoryFilter = 'Alle';
+let adminStatusFilter = '';
 let selectedProductIds = [];
-let currentSortCategory = "global";
-let presenceRefreshInterval = null;
-let extendedUsers = [];
-let selectedExtendedUserIds = [];
 // ====================== LOG ACTION ======================
 async function logAction(action, target = "", details = {}) {
     if (!auth.currentUser) return;
@@ -519,162 +447,584 @@ async function logAction(action, target = "", details = {}) {
         details: details || {}
     });
 }
-// ====================== TOAST ======================
-function showToast(msg, type = 'success') {
-    const toast = document.createElement('div');
-    toast.className = `fixed bottom-6 left-1/2 -translate-x-1/2 px-8 py-4 rounded-3xl shadow-2xl text-sm font-medium z-[99999] ${type === 'error' ? 'bg-red-600' : 'bg-emerald-600'}`;
-    toast.innerHTML = `<i class="fa-solid ${type === 'error' ? 'fa-xmark' : 'fa-check'}"></i> ${msg}`;
-    document.getElementById('toast-container').appendChild(toast);
-    setTimeout(() => toast.remove(), 4000);
+// ====================== STATS UPDATE ======================
+function updateStats() {
+    const active = allProducts.filter(p => p.available !== false).length;
+    const soldTotal = allProducts.reduce((sum, p) => sum + (p.sold || 0), 0);
+    const revenue = allProducts.reduce((sum, p) => sum + (p.sold || 0) * (p.price || 0), 0);
+    const top = [...allProducts].sort((a, b) => (b.sold || 0) - (a.sold || 0))[0];
+    document.getElementById('active-products').textContent = active;
+    document.getElementById('total-sold').textContent = soldTotal;
+    document.getElementById('total-revenue').textContent = revenue.toFixed(0) + ' €';
+    document.getElementById('top-seller').textContent = top ? `${top.name} (${top.sold || 0}×)` : '—';
 }
-// ====================== CLOUDINARY WIDGET ======================
-function initCloudinaryWidget() {
-    cloudinaryWidget = cloudinary.createUploadWidget({
-        cloudName: CLOUD_NAME,
-        uploadPreset: UPLOAD_PRESET,
-        sources: ["local", "url"],
-        multiple: false,
-        maxFileSize: 8000000,
-        folder: "wavevapes/products",
-        clientAllowedFormats: ["jpg", "png", "webp"],
-        cropping: false,
-        language: "de"
-    }, (error, result) => {
-        if (!error && result && result.event === "success") {
-            selectedCloudinaryUrl = result.info.secure_url;
-            document.getElementById("cloudinary-filename").innerHTML = 
-                `✅ ${result.info.original_filename} <span class="text-emerald-400">(hochgeladen)</span>`;
-            showToast("✅ Bild erfolgreich hochgeladen!", "success");
-        }
-    });
-}
-// ====================== DROPZONE ======================
-document.addEventListener("DOMContentLoaded", () => {
-    const drop = document.getElementById("cloudinary-dropzone");
-    if (drop) {
-        drop.addEventListener("click", () => {
-            if (cloudinaryWidget) cloudinaryWidget.open();
-        });
-    }
-});
 // ====================== PRODUKTE ======================
 function loadProducts() {
     db.collection('products').onSnapshot(snap => {
         allProducts = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        updateStats();
         renderProductTable();
     });
 }
+function applyAdminFilters() {
+    adminCategoryFilter = document.getElementById('admin-category-filter').value;
+    adminStatusFilter = document.getElementById('admin-status-filter').value;
+    renderProductTable();
+}
+function sortAdminTable(column) {
+    if (adminSortColumn === column) {
+        adminSortDirection = adminSortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+        adminSortColumn = column;
+        adminSortDirection = 'asc';
+    }
+    renderProductTable();
+}
 function renderProductTable() {
     const tbody = document.getElementById('products-tbody');
-    if (!tbody) return;
-    let filtered = [...allProducts];
-    const search = (document.getElementById('product-search') || {}).value?.toLowerCase().trim() || '';
-    const catFilter = document.getElementById('admin-category-filter')?.value || 'Alle';
-    const statusFilter = document.getElementById('admin-status-filter')?.value || '';
-    if (catFilter !== 'Alle') filtered = filtered.filter(p => p.category === catFilter);
-    if (statusFilter === 'available') filtered = filtered.filter(p => p.available !== false);
-    if (statusFilter === 'unavailable') filtered = filtered.filter(p => p.available === false);
-    if (statusFilter === 'new') filtered = filtered.filter(p => p.isNew);
-    if (statusFilter === 'tornado') filtered = filtered.filter(p => p.category === "WaveVapes Tornado 30000");
-    if (search) filtered = filtered.filter(p => p.name.toLowerCase().includes(search));
+    const searchTerm = (document.getElementById('product-search').value || '').toLowerCase().trim();
+    let filtered = allProducts.filter(p => {
+        const matchesSearch = !searchTerm || p.name.toLowerCase().includes(searchTerm);
+        const matchesCategory = adminCategoryFilter === 'Alle' || p.category === adminCategoryFilter;
+        let matchesStatus = true;
+        if (adminStatusFilter === 'available') matchesStatus = p.available !== false;
+        if (adminStatusFilter === 'unavailable') matchesStatus = p.available === false;
+        if (adminStatusFilter === 'new') matchesStatus = p.isNew === true;
+        if (adminStatusFilter === 'tornado') matchesStatus = p.category === "WaveVapes Tornado 30000";
+        return matchesSearch && matchesCategory && matchesStatus;
+    });
     filtered.sort((a, b) => {
-        let va = a[adminSortColumn] ?? 0;
-        let vb = b[adminSortColumn] ?? 0;
-        if (adminSortColumn === 'name') return (a.name || '').localeCompare(b.name || '') * (adminSortDirection === 'asc' ? 1 : -1);
-        return (va - vb) * (adminSortDirection === 'asc' ? 1 : -1);
+        let valA, valB;
+        switch(adminSortColumn) {
+            case 'name': valA = a.name; valB = b.name; break;
+            case 'category': valA = a.category || ''; valB = b.category || ''; break;
+            case 'price': valA = a.price; valB = b.price; break;
+            case 'originalPrice': valA = a.originalPrice || 0; valB = b.originalPrice || 0; break;
+            case 'stock': valA = a.stock || 0; valB = b.stock || 0; break;
+            case 'sold': valA = a.sold || 0; valB = b.sold || 0; break;
+            case 'revenue': valA = (a.sold || 0) * a.price; valB = (b.sold || 0) * b.price; break;
+            case 'isNew': valA = a.isNew ? 1 : 0; valB = b.isNew ? 1 : 0; break;
+            case 'available': valA = a.available !== false ? 1 : 0; valB = b.available !== false ? 1 : 0; break;
+            default: valA = a.name; valB = b.name;
+        }
+        if (typeof valA === 'string') {
+            return adminSortDirection === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        }
+        return adminSortDirection === 'asc' ? valA - valB : valB - valA;
     });
     let html = '';
     filtered.forEach(p => {
-        const img = p.image
-            ? `<img src="${p.image}" class="w-12 h-12 object-cover rounded-2xl" loading="lazy">`
-            : `<div class="w-12 h-12 bg-zinc-800 rounded-2xl flex items-center justify-center text-xs">📦</div>`;
+        const neuBadge = p.isNew ? `<span class="px-3 py-1 bg-lime-400 text-black text-xs font-black rounded-2xl">NEW</span>` : '—';
+        const originalPriceHTML = p.originalPrice ? `<span class="text-gray-400 line-through">${p.originalPrice.toFixed(2)} €</span>` : '—';
         html += `
         <tr class="table-row-hover border-b border-white/10">
-            <td class="py-5 px-6 text-center"><input type="checkbox" data-id="${p.id}" class="accent-cyan-400 w-5 h-5" onchange="updateSelectedProductIds()"></td>
-            <td class="py-5 px-6"><div class="flex items-center gap-4">${img}<div class="font-medium">${p.name}</div></div></td>
+            <td class="py-5 px-6 text-center"><input type="checkbox" class="product-checkbox accent-cyan-400 w-5 h-5" data-id="${p.id}"></td>
+            <td class="py-5 px-6 flex items-center gap-3">
+                ${p.image ? `<img src="${p.image}" class="w-12 h-12 object-cover rounded-xl flex-shrink-0" loading="lazy">` : '<div class="w-12 h-12 bg-zinc-800 rounded-xl flex items-center justify-center text-xl flex-shrink-0">📦</div>'}
+                <span class="font-medium">${p.name}</span>
+            </td>
             <td class="py-5 px-6">${p.category || '—'}</td>
-            <td class="py-5 px-6 text-center">${p.isNew ? '⭐' : '—'}</td>
-            <td class="py-5 px-6 text-center font-bold">${(p.price || 0).toFixed(2)} €</td>
-            <td class="py-5 px-6 text-center">${p.originalPrice ? p.originalPrice.toFixed(2)+' €' : '—'}</td>
-            <td class="py-5 px-6 text-center font-bold">${p.stock || 0}</td>
-            <td class="py-5 px-6 text-center">${p.hasNicotine !== false ? '✅' : '—'}</td>
-            <td class="py-5 px-6 text-center">${p.available !== false ? '✅ Ja' : '❌ Nein'}</td>
-            <td class="py-5 px-6 text-right">${p.sold || 0}</td>
-            <td class="py-5 px-6 text-right">${((p.sold || 0) * (p.price || 0)).toFixed(0)} €</td>
-            <td class="py-5 px-6 text-right space-x-3">
+            <td class="py-5 px-6 text-center">${neuBadge}</td>
+            <td class="py-5 px-6 text-center">${p.price.toFixed(2)} €</td>
+            <td class="py-5 px-6 text-center">${originalPriceHTML}</td>
+            <td class="py-5 px-6 text-center">${p.stock}</td>
+            <td class="py-5 px-6 text-center">${p.hasNicotine !== false ? '✅' : '❌'}</td>
+            <td class="py-5 px-6 text-center"><input type="checkbox" ${p.available !== false ? 'checked' : ''} onchange="toggleAvailable('${p.id}', this.checked)" class="accent-cyan-400 w-5 h-5"></td>
+            <td class="py-5 px-6 text-right font-bold text-purple-400">${p.sold || 0}</td>
+            <td class="py-5 px-6 text-right font-medium text-emerald-400">${((p.sold || 0) * p.price).toFixed(2)} €</td>
+            <td class="py-5 px-6 text-right space-x-4">
                 <button onclick="openEditModal('${p.id}')" class="text-cyan-400 hover:text-white"><i class="fa-solid fa-pen"></i></button>
                 <button onclick="deleteProduct('${p.id}')" class="text-red-400 hover:text-white"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>`;
     });
-    tbody.innerHTML = html || `<tr><td colspan="12" class="text-center py-16 text-gray-400">Noch keine Produkte.<br>Lege dein erstes an!</td></tr>`;
+    tbody.innerHTML = html || `<tr><td colspan="12" class="text-center py-16 text-gray-400">Keine Produkte gefunden</td></tr>`;
 }
-function deleteProduct(id) {
-    if (!confirm('Produkt wirklich endgültig löschen?')) return;
-    db.collection('products').doc(id).delete().then(() => {
-        showToast('✅ Produkt gelöscht');
-        loadProducts();
-    });
+document.getElementById('product-search').addEventListener('input', applyAdminFilters);
+async function toggleAvailable(id, val) {
+    await db.collection('products').doc(id).update({ available: val });
+    await logAction("product_availability_changed", id, { available: val });
+    showToast('Verfügbarkeit aktualisiert');
 }
-function applyAdminFilters() {
-    renderProductTable();
+async function deleteProduct(id) {
+    if (!confirm('⚠️ Produkt WIRKLICH PERMANENT löschen?\n\nDas kann nicht rückgängig gemacht werden!')) return;
+    try {
+        await db.collection('products').doc(id).delete();
+        await logAction("product_deleted", id);
+        showToast('✅ Produkt erfolgreich gelöscht');
+    } catch (e) {
+        showToast('❌ Fehler beim Löschen: ' + e.message, 'error');
+    }
 }
-function sortAdminTable(col) {
-    if (adminSortColumn === col) adminSortDirection = adminSortDirection === 'asc' ? 'desc' : 'asc';
-    else { adminSortColumn = col; adminSortDirection = 'asc'; }
-    renderProductTable();
-}
-function updateSelectedProductIds() {
-    selectedProductIds = Array.from(document.querySelectorAll('#products-tbody input[type="checkbox"]:checked')).map(ch => ch.dataset.id);
-}
+// ====================== BULK-EDIT ======================
 function toggleSelectAllProducts(cb) {
-    document.querySelectorAll('#products-tbody input[type="checkbox"]').forEach(c => c.checked = cb.checked);
-    updateSelectedProductIds();
+    document.querySelectorAll('.product-checkbox').forEach(ch => ch.checked = cb.checked);
 }
-// ====================== ADD FORM – CLOUDINARY ======================
-function attachAddFormListener() {
-    const form = document.getElementById('add-form');
-    const submitBtn = document.getElementById('submit-btn');
-    form.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        const name = document.getElementById('prod-name').value.trim();
-        const category = document.getElementById('prod-category').value.trim();
-        if (!name) return alert("Produktname erforderlich!");
-        if (!category) return alert("Bitte eine Kategorie auswählen!");
-        if (!selectedCloudinaryUrl) return alert("Bitte zuerst ein Bild hochladen!");
-
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = 'Speichern... <i class="fa-solid fa-spinner animate-spin"></i>';
-
-        try {
-            const newProduct = {
-                name: name,
-                price: parseFloat(document.getElementById('prod-price').value) || 7.99,
-                originalPrice: document.getElementById('prod-original-price').value ? parseFloat(document.getElementById('prod-original-price').value) : null,
-                stock: parseInt(document.getElementById('prod-stock').value) || 0,
-                category: category,
-                isNew: document.getElementById('prod-new').checked,
-                available: !document.getElementById('prod-unavailable').checked,
-                hasNicotine: document.getElementById('prod-has-nicotine').checked,
-                description: document.getElementById('prod-description').value.trim(),
-                image: selectedCloudinaryUrl,
-                sold: 0
-            };
-            await db.collection('products').add(newProduct);
-            await logAction("product_created", name, { image: selectedCloudinaryUrl });
-            showToast("✅ Produkt + Bild gespeichert!", "success");
-            form.reset();
-            selectedCloudinaryUrl = null;
-            document.getElementById("cloudinary-filename").innerHTML = "";
-            loadProducts();
-        } catch (err) {
-            console.error(err);
-            alert("Fehler: " + err.message);
-        } finally {
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = 'Produkt speichern';
+function openBulkEditModal() {
+    selectedProductIds = [];
+    document.querySelectorAll('.product-checkbox:checked').forEach(cb => {
+        selectedProductIds.push(cb.dataset.id);
+    });
+    if (selectedProductIds.length === 0) {
+        alert("Bitte zuerst Produkte per Checkbox auswählen!");
+        return;
+    }
+    const html = `
+    <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]">
+        <div class="bg-zinc-900 rounded-3xl p-8 max-w-lg w-full mx-4 modal">
+            <h3 class="text-3xl font-bold mb-6 neon">Bulk-Edit (${selectedProductIds.length} Produkte)</h3>
+            <div class="space-y-6">
+                <div><label class="block text-sm text-gray-400 mb-2">Neuer Preis (€)</label><input id="bulk-price" type="number" step="0.01" placeholder="z.B. 7.99" class="w-full bg-zinc-800 rounded-2xl px-6 py-4"></div>
+                <div><label class="block text-sm text-gray-400 mb-2">Lagerbestand</label><input id="bulk-stock" type="number" placeholder="z.B. 50" class="w-full bg-zinc-800 rounded-2xl px-6 py-4"></div>
+                <div class="flex items-center gap-4">
+                    <label class="flex items-center gap-3"><input id="bulk-available" type="checkbox" class="w-5 h-5 accent-cyan-400"> Verfügbar</label>
+                    <label class="flex items-center gap-3"><input id="bulk-new" type="checkbox" class="w-5 h-5 accent-lime-400"> Neue Sorte</label>
+                </div>
+                <div><label class="block text-sm text-gray-400 mb-2">Kategorie</label><select id="bulk-category" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4"></select></div>
+            </div>
+            <div class="flex gap-4 mt-10">
+                <button onclick="executeBulkEdit()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-5 rounded-3xl font-bold">JETZT ÄNDERN</button>
+                <button onclick="closeBulkModal()" class="flex-1 bg-zinc-700 hover:bg-zinc-600 py-5 rounded-3xl">Abbrechen</button>
+            </div>
+        </div>
+    </div>`;
+    document.getElementById('edit-modal').innerHTML = html;
+    document.getElementById('edit-modal').classList.remove('hidden');
+    populateCategorySelects();
+    const sel = document.getElementById('bulk-category');
+    if (sel) sel.innerHTML = '<option value="">Kategorie nicht ändern</option>' + sel.innerHTML;
+}
+function closeBulkModal() {
+    document.getElementById('edit-modal').classList.add('hidden');
+}
+async function executeBulkEdit() {
+    const price = document.getElementById('bulk-price').value ? parseFloat(document.getElementById('bulk-price').value) : null;
+    const stock = document.getElementById('bulk-stock').value ? parseInt(document.getElementById('bulk-stock').value) : null;
+    const available = document.getElementById('bulk-available').checked ? true : null;
+    const isNew = document.getElementById('bulk-new').checked ? true : null;
+    const category = document.getElementById('bulk-category').value || null;
+    const batch = db.batch();
+    let changed = 0;
+    for (let id of selectedProductIds) {
+        const updateData = {};
+        if (price !== null) updateData.price = price;
+        if (stock !== null) updateData.stock = stock;
+        if (available !== null) updateData.available = available;
+        if (isNew !== null) updateData.isNew = isNew;
+        if (category) updateData.category = category;
+        if (Object.keys(updateData).length > 0) {
+            batch.update(db.collection('products').doc(id), updateData);
+            changed++;
+        }
+    }
+    await batch.commit();
+    await logAction("bulk_edit", "", { count: changed });
+    closeBulkModal();
+    showToast(`✅ ${changed} Produkte erfolgreich bearbeitet!`);
+    loadProducts();
+}
+// ====================== AUTOMATISCHE KATEGORIEZUWEISUNG ======================
+async function enforceCategories() {
+    if (!confirm('Alle Produkte automatisch kategorisieren?\n\n• Neue Sorten → „Neue Sorten“\n• Alle anderen → „Normale Sorten“\n\nDas überschreibt bestehende Kategorien!')) return;
+    const snap = await db.collection('products').get();
+    const batch = db.batch();
+    let changed = 0;
+    snap.forEach(doc => {
+        const p = doc.data();
+        const targetCat = p.isNew === true ? "Neue Sorten" : "Normale Sorten";
+        if (p.category !== targetCat) {
+            batch.update(doc.ref, { category: targetCat });
+            changed++;
         }
     });
+    if (changed > 0) {
+        await batch.commit();
+        await logAction("auto_category_assignment", "", { changed });
+        showToast(`✅ ${changed} Produkte automatisch kategorisiert!`, "success");
+    } else {
+        showToast("✅ Alles war schon korrekt");
+    }
+    loadProducts();
+}
+// ====================== BESTELL-EXPORT MIT TRACKING-LINKS ======================
+async function exportOrdersWithTracking() {
+    const snapshot = await db.collection("orders").orderBy("date", "desc").get();
+    if (snapshot.empty) return alert("Keine Bestellungen!");
+    let csv = "Bestellnr.,Datum,Kunde,Gesamt,Status,Tracking-Nummer,Tracking-Link\n";
+    snapshot.forEach(doc => {
+        const o = doc.data();
+        const dateStr = o.date ? o.date.toDate().toISOString().slice(0,19).replace('T',' ') : '';
+        const trackingLink = o.trackingNumber && o.carrier === "DHL"
+            ? `https://www.dhl.de/de/privatkunden/dhl-sendungsverfolgung.html?piececode=${encodeURIComponent(o.trackingNumber)}`
+            : (o.trackingNumber || '');
+        const row = [
+            `"${o.orderNumber || ''}"`,
+            `"${dateStr}"`,
+            `"${o.userEmail || ''}"`,
+            o.total || 0,
+            `"${o.status || ''}"`,
+            `"${o.trackingNumber || ''}"`,
+            `"${trackingLink}"`
+        ].join(",");
+        csv += row + "\n";
+    });
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `wavevapes_bestellungen_mit_tracking_${new Date().toISOString().slice(0,10)}.csv`;
+    link.click();
+    showToast("✅ Export mit Tracking-Links heruntergeladen!", "success");
+    await logAction("orders_export_with_tracking");
+}
+// ====================== EDIT MODAL ======================
+async function openEditModal(id) {
+    currentEditId = id;
+    removeCurrentImage = false;
+    const doc = await db.collection('products').doc(id).get();
+    const p = doc.data();
+    const html = `
+    <div class="bg-zinc-900 rounded-3xl p-8 max-w-6xl w-full mx-4 modal max-h-[95vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-8">
+            <h3 class="text-3xl font-bold neon">Produkt bearbeiten</h3>
+            <button onclick="closeEditModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div>
+                <div id="preview-image" class="bg-zinc-950 border border-white/10 rounded-3xl overflow-hidden h-96 flex items-center justify-center">
+                    ${p.image ? `<img src="${p.image}" class="max-h-full w-full object-contain" loading="lazy">` : `<div class="text-center text-gray-500"><i class="fa-solid fa-image text-6xl mb-4"></i><br>Kein Bild</div>`}
+                </div>
+                ${p.image ? `<button onclick="removeImageInEdit()" class="mt-4 w-full bg-red-600/80 hover:bg-red-600 text-white py-3 rounded-2xl text-sm font-medium flex items-center justify-center gap-2">Bild entfernen</button>` : ''}
+            </div>
+            <div class="space-y-6">
+                <input id="edit-name" value="${p.name}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 text-lg">
+                <div class="grid grid-cols-2 gap-4">
+                    <input id="edit-price" type="number" step="0.01" value="${p.price}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
+                    <input id="edit-original-price" type="number" step="0.01" value="${p.originalPrice || ''}" placeholder="Alter Preis (Strikethrough)" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
+                </div>
+                <input id="edit-stock" type="number" value="${p.stock}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
+                <select id="edit-category-select" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4"></select>
+                <div class="flex items-center gap-6">
+                    <div class="flex items-center gap-3"><input id="edit-new" type="checkbox" ${p.isNew ? 'checked' : ''}><label>Neue Sorte</label></div>
+                    <div class="flex items-center gap-3"><input id="edit-unavailable" type="checkbox" ${p.available === false ? 'checked' : ''}><label>Nicht verfügbar</label></div>
+                    <div class="flex items-center gap-3"><input id="edit-has-nicotine" type="checkbox" ${p.hasNicotine !== false ? 'checked' : ''}><label>Nikotin enthalten</label></div>
+                </div>
+                <div><label class="text-xs text-gray-400 block mb-2">Produktbeschreibung</label><textarea id="edit-description" rows="8" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-3xl px-6 py-4">${p.description || ''}</textarea></div>
+                <div id="edit-dropzone" class="border-2 border-dashed border-cyan-400/50 hover:border-cyan-400 rounded-3xl p-8 text-center cursor-pointer">
+                    <i class="fa-solid fa-cloud-arrow-up text-4xl mb-3 text-cyan-400"></i>
+                    <p class="text-cyan-300">Neues Bild hochladen (klicken oder Drag & Drop)</p>
+                </div>
+            </div>
+        </div>
+        <div class="flex gap-4 mt-10">
+            <button onclick="saveEdit()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-5 rounded-3xl font-bold">Speichern</button>
+            <button onclick="closeEditModal()" class="flex-1 bg-zinc-700 hover:bg-zinc-600 py-5 rounded-3xl">Abbrechen</button>
+        </div>
+    </div>`;
+    document.getElementById('edit-modal').innerHTML = html;
+    document.getElementById('edit-modal').classList.remove('hidden');
+    populateCategorySelects();
+    setTimeout(() => {
+        const select = document.getElementById('edit-category-select');
+        if (select) select.value = p.category || '';
+    }, 100);
+    const dropzone = document.getElementById('edit-dropzone');
+    dropzone.onclick = () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = e => {
+            selectedFile = e.target.files[0];
+            removeCurrentImage = false;
+            const url = URL.createObjectURL(selectedFile);
+            document.getElementById('preview-image').innerHTML = `<img src="${url}" class="max-h-full w-full object-contain">`;
+        };
+        input.click();
+    };
+}
+function removeImageInEdit() {
+    removeCurrentImage = true;
+    document.getElementById('preview-image').innerHTML = `<div class="text-center text-red-400"><i class="fa-solid fa-trash text-6xl mb-4"></i><br>Bild wird beim Speichern entfernt</div>`;
+}
+function closeEditModal() {
+    document.getElementById('edit-modal').classList.add('hidden');
+    selectedFile = null;
+    removeCurrentImage = false;
+}
+async function saveEdit() {
+    if (!currentEditId) return;
+    const name = document.getElementById('edit-name').value;
+    const price = parseFloat(document.getElementById('edit-price').value);
+    const originalPrice = parseFloat(document.getElementById('edit-original-price').value) || null;
+    const stock = parseInt(document.getElementById('edit-stock').value);
+    const description = document.getElementById('edit-description').value;
+    const isNew = document.getElementById('edit-new').checked;
+    const unavailable = document.getElementById('edit-unavailable').checked;
+    const hasNicotine = document.getElementById('edit-has-nicotine').checked;
+    const categorySelect = document.getElementById('edit-category-select');
+    const category = categorySelect && categorySelect.value ? categorySelect.value : (isNew ? "Neue Sorten" : "Normale Sorten");
+    let data = { name, price, originalPrice, stock, category, description: description || "", isNew, available: !unavailable, hasNicotine };
+    if (removeCurrentImage && !selectedFile) data.image = null;
+    else if (selectedFile) {
+        const formData = new FormData();
+        formData.append("file", selectedFile);
+        formData.append("upload_preset", "wavevapes");
+        const res = await fetch("https://api.cloudinary.com/v1_1/dbbkmjsr5/image/upload", { method: "POST", body: formData });
+        const json = await res.json();
+        if (json.secure_url) data.image = json.secure_url;
+    }
+    await db.collection('products').doc(currentEditId).update(data);
+    await logAction("product_updated", currentEditId, { name, category });
+    closeEditModal();
+    showToast('✅ Produkt gespeichert! Kategorie manuell zugewiesen.');
+}
+// ====================== NEUES PRODUKT ======================
+document.getElementById('add-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const name = document.getElementById('prod-name').value.trim();
+    const price = parseFloat(document.getElementById('prod-price').value);
+    const originalPrice = parseFloat(document.getElementById('prod-original-price').value) || null;
+    const stock = parseInt(document.getElementById('prod-stock').value);
+    const isNew = document.getElementById('prod-new').checked;
+    const unavailable = document.getElementById('prod-unavailable').checked;
+    const hasNicotine = document.getElementById('prod-has-nicotine').checked;
+    const description = document.getElementById('prod-description').value.trim();
+    const categorySelect = document.getElementById('prod-category');
+    const category = categorySelect && categorySelect.value ? categorySelect.value : (isNew ? "Neue Sorten" : "Normale Sorten");
+    const docRef = await db.collection('products').add({
+        name, price, originalPrice, stock, category, isNew: isNew || false, available: !unavailable, hasNicotine, description: description || "", sold: 0
+    });
+    if (selectedFile) {
+        const formData = new FormData();
+        formData.append("file", selectedFile);
+        formData.append("upload_preset", "wavevapes");
+        const res = await fetch("https://api.cloudinary.com/v1_1/dbbkmjsr5/image/upload", { method: "POST", body: formData });
+        const json = await res.json();
+        if (json.secure_url) await docRef.update({ image: json.secure_url });
+    }
+    await logAction("product_created", docRef.id, { name, category });
+    e.target.reset();
+    document.getElementById('preview-thumb').classList.add('hidden');
+    selectedFile = null;
+    showToast('✅ Produkt erfolgreich angelegt!');
+});
+const dropzone = document.getElementById('dropzone');
+dropzone.addEventListener('click', () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = e => {
+        selectedFile = e.target.files[0];
+        const url = URL.createObjectURL(selectedFile);
+        document.getElementById('preview-thumb').src = url;
+        document.getElementById('preview-thumb').classList.remove('hidden');
+    };
+    input.click();
+});
+// ====================== CSV PRODUKTE ======================
+async function exportProductsToCSV() {
+    const snapshot = await db.collection("products").get();
+    if (snapshot.empty) return alert("Keine Produkte vorhanden!");
+    let csv = "id,name,price,originalPrice,stock,category,isNew,available,hasNicotine,description,image,sold\n";
+    snapshot.forEach(doc => {
+        const p = doc.data();
+        const row = [
+            `"${doc.id}"`,
+            `"${(p.name || "").replace(/"/g, '""')}"`,
+            p.price || 0,
+            p.originalPrice || "",
+            p.stock || 0,
+            `"${p.category || ""}"`,
+            p.isNew === true ? "true" : "false",
+            p.available !== false ? "true" : "false",
+            p.hasNicotine !== false ? "true" : "false",
+            `"${(p.description || "").replace(/"/g, '""').replace(/\n/g, "\\n")}"`,
+            `"${p.image || ""}"`,
+            p.sold || 0
+        ].join(",");
+        csv += row + "\n";
+    });
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const date = new Date().toISOString().slice(0,10);
+    link.href = URL.createObjectURL(blob);
+    link.download = `wavevapes_products_backup_${date}.csv`;
+    link.click();
+    showToast("✅ CSV-Datei wurde heruntergeladen!", "success");
+}
+async function importProductsFromCSV(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!confirm("⚠️ WARNUNG!\n\nAlle aktuellen Produkte werden GELÖSCHT und durch die CSV ersetzt.\n\nWirklich fortfahren?")) {
+        e.target.value = "";
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = async function(event) {
+        const text = event.target.result;
+        const rows = text.trim().split("\n");
+        const deleteSnapshot = await db.collection("products").get();
+        const batchDelete = db.batch();
+        deleteSnapshot.forEach(doc => batchDelete.delete(doc.ref));
+        await batchDelete.commit();
+        const batch = db.batch();
+        for (let i = 1; i < rows.length; i++) {
+            if (!rows[i].trim()) continue;
+            const values = parseCSVLine(rows[i]);
+            const data = {
+                name: values[1],
+                price: parseFloat(values[2]),
+                originalPrice: values[3] ? parseFloat(values[3]) : null,
+                stock: parseInt(values[4]),
+                category: values[5],
+                isNew: values[6] === "true",
+                available: values[7] === "true",
+                hasNicotine: values[8] === "true",
+                description: values[9],
+                image: values[10] || null,
+                sold: parseInt(values[11]) || 0
+            };
+            const docRef = db.collection("products").doc(values[0]);
+            batch.set(docRef, data);
+        }
+        await batch.commit();
+        showToast("✅ Alle Produkte wurden erfolgreich wiederhergestellt!", "success");
+        loadProducts();
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+}
+// ====================== CSV BESTELLUNGEN ======================
+async function exportOrdersToCSV() {
+    const snapshot = await db.collection("orders").orderBy("date", "desc").get();
+    if (snapshot.empty) return alert("Keine Bestellungen vorhanden!");
+    let csv = "docId,orderNumber,datum,email,gesamt,status,items,address\n";
+    snapshot.forEach(doc => {
+        const o = doc.data();
+        const dateStr = o.date ? o.date.toDate().toISOString().slice(0,19).replace('T',' ') : '';
+        const itemsStr = o.items.map(i => `${i.name} x${i.qty}${i.nicotine ? ' ('+i.nicotine+')' : ''}`).join(' | ');
+        const addressStr = `${o.address.street || ''}, ${o.address.zip || ''} ${o.address.city || ''}`;
+        const row = [
+            `"${doc.id}"`,
+            `"${o.orderNumber || ''}"`,
+            `"${dateStr}"`,
+            `"${o.userEmail || ''}"`,
+            o.total || 0,
+            `"${o.status || 'Zahlung erwartet'}"`,
+            `"${itemsStr.replace(/"/g, '""')}"`,
+            `"${addressStr.replace(/"/g, '""')}"`
+        ].join(",");
+        csv += row + "\n";
+    });
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `wavevapes_bestellungen_${new Date().toISOString().slice(0,10)}.csv`;
+    link.click();
+    showToast("✅ Bestellungen als CSV exportiert!", "success");
+}
+async function importOrdersFromCSV(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!confirm("⚠️ WARNUNG!\n\nDie importierten Bestellungen werden ZUSÄTZLICH zu den bestehenden hinzugefügt.\n\nWirklich fortfahren?")) {
+        e.target.value = "";
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = async function(event) {
+        const text = event.target.result;
+        const rows = text.trim().split("\n");
+        const batch = db.batch();
+        for (let i = 1; i < rows.length; i++) {
+            if (!rows[i].trim()) continue;
+            const values = parseCSVLine(rows[i]);
+            const data = {
+                orderNumber: values[1],
+                date: firebase.firestore.Timestamp.fromDate(new Date(values[2])),
+                userEmail: values[3],
+                total: parseFloat(values[4]),
+                status: values[5],
+                items: values[6].split(' | ').map(item => {
+                    const parts = item.match(/(.*?) x(\d+)(?:\s*\((.*)\))?/);
+                    return parts ? { name: parts[1].trim(), qty: parseInt(parts[2]), nicotine: parts[3] || "" } : {};
+                }).filter(Boolean),
+                address: {
+                    street: values[7].split(',')[0] || "",
+                    zip: values[7].split(',')[1] ? values[7].split(',')[1].trim().split(' ')[0] : "",
+                    city: values[7].split(',')[1] ? values[7].split(',')[1].trim().split(' ').slice(1).join(' ') : ""
+                }
+            };
+            const docRef = db.collection("orders").doc(values[0]);
+            batch.set(docRef, data);
+        }
+        await batch.commit();
+        showToast("✅ Bestellungen erfolgreich importiert!", "success");
+        loadOrders();
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+}
+// ====================== CSV BENUTZER ======================
+async function exportUsersToCSV() {
+    const snapshot = await db.collection("users").get();
+    if (snapshot.empty) return alert("Keine Benutzer vorhanden!");
+    let csv = "uid,email,username,referralCode,loyaltyPoints,freeShipping,disabled,referralCount\n";
+    snapshot.forEach(doc => {
+        const u = doc.data();
+        const row = [
+            `"${doc.id}"`,
+            `"${u.email || ''}"`,
+            `"${u.username || ''}"`,
+            `"${u.referralCode || ''}"`,
+            u.totalBonusPoints || 0,
+            u.freeShipping === true ? "JA" : "NEIN",
+            u.disabled === true ? "JA" : "NEIN",
+            u.referralCount || 0
+        ].join(",");
+        csv += row + "\n";
+    });
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `wavevapes_benutzer_${new Date().toISOString().slice(0,10)}.csv`;
+    link.click();
+    showToast("✅ Benutzer als CSV exportiert!", "success");
+}
+async function importUsersFromCSV(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!confirm("⚠️ WARNUNG!\n\nDie importierten Benutzer werden ZUSÄTZLICH zu den bestehenden hinzugefügt.\n\nWirklich fortfahren?")) {
+        e.target.value = "";
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = async function(event) {
+        const text = event.target.result;
+        const rows = text.trim().split("\n");
+        const batch = db.batch();
+        for (let i = 1; i < rows.length; i++) {
+            if (!rows[i].trim()) continue;
+            const values = parseCSVLine(rows[i]);
+            const data = {
+                email: values[1],
+                username: values[2],
+                referralCode: values[3],
+                totalBonusPoints: parseInt(values[4]),
+                freeShipping: values[5] === "JA",
+                disabled: values[6] === "JA",
+                referralCount: parseInt(values[7]) || 0
+            };
+            const docRef = db.collection("users").doc(values[0]);
+            batch.set(docRef, data);
+        }
+        await batch.commit();
+        showToast("✅ Benutzer erfolgreich importiert!", "success");
+        loadUsers();
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+}
+function parseCSVLine(line) {
+    return line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(field => field.replace(/^"|"$/g, '').replace(/""/g, '"'));
 }
 // ====================== KATEGORIEN ======================
 function loadCategories() {
@@ -683,7 +1033,6 @@ function loadCategories() {
         renderCategoryTable();
         populateCategorySelects();
         populateAdminCategoryFilter();
-        populateSortCategorySelect();
     });
 }
 function renderCategoryTable() {
@@ -710,11 +1059,11 @@ document.getElementById('add-category-form').addEventListener('submit', async e 
     const special = document.getElementById('cat-special').checked;
     if (!name) return alert("Name erforderlich");
     await db.collection('categories').add({ name, order, special });
+    await logAction("category_created", "", { name });
     e.target.reset();
     populateCategorySelects();
     populateAdminCategoryFilter();
-    populateSortCategorySelect();
-    showToast('✅ Kategorie erstellt!');
+    showToast('✅ Kategorie erstellt und Dropdowns aktualisiert!');
 });
 async function openEditCategoryModal(id) {
     const doc = await db.collection('categories').doc(id).get();
@@ -741,21 +1090,22 @@ async function saveEditCategory(id) {
     const order = parseInt(document.getElementById('edit-cat-order').value) || 999;
     const special = document.getElementById('edit-cat-special').checked;
     await db.collection('categories').doc(id).update({ name, order, special });
+    await logAction("category_updated", id, { name });
     document.getElementById('edit-modal').classList.add('hidden');
     populateCategorySelects();
     populateAdminCategoryFilter();
-    populateSortCategorySelect();
-    showToast('✅ Kategorie gespeichert');
+    showToast('✅ Kategorie gespeichert und Dropdowns aktualisiert');
 }
 async function deleteCategory(id) {
-    if (!confirm('Kategorie löschen?')) return;
+    if (!confirm('Kategorie wirklich löschen? Produkte bleiben erhalten.')) return;
     await db.collection('categories').doc(id).delete();
+    await logAction("category_deleted", id);
     populateCategorySelects();
     populateAdminCategoryFilter();
-    populateSortCategorySelect();
     showToast('✅ Kategorie gelöscht');
 }
 function seedDefaultCategories() {
+    if (allCategories.length > 0 && !confirm('Es existieren bereits Kategorien. Trotzdem Standard-Kategorien laden?')) return;
     const defaults = [
         { name: "WaveVapes Tornado 30000", order: 1, special: true },
         { name: "Normale Sorten", order: 2, special: false },
@@ -765,8 +1115,9 @@ function seedDefaultCategories() {
     showToast('✅ Standard-Kategorien angelegt!');
 }
 function populateCategorySelects() {
-    const selects = document.querySelectorAll('#prod-category');
+    const selects = document.querySelectorAll('#prod-category, #edit-category-select, #bulk-category');
     selects.forEach(select => {
+        if (!select) return;
         const currentValue = select.value;
         select.innerHTML = '<option value="">Kategorie wählen...</option>';
         allCategories.forEach(c => {
@@ -780,6 +1131,7 @@ function populateCategorySelects() {
 }
 function populateAdminCategoryFilter() {
     const select = document.getElementById('admin-category-filter');
+    if (!select) return;
     select.innerHTML = '<option value="Alle">Alle Kategorien</option>';
     allCategories.forEach(cat => {
         const opt = document.createElement('option');
@@ -788,7 +1140,7 @@ function populateAdminCategoryFilter() {
         select.appendChild(opt);
     });
 }
-// ====================== GUTSCHEINE ======================
+// ====================== GUTSCHEINE + COUPON-NUTZUNGS-HISTORY ======================
 document.getElementById('add-coupon-form').addEventListener('submit', async e => {
     e.preventDefault();
     const code = document.getElementById('coupon-code').value.trim().toUpperCase();
@@ -800,6 +1152,7 @@ document.getElementById('add-coupon-form').addEventListener('submit', async e =>
         code, type, value, expiresAt: firebase.firestore.Timestamp.fromDate(expiry),
         oneTimeUse: oneTime, usedBy: [], createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
+    await logAction("coupon_created", code);
     e.target.reset();
     showToast('✅ Gutschein erstellt!');
     loadCoupons();
@@ -831,20 +1184,45 @@ function renderCouponsTable() {
 }
 async function showCouponHistory(couponId) {
     const doc = await db.collection('coupons').doc(couponId).get();
+    if (!doc.exists) return showToast("Gutschein nicht gefunden", "error");
     const coupon = doc.data();
-    let listHTML = coupon.usedBy && coupon.usedBy.length > 0 ? '' : `<p class="text-center py-12 text-gray-400">Noch nicht verwendet.</p>`;
-    if (coupon.usedBy) {
+    let listHTML = '';
+    if (coupon.usedBy && coupon.usedBy.length > 0) {
         for (let uid of coupon.usedBy) {
-            const userDoc = await db.collection('users').doc(uid).get();
-            const user = userDoc.exists ? userDoc.data() : {};
-            listHTML += `<div class="bg-zinc-950 border border-white/10 rounded-2xl p-5 mb-3">${user.email || uid}</div>`;
+            try {
+                const userDoc = await db.collection('users').doc(uid).get();
+                const user = userDoc.exists ? userDoc.data() : {};
+                const email = user.email || uid;
+                listHTML += `
+                    <div class="bg-zinc-950 border border-white/10 rounded-2xl p-5 mb-3 flex justify-between items-center">
+                        <div>
+                            <div class="font-medium text-white">${email}</div>
+                            <div class="text-xs text-gray-400">UID: ${uid}</div>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-emerald-400 text-xs">verwendet</span>
+                        </div>
+                    </div>`;
+            } catch(e) {
+                listHTML += `<div class="bg-zinc-950 border border-white/10 rounded-2xl p-5 mb-3">UID: ${uid} (User nicht gefunden)</div>`;
+            }
         }
+    } else {
+        listHTML = `<p class="text-center py-12 text-gray-400">Dieser Gutschein wurde noch von niemandem eingelöst.</p>`;
     }
     const modalHTML = `
     <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]">
         <div class="bg-zinc-900 rounded-3xl p-8 max-w-lg w-full mx-4 modal max-h-[85vh] overflow-y-auto">
-            <h3 class="text-3xl font-bold neon mb-6">History: ${coupon.code}</h3>
-            <div class="space-y-3">${listHTML}</div>
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-3xl font-bold neon">Nutzungs-History: <span class="text-amber-400">${coupon.code}</span></h3>
+                <button onclick="closeEditModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
+            </div>
+            <div class="space-y-3">
+                ${listHTML}
+            </div>
+            <div class="mt-8 text-[10px] text-gray-500 text-center">
+                Hinweis: Zeitstempel werden automatisch gespeichert, sobald du den Shop-Frontend (index.html) ebenfalls aktualisierst.
+            </div>
         </div>
     </div>`;
     document.getElementById('edit-modal').innerHTML = modalHTML;
@@ -853,11 +1231,13 @@ async function showCouponHistory(couponId) {
 async function deleteCoupon(id) {
     if (confirm('Gutschein löschen?')) {
         await db.collection('coupons').doc(id).delete();
+        await logAction("coupon_deleted", id);
         loadCoupons();
     }
 }
 // ====================== BESTELLUNGEN ======================
 function loadOrders() {
+    const tbody = document.getElementById('orders-tbody');
     db.collection('orders').orderBy('date', 'desc').onSnapshot(snap => {
         let html = '';
         snap.forEach(doc => {
@@ -879,57 +1259,32 @@ function loadOrders() {
                 </td>
             </tr>`;
         });
-        document.getElementById('orders-tbody').innerHTML = html || `<tr><td colspan="6" class="text-center py-16 text-gray-400">Noch keine Bestellungen</td></tr>`;
+        tbody.innerHTML = html || `<tr><td colspan="6" class="text-center py-16 text-gray-400">Noch keine Bestellungen</td></tr>`;
     });
 }
 document.getElementById('order-search').addEventListener('input', loadOrders);
 document.getElementById('status-filter').addEventListener('change', loadOrders);
-async function handleStockOnStatusChange(orderId, newStatus) {
-    const orderRef = db.collection('orders').doc(orderId);
-    const orderDoc = await orderRef.get();
-    const order = orderDoc.data();
-    const oldStatus = order.status || "Zahlung erwartet";
-    if (newStatus === "Wird bearbeitet" && oldStatus !== "Wird bearbeitet") {
-        try {
-            await db.runTransaction(async (transaction) => {
-                const orderSnap = await transaction.get(orderRef);
-                const currentOrder = orderSnap.data();
-                for (let item of currentOrder.items) {
-                    if (item.id === 999) continue;
-                    const prodRef = db.collection("products").doc(item.id);
-                    const prodSnap = await transaction.get(prodRef);
-                    const currentStock = prodSnap.data().stock || 0;
-                    if (currentStock < item.qty) throw new Error(`Nicht genug Lager für ${item.name}`);
-                    transaction.update(prodRef, {
-                        stock: firebase.firestore.FieldValue.increment(-item.qty),
-                        sold: firebase.firestore.FieldValue.increment(item.qty)
-                    });
-                }
-            });
-            return true;
-        } catch (error) {
-            showToast("❌ " + error.message, "error");
-            return false;
-        }
-    }
-    return true;
-}
 async function quickStatus(id, status) {
-    const success = await handleStockOnStatusChange(id, status);
-    if (!success) return;
+    await handleStockOnStatusChange(id, status);
     await db.collection('orders').doc(id).update({ status });
     if (status === "Wird bearbeitet") await awardLoyaltyIfProcessed(id);
+    await logAction("order_status_changed", id, { status });
     showToast(`Status auf „${status}“ gesetzt`);
 }
-let currentOrderId = null;
+// ====================== ORDER DETAIL MODAL ======================
 async function showOrderModal(orderId) {
     currentOrderId = orderId;
     const doc = await db.collection('orders').doc(orderId).get();
     const order = doc.data();
     const date = order.date ? order.date.toDate().toLocaleString('de-DE') : '—';
+   
     let itemsHTML = '';
     order.items.forEach(item => {
-        itemsHTML += `<div class="flex justify-between py-3 border-b border-white/10"><span>${item.name} × ${item.qty}</span><span>${(item.price * item.qty).toFixed(2)} €</span></div>`;
+        itemsHTML += `
+            <div class="flex justify-between py-3 border-b border-white/10">
+                <span>${item.name} × ${item.qty} ${item.nicotine ? `(${item.nicotine})` : ''}</span>
+                <span>${(item.price * item.qty).toFixed(2)} €</span>
+            </div>`;
     });
     const modalHTML = `
     <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]">
@@ -946,7 +1301,19 @@ async function showOrderModal(orderId) {
                 <div><strong>Adresse:</strong><br>${order.address.street}<br>${order.address.zip} ${order.address.city}</div>
                 <div><strong>Artikel</strong>${itemsHTML}</div>
                 <div class="text-2xl font-bold">Gesamt: <span class="text-emerald-400">${order.total.toFixed(2)} €</span></div>
+               
+                <div class="mt-6">
+                    <label class="block text-sm font-medium text-gray-400 mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-note-sticky text-amber-400"></i>
+                        Interne Notizen (nur für dich sichtbar)
+                    </label>
+                    <textarea id="modal-internal-notes"
+                              rows="4"
+                              placeholder="z. B. Kunde hat schon überwiesen, IBAN-Ende 5812, Betrag passt..."
+                              class="w-full bg-zinc-800 border border-amber-400/30 focus:border-amber-400 rounded-2xl px-5 py-3 text-sm resize-y min-h-[100px]"></textarea>
+                </div>
                 <div class="bg-zinc-950 -mx-8 -mb-8 p-8 rounded-b-3xl border-t border-white/10">
+                    <h4 class="font-bold mb-6 text-cyan-400 flex items-center gap-2"><i class="fa-solid fa-truck"></i> Admin-Steuerung</h4>
                     <select id="modal-status" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 mb-6">
                         <option value="Zahlung erwartet" ${order.status === "Zahlung erwartet" ? 'selected' : ''}>Zahlung erwartet</option>
                         <option value="Wird bearbeitet" ${order.status === "Wird bearbeitet" ? 'selected' : ''}>Wird bearbeitet</option>
@@ -954,72 +1321,173 @@ async function showOrderModal(orderId) {
                         <option value="Zugestellt" ${order.status === "Zugestellt" ? 'selected' : ''}>Zugestellt</option>
                         <option value="Storniert" ${order.status === "Storniert" ? 'selected' : ''}>Storniert</option>
                     </select>
+                    <div class="grid grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <label class="text-xs block mb-2 text-gray-400">Versanddienst</label>
+                            <select id="modal-carrier" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
+                                <option value="DHL" ${order.carrier === "DHL" ? 'selected' : ''}>DHL</option>
+                                <option value="Hermes" ${order.carrier === "Hermes" ? 'selected' : ''}>Hermes</option>
+                                <option value="DPD" ${order.carrier === "DPD" ? 'selected' : ''}>DPD</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs block mb-2 text-gray-400">Tracking-Nummer</label>
+                            <input id="modal-tracking" value="${order.trackingNumber || ''}" placeholder="Tracking-Nummer" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
+                        </div>
+                    </div>
                     <div class="flex gap-4">
-                        <button onclick="saveOrderChanges()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-5 rounded-3xl font-bold">Speichern</button>
-                        <button onclick="deleteOrder()" class="flex-1 bg-red-600 hover:bg-red-500 py-5 rounded-3xl font-bold">Löschen</button>
+                        <button onclick="saveOrderChanges()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-5 rounded-3xl font-bold">Änderungen speichern</button>
+                        <button onclick="deleteOrder()" class="flex-1 bg-red-600 hover:bg-red-500 py-5 rounded-3xl font-bold">Bestellung löschen</button>
                     </div>
                 </div>
             </div>
         </div>
     </div>`;
     document.getElementById('order-modal-container').innerHTML = modalHTML;
+    document.getElementById('modal-internal-notes').value = order.internalNotes || '';
 }
 function closeOrderModal() {
     document.getElementById('order-modal-container').innerHTML = '';
 }
 async function saveOrderChanges() {
     const status = document.getElementById('modal-status').value;
-    const success = await handleStockOnStatusChange(currentOrderId, status);
-    if (!success) return;
-    await db.collection('orders').doc(currentOrderId).update({ status });
+    const carrier = document.getElementById('modal-carrier').value;
+    const tracking = document.getElementById('modal-tracking').value.trim();
+    const internalNotes = document.getElementById('modal-internal-notes').value.trim();
+    await handleStockOnStatusChange(currentOrderId, status);
+   
+    const updateData = {
+        status,
+        carrier,
+        trackingNumber: tracking || firebase.firestore.FieldValue.delete()
+    };
+   
+    if (internalNotes) {
+        updateData.internalNotes = internalNotes;
+    } else {
+        updateData.internalNotes = firebase.firestore.FieldValue.delete();
+    }
+    await db.collection('orders').doc(currentOrderId).update(updateData);
+   
     if (status === "Wird bearbeitet") await awardLoyaltyIfProcessed(currentOrderId);
-    showToast('Bestellung aktualisiert');
+    await logAction("order_updated", currentOrderId, { status, hasNotes: !!internalNotes });
+   
+    showToast('Bestellung + interne Notizen aktualisiert');
     closeOrderModal();
 }
 async function deleteOrder() {
-    if (!confirm('Bestellung löschen?')) return;
+    if (!confirm('Bestellung IRREVERSIBEL löschen?')) return;
     await db.collection('orders').doc(currentOrderId).delete();
+    await logAction("order_deleted", currentOrderId);
     showToast('Bestellung gelöscht');
     closeOrderModal();
 }
 // ====================== BENUTZER ======================
 function loadUsers() {
+    const tbody = document.getElementById('users-tbody');
     db.collection('users').onSnapshot(snapshot => {
         let html = '';
         const search = (document.getElementById('user-search').value || '').toLowerCase();
         snapshot.forEach(doc => {
             const u = doc.data();
             const email = u.email || '—';
-            if (search && !email.toLowerCase().includes(search)) return;
+            const username = u.username || '—';
+            const refCode = u.referralCode || '—';
+            const points = u.totalBonusPoints || 0;
+            const disabled = u.disabled === true;
+            const freeShipping = u.freeShipping === true;
+            if (search && !email.toLowerCase().includes(search) && !username.toLowerCase().includes(search)) return;
             html += `
             <tr class="table-row-hover border-b border-white/10">
                 <td class="py-5 px-6 font-medium">${email}</td>
-                <td class="py-5 px-6">${u.username || '—'}</td>
-                <td class="py-5 px-6 text-center font-mono text-cyan-300">${u.referralCode || '—'}</td>
-                <td class="py-5 px-6 text-center font-bold text-emerald-400">${u.totalBonusPoints || 0}</td>
+                <td class="py-5 px-6">${username}</td>
+                <td class="py-5 px-6 text-center font-mono text-cyan-300">${refCode}</td>
+                <td class="py-5 px-6 text-center font-bold text-emerald-400">${points}</td>
                 <td class="py-5 px-6 text-center">
-                    <input type="checkbox" ${u.freeShipping ? 'checked' : ''} onchange="toggleFreeShipping('${doc.id}', this.checked)" class="accent-emerald-400 w-5 h-5 cursor-pointer">
+                    <input type="checkbox" ${freeShipping ? 'checked' : ''}
+                           onchange="toggleFreeShipping('${doc.id}', this.checked)"
+                           class="accent-emerald-400 w-5 h-5 cursor-pointer">
                 </td>
                 <td class="py-5 px-6 text-center">
-                    <span class="status-badge ${u.disabled === true ? 'bg-red-600 text-white' : 'bg-emerald-600 text-white'}">${u.disabled === true ? 'GESPERRT' : 'AKTIV'}</span>
+                    <span class="status-badge ${disabled ? 'disabled' : 'bg-emerald-600 text-white'}">${disabled ? 'GESPERRT' : 'AKTIV'}</span>
                 </td>
-                <td class="py-5 px-6 text-right">
-                    <button onclick="resetPassword('${email}')" class="text-amber-400 hover:text-amber-300 text-sm font-medium">PW reset</button>
+                <td class="py-5 px-6 text-right space-x-3">
+                    <button onclick="resetPassword('${email}')" class="text-amber-400 hover:text-amber-300 text-sm font-medium">PW zurücksetzen</button>
+                    <button onclick="resetUserPoints('${doc.id}')" class="text-red-400 hover:text-red-300 text-sm font-medium">Punkte resetten</button>
+                    <button onclick="toggleDisable('${doc.id}', ${!disabled})" class="text-red-400 hover:text-red-300 text-sm font-medium">${disabled ? 'Entsperren' : 'Sperren'}</button>
+                    <button onclick="deleteUser('${doc.id}', '${email}')" class="text-red-500 hover:text-red-400 text-sm font-medium">Löschen</button>
                 </td>
             </tr>`;
         });
-        document.getElementById('users-tbody').innerHTML = html || `<tr><td colspan="7" class="text-center py-16 text-gray-400">Keine Benutzer</td></tr>`;
+        tbody.innerHTML = html || `<tr><td colspan="7" class="text-center py-16 text-gray-400">Keine Benutzer gefunden</td></tr>`;
     });
 }
 document.getElementById('user-search').addEventListener('input', loadUsers);
 async function toggleFreeShipping(uid, enable) {
     await db.collection('users').doc(uid).update({ freeShipping: enable });
-    showToast(enable ? 'Gratisversand AKTIVIERT' : 'Gratisversand deaktiviert', 'success');
+    await logAction(enable ? "free_shipping_enabled" : "free_shipping_disabled", uid);
+    showToast(enable ? '✅ Gratisversand für diesen User AKTIVIERT' : 'Gratisversand deaktiviert', 'success');
 }
 async function resetPassword(email) {
-    if (!confirm(`Reset-E-Mail an ${email}?`)) return;
-    await auth.sendPasswordResetEmail(email);
-    showToast(`Reset-E-Mail gesendet an ${email}`);
+    if (!confirm(`Passwort-Zurücksetzen-E-Mail an ${email} senden?`)) return;
+    try {
+        const userSnapshot = await db.collection('users').where('email', '==', email).limit(1).get();
+        if (!userSnapshot.empty) {
+            const uid = userSnapshot.docs[0].id;
+            await db.collection('users').doc(uid).update({ passwordResetRequested: true, passwordResetTimestamp: firebase.firestore.FieldValue.serverTimestamp() });
+        }
+        await auth.sendPasswordResetEmail(email);
+        showToast(`✅ Reset-E-Mail wurde an ${email} gesendet!`);
+        await logAction("password_reset_requested", email);
+    } catch (e) {
+        showToast("Fehler: " + e.message, "error");
+    }
+}
+async function toggleDisable(uid, disable) {
+    await db.collection('users').doc(uid).update({ disabled: disable });
+    await logAction(disable ? "user_disabled" : "user_enabled", uid);
+    showToast(disable ? '✅ Benutzer gesperrt' : '✅ Benutzer entsperrt');
+}
+async function deleteUser(uid, email) {
+    if (!confirm(`⚠️ Account von ${email} WIRKLICH LÖSCHEN?\n\nAlle Bestellungen werden ebenfalls gelöscht!`)) return;
+    if (!confirm('LETZTE WARNUNG – unwiderruflich!')) return;
+    try {
+        await db.collection('users').doc(uid).delete();
+        const orders = await db.collection('orders').where('userId', '==', uid).get();
+        const batch = db.batch();
+        orders.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+        showToast(`✅ Account ${email} komplett gelöscht`);
+        await logAction("user_deleted", uid);
+    } catch (e) {
+        showToast("Fehler: " + e.message, "error");
+    }
+}
+async function resetAllLoyaltyPoints() {
+    if (!confirm("⚠️ WIRKLICH ALLE Loyalty-Punkte auf 0 setzen?\n\nDas betrifft JEDEN Benutzer und ist unwiderruflich!")) return;
+    if (!confirm("LETZTE WARNUNG – alle Punkte werden gelöscht!")) return;
+    try {
+        const snapshot = await db.collection("users").get();
+        const batch = db.batch();
+        snapshot.forEach(doc => batch.update(doc.ref, { totalBonusPoints: 0 }));
+        await batch.commit();
+        showToast("✅ Alle Loyalty-Punkte wurden auf 0 zurückgesetzt!", "success");
+        await logAction("all_loyalty_reset");
+        loadUsers();
+    } catch (e) {
+        showToast("Fehler: " + e.message, "error");
+    }
+}
+async function resetUserPoints(uid) {
+    if (!confirm("Punkte dieses Benutzers auf 0 setzen?")) return;
+    try {
+        await db.collection("users").doc(uid).update({ totalBonusPoints: 0 });
+        showToast("✅ Punkte auf 0 gesetzt");
+        await logAction("user_loyalty_reset", uid);
+        loadUsers();
+    } catch (e) {
+        showToast("Fehler: " + e.message, "error");
+    }
 }
 // ====================== ANALYTICS ======================
 async function loadAnalytics() {
@@ -1147,6 +1615,7 @@ function loadAdminLogs() {
                 <div>
                     <div class="font-mono text-xs text-cyan-300">${l.adminEmail}</div>
                     <div class="text-lg font-semibold">${l.action}</div>
+                    <div class="text-sm text-gray-400">${l.target}</div>
                 </div>
                 <div class="text-right text-xs text-gray-500">${time}</div>
             </div>`;
@@ -1156,13 +1625,23 @@ function loadAdminLogs() {
 // ====================== SETTINGS ======================
 async function loadSettings() {
     const doc = await db.collection("settings").doc("main").get();
-    let data = doc.exists ? doc.data() : { bank_owner: "Jakob David Hellrung", iban: "DE38360200300003395812", bic: "NBAGDE3EXXX", shipping_cost: 4.99, free_shipping_threshold: 100, shop_closed: false };
+    let data = doc.exists ? doc.data() : {
+        bank_owner: "Jakob David Hellrung",
+        iban: "DE38360200300003395812",
+        bic: "NBAGDE3EXXX",
+        shipping_cost: 4.99,
+        free_shipping_threshold: 100,
+        shop_closed: false,
+        email_template: "Deine Bestellung wurde bestätigt..."
+    };
+    if (!doc.exists) await db.collection("settings").doc("main").set(data);
     document.getElementById("set-bank-owner").value = data.bank_owner || "";
     document.getElementById("set-iban").value = data.iban || "";
     document.getElementById("set-bic").value = data.bic || "";
     document.getElementById("set-shipping").value = data.shipping_cost || 4.99;
     document.getElementById("set-free-threshold").value = data.free_shipping_threshold || 100;
     document.getElementById("set-closed").checked = data.shop_closed || false;
+    document.getElementById("set-email-template").value = data.email_template || "";
 }
 async function saveSettings() {
     const data = {
@@ -1171,11 +1650,14 @@ async function saveSettings() {
         bic: document.getElementById("set-bic").value,
         shipping_cost: parseFloat(document.getElementById("set-shipping").value),
         free_shipping_threshold: parseFloat(document.getElementById("set-free-threshold").value),
-        shop_closed: document.getElementById("set-closed").checked
+        shop_closed: document.getElementById("set-closed").checked,
+        email_template: document.getElementById("set-email-template").value
     };
     await db.collection("settings").doc("main").set(data, {merge: true});
+    await logAction("settings_updated");
     showToast("✅ Einstellungen gespeichert", "success");
 }
+// ====================== STATUS & STOCK & LOYALTY ======================
 function getStatusClass(s) {
     switch(s || "Zahlung erwartet") {
         case "Zahlung erwartet": return "status-Zahlung";
@@ -1189,287 +1671,190 @@ function getStatusClass(s) {
 async function awardLoyaltyIfProcessed(orderId) {
     const doc = await db.collection('orders').doc(orderId).get();
     const order = doc.data();
-    if (order && order.status === "Wird bearbeitet" && !order.loyaltyCredited) {
-        await db.collection('users').doc(order.userId).update({ totalBonusPoints: firebase.firestore.FieldValue.increment(order.loyaltyEarned || 0) });
-        await db.collection('orders').doc(orderId).update({ loyaltyCredited: true });
+    if (!order || order.status !== "Wird bearbeitet" || order.loyaltyCredited === true) return;
+    const points = order.loyaltyEarned || 0;
+    if (points <= 0) return;
+    await db.collection('users').doc(order.userId).update({ totalBonusPoints: firebase.firestore.FieldValue.increment(points) });
+    await db.collection('orders').doc(orderId).update({ loyaltyCredited: true });
+    showToast(`🎉 +${points} Loyalty-Punkte gutgeschrieben!`, 'success');
+}
+async function handleStockOnStatusChange(orderId, newStatus) {
+    const doc = await db.collection('orders').doc(orderId).get();
+    const order = doc.data();
+    const oldStatus = order.status || "Zahlung erwartet";
+    if (newStatus === "Wird bearbeitet" && oldStatus !== "Wird bearbeitet") {
+        for (let item of order.items) {
+            if (item.id === 999) continue;
+            await db.collection("products").doc(item.id).update({
+                stock: firebase.firestore.FieldValue.increment(-item.qty),
+                sold: firebase.firestore.FieldValue.increment(item.qty)
+            });
+        }
+        showToast("✅ Lager & Verkaufszahlen aktualisiert", "success");
+    }
+    if (newStatus === "Storniert" && oldStatus === "Wird bearbeitet") {
+        for (let item of order.items) {
+            if (item.id === 999) continue;
+            await db.collection("products").doc(item.id).update({
+                stock: firebase.firestore.FieldValue.increment(item.qty)
+            });
+        }
+        showToast("✅ Lager wiederhergestellt", "success");
     }
 }
-// ====================== LIVE PRESENCE ======================
-function loadPresence() {
-    const container = document.getElementById("presence-list");
-    container.innerHTML = '<p class="text-center py-8 text-gray-400">Lade Live-Besucher...</p>';
-    db.collection("presence").onSnapshot(snap => {
-        container.innerHTML = '';
-        let count = 0;
-        const now = Date.now();
-        snap.forEach(doc => {
-            const data = doc.data();
-            if (!data.lastSeen) return;
-            const last = data.lastSeen.toDate().getTime();
-            if (now - last > 45000) return;
-            count++;
-            const isGuest = data.isGuest === true || !data.uid;
-            const html = `
-                <div class="presence-card p-6 rounded-3xl flex justify-between items-center">
-                    <div>
-                        <div class="font-medium text-lg">${data.username || 'Gast'}</div>
-                        ${data.email ? `<div class="text-xs text-cyan-300">${data.email}</div>` : ''}
-                    </div>
-                    <div class="text-right">
-                        <span class="px-4 py-1 bg-emerald-400/20 text-emerald-400 text-xs rounded-2xl">JETZT AKTIV</span>
-                        ${isGuest ? `<span class="ml-3 text-amber-400 text-xs">Gast</span>` : ''}
-                    </div>
-                </div>`;
-            container.innerHTML += html;
+async function resetAllStatistics() {
+    if (!confirm("⚠️ WIRKLICH ALLE STATISTIKEN ZURÜCKSETZEN?\n\nsold wird bei ALLEN Produkten auf 0 gesetzt.\nUmsatz und Top-Seller gehen auf Null.\nDas ist UNWIDERRUFLICH!")) {
+        return;
+    }
+    try {
+        const snapshot = await db.collection("products").get();
+        const batch = db.batch();
+        snapshot.forEach(doc => {
+            batch.update(doc.ref, { sold: 0 });
         });
-        if (count === 0) {
-            container.innerHTML = `<p class="text-center py-12 text-gray-400">Niemand ist gerade online.</p>`;
-        }
-    });
-}
-async function cleanupOldPresence() {
-    const snap = await db.collection("presence").get();
-    const batch = db.batch();
-    const now = Date.now();
-    snap.forEach(doc => {
-        const data = doc.data();
-        if (data.lastSeen) {
-            const last = data.lastSeen.toDate().getTime();
-            if (now - last > 45000) batch.delete(doc.ref);
-        }
-    });
-    await batch.commit();
-}
-// ====================== ERWEITERTE BENUTZERVERWALTUNG ======================
-async function loadExtendedUsers() {
-    db.collection('users').onSnapshot(async snap => {
-        extendedUsers = [];
-        for (let doc of snap.docs) {
-            const u = doc.data();
-            let orderCount = 0;
-            let totalSpent = 0;
-            const ordersSnap = await db.collection('orders').where('userId', '==', doc.id).get();
-            ordersSnap.forEach(o => {
-                orderCount++;
-                totalSpent += o.data().total || 0;
-            });
-            extendedUsers.push({ id: doc.id, ...u, orderCount, totalSpent: totalSpent.toFixed(2) });
-        }
-        renderExtendedUsersTable();
-    });
-}
-function renderExtendedUsersTable() {
-    const tbody = document.getElementById('extended-users-tbody');
-    const search = (document.getElementById('extended-user-search').value || '').toLowerCase();
-    let filtered = extendedUsers.filter(u => {
-        return !search || (u.email && u.email.toLowerCase().includes(search)) || (u.username && u.username.toLowerCase().includes(search));
-    });
-    let html = '';
-    filtered.forEach(u => {
-        const disabled = u.disabled === true;
-        html += `
-        <tr class="table-row-hover border-b border-white/10">
-            <td class="py-5 px-6"><input type="checkbox" data-id="${u.id}" onclick="toggleExtendedSelect(this)" class="accent-cyan-400 w-5 h-5"></td>
-            <td class="py-5 px-6 font-medium">${u.email || '—'}</td>
-            <td class="py-5 px-6">${u.username || '—'}</td>
-            <td class="py-5 px-6 text-center font-mono">${u.referralCode || '—'}</td>
-            <td class="py-5 px-6 text-center font-bold text-emerald-400">${u.totalBonusPoints || 0}</td>
-            <td class="py-5 px-6 text-center">${u.referralCount || 0}</td>
-            <td class="py-5 px-6 text-center">${u.orderCount}</td>
-            <td class="py-5 px-6 text-center">${u.totalSpent} €</td>
-            <td class="py-5 px-6 text-center">${u.createdAt ? u.createdAt.toDate().toLocaleDateString('de-DE') : '—'}</td>
-            <td class="py-5 px-6 text-center"><span class="status-badge ${disabled ? 'bg-red-600 text-white' : 'bg-emerald-600 text-white'}">${disabled ? 'GESPERRT' : 'AKTIV'}</span></td>
-            <td class="py-5 px-6 text-right">
-                <button onclick="openExtendedUserEditModal('${u.id}')" class="text-cyan-400 hover:text-white"><i class="fa-solid fa-pen"></i></button>
-            </td>
-        </tr>`;
-    });
-    tbody.innerHTML = html || `<tr><td colspan="11" class="text-center py-16 text-gray-400">Keine Benutzer gefunden</td></tr>`;
-}
-function toggleSelectAllExtended(cb) {
-    document.querySelectorAll('#extended-users-tbody input[type="checkbox"]').forEach(ch => ch.checked = cb.checked);
-    updateSelectedExtendedIds();
-}
-function toggleExtendedSelect() {
-    updateSelectedExtendedIds();
-}
-function updateSelectedExtendedIds() {
-    selectedExtendedUserIds = Array.from(document.querySelectorAll('#extended-users-tbody input[type="checkbox"]:checked')).map(ch => ch.dataset.id);
-}
-async function bulkDisableSelected(disable) {
-    if (selectedExtendedUserIds.length === 0) return alert("Keine User ausgewählt");
-    const modalHTML = `
-    <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]">
-        <div class="bg-zinc-900 rounded-3xl p-8 max-w-md w-full mx-4 modal">
-            <h3 class="text-3xl font-bold mb-6">Bulk: ${disable ? 'Sperren' : 'Entsperren'}</h3>
-            <p class="mb-8 text-gray-300">${selectedExtendedUserIds.length} Benutzer werden ${disable ? 'gesperrt' : 'entsperrt'}.</p>
-            <div class="flex items-center gap-3 mb-8">
-                <input id="bulk-ip-ban" type="checkbox" class="w-6 h-6 accent-red-500" ${disable ? 'checked' : ''}>
-                <label class="text-lg font-medium">Auch IP-Adresse(n) sperren / freigeben</label>
-            </div>
-            <div class="flex gap-4">
-                <button onclick="executeBulkDisable(${disable})" class="flex-1 bg-red-600 hover:bg-red-500 py-5 rounded-3xl font-bold text-white">${disable ? 'JETZT SPERREN' : 'JETZT ENTSPERREN'}</button>
-                <button onclick="closeBulkIpModal()" class="flex-1 bg-zinc-700 hover:bg-zinc-600 py-5 rounded-3xl">Abbrechen</button>
-            </div>
-        </div>
-    </div>`;
-    document.getElementById('extended-user-edit-modal').innerHTML = modalHTML;
-    document.getElementById('extended-user-edit-modal').classList.remove('hidden');
-}
-async function executeBulkDisable(disable) {
-    const banIp = document.getElementById('bulk-ip-ban').checked;
-    const batch = db.batch();
-    for (let uid of selectedExtendedUserIds) {
-        const userRef = db.collection('users').doc(uid);
-        const userDoc = await userRef.get();
-        const userData = userDoc.data();
-        batch.update(userRef, { disabled: disable });
-        if (banIp && userData.lastIp) {
-            if (disable) {
-                await db.collection("banned_ips").doc(userData.lastIp).set({
-                    ip: userData.lastIp,
-                    bannedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    reason: "Admin-Bulk-Ban",
-                    bannedBy: auth.currentUser.email
-                });
-            } else {
-                await db.collection("banned_ips").doc(userData.lastIp).delete();
-            }
-        }
+        await batch.commit();
+        showToast("✅ Alle Statistiken wurden zurückgesetzt! (verkaufte Einheiten = 0)", "success");
+        await logAction("all_statistics_reset");
+        loadProducts();
+    } catch (e) {
+        showToast("Fehler beim Zurücksetzen: " + e.message, "error");
     }
-    await batch.commit();
-    closeBulkIpModal();
-    showToast(`${selectedExtendedUserIds.length} User ${disable ? 'gesperrt' : 'entsperrt'}!${banIp ? ' + IP-Ban' : ''}`, 'success');
-    renderExtendedUsersTable();
-}
-function closeBulkIpModal() {
-    document.getElementById('extended-user-edit-modal').classList.add('hidden');
-}
-async function openExtendedUserEditModal(uid) {
-    const doc = await db.collection('users').doc(uid).get();
-    const u = doc.data();
-    const html = `
-    <div class="bg-zinc-900 rounded-3xl p-8 max-w-2xl w-full mx-4 modal">
-        <h3 class="text-3xl font-bold mb-6 neon">User bearbeiten: ${u.email}</h3>
-        <div class="grid grid-cols-2 gap-6">
-            <div><label class="block text-sm text-gray-400 mb-2">Username</label><input id="edit-username" value="${u.username || ''}" class="bg-zinc-800 text-white border border-cyan-400/30 focus:border-cyan-400 w-full rounded-2xl px-6 py-4 outline-none"></div>
-            <div><label class="block text-sm text-gray-400 mb-2">Loyalty Punkte</label><input id="edit-points" type="number" value="${u.totalBonusPoints || 0}" class="bg-zinc-800 text-white border border-cyan-400/30 focus:border-cyan-400 w-full rounded-2xl px-6 py-4 outline-none"></div>
-            <div><label class="block text-sm text-gray-400 mb-2">Referral Code</label><input id="edit-referral" value="${u.referralCode || ''}" class="bg-zinc-800 text-white border border-cyan-400/30 focus:border-cyan-400 w-full rounded-2xl px-6 py-4 outline-none"></div>
-            <div class="flex items-center gap-4 mt-6">
-                <label class="flex items-center gap-3 text-white"><input id="edit-freeshipping" type="checkbox" ${u.freeShipping ? 'checked' : ''} class="w-5 h-5 accent-emerald-400"> Gratis Versand</label>
-                <label class="flex items-center gap-3 text-white"><input id="edit-disabled" type="checkbox" ${u.disabled ? 'checked' : ''} class="w-5 h-5 accent-red-400"> Gesperrt</label>
-                <label class="flex items-center gap-3 text-white"><input id="edit-role-admin" type="checkbox" ${u.role === 'admin' ? 'checked' : ''} class="w-5 h-5 accent-purple-400"> Admin-Rolle</label>
-            </div>
-        </div>
-        <div class="mt-8 bg-red-950/30 border border-red-500/30 rounded-2xl p-6">
-            <label class="flex items-center gap-3 text-white font-medium"><input id="edit-ip-ban" type="checkbox" ${u.disabled ? 'checked' : ''} class="w-5 h-5 accent-red-500"> IP-Adresse ebenfalls sperren</label>
-        </div>
-        <div class="mt-8"><label class="block text-sm text-gray-400 mb-2">Interne Notizen</label><textarea id="edit-notes" rows="3" class="bg-zinc-800 text-white border border-cyan-400/30 focus:border-cyan-400 w-full rounded-2xl px-6 py-4 outline-none">${u.internalNotes || ''}</textarea></div>
-        <div class="flex gap-4 mt-10">
-            <button onclick="saveExtendedUser('${uid}')" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-5 rounded-3xl font-bold text-white">Speichern</button>
-            <button onclick="closeExtendedUserModal()" class="flex-1 bg-zinc-700 hover:bg-zinc-600 py-5 rounded-3xl">Abbrechen</button>
-        </div>
-    </div>`;
-    document.getElementById('extended-user-edit-modal').innerHTML = html;
-    document.getElementById('extended-user-edit-modal').classList.remove('hidden');
-}
-function closeExtendedUserModal() {
-    document.getElementById('extended-user-edit-modal').classList.add('hidden');
-}
-async function saveExtendedUser(uid) {
-    const username = document.getElementById('edit-username').value.trim();
-    const points = parseInt(document.getElementById('edit-points').value) || 0;
-    const referralCode = document.getElementById('edit-referral').value.trim();
-    const freeShipping = document.getElementById('edit-freeshipping').checked;
-    const disabled = document.getElementById('edit-disabled').checked;
-    const isAdmin = document.getElementById('edit-role-admin').checked;
-    const banIp = document.getElementById('edit-ip-ban').checked;
-    const notes = document.getElementById('edit-notes').value.trim();
-    const userRef = db.collection('users').doc(uid);
-    const userDoc = await userRef.get();
-    const currentIp = userDoc.data()?.lastIp;
-    await userRef.update({
-        username,
-        totalBonusPoints: points,
-        referralCode,
-        freeShipping,
-        disabled,
-        role: isAdmin ? 'admin' : firebase.firestore.FieldValue.delete(),
-        internalNotes: notes || firebase.firestore.FieldValue.delete()
-    });
-    if (currentIp) {
-        if (disabled && banIp) {
-            await db.collection("banned_ips").doc(currentIp).set({
-                ip: currentIp,
-                bannedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                reason: "Admin-Sperre (Einzel)",
-                bannedBy: auth.currentUser.email
-            });
-        } else {
-            await db.collection("banned_ips").doc(currentIp).delete();
-        }
-    }
-    closeExtendedUserModal();
-    showToast(`✅ User gespeichert!${disabled && banIp ? ' + IP gesperrt' : ''}`, 'success');
 }
 // ====================== SORTIERUNG ======================
 async function loadProductOrder() {
     const doc = await db.collection('settings').doc('product_order').get();
-    productOrderMap = doc.exists ? (doc.data() || {}) : {};
+    productOrder = doc.exists ? (doc.data().order || []) : [];
     renderSortList();
 }
 function renderSortList() {
     const container = document.getElementById('sort-list');
     container.innerHTML = '';
-    let filtered = allProducts;
-    if (currentSortCategory !== "global") filtered = allProducts.filter(p => p.category === currentSortCategory);
-    const currentOrder = productOrderMap[currentSortCategory] || [];
-    const sorted = [...filtered].sort((a, b) => {
-        const idxA = currentOrder.indexOf(a.id);
-        const idxB = currentOrder.indexOf(b.id);
-        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-        if (idxA !== -1) return -1;
-        if (idxB !== -1) return 1;
-        return a.name.localeCompare(b.name);
+    const sorted = [...allProducts].sort((a, b) => {
+        const idxA = productOrder.indexOf(a.id);
+        const idxB = productOrder.indexOf(b.id);
+        if (idxA === -1 && idxB === -1) return a.name.localeCompare(b.name);
+        if (idxA === -1) return 1;
+        if (idxB === -1) return -1;
+        return idxA - idxB;
     });
     sorted.forEach(p => {
         const div = document.createElement('div');
         div.className = 'sortable-item flex items-center gap-4 bg-zinc-900 border border-white/10 rounded-3xl p-5 cursor-move select-none';
         div.dataset.id = p.id;
+        const newBadge = p.isNew
+            ? `<span onclick="toggleIsNew('${p.id}', event)" class="px-3 py-1 bg-lime-400 text-black text-xs font-black tracking-wider rounded-2xl cursor-pointer hover:scale-110 transition">NEW</span>`
+            : '';
+        const unavailableBadge = p.available === false
+            ? `<span onclick="toggleAvailableInSort('${p.id}', event)" class="px-3 py-1 bg-red-500 text-white text-xs font-medium rounded-2xl cursor-pointer hover:scale-110 transition">NICHT VERFÜGBAR</span>`
+            : '';
         div.innerHTML = `
             ${p.image ? `<img src="${p.image}" class="w-14 h-14 object-cover rounded-2xl flex-shrink-0">` : '<div class="w-14 h-14 bg-zinc-800 rounded-2xl flex items-center justify-center text-2xl">📦</div>'}
-            <div class="flex-1"><div class="font-medium text-lg">${p.name}</div></div>
+            <div class="flex-1">
+                <div class="font-medium text-lg">${p.name}</div>
+                <div class="flex items-center gap-2 mt-1">
+                    ${newBadge}
+                    ${unavailableBadge}
+                </div>
+            </div>
             <i class="fa-solid fa-grip-lines text-gray-400 text-2xl"></i>
         `;
         container.appendChild(div);
     });
     if (sortableInstance) sortableInstance.destroy();
-    sortableInstance = new Sortable(container, { animation: 180, ghostClass: 'bg-cyan-900/60' });
+    sortableInstance = new Sortable(container, {
+        animation: 180,
+        ghostClass: 'bg-cyan-900/60',
+        forceFallback: true
+    });
+}
+async function toggleIsNew(id, e) {
+    e.stopImmediatePropagation();
+    const doc = await db.collection('products').doc(id).get();
+    const current = doc.data().isNew || false;
+    const newIsNew = !current;
+    await db.collection('products').doc(id).update({ isNew: newIsNew });
+    showToast(`NEW-Status umgeschaltet → ${newIsNew ? 'aktiv' : 'deaktiviert'}`);
+    renderSortList();
+}
+async function toggleAvailableInSort(id, e) {
+    e.stopImmediatePropagation();
+    const doc = await db.collection('products').doc(id).get();
+    const current = doc.data().available !== false;
+    await db.collection('products').doc(id).update({ available: !current });
+    showToast(`Verfügbarkeit umgeschaltet → ${!current ? 'NICHT verfügbar' : 'verfügbar'}`);
+    renderSortList();
+}
+function autoSort(mode) {
+    const container = document.getElementById('sort-list');
+    let items = Array.from(container.children);
+    items.sort((a, b) => {
+        const idA = a.dataset.id;
+        const idB = b.dataset.id;
+        const pA = allProducts.find(p => p.id === idA);
+        const pB = allProducts.find(p => p.id === idB);
+        if (!pA || !pB) return 0;
+        switch(mode) {
+            case 'alpha':
+                return pA.name.localeCompare(pB.name);
+            case 'new':
+                if (pA.isNew && !pB.isNew) return -1;
+                if (!pA.isNew && pB.isNew) return 1;
+                return 0;
+            case 'tornado':
+                const catA = (pA.category === "WaveVapes Tornado 30000") ? 0 : 1;
+                const catB = (pB.category === "WaveVapes Tornado 30000") ? 0 : 1;
+                return catA - catB;
+            case 'available':
+                const availA = (pA.available !== false) ? 0 : 1;
+                const availB = (pB.available !== false) ? 0 : 1;
+                return availA - availB;
+            case 'stock':
+                return (pB.stock || 0) - (pA.stock || 0);
+            default:
+                return 0;
+        }
+    });
+    items.forEach(item => container.appendChild(item));
+    showToast('✅ Liste automatisch sortiert!', 'success');
+}
+function autoSortPriority() {
+    const container = document.getElementById('sort-list');
+    let items = Array.from(container.children);
+    items.sort((a, b) => {
+        const idA = a.dataset.id;
+        const idB = b.dataset.id;
+        const pA = allProducts.find(p => p.id === idA);
+        const pB = allProducts.find(p => p.id === idB);
+        if (!pA || !pB) return 0;
+        const getPriority = (p) => {
+            if (p.available === false || (p.stock || 0) <= 0) return 4;
+            if (p.isNew === true) return 1;
+            if (p.category !== "WaveVapes Tornado 30000") return 2;
+            return 3;
+        };
+        const prioA = getPriority(pA);
+        const prioB = getPriority(pB);
+        if (prioA !== prioB) return prioA - prioB;
+        return pA.name.localeCompare(pB.name);
+    });
+    items.forEach(item => container.appendChild(item));
+    showToast('✅ Automatische Prioritätssortierung angewendet!', 'success');
 }
 async function saveProductOrder() {
     const items = document.querySelectorAll('#sort-list .sortable-item');
     const newOrder = Array.from(items).map(item => item.dataset.id);
-    const docRef = db.collection('settings').doc('product_order');
-    let currentData = (await docRef.get()).exists ? (await docRef.get()).data() : {};
-    currentData[currentSortCategory] = newOrder;
-    await docRef.set(currentData, { merge: true });
-    showToast(`✅ Sortierung für <strong>${currentSortCategory === "global" ? "Alle Produkte" : currentSortCategory}</strong> gespeichert!`, "success");
+    await db.collection('settings').doc('product_order').set({ order: newOrder }, { merge: true });
+    showToast('✅ Sortierung gespeichert! Der Shop zeigt jetzt die neue Reihenfolge.', 'success');
 }
-function populateSortCategorySelect() {
-    const select = document.getElementById('sort-category-select');
-    select.innerHTML = '<option value="global">Alle Produkte (globale Sortierung)</option>';
-    allCategories.forEach(c => {
-        const opt = document.createElement('option');
-        opt.value = c.name;
-        opt.textContent = c.name;
-        select.appendChild(opt);
-    });
+// ====================== TOAST ======================
+function showToast(msg, type = 'success') {
+    const toast = document.createElement('div');
+    toast.className = `toast flex items-center gap-3 px-8 py-4 rounded-3xl shadow-2xl text-sm font-medium ${type === 'error' ? 'bg-red-600' : 'bg-emerald-600'}`;
+    toast.innerHTML = `<i class="fa-solid ${type === 'error' ? 'fa-xmark' : 'fa-check'}"></i> ${msg}`;
+    document.getElementById('toast-container').appendChild(toast);
+    setTimeout(() => toast.remove(), 3500);
 }
-function loadSortListForCategory() {
-    currentSortCategory = document.getElementById('sort-category-select').value;
-    renderSortList();
-}
-// ====================== SWITCH TAB ======================
+// ====================== SIDEBAR & TABS ======================
 function switchTab(n) {
     document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('tab-active'));
     document.getElementById('sidebar-' + n).classList.add('tab-active');
@@ -1478,129 +1863,24 @@ function switchTab(n) {
     if (n === 5) loadAnalytics();
     if (n === 6) loadAdminLogs();
     if (n === 8) loadProductOrder();
-    if (n === 9) loadPresence();
-    if (n === 10) loadExtendedUsers();
 }
 function toggleSidebar() {
     document.getElementById("sidebar").classList.toggle("-translate-x-full");
 }
+// ====================== LOGOUT ======================
 async function logout() {
-    await auth.signOut();
-    window.location.href = "index.html";
-}
-// ====================== PRODUCT EDIT MODAL (Cloudinary) ======================
-async function openEditModal(id) {
-    currentEditId = id;
-    const doc = await db.collection('products').doc(id).get();
-    if (!doc.exists) return alert("Produkt nicht gefunden!");
-    const p = doc.data();
-    const html = `
-    <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999] p-4">
-        <div class="bg-zinc-900 rounded-3xl p-8 max-w-2xl w-full mx-auto modal max-h-[95vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="text-3xl font-bold neon">Produkt bearbeiten</h3>
-                <button onclick="closeEditModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div>
-                    <label class="block text-sm text-gray-400 mb-3">Aktuelles Bild</label>
-                    ${p.image ? `<img src="${p.image}" id="current-image-preview" class="w-full rounded-3xl mb-4 shadow-xl">` : `<div class="w-full h-48 bg-zinc-800 rounded-3xl flex items-center justify-center text-5xl mb-4">📦</div>`}
-                    <div id="edit-cloudinary-dropzone" class="border-2 border-dashed border-cyan-400/50 hover:border-cyan-400 rounded-3xl p-10 text-center cursor-pointer transition-all">
-                        <i class="fa-solid fa-cloud-arrow-up text-5xl mb-4 text-cyan-400"></i>
-                        <p class="text-cyan-300">Neues Bild hochladen (Cloudinary)</p>
-                    </div>
-                    <button onclick="removeImageInEdit()" class="mt-4 text-red-400 hover:text-red-300 text-sm flex items-center gap-2">
-                        <i class="fa-solid fa-trash"></i> Bild komplett entfernen
-                    </button>
-                </div>
-                <div class="space-y-6">
-                    <div><label class="block text-sm text-gray-400 mb-2">Name</label>
-                        <input id="edit-name" value="${p.name || ''}" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-2xl px-6 py-4 text-lg">
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div><label class="block text-sm text-gray-400 mb-2">Preis (€)</label>
-                            <input id="edit-price" type="number" step="0.01" value="${p.price || 7.99}" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-2xl px-6 py-4">
-                        </div>
-                        <div><label class="block text-sm text-gray-400 mb-2">Alter Preis (€)</label>
-                            <input id="edit-original-price" type="number" step="0.01" value="${p.originalPrice || ''}" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-2xl px-6 py-4">
-                        </div>
-                    </div>
-                    <div><label class="block text-sm text-gray-400 mb-2">Lagerbestand</label>
-                        <input id="edit-stock" type="number" value="${p.stock || 0}" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-2xl px-6 py-4">
-                    </div>
-                    <div><label class="block text-sm text-gray-400 mb-2">Kategorie</label>
-                        <select id="edit-category" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-2xl px-6 py-4"></select>
-                    </div>
-                    <div class="flex flex-wrap gap-6">
-                        <label class="flex items-center gap-3"><input id="edit-isnew" type="checkbox" ${p.isNew ? 'checked' : ''} class="w-5 h-5 accent-lime-400"> Neue Sorte</label>
-                        <label class="flex items-center gap-3"><input id="edit-available" type="checkbox" ${p.available !== false ? 'checked' : ''} class="w-5 h-5 accent-emerald-400"> Verfügbar</label>
-                        <label class="flex items-center gap-3"><input id="edit-nicotine" type="checkbox" ${p.hasNicotine !== false ? 'checked' : ''} class="w-5 h-5 accent-cyan-400"> Nikotin (10/20 mg)</label>
-                    </div>
-                    <div><label class="block text-sm text-gray-400 mb-2">Beschreibung</label>
-                        <textarea id="edit-description" rows="4" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-4">${p.description || ''}</textarea>
-                    </div>
-                </div>
-            </div>
-            <button onclick="saveProductEdit()" class="mt-10 w-full bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-6 rounded-3xl text-xl hover:scale-105 transition-all">
-                ✅ Änderungen speichern
-            </button>
-        </div>
-    </div>`;
-    document.getElementById('edit-modal').innerHTML = html;
-    document.getElementById('edit-modal').classList.remove('hidden');
-    const catSelect = document.getElementById('edit-category');
-    catSelect.innerHTML = '<option value="">Kategorie wählen...</option>';
-    allCategories.forEach(c => {
-        const opt = document.createElement('option');
-        opt.value = c.name;
-        opt.textContent = c.name;
-        if (c.name === p.category) opt.selected = true;
-        catSelect.appendChild(opt);
-    });
-    initEditCloudinaryDropzone();
-}
-function initEditCloudinaryDropzone() {
-    const dz = document.getElementById('edit-cloudinary-dropzone');
-    dz.addEventListener('click', () => {
-        if (cloudinaryWidget) cloudinaryWidget.open();
-    });
-}
-async function removeImageInEdit() {
-    if (!confirm("Bild wirklich dauerhaft entfernen?")) return;
-    selectedCloudinaryUrl = null;
-    const preview = document.getElementById('current-image-preview');
-    if (preview) preview.style.display = 'none';
-    showToast("Bild wird beim Speichern entfernt", "success");
-}
-function closeEditModal() {
-    document.getElementById('edit-modal').classList.add('hidden');
-    currentEditId = null;
-}
-async function saveProductEdit() {
-    if (!currentEditId) return;
-    const name = document.getElementById('edit-name').value.trim();
-    if (!name) return alert("Name erforderlich!");
-    const updateData = {
-        name,
-        price: parseFloat(document.getElementById('edit-price').value) || 7.99,
-        originalPrice: document.getElementById('edit-original-price').value ? parseFloat(document.getElementById('edit-original-price').value) : null,
-        stock: parseInt(document.getElementById('edit-stock').value) || 0,
-        category: document.getElementById('edit-category').value,
-        isNew: document.getElementById('edit-isnew').checked,
-        available: document.getElementById('edit-available').checked,
-        hasNicotine: document.getElementById('edit-nicotine').checked,
-        description: document.getElementById('edit-description').value.trim()
-    };
-    if (selectedCloudinaryUrl) {
-        updateData.image = selectedCloudinaryUrl;
+    try {
+        await auth.signOut();
+        showToast("👋 Erfolgreich ausgeloggt", "success");
+        setTimeout(() => {
+            window.location.href = "index.html";
+        }, 800);
+    } catch (e) {
+        console.error(e);
+        alert("Logout fehlgeschlagen: " + e.message);
     }
-    await db.collection('products').doc(currentEditId).update(updateData);
-    await logAction("product_updated", name);
-    showToast("✅ Produkt erfolgreich gespeichert!", "success");
-    closeEditModal();
-    loadProducts();
 }
-// ====================== INITIALISIERUNG ======================
+// ====================== AUTH ======================
 auth.onAuthStateChanged(async (user) => {
     if (!user) return window.location.href = 'index.html';
     document.getElementById('admin-email').textContent = user.email;
@@ -1612,20 +1892,18 @@ auth.onAuthStateChanged(async (user) => {
     }
     loadSettings();
     switchTab(0);
-    initCloudinaryWidget();
 });
+// ====================== INIT ======================
 window.onload = () => {
     loadProducts();
     loadCategories();
     loadCoupons();
     loadOrders();
     loadUsers();
-    loadProductOrder();
-    attachAddFormListener();
     setTimeout(() => {
+        updateStats();
         populateAdminCategoryFilter();
-        populateSortCategorySelect();
-    }, 800);
+    }, 500);
 };
 </script>
 </body>

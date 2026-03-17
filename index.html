@@ -8,7 +8,6 @@
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="https://wavevapes.de">
     <meta name="theme-color" content="#0a0a0a">
-    <!-- SEO + Social Media -->
     <meta property="og:title" content="WaveVapes – Tornado 30000 & Premium Liquids">
     <meta property="og:description" content="4 für 3 Aktion + Mystery Vape gratis ab 100 €. Schnell & diskret per DHL. Nur für Volljährige.">
     <meta property="og:image" content="https://wavevapes.de/og-image.jpg">
@@ -18,13 +17,10 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:site" content="@WaveVapes">
     <meta name="twitter:creator" content="@WaveVapes">
-    <!-- Preconnect -->
     <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
-    <!-- EMAILJS -->
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-    <!-- JSON-LD -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -44,7 +40,6 @@
       }
     }
     </script>
-    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
@@ -249,12 +244,10 @@
             <h2 class="hero-title text-5xl sm:text-6xl font-bold tracking-tighter neon-text mb-3">Bestelle deine Liquids und Vapes</h2>
             <p class="hero-subtitle text-xl sm:text-2xl text-cyan-200 max-w-md mx-auto">7,99 € pro Flasche • 10 ml • Nikotin frei wählbar (10 oder 20 mg)</p>
             <p class="text-base sm:text-lg text-gray-300 mt-4">Alle Liquids von ELFLIQ</p>
-            <!-- MYSTERY VAPE BANNER -->
             <div class="mt-4 inline-flex items-center gap-3 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-400/30 hover:border-emerald-400 px-7 py-3 rounded-3xl text-emerald-300 text-base font-semibold transition-all">
                 <i class="fa-solid fa-gift text-2xl"></i>
                 <span>Ab 100€ Bestellwert gibt's eine <span class="text-white font-bold underline">Mystery Vape gratis</span> dazu! 🎁</span>
             </div>
-            <!-- GRATIS VERSAND BANNER -->
             <div class="mt-4 inline-flex items-center gap-3 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-400/30 px-7 py-3 rounded-3xl text-amber-300 text-base font-semibold transition-all">
                 <i class="fa-solid fa-truck text-2xl"></i>
                 <span>Gratis Versand ab <span class="text-white font-bold">100 €</span> Bestellwert! 🚚</span>
@@ -576,7 +569,6 @@
         <div id="detail-content" class="w-full"></div>
     </div>
     <div id="notification-toast"></div>
-    <!-- Tawk.to Live-Chat + Bot -->
     <!--Start of Tawk.to Script-->
     <script type="text/javascript">
     var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
@@ -830,14 +822,12 @@
         async function saveUserCart() {
             if (!currentUser) return;
             try {
-                await db.collection("users").doc(currentUser.uid).update({
-                    cart: cart
-                });
+                await db.collection("users").doc(currentUser.uid).update({ cart: cart });
             } catch (e) {
                 console.error("Cart speichern fehlgeschlagen", e);
             }
         }
-        // ====================== AUTH + LOYALTY SYNC + LIVE BAN + IP-BAN ======================
+        // ====================== AUTH + LOYALTY SYNC + LIVE BAN ======================
         auth.onAuthStateChanged(async (user) => {
             currentUser = user;
             updateAuthUI();
@@ -992,7 +982,8 @@
             });
             showToast(`🎉 +${pointsToAdd} Loyalty-Punkte gutgeschrieben!`);
         }
-        // ====================== GUTSCHEIN-SYSTEM ======================
+
+        // ====================== GUTSCHEIN-SYSTEM (FIXED) ======================
         async function applyDiscountCode() {
             const input = document.getElementById("discount-input").value.trim().toUpperCase();
             const status = document.getElementById("discount-status");
@@ -1005,29 +996,41 @@
                 showAuthModal();
                 return;
             }
+            // Firebase Gutschein prüfen
             const couponSnap = await db.collection("coupons").where("code", "==", input).limit(1).get();
             if (!couponSnap.empty) {
-                const coupon = couponSnap.docs[0].data();
+                const couponDocRef = couponSnap.docs[0];
+                const coupon = couponDocRef.data();
                 const now = new Date();
+                // Ablaufdatum prüfen
                 if (coupon.expiresAt && coupon.expiresAt.toDate() < now) {
                     status.innerHTML = `<span class="text-red-400">Gutschein abgelaufen</span>`;
                     return;
                 }
+                // Einmalnutzung prüfen
                 if (coupon.oneTimeUse && coupon.usedBy && coupon.usedBy.includes(currentUser.uid)) {
                     status.innerHTML = `<span class="text-red-400">Bereits verwendet</span>`;
                     return;
                 }
-                appliedDiscount = { code: input, type: coupon.type, value: coupon.value, couponId: couponSnap.docs[0].id };
+                // Rabatt setzen
+                appliedDiscount = {
+                    code: input,
+                    type: coupon.type,
+                    value: coupon.value,
+                    couponId: couponDocRef.id
+                };
                 const display = coupon.type === "percent" ? `${coupon.value}%` : `${coupon.value}€`;
                 status.innerHTML = `<span class="text-emerald-400">✓ ${input} (${display}) eingelöst!</span>`;
                 updateCartDisplay();
-                if (coupon.oneTimeUse) {
-                    await db.collection("coupons").doc(couponSnap.docs[0].id).update({
-                        usedBy: firebase.firestore.FieldValue.arrayUnion(currentUser.uid)
-                    });
-                }
+
+                // *** FIX: IMMER in usedBy eintragen – unabhängig von oneTimeUse ***
+                // Dadurch erscheint der User in der Admin-History
+                await db.collection("coupons").doc(couponDocRef.id).update({
+                    usedBy: firebase.firestore.FieldValue.arrayUnion(currentUser.uid)
+                });
                 return;
             }
+            // Lokale LOYAL-Codes prüfen
             const d = VALID_DISCOUNTS[input];
             if (!d) {
                 status.innerHTML = `<span class="text-red-400">Ungültiger Code</span>`;
@@ -1065,6 +1068,7 @@
                 updateCartDisplay();
             }
         }
+
         function checkAndAutoRedeemLoyalty() {
             for (let r of REWARDS) {
                 if (loyaltyPoints >= r.points && !appliedDiscount) {
@@ -1131,13 +1135,10 @@
         }
         // ====================== PRODUCTS & CART ======================
         let productsUnsubscribe = null;
-
         function loadProducts() {
             const container = document.getElementById("products-grid");
             container.innerHTML = `<p class="col-span-full text-center py-16 text-gray-400 flex items-center justify-center gap-3"><i class="fa-solid fa-spinner animate-spin text-2xl"></i> Produkte werden live aus deinem Admin-Panel geladen...</p>`;
-
             if (productsUnsubscribe) productsUnsubscribe();
-
             productsUnsubscribe = db.collection("products").onSnapshot(snap => {
                 allProducts = [];
                 snap.forEach(doc => {
@@ -1160,7 +1161,6 @@
                 showToast("✅ Produkte live aktualisiert");
             });
         }
-
         function getSortPriority(p) {
             if (currentCategoryFilter !== "Alle") return p.available ? 0 : 1;
             if (p.category === "WaveVapes Tornado 30000") return p.available ? 4 : 5;
@@ -1473,7 +1473,7 @@
             document.getElementById("success-order-id").textContent = orderNumber;
             document.getElementById("success-loyalty-info").innerHTML =
                 `<span class="text-emerald-400">+${loyaltyEarned} Punkte!</span><br>
-                 <span class="text-amber-300 text-sm">werden gutgeschrieben, sobald die Bestellung auf „Wird bearbeitet“ steht</span>`;
+                 <span class="text-amber-300 text-sm">werden gutgeschrieben, sobald die Bestellung auf „Wird bearbeitet" steht</span>`;
             document.getElementById("bank-payment-info").innerHTML = `
                 <div class="space-y-3">
                     <div><strong>Bank:</strong> ${BANK_NAME}</div>
@@ -1883,8 +1883,6 @@
             listenForNewOrders();
         }
         window.onload = initialize;
-
-        // Cleanup beim Verlassen der Seite
         window.addEventListener('beforeunload', () => {
             if (productsUnsubscribe) productsUnsubscribe();
         });

@@ -10,9 +10,9 @@
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-    <!-- Cloudinary Upload Widget (schnell & stabil) -->
-    <script src="https://upload-widget.cloudinary.com/global/all.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
+    <!-- Cloudinary Upload Widget – jetzt mit deinem echten Cloud Name -->
+    <script src="https://upload-widget.cloudinary.com/global/all.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
@@ -484,11 +484,10 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 const storage = firebase.storage();
-// ====================== CLOUDINARY CONFIG ======================
+// ====================== CLOUDINARY CONFIG (DEIN ECHTER ACCOUNT) ======================
 let cloudinaryWidget = null;
 let selectedCloudinaryUrl = null;
-let selectedEditCloudinaryUrl = null;
-const CLOUD_NAME = "wavevapes"; // ← Dein Cloudinary Cloud Name (ändere hier falls anders)
+const CLOUD_NAME = "dbbkmjsr5";
 const UPLOAD_PRESET = "wavevapes_products";
 // ====================== GLOBALE VARIABLEN ======================
 let currentEditId = null;
@@ -528,7 +527,7 @@ function showToast(msg, type = 'success') {
     document.getElementById('toast-container').appendChild(toast);
     setTimeout(() => toast.remove(), 4000);
 }
-// ====================== CLOUDINARY WIDGET INIT ======================
+// ====================== CLOUDINARY WIDGET ======================
 function initCloudinaryWidget() {
     cloudinaryWidget = cloudinary.createUploadWidget({
         cloudName: CLOUD_NAME,
@@ -544,27 +543,17 @@ function initCloudinaryWidget() {
         if (!error && result && result.event === "success") {
             selectedCloudinaryUrl = result.info.secure_url;
             document.getElementById("cloudinary-filename").innerHTML = 
-                `✅ ${result.info.original_filename} <span class="text-emerald-400">(hochgeladen in Cloudinary)</span>`;
+                `✅ ${result.info.original_filename} <span class="text-emerald-400">(hochgeladen)</span>`;
             showToast("✅ Bild erfolgreich hochgeladen!", "success");
         }
     });
 }
-// ====================== DROPZONE CLICK ======================
+// ====================== DROPZONE ======================
 document.addEventListener("DOMContentLoaded", () => {
     const drop = document.getElementById("cloudinary-dropzone");
     if (drop) {
         drop.addEventListener("click", () => {
             if (cloudinaryWidget) cloudinaryWidget.open();
-        });
-        drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add('dropzone-active'); });
-        drop.addEventListener("dragleave", () => drop.classList.remove('dropzone-active'));
-        drop.addEventListener("drop", e => {
-            e.preventDefault();
-            drop.classList.remove('dropzone-active');
-            if (e.dataTransfer.files.length > 0) {
-                // Cloudinary Widget kann Dateien direkt handhaben – wir öffnen es
-                cloudinaryWidget.open();
-            }
         });
     }
 });
@@ -642,7 +631,7 @@ function toggleSelectAllProducts(cb) {
     document.querySelectorAll('#products-tbody input[type="checkbox"]').forEach(c => c.checked = cb.checked);
     updateSelectedProductIds();
 }
-// ====================== ADD PRODUCT MIT CLOUDINARY ======================
+// ====================== ADD FORM – CLOUDINARY ======================
 function attachAddFormListener() {
     const form = document.getElementById('add-form');
     const submitBtn = document.getElementById('submit-btn');
@@ -672,7 +661,7 @@ function attachAddFormListener() {
                 sold: 0
             };
             await db.collection('products').add(newProduct);
-            await logAction("product_created", name, { imageUploaded: true, cloudinaryUrl: selectedCloudinaryUrl });
+            await logAction("product_created", name, { image: selectedCloudinaryUrl });
             showToast("✅ Produkt + Bild gespeichert!", "success");
             form.reset();
             selectedCloudinaryUrl = null;
@@ -680,7 +669,7 @@ function attachAddFormListener() {
             loadProducts();
         } catch (err) {
             console.error(err);
-            showToast("❌ Fehler: " + err.message, "error");
+            alert("Fehler: " + err.message);
         } finally {
             submitBtn.disabled = false;
             submitBtn.innerHTML = 'Produkt speichern';
@@ -776,9 +765,8 @@ function seedDefaultCategories() {
     showToast('✅ Standard-Kategorien angelegt!');
 }
 function populateCategorySelects() {
-    const selects = document.querySelectorAll('#prod-category, #bulk-category');
+    const selects = document.querySelectorAll('#prod-category');
     selects.forEach(select => {
-        if (!select) return;
         const currentValue = select.value;
         select.innerHTML = '<option value="">Kategorie wählen...</option>';
         allCategories.forEach(c => {
@@ -792,7 +780,6 @@ function populateCategorySelects() {
 }
 function populateAdminCategoryFilter() {
     const select = document.getElementById('admin-category-filter');
-    if (!select) return;
     select.innerHTML = '<option value="Alle">Alle Kategorien</option>';
     allCategories.forEach(cat => {
         const opt = document.createElement('option');
@@ -1501,7 +1488,7 @@ async function logout() {
     await auth.signOut();
     window.location.href = "index.html";
 }
-// ====================== PRODUCT EDIT MODAL ======================
+// ====================== PRODUCT EDIT MODAL (Cloudinary) ======================
 async function openEditModal(id) {
     currentEditId = id;
     const doc = await db.collection('products').doc(id).get();
@@ -1580,7 +1567,7 @@ function initEditCloudinaryDropzone() {
 }
 async function removeImageInEdit() {
     if (!confirm("Bild wirklich dauerhaft entfernen?")) return;
-    selectedEditCloudinaryUrl = null;
+    selectedCloudinaryUrl = null;
     const preview = document.getElementById('current-image-preview');
     if (preview) preview.style.display = 'none';
     showToast("Bild wird beim Speichern entfernt", "success");
@@ -1588,13 +1575,11 @@ async function removeImageInEdit() {
 function closeEditModal() {
     document.getElementById('edit-modal').classList.add('hidden');
     currentEditId = null;
-    selectedEditCloudinaryUrl = null;
 }
 async function saveProductEdit() {
     if (!currentEditId) return;
     const name = document.getElementById('edit-name').value.trim();
     if (!name) return alert("Name erforderlich!");
-    let imageUrl = null;
     const updateData = {
         name,
         price: parseFloat(document.getElementById('edit-price').value) || 7.99,
@@ -1606,10 +1591,8 @@ async function saveProductEdit() {
         hasNicotine: document.getElementById('edit-nicotine').checked,
         description: document.getElementById('edit-description').value.trim()
     };
-    if (selectedEditCloudinaryUrl) {
-        updateData.image = selectedEditCloudinaryUrl;
-    } else if (selectedEditCloudinaryUrl === null) {
-        updateData.image = null;
+    if (selectedCloudinaryUrl) {
+        updateData.image = selectedCloudinaryUrl;
     }
     await db.collection('products').doc(currentEditId).update(updateData);
     await logAction("product_updated", name);

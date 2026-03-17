@@ -70,9 +70,7 @@
             <div onclick="switchTab(6)" id="sidebar-6" class="sidebar-item flex items-center gap-3 px-6 py-4 rounded-2xl cursor-pointer"><i class="fa-solid fa-list-check"></i><span>Admin Logs</span></div>
             <div onclick="switchTab(7)" id="sidebar-7" class="sidebar-item flex items-center gap-3 px-6 py-4 rounded-2xl cursor-pointer"><i class="fa-solid fa-cog"></i><span>Settings</span></div>
             <div onclick="switchTab(8)" id="sidebar-8" class="sidebar-item flex items-center gap-3 px-6 py-4 rounded-2xl cursor-pointer"><i class="fa-solid fa-sort"></i><span>Sortierung</span></div>
-            <!-- NEU: Tab 9 Live Online -->
             <div onclick="switchTab(9)" id="sidebar-9" class="sidebar-item flex items-center gap-3 px-6 py-4 rounded-2xl cursor-pointer"><i class="fa-solid fa-users-viewfinder"></i><span>Live Online</span></div>
-            <!-- NEU: Tab 10 Erweiterte Benutzerverwaltung -->
             <div onclick="switchTab(10)" id="sidebar-10" class="sidebar-item flex items-center gap-3 px-6 py-4 rounded-2xl cursor-pointer bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold"><i class="fa-solid fa-users-cog"></i><span>Erweiterte Benutzerverwaltung</span></div>
         </div>
     </div>
@@ -370,7 +368,7 @@
             </div>
         </div>
 
-        <!-- TAB 9: LIVE ONLINE (NEU) -->
+        <!-- TAB 9: LIVE ONLINE -->
         <div id="tab-content-9" class="hidden">
             <div class="card overflow-hidden">
                 <div class="p-6 border-b border-white/10 flex items-center justify-between">
@@ -386,7 +384,7 @@
             </div>
         </div>
 
-        <!-- TAB 10: ERWEITERTE BENUTZERVERWALTUNG (NEU) -->
+        <!-- TAB 10: ERWEITERTE BENUTZERVERWALTUNG -->
         <div id="tab-content-10" class="hidden">
             <div class="card p-8">
                 <h2 class="text-3xl font-bold mb-6 flex items-center gap-3"><i class="fa-solid fa-users-cog"></i> Erweiterte Benutzerverwaltung</h2>
@@ -427,11 +425,11 @@
 
     </div>
 </div>
-<!-- EDIT MODAL (wird auch für Coupon-History verwendet) -->
+<!-- EDIT MODAL -->
 <div id="edit-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]"></div>
 <!-- ORDER MODAL -->
 <div id="order-modal-container"></div>
-<!-- EXTENDED USER EDIT MODAL (NEU) -->
+<!-- EXTENDED USER EDIT MODAL -->
 <div id="extended-user-edit-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]"></div>
 <!-- TOAST -->
 <div id="toast-container" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[99999] flex flex-col gap-3"></div>
@@ -468,7 +466,6 @@ let adminSortDirection = 'asc';
 let adminCategoryFilter = 'Alle';
 let adminStatusFilter = '';
 let selectedProductIds = [];
-// NEU: Erweiterte Benutzerverwaltung + Live Online
 let extendedUsers = [];
 let selectedExtendedUserIds = [];
 let presenceRefreshInterval = null;
@@ -1064,7 +1061,7 @@ function populateAdminCategoryFilter() {
         select.appendChild(opt);
     });
 }
-// ====================== GUTSCHEINE + COUPON-NUTZUNGS-HISTORY ======================
+// ====================== GUTSCHEINE + COUPON-NUTZUNGS-HISTORY (FIXED) ======================
 document.getElementById('add-coupon-form').addEventListener('submit', async e => {
     e.preventDefault();
     const code = document.getElementById('coupon-code').value.trim().toUpperCase();
@@ -1096,28 +1093,42 @@ function renderCouponsTable() {
             <td class="py-4 px-6 text-center ${expired ? 'text-red-400' : ''}">${c.expiresAt.toDate().toLocaleDateString('de-DE')}</td>
             <td class="py-4 px-6 text-center font-bold text-emerald-400">${usageCount} / ${c.oneTimeUse ? '1' : '∞'}</td>
             <td class="py-4 px-6 text-right space-x-3">
-                <button onclick="showCouponHistory('${c.id}')" class="text-cyan-400 hover:text-white flex items-center gap-1"><i class="fa-solid fa-history"></i> History</button>
+                <button onclick="showCouponHistory('${c.id}')" class="text-cyan-400 hover:text-white text-sm flex items-center gap-1 inline-flex"><i class="fa-solid fa-history"></i> History</button>
                 <button onclick="deleteCoupon('${c.id}')" class="text-red-400 hover:text-white"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>`;
     });
     tbody.innerHTML = html || `<tr><td colspan="5" class="text-center py-16 text-gray-400">Noch keine Gutscheine</td></tr>`;
 }
+// ====================== FIXED: showCouponHistory ======================
 async function showCouponHistory(couponId) {
-    const doc = await db.collection('coupons').doc(couponId).get();
-    if (!doc.exists) return showToast("Gutschein nicht gefunden", "error");
-    const coupon = doc.data();
+    const couponDoc = await db.collection('coupons').doc(couponId).get();
+    if (!couponDoc.exists) return showToast("Gutschein nicht gefunden", "error");
+    const coupon = couponDoc.data();
     let listHTML = '';
     if (coupon.usedBy && coupon.usedBy.length > 0) {
         for (let uid of coupon.usedBy) {
+            let email = uid;
+            let username = '—';
             try {
                 const userDoc = await db.collection('users').doc(uid).get();
-                const user = userDoc.exists ? userDoc.data() : {};
-                const email = user.email || uid;
-                listHTML += `<div class="bg-zinc-950 border border-white/10 rounded-2xl p-5 mb-3 flex justify-between items-center"><div><div class="font-medium text-white">${email}</div><div class="text-xs text-gray-400">UID: ${uid}</div></div><div class="text-right"><span class="text-emerald-400 text-xs">verwendet</span></div></div>`;
-            } catch(e) {
-                listHTML += `<div class="bg-zinc-950 border border-white/10 rounded-2xl p-5 mb-3">UID: ${uid} (User nicht gefunden)</div>`;
+                if (userDoc.exists) {
+                    const userData = userDoc.data();
+                    email = userData.email || uid;
+                    username = userData.username || '—';
+                }
+            } catch(err) {
+                console.warn("User nicht gefunden:", uid, err);
             }
+            listHTML += `
+                <div class="bg-zinc-950 border border-white/10 rounded-2xl p-5 mb-3 flex justify-between items-center">
+                    <div>
+                        <div class="font-medium text-white">${email}</div>
+                        <div class="text-xs text-gray-400 mt-1">Username: ${username}</div>
+                        <div class="text-xs text-gray-500 mt-1">UID: ${uid}</div>
+                    </div>
+                    <span class="text-emerald-400 text-xs font-bold px-3 py-1 bg-emerald-400/10 rounded-xl">eingelöst ✓</span>
+                </div>`;
         }
     } else {
         listHTML = `<p class="text-center py-12 text-gray-400">Dieser Gutschein wurde noch von niemandem eingelöst.</p>`;
@@ -1128,6 +1139,11 @@ async function showCouponHistory(couponId) {
             <div class="flex justify-between items-center mb-6">
                 <h3 class="text-3xl font-bold neon">Nutzungs-History: <span class="text-amber-400">${coupon.code}</span></h3>
                 <button onclick="closeEditModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
+            </div>
+            <div class="mb-4 text-sm text-gray-400 flex gap-4">
+                <span>Typ: <span class="text-white font-medium">${coupon.type === 'percent' ? coupon.value + '%' : coupon.value + ' €'}</span></span>
+                <span>Ablauf: <span class="text-white font-medium">${coupon.expiresAt.toDate().toLocaleDateString('de-DE')}</span></span>
+                <span>Eingelöst: <span class="text-emerald-400 font-bold">${coupon.usedBy ? coupon.usedBy.length : 0}×</span></span>
             </div>
             <div class="space-y-3">${listHTML}</div>
         </div>
@@ -1276,7 +1292,7 @@ function loadUsers() {
                 <td class="py-5 px-6 text-center font-mono text-cyan-300">${refCode}</td>
                 <td class="py-5 px-6 text-center font-bold text-emerald-400">${points}</td>
                 <td class="py-5 px-6 text-center"><input type="checkbox" ${freeShipping ? 'checked' : ''} onchange="toggleFreeShipping('${doc.id}', this.checked)" class="accent-emerald-400 w-5 h-5 cursor-pointer"></td>
-                <td class="py-5 px-6 text-center"><span class="status-badge ${disabled ? 'disabled' : 'bg-emerald-600 text-white'}">${disabled ? 'GESPERRT' : 'AKTIV'}</span></td>
+                <td class="py-5 px-6 text-center"><span class="status-badge ${disabled ? 'status-Storniert' : 'bg-emerald-600 text-white'}">${disabled ? 'GESPERRT' : 'AKTIV'}</span></td>
                 <td class="py-5 px-6 text-right space-x-3">
                     <button onclick="resetPassword('${email}')" class="text-amber-400 hover:text-amber-300 text-sm font-medium">PW zurücksetzen</button>
                     <button onclick="resetUserPoints('${doc.id}')" class="text-red-400 hover:text-red-300 text-sm font-medium">Punkte resetten</button>
@@ -1393,24 +1409,24 @@ async function loadAnalytics() {
 }
 async function generatePDFReport() {
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    doc.setFontSize(22); doc.text("WaveVapes Monatsbericht", 20, 20);
-    doc.setFontSize(11); doc.text(`Erstellt am: ${new Date().toLocaleDateString("de-DE")} ${new Date().toLocaleTimeString("de-DE")}`, 20, 30);
+    const pdfDoc = new jsPDF();
+    pdfDoc.setFontSize(22); pdfDoc.text("WaveVapes Monatsbericht", 20, 20);
+    pdfDoc.setFontSize(11); pdfDoc.text(`Erstellt am: ${new Date().toLocaleDateString("de-DE")} ${new Date().toLocaleTimeString("de-DE")}`, 20, 30);
     const thirtyDaysAgo = firebase.firestore.Timestamp.fromDate(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
     const ordersSnap = await db.collection("orders").where("date", ">=", thirtyDaysAgo).get();
     let totalRevenue = 0, orderCount = 0;
     const productMap = new Map();
     ordersSnap.forEach(doc => { const o = doc.data(); totalRevenue += o.total || 0; orderCount++; o.items.forEach(item => productMap.set(item.name, (productMap.get(item.name) || 0) + item.qty)); });
     const topProducts = Array.from(productMap.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5);
-    doc.setFontSize(14); doc.text("Zusammenfassung letzte 30 Tage", 20, 45);
-    doc.setFontSize(11); doc.text(`Gesamtumsatz: ${totalRevenue.toFixed(2)} €`, 20, 55); doc.text(`Anzahl Bestellungen: ${orderCount}`, 20, 62); doc.text("Top 5 Produkte:", 20, 75);
+    pdfDoc.setFontSize(14); pdfDoc.text("Zusammenfassung letzte 30 Tage", 20, 45);
+    pdfDoc.setFontSize(11); pdfDoc.text(`Gesamtumsatz: ${totalRevenue.toFixed(2)} €`, 20, 55); pdfDoc.text(`Anzahl Bestellungen: ${orderCount}`, 20, 62); pdfDoc.text("Top 5 Produkte:", 20, 75);
     let y = 82;
-    topProducts.forEach(([name, qty]) => { doc.text(`${name}: ${qty} Stück`, 25, y); y += 7; });
+    topProducts.forEach(([name, qty]) => { pdfDoc.text(`${name}: ${qty} Stück`, 25, y); y += 7; });
     const usersSnap = await db.collection("users").orderBy("referralCount", "desc").limit(10).get();
-    doc.text("Top Referrer:", 20, y + 10); y += 17;
-    usersSnap.forEach(doc => { const u = doc.data(); doc.text(`${u.username || u.email.split("@")[0]} – ${u.referralCount || 0} Freunde geworben`, 25, y); y += 7; });
-    doc.setFontSize(10); doc.text("Bericht erstellt mit WaveVapes Admin Panel v2.0", 20, 280);
-    doc.save(`wavevapes-monatsbericht_${new Date().toISOString().slice(0,10)}.pdf`);
+    pdfDoc.text("Top Referrer:", 20, y + 10); y += 17;
+    usersSnap.forEach(doc => { const u = doc.data(); pdfDoc.text(`${u.username || u.email.split("@")[0]} – ${u.referralCount || 0} Freunde geworben`, 25, y); y += 7; });
+    pdfDoc.setFontSize(10); pdfDoc.text("Bericht erstellt mit WaveVapes Admin Panel v2.0", 20, 280);
+    pdfDoc.save(`wavevapes-monatsbericht_${new Date().toISOString().slice(0,10)}.pdf`);
     await logAction("monthly_report_generated");
     showToast("✅ Vollständiger Monatsbericht als PDF heruntergeladen!", "success");
 }
@@ -1605,8 +1621,7 @@ function showToast(msg, type = 'success') {
     document.getElementById('toast-container').appendChild(toast);
     setTimeout(() => toast.remove(), 3500);
 }
-
-// ====================== NEU: LIVE ONLINE (PRESENCE) ======================
+// ====================== LIVE ONLINE (PRESENCE) ======================
 function loadPresence() {
     const container = document.getElementById("presence-list");
     container.innerHTML = '<p class="text-center py-8 text-gray-400">Lade Live-Besucher...</p>';
@@ -1655,8 +1670,7 @@ async function cleanupOldPresence() {
     await batch.commit();
     showToast(`✅ ${deleted} alte Einträge gelöscht`, "success");
 }
-
-// ====================== NEU: ERWEITERTE BENUTZERVERWALTUNG ======================
+// ====================== ERWEITERTE BENUTZERVERWALTUNG ======================
 async function loadExtendedUsers() {
     db.collection('users').onSnapshot(async snap => {
         extendedUsers = [];
@@ -1779,7 +1793,6 @@ async function saveExtendedUser(uid) {
     closeExtendedUserModal();
     showToast('✅ User erfolgreich gespeichert!', 'success');
 }
-
 // ====================== SIDEBAR & TABS ======================
 function switchTab(n) {
     document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('tab-active'));
@@ -1789,7 +1802,6 @@ function switchTab(n) {
     if (n === 5) loadAnalytics();
     if (n === 6) loadAdminLogs();
     if (n === 8) loadProductOrder();
-    // NEU: Tab 9 & 10
     if (n === 9) {
         loadPresence();
         if (presenceRefreshInterval) clearInterval(presenceRefreshInterval);

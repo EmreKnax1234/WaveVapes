@@ -639,8 +639,6 @@
         let userHasFreeShipping = false;
         let productOrder = [];
         let pendingNicotine = {};
-     
-        // ==================== NEU: ECHTE LIVE ONLINE ZÄHLUNG (Gäste + User) ====================
         let sessionId = localStorage.getItem("wavevapes_sessionId");
         if (!sessionId) {
             sessionId = "guest_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
@@ -846,18 +844,15 @@
             updateUserDisplay();
             if (user) {
                 const userRef = db.collection("users").doc(user.uid);
-                // === LIVE SPERR-CHECK (sofort ausloggen) ===
                 if (userSnapshotUnsubscribe) userSnapshotUnsubscribe();
                 userSnapshotUnsubscribe = userRef.onSnapshot(async doc => {
                     if (!doc.exists) return;
                     const data = doc.data();
-                    // PERMANENT BAN + LIVE LOGOUT
                     if (data.disabled === true) {
                         await auth.signOut();
                         showToast("❌ Dein Account wurde permanent gesperrt.", "error");
                         return;
                     }
-                    // normale Syncs
                     loyaltyPoints = data.totalBonusPoints || 0;
                     userHasFreeShipping = data.freeShipping === true;
                     updateLoyaltyDisplay();
@@ -868,13 +863,10 @@
                 await loadUserCart();
                 loadUserOrders();
                 updatePresence();
-                // === IP SPEICHERN + BAN-CHECK ===
                 try {
                     const ipRes = await fetch('https://api.ipify.org?format=json');
                     const { ip } = await ipRes.json();
-                    // IP im User-Doc speichern
                     await userRef.set({ lastIp: ip }, { merge: true });
-                    // Prüfen ob IP global gebannt ist
                     const bannedSnap = await db.collection("banned_ips").where("ip", "==", ip).get();
                     if (!bannedSnap.empty) {
                         await auth.signOut();
@@ -1126,29 +1118,29 @@
             }
             return total;
         }
-        // ====================== FIX: GRATIS VERSAND AB 100 € WARENWERT (VOR RABATT) ======================
         function getShippingCost() {
             if (userHasFreeShipping) return 0;
-            
-            // RAW Warenwert VOR Rabatten und 4-für-3 (das war der Bug!)
             const rawSubtotal = cart.reduce((sum, item) => {
                 if (item.id === MYSTERY_ID) return sum;
                 return sum + item.qty * (item.price || 7.99);
             }, 0);
-            
             return rawSubtotal >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_COST;
         }
         function calculateCartTotal() {
             return getProductTotal() + getShippingCost();
         }
         // ====================== PRODUCTS & CART ======================
-        async function loadProducts() {
+        let productsUnsubscribe = null;
+
+        function loadProducts() {
             const container = document.getElementById("products-grid");
             container.innerHTML = `<p class="col-span-full text-center py-16 text-gray-400 flex items-center justify-center gap-3"><i class="fa-solid fa-spinner animate-spin text-2xl"></i> Produkte werden live aus deinem Admin-Panel geladen...</p>`;
-            try {
-                const snapshot = await db.collection("products").get();
+
+            if (productsUnsubscribe) productsUnsubscribe();
+
+            productsUnsubscribe = db.collection("products").onSnapshot(snap => {
                 allProducts = [];
-                snapshot.forEach(doc => {
+                snap.forEach(doc => {
                     const data = doc.data();
                     allProducts.push({
                         id: doc.id,
@@ -1165,12 +1157,10 @@
                     });
                 });
                 renderProducts();
-                showToast("✅ Produkte aus Firestore geladen");
-            } catch (e) {
-                console.error(e);
-                showToast("⚠️ Firestore nicht erreichbar – prüfe Admin-Panel");
-            }
+                showToast("✅ Produkte live aktualisiert");
+            });
         }
+
         function getSortPriority(p) {
             if (currentCategoryFilter !== "Alle") return p.available ? 0 : 1;
             if (p.category === "WaveVapes Tornado 30000") return p.available ? 4 : 5;
@@ -1302,7 +1292,6 @@
                 showNextNotification();
             }, 5000);
         }
-        // ====================== UPDATECARTDISPLAY ======================
         function updateCartDisplay() {
             const countEl = document.getElementById("cart-count-badge");
             const totalEl = document.getElementById("cart-total-price");
@@ -1424,7 +1413,6 @@
             const dateStr = now.getFullYear().toString().slice(2) + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0');
             return `WV-${dateStr}-${Math.floor(1000 + Math.random() * 9000)}`;
         }
-        // ====================== PLACEORDER ======================
         async function placeOrder() {
             if (!currentUser) {
                 alert("Bitte melde dich zuerst an!");
@@ -1473,7 +1461,7 @@
                 pendingNicotine = {};
                 await saveUserCart();
                 showSuccessModal(orderNumber, finalTotal, loyaltyEarned);
-                await loadProducts();
+                loadProducts();
                 updateCartDisplay();
                 renderProducts();
                 toggleCart();
@@ -1481,7 +1469,6 @@
                 alert("Fehler beim Speichern: " + e.message);
             }
         }
-        // ====================== SUCCESS MODAL ======================
         function showSuccessModal(orderNumber, total, loyaltyEarned) {
             document.getElementById("success-order-id").textContent = orderNumber;
             document.getElementById("success-loyalty-info").innerHTML =
@@ -1669,20 +1656,17 @@
             setInterval(showNextNotification, NOTIFICATION_DURATION);
             setInterval(checkAndGenerateNotifications, 60000);
         }
-        // ====================== DYNAMISCHE KATEGORIEN ======================
         async function renderCategoryTabs() {
             const snap = await db.collection("categories").orderBy("order").get();
             let html = `<button onclick="setCategoryFilter('Alle')" class="px-5 py-2 transition ${currentCategoryFilter === 'Alle' ? 'tab-active' : ''}">Alle</button>`;
             snap.forEach(doc => {
                 const c = doc.data();
                 const active = currentCategoryFilter === c.name ? 'tab-active' : '';
-        
                 let extra = '';
                 if (c.special === true) {
                     const badgeText = c.specialText || "4 FÜR 3";
                     extra = ` <span class="bg-amber-400 text-black text-xs font-black px-4 py-1 rounded-2xl">${badgeText}</span> <i class="fa-solid fa-bolt animate-bolt text-2xl"></i>`;
                 }
-        
                 html += `<button onclick="setCategoryFilter('${c.name}')" class="px-5 py-2 transition ${active}">${c.name}${extra}</button>`;
             });
             document.getElementById("category-tabs").innerHTML = html;
@@ -1726,7 +1710,6 @@
         function filterProducts() {
             renderProducts();
         }
-        // ====================== PRODUKT DETAIL MODAL ======================
         function showProductDetail(id) {
             const product = allProducts.find(p => p.id === id);
             if (!product) return;
@@ -1750,19 +1733,16 @@
                 : (isVape ? '35,99 €' : '10,99 €');
             const html = `
                 <div class="modal-inner bg-zinc-900 rounded-3xl overflow-hidden">
-                    <!-- Close Button -->
                     <div class="flex justify-end p-6 border-b border-white/10">
                         <button onclick="closeProductDetail()" class="text-4xl text-gray-400 hover:text-white transition">✕</button>
                     </div>
                     <div class="p-6 sm:p-10">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
-                            <!-- Bild -->
                             <div class="flex justify-center items-center bg-black/30 rounded-3xl p-4">
                                 ${product.image
                                     ? `<img src="${product.image}" alt="${product.name}" loading="eager">`
                                     : `<div class="text-8xl">🧪</div>`}
                             </div>
-                            <!-- Inhalt -->
                             <div class="flex flex-col">
                                 <div class="flex items-center justify-between">
                                     <h2 class="neon-text">${product.name}</h2>
@@ -1777,7 +1757,6 @@
                                 </div>
                                 ${stockHTML}
                                 ${nicotineHTML}
-                                <!-- Menge + Button -->
                                 <div class="mt-auto pt-8 flex flex-col gap-4">
                                     <button onclick="addFromDetail('${product.id}')"
                                             class="w-full bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-6 rounded-3xl text-2xl hover:scale-[1.03] transition-all shadow-xl">
@@ -1849,20 +1828,16 @@
                 </div>`;
             }
         });
-        // ====================== PRODUCT ORDER SYNC ======================
         db.collection('settings').doc('product_order').onSnapshot(doc => {
             if (doc.exists) {
                 productOrder = doc.data().order || [];
                 renderProducts();
             }
         });
-        // ====================== RABATTFELD FIX ======================
         function clearDiscountField() {
             const field = document.getElementById("discount-input");
             if (field) field.value = "";
         }
-        // ====================== LIVE FEATURES ======================
-        // ECHTE LIVE PRESENCE (Gäste + User)
         function updatePresence() {
             const docId = currentUser ? currentUser.uid : sessionId;
             db.collection("presence").doc(docId).set({
@@ -1876,7 +1851,6 @@
                 isGuest: !currentUser
             }, { merge: true });
         }
-        // Live New Order Toast
         let lastOrderTimestamp = 0;
         function listenForNewOrders() {
             db.collection("orders").orderBy("date", "desc").limit(1).onSnapshot(snap => {
@@ -1891,24 +1865,6 @@
                 });
             });
         }
-        // Live Today Stats
-        function loadTodayStats() {
-            const todayStart = new Date();
-            todayStart.setHours(0, 0, 0, 0);
-            const startTimestamp = firebase.firestore.Timestamp.fromDate(todayStart);
-            db.collection("orders").where("date", ">=", startTimestamp).onSnapshot(snap => {
-                let revenue = 0;
-                let units = 0;
-                snap.forEach(doc => {
-                    const o = doc.data();
-                    revenue += o.total || 0;
-                    (o.items || []).forEach(item => units += (item.qty || 0));
-                });
-                document.getElementById("today-units").textContent = units;
-                document.getElementById("today-revenue").textContent = revenue.toFixed(0) + " €";
-            });
-        }
-        // ====================== INITIALISIERUNG ======================
         function initialize() {
             initEmailJS();
             if (!localStorage.getItem("age_verified")) showAgeModal();
@@ -1922,13 +1878,16 @@
             startNotificationCycle();
             checkAndAutoRedeemLoyalty();
             clearDiscountField();
-            // LIVE FEATURES START
             updatePresence();
             setInterval(updatePresence, 30000);
             listenForNewOrders();
-            loadTodayStats();
         }
         window.onload = initialize;
+
+        // Cleanup beim Verlassen der Seite
+        window.addEventListener('beforeunload', () => {
+            if (productsUnsubscribe) productsUnsubscribe();
+        });
     </script>
 </body>
 </html>

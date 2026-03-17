@@ -1827,13 +1827,86 @@ async function logout() {
     }
 }
 // ====================== AUTH ======================
+function showAccessDenied(reason) {
+    document.body.innerHTML = `
+    <div class="fixed inset-0 flex items-center justify-center z-[99999]"
+         style="background: linear-gradient(135deg, #0a0a0a, #1e0a0a, #0a0a0a);">
+        <div style="
+            background: #18181b;
+            border: 1px solid rgba(239,68,68,0.4);
+            border-radius: 2rem;
+            padding: 3rem;
+            max-width: 480px;
+            width: 90%;
+            text-align: center;
+            animation: pop 0.4s cubic-bezier(0.34,1.56,0.64,1);
+        ">
+            <style>@keyframes pop { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }</style>
+            <div style="
+                width: 96px; height: 96px;
+                background: rgba(239,68,68,0.1);
+                border-radius: 50%;
+                display: flex; align-items: center; justify-content: center;
+                margin: 0 auto 1.5rem;
+                font-size: 3rem;
+            ">🚫</div>
+            <h1 style="
+                font-family: 'Orbitron', sans-serif;
+                font-size: 2rem;
+                font-weight: 700;
+                color: #ef4444;
+                text-shadow: 0 0 20px #ef4444;
+                margin-bottom: 0.75rem;
+            ">ZUGRIFF VERWEIGERT</h1>
+            <p style="color: #fca5a5; font-size: 1rem; margin-bottom: 0.5rem;">
+                ${reason === 'not-logged-in'
+                    ? 'Du bist nicht angemeldet.'
+                    : 'Dein Account hat keine Administrator-Berechtigung.'}
+            </p>
+            <p style="color: #71717a; font-size: 0.8rem; margin-bottom: 2rem;">
+                ${reason === 'not-logged-in'
+                    ? 'Nur autorisierte Administratoren dürfen diesen Bereich betreten.'
+                    : 'Dieser Bereich ist ausschließlich für WaveVapes-Administratoren zugänglich.'}
+            </p>
+            <div style="
+                background: rgba(239,68,68,0.08);
+                border: 1px solid rgba(239,68,68,0.2);
+                border-radius: 1rem;
+                padding: 1rem;
+                margin-bottom: 2rem;
+                font-size: 0.75rem;
+                color: #9ca3af;
+            ">
+                <i class="fa-solid fa-triangle-exclamation" style="color: #f59e0b; margin-right: 6px;"></i>
+                Unbefugte Zugriffsversuche werden protokolliert.
+            </div>
+            <a href="index.html" style="
+                display: inline-block;
+                background: linear-gradient(135deg, #ef4444, #dc2626);
+                color: white;
+                font-weight: 700;
+                padding: 0.9rem 2.5rem;
+                border-radius: 9999px;
+                text-decoration: none;
+                font-size: 0.95rem;
+                transition: opacity 0.2s;
+            " onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+                ← Zurück zum Shop
+            </a>
+        </div>
+    </div>`;
+}
+
 auth.onAuthStateChanged(async (user) => {
-    if (!user) return window.location.href = 'index.html';
+    if (!user) {
+        showAccessDenied('not-logged-in');
+        return;
+    }
     document.getElementById('admin-email').textContent = user.email;
     const userDoc = await db.collection('users').doc(user.uid).get();
     if (!userDoc.exists || userDoc.data().role !== 'admin') {
-        alert("Zugriff verweigert – du bist kein Administrator.");
-        window.location.href = 'index.html';
+        await auth.signOut();
+        showAccessDenied('not-admin');
         return;
     }
     loadSettings();

@@ -367,7 +367,6 @@
                 <button onclick="saveProductOrder()" class="mt-10 w-full bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-6 rounded-3xl text-xl hover:scale-105 transition">✅ Sortierung speichern & live übernehmen</button>
             </div>
         </div>
-
         <!-- TAB 9: LIVE ONLINE -->
         <div id="tab-content-9" class="hidden">
             <div class="card overflow-hidden">
@@ -383,7 +382,6 @@
                 </div>
             </div>
         </div>
-
         <!-- TAB 10: ERWEITERTE BENUTZERVERWALTUNG -->
         <div id="tab-content-10" class="hidden">
             <div class="card p-8">
@@ -422,7 +420,6 @@
                 </div>
             </div>
         </div>
-
     </div>
 </div>
 <!-- EDIT MODAL -->
@@ -1069,7 +1066,7 @@ document.getElementById('add-coupon-form').addEventListener('submit', async e =>
     const value = parseFloat(document.getElementById('coupon-value').value);
     const expiry = new Date(document.getElementById('coupon-expiry').value);
     const oneTime = document.getElementById('coupon-onetime').checked;
-    await db.collection('coupons').add({ code, type, value, expiresAt: firebase.firestore.Timestamp.fromDate(expiry), oneTimeUse: oneTime, usedBy: [], createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    await db.collection('coupons').add({ code, type, value, expiresAt: firebase.firestore.Timestamp.fromDate(expiry), oneTimeUse: oneTime, usedBy: [], totalUsages: 0, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
     await logAction("coupon_created", code);
     e.target.reset();
     showToast('✅ Gutschein erstellt!');
@@ -1080,12 +1077,14 @@ async function loadCoupons() {
     allCoupons = snap.docs.map(d => ({id: d.id, ...d.data()}));
     renderCouponsTable();
 }
+// FIX: totalUsages statt usedBy.length für korrekten Zähler
 function renderCouponsTable() {
     const tbody = document.getElementById('coupons-tbody');
     let html = '';
     allCoupons.forEach(c => {
         const expired = c.expiresAt.toDate() < new Date();
-        const usageCount = c.usedBy ? c.usedBy.length : 0;
+        // totalUsages zählt jede Einlösung; usedBy.length zählt nur unique User
+        const usageCount = c.totalUsages !== undefined ? c.totalUsages : (c.usedBy ? c.usedBy.length : 0);
         html += `
         <tr class="table-row-hover border-b border-white/10">
             <td class="py-4 px-6 font-mono font-bold">${c.code}</td>
@@ -1133,6 +1132,7 @@ async function showCouponHistory(couponId) {
     } else {
         listHTML = `<p class="text-center py-12 text-gray-400">Dieser Gutschein wurde noch von niemandem eingelöst.</p>`;
     }
+    const totalUsages = coupon.totalUsages !== undefined ? coupon.totalUsages : (coupon.usedBy ? coupon.usedBy.length : 0);
     const modalHTML = `
     <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]">
         <div class="bg-zinc-900 rounded-3xl p-8 max-w-lg w-full mx-4 modal max-h-[85vh] overflow-y-auto">
@@ -1143,7 +1143,7 @@ async function showCouponHistory(couponId) {
             <div class="mb-4 text-sm text-gray-400 flex gap-4">
                 <span>Typ: <span class="text-white font-medium">${coupon.type === 'percent' ? coupon.value + '%' : coupon.value + ' €'}</span></span>
                 <span>Ablauf: <span class="text-white font-medium">${coupon.expiresAt.toDate().toLocaleDateString('de-DE')}</span></span>
-                <span>Eingelöst: <span class="text-emerald-400 font-bold">${coupon.usedBy ? coupon.usedBy.length : 0}×</span></span>
+                <span>Eingelöst: <span class="text-emerald-400 font-bold">${totalUsages}×</span></span>
             </div>
             <div class="space-y-3">${listHTML}</div>
         </div>
@@ -1793,12 +1793,13 @@ async function saveExtendedUser(uid) {
     closeExtendedUserModal();
     showToast('✅ User erfolgreich gespeichert!', 'success');
 }
-// ====================== SIDEBAR & TABS ======================
+// ====================== SIDEBAR & TABS (FIXED: loadCoupons bei Tab 4) ======================
 function switchTab(n) {
     document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('tab-active'));
     document.getElementById('sidebar-' + n).classList.add('tab-active');
     document.querySelectorAll('[id^="tab-content-"]').forEach(el => el.classList.add('hidden'));
     document.getElementById('tab-content-' + n).classList.remove('hidden');
+    if (n === 4) loadCoupons(); // FIX: Gutscheine immer frisch laden wenn Tab geöffnet wird
     if (n === 5) loadAnalytics();
     if (n === 6) loadAdminLogs();
     if (n === 8) loadProductOrder();

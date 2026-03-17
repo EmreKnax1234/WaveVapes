@@ -40,6 +40,7 @@
         th.sortable.desc:after { content: '↓'; opacity: 1; color: #67e8f9; }
         .metric-card { background: linear-gradient(135deg, #18181b, #27272a); transition: all 0.3s; }
         .metric-card:hover { transform: translateY(-4px); }
+        .presence-card { background: #18181b; border: 1px solid #22d3ee; }
     </style>
 </head>
 <body class="min-h-screen">
@@ -69,6 +70,10 @@
             <div onclick="switchTab(6)" id="sidebar-6" class="sidebar-item flex items-center gap-3 px-6 py-4 rounded-2xl cursor-pointer"><i class="fa-solid fa-list-check"></i><span>Admin Logs</span></div>
             <div onclick="switchTab(7)" id="sidebar-7" class="sidebar-item flex items-center gap-3 px-6 py-4 rounded-2xl cursor-pointer"><i class="fa-solid fa-cog"></i><span>Settings</span></div>
             <div onclick="switchTab(8)" id="sidebar-8" class="sidebar-item flex items-center gap-3 px-6 py-4 rounded-2xl cursor-pointer"><i class="fa-solid fa-sort"></i><span>Sortierung</span></div>
+            <!-- NEU: Tab 9 Live Online -->
+            <div onclick="switchTab(9)" id="sidebar-9" class="sidebar-item flex items-center gap-3 px-6 py-4 rounded-2xl cursor-pointer"><i class="fa-solid fa-users-viewfinder"></i><span>Live Online</span></div>
+            <!-- NEU: Tab 10 Erweiterte Benutzerverwaltung -->
+            <div onclick="switchTab(10)" id="sidebar-10" class="sidebar-item flex items-center gap-3 px-6 py-4 rounded-2xl cursor-pointer bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold"><i class="fa-solid fa-users-cog"></i><span>Erweiterte Benutzerverwaltung</span></div>
         </div>
     </div>
     <!-- MAIN CONTENT -->
@@ -244,7 +249,7 @@
                 </div>
             </div>
         </div>
-        <!-- TAB 4: GUTSCHEINE + NEUE COUPON-NUTZUNGS-HISTORY -->
+        <!-- TAB 4: GUTSCHEINE + COUPON-NUTZUNGS-HISTORY -->
         <div id="tab-content-4" class="hidden">
             <div class="card p-8">
                 <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><i class="fa-solid fa-ticket"></i> Gutschein-Manager + Nutzungs-History</h2>
@@ -304,27 +309,19 @@
             <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
                 <div class="card p-8">
                     <h3 class="text-xl font-bold mb-6 flex items-center gap-2"><i class="fa-solid fa-euro-sign"></i> Umsatz letzte 30 Tage</h3>
-                    <div id="revenue-chart-container" class="h-80">
-                        <canvas id="revenueChart"></canvas>
-                    </div>
+                    <div id="revenue-chart-container" class="h-80"><canvas id="revenueChart"></canvas></div>
                 </div>
                 <div class="card p-8">
                     <h3 class="text-xl font-bold mb-6 flex items-center gap-2"><i class="fa-solid fa-cart-shopping"></i> Bestellungen pro Tag</h3>
-                    <div id="daily-orders-chart-container" class="h-80">
-                        <canvas id="dailyOrdersChart"></canvas>
-                    </div>
+                    <div id="daily-orders-chart-container" class="h-80"><canvas id="dailyOrdersChart"></canvas></div>
                 </div>
                 <div class="card p-8">
                     <h3 class="text-xl font-bold mb-6 flex items-center gap-2"><i class="fa-solid fa-trophy"></i> Top 10 Produkte</h3>
-                    <div id="top-products-chart-container" class="h-80">
-                        <canvas id="topProductsChart"></canvas>
-                    </div>
+                    <div id="top-products-chart-container" class="h-80"><canvas id="topProductsChart"></canvas></div>
                 </div>
                 <div class="card p-8">
                     <h3 class="text-xl font-bold mb-6 flex items-center gap-2"><i class="fa-solid fa-share-nodes"></i> Top Referrer</h3>
-                    <div id="referral-chart-container" class="h-80">
-                        <canvas id="referralChart"></canvas>
-                    </div>
+                    <div id="referral-chart-container" class="h-80"><canvas id="referralChart"></canvas></div>
                 </div>
             </div>
             <button onclick="generatePDFReport()" class="mt-12 w-full bg-gradient-to-r from-amber-400 to-orange-500 text-black font-bold py-7 rounded-3xl text-2xl flex items-center justify-center gap-4 hover:scale-105 transition-all shadow-xl">
@@ -342,36 +339,15 @@
             <h2 class="text-3xl font-bold mb-8">Shop Settings</h2>
             <div class="card p-8 max-w-2xl mx-auto">
                 <div class="space-y-8">
-                    <div>
-                        <label class="block text-sm text-gray-400 mb-2">Bank Empfänger</label>
-                        <input id="set-bank-owner" class="w-full bg-zinc-900 rounded-2xl px-6 py-4">
-                    </div>
-                    <div>
-                        <label class="block text-sm text-gray-400 mb-2">IBAN</label>
-                        <input id="set-iban" class="w-full bg-zinc-900 rounded-2xl px-6 py-4">
-                    </div>
-                    <div>
-                        <label class="block text-sm text-gray-400 mb-2">BIC</label>
-                        <input id="set-bic" class="w-full bg-zinc-900 rounded-2xl px-6 py-4">
-                    </div>
+                    <div><label class="block text-sm text-gray-400 mb-2">Bank Empfänger</label><input id="set-bank-owner" class="w-full bg-zinc-900 rounded-2xl px-6 py-4"></div>
+                    <div><label class="block text-sm text-gray-400 mb-2">IBAN</label><input id="set-iban" class="w-full bg-zinc-900 rounded-2xl px-6 py-4"></div>
+                    <div><label class="block text-sm text-gray-400 mb-2">BIC</label><input id="set-bic" class="w-full bg-zinc-900 rounded-2xl px-6 py-4"></div>
                     <div class="grid grid-cols-2 gap-6">
-                        <div>
-                            <label class="block text-sm text-gray-400 mb-2">Versandkosten (€)</label>
-                            <input id="set-shipping" type="number" step="0.01" class="w-full bg-zinc-900 rounded-2xl px-6 py-4">
-                        </div>
-                        <div>
-                            <label class="block text-sm text-gray-400 mb-2">Gratis Versand ab (€)</label>
-                            <input id="set-free-threshold" type="number" class="w-full bg-zinc-900 rounded-2xl px-6 py-4">
-                        </div>
+                        <div><label class="block text-sm text-gray-400 mb-2">Versandkosten (€)</label><input id="set-shipping" type="number" step="0.01" class="w-full bg-zinc-900 rounded-2xl px-6 py-4"></div>
+                        <div><label class="block text-sm text-gray-400 mb-2">Gratis Versand ab (€)</label><input id="set-free-threshold" type="number" class="w-full bg-zinc-900 rounded-2xl px-6 py-4"></div>
                     </div>
-                    <div class="flex items-center gap-4">
-                        <input id="set-closed" type="checkbox" class="w-6 h-6 accent-red-500">
-                        <label class="text-lg">Shop vorübergehend geschlossen (Wartung)</label>
-                    </div>
-                    <div>
-                        <label class="block text-sm text-gray-400 mb-2">Bestellbestätigung Template (HTML)</label>
-                        <textarea id="set-email-template" rows="6" class="w-full bg-zinc-900 rounded-3xl px-6 py-4 text-xs"></textarea>
-                    </div>
+                    <div class="flex items-center gap-4"><input id="set-closed" type="checkbox" class="w-6 h-6 accent-red-500"><label class="text-lg">Shop vorübergehend geschlossen (Wartung)</label></div>
+                    <div><label class="block text-sm text-gray-400 mb-2">Bestellbestätigung Template (HTML)</label><textarea id="set-email-template" rows="6" class="w-full bg-zinc-900 rounded-3xl px-6 py-4 text-xs"></textarea></div>
                     <button onclick="saveSettings()" class="w-full bg-emerald-600 hover:bg-emerald-500 py-6 rounded-3xl font-bold text-xl">ALLE EINSTELLUNGEN SPEICHERN</button>
                 </div>
             </div>
@@ -379,9 +355,7 @@
         <!-- TAB 8: SORTIERUNG -->
         <div id="tab-content-8" class="hidden">
             <div class="card p-8">
-                <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
-                    <i class="fa-solid fa-sort"></i> Produkt-Sortierung (Drag & Drop + Auto-Sort)
-                </h2>
+                <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><i class="fa-solid fa-sort"></i> Produkt-Sortierung (Drag & Drop + Auto-Sort)</h2>
                 <p class="text-sm text-gray-400 mb-6">Klicke auf einen Button für automatische Sortierung.<br><strong>Neue AUTO-PRIORITÄT (überarbeitet):</strong><br>1. Neue Sorten (nur verfügbar) → 2. Normale Sorten (nur verfügbar) → 3. Alle Vapes (nur verfügbar) → 4. ALLE nicht verfügbaren Sachen (egal ob neu oder normal – immer ganz unten)</p>
                 <div class="flex flex-wrap gap-3 mb-8">
                     <button onclick="autoSort('alpha')" class="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm font-medium transition">📋 Alphabetisch A-Z</button>
@@ -395,12 +369,70 @@
                 <button onclick="saveProductOrder()" class="mt-10 w-full bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-6 rounded-3xl text-xl hover:scale-105 transition">✅ Sortierung speichern & live übernehmen</button>
             </div>
         </div>
+
+        <!-- TAB 9: LIVE ONLINE (NEU) -->
+        <div id="tab-content-9" class="hidden">
+            <div class="card overflow-hidden">
+                <div class="p-6 border-b border-white/10 flex items-center justify-between">
+                    <h2 class="text-2xl font-bold flex items-center gap-3"><i class="fa-solid fa-users-viewfinder"></i> Live Online (User + Gäste)</h2>
+                    <div class="flex gap-3">
+                        <button onclick="loadPresence()" class="bg-cyan-600 hover:bg-cyan-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2"><i class="fa-solid fa-sync"></i> Jetzt aktualisieren</button>
+                        <button onclick="cleanupOldPresence()" class="bg-red-600 hover:bg-red-500 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2"><i class="fa-solid fa-broom"></i> Alte Einträge löschen</button>
+                    </div>
+                </div>
+                <div class="p-6">
+                    <div id="presence-list" class="space-y-4 max-h-[70vh] overflow-y-auto"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 10: ERWEITERTE BENUTZERVERWALTUNG (NEU) -->
+        <div id="tab-content-10" class="hidden">
+            <div class="card p-8">
+                <h2 class="text-3xl font-bold mb-6 flex items-center gap-3"><i class="fa-solid fa-users-cog"></i> Erweiterte Benutzerverwaltung</h2>
+                <div class="flex flex-wrap gap-4 mb-6">
+                    <input id="extended-user-search" placeholder="E-Mail oder Username suchen..." class="flex-1 bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-3" onkeyup="renderExtendedUsersTable()">
+                    <select id="extended-filter" onchange="renderExtendedUsersTable()" class="bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-3">
+                        <option value="">Alle User</option>
+                        <option value="active">Nur aktive</option>
+                        <option value="disabled">Nur gesperrte</option>
+                        <option value="highpoints">Punkte > 1000</option>
+                    </select>
+                    <button onclick="bulkDisableSelected(true)" class="bg-red-600 hover:bg-red-500 px-6 py-3 rounded-3xl text-sm font-medium">Ausgewählte sperren</button>
+                    <button onclick="bulkDisableSelected(false)" class="bg-emerald-600 hover:bg-emerald-500 px-6 py-3 rounded-3xl text-sm font-medium">Ausgewählte entsperren</button>
+                    <button onclick="bulkAddPoints()" class="bg-purple-600 hover:bg-purple-500 px-6 py-3 rounded-3xl text-sm font-medium">Punkte +500 (Bulk)</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-zinc-950 sticky top-0">
+                            <tr>
+                                <th class="py-5 px-6 w-12"><input type="checkbox" id="select-all-extended" onclick="toggleSelectAllExtended(this)" class="accent-cyan-400 w-5 h-5"></th>
+                                <th class="py-5 px-6 text-left">E-Mail</th>
+                                <th class="py-5 px-6 text-left">Username</th>
+                                <th class="py-5 px-6 text-center">Referral</th>
+                                <th class="py-5 px-6 text-center">Punkte</th>
+                                <th class="py-5 px-6 text-center">Geworbene</th>
+                                <th class="py-5 px-6 text-center">Bestellungen</th>
+                                <th class="py-5 px-6 text-center">Umsatz</th>
+                                <th class="py-5 px-6 text-center">Erstellt</th>
+                                <th class="py-5 px-6 text-center">Status</th>
+                                <th class="py-5 px-6 text-right">Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody id="extended-users-tbody" class="text-sm"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
     </div>
 </div>
 <!-- EDIT MODAL (wird auch für Coupon-History verwendet) -->
 <div id="edit-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]"></div>
 <!-- ORDER MODAL -->
 <div id="order-modal-container"></div>
+<!-- EXTENDED USER EDIT MODAL (NEU) -->
+<div id="extended-user-edit-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]"></div>
 <!-- TOAST -->
 <div id="toast-container" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[99999] flex flex-col gap-3"></div>
 <script>
@@ -436,12 +468,16 @@ let adminSortDirection = 'asc';
 let adminCategoryFilter = 'Alle';
 let adminStatusFilter = '';
 let selectedProductIds = [];
+// NEU: Erweiterte Benutzerverwaltung + Live Online
+let extendedUsers = [];
+let selectedExtendedUserIds = [];
+let presenceRefreshInterval = null;
+
 // ====================== LOG ACTION ======================
 async function logAction(action, target = "", details = {}) {
     if (!auth.currentUser) return;
     await db.collection("admin_logs").add({
-        action: action,
-        target: target,
+        action, target,
         adminEmail: auth.currentUser.email,
         timestamp: firebase.firestore.FieldValue.serverTimestamp(),
         details: details || {}
@@ -507,9 +543,7 @@ function renderProductTable() {
             case 'available': valA = a.available !== false ? 1 : 0; valB = b.available !== false ? 1 : 0; break;
             default: valA = a.name; valB = b.name;
         }
-        if (typeof valA === 'string') {
-            return adminSortDirection === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
-        }
+        if (typeof valA === 'string') return adminSortDirection === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
         return adminSortDirection === 'asc' ? valA - valB : valB - valA;
     });
     let html = '';
@@ -562,13 +596,8 @@ function toggleSelectAllProducts(cb) {
 }
 function openBulkEditModal() {
     selectedProductIds = [];
-    document.querySelectorAll('.product-checkbox:checked').forEach(cb => {
-        selectedProductIds.push(cb.dataset.id);
-    });
-    if (selectedProductIds.length === 0) {
-        alert("Bitte zuerst Produkte per Checkbox auswählen!");
-        return;
-    }
+    document.querySelectorAll('.product-checkbox:checked').forEach(cb => selectedProductIds.push(cb.dataset.id));
+    if (selectedProductIds.length === 0) { alert("Bitte zuerst Produkte per Checkbox auswählen!"); return; }
     const html = `
     <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]">
         <div class="bg-zinc-900 rounded-3xl p-8 max-w-lg w-full mx-4 modal">
@@ -594,9 +623,7 @@ function openBulkEditModal() {
     const sel = document.getElementById('bulk-category');
     if (sel) sel.innerHTML = '<option value="">Kategorie nicht ändern</option>' + sel.innerHTML;
 }
-function closeBulkModal() {
-    document.getElementById('edit-modal').classList.add('hidden');
-}
+function closeBulkModal() { document.getElementById('edit-modal').classList.add('hidden'); }
 async function executeBulkEdit() {
     const price = document.getElementById('bulk-price').value ? parseFloat(document.getElementById('bulk-price').value) : null;
     const stock = document.getElementById('bulk-stock').value ? parseInt(document.getElementById('bulk-stock').value) : null;
@@ -612,10 +639,7 @@ async function executeBulkEdit() {
         if (available !== null) updateData.available = available;
         if (isNew !== null) updateData.isNew = isNew;
         if (category) updateData.category = category;
-        if (Object.keys(updateData).length > 0) {
-            batch.update(db.collection('products').doc(id), updateData);
-            changed++;
-        }
+        if (Object.keys(updateData).length > 0) { batch.update(db.collection('products').doc(id), updateData); changed++; }
     }
     await batch.commit();
     await logAction("bulk_edit", "", { count: changed });
@@ -625,17 +649,14 @@ async function executeBulkEdit() {
 }
 // ====================== AUTOMATISCHE KATEGORIEZUWEISUNG ======================
 async function enforceCategories() {
-    if (!confirm('Alle Produkte automatisch kategorisieren?\n\n• Neue Sorten → „Neue Sorten“\n• Alle anderen → „Normale Sorten“\n\nDas überschreibt bestehende Kategorien!')) return;
+    if (!confirm('Alle Produkte automatisch kategorisieren?\n\n• Neue Sorten → „Neue Sorten"\n• Alle anderen → „Normale Sorten"\n\nDas überschreibt bestehende Kategorien!')) return;
     const snap = await db.collection('products').get();
     const batch = db.batch();
     let changed = 0;
     snap.forEach(doc => {
         const p = doc.data();
         const targetCat = p.isNew === true ? "Neue Sorten" : "Normale Sorten";
-        if (p.category !== targetCat) {
-            batch.update(doc.ref, { category: targetCat });
-            changed++;
-        }
+        if (p.category !== targetCat) { batch.update(doc.ref, { category: targetCat }); changed++; }
     });
     if (changed > 0) {
         await batch.commit();
@@ -657,15 +678,7 @@ async function exportOrdersWithTracking() {
         const trackingLink = o.trackingNumber && o.carrier === "DHL"
             ? `https://www.dhl.de/de/privatkunden/dhl-sendungsverfolgung.html?piececode=${encodeURIComponent(o.trackingNumber)}`
             : (o.trackingNumber || '');
-        const row = [
-            `"${o.orderNumber || ''}"`,
-            `"${dateStr}"`,
-            `"${o.userEmail || ''}"`,
-            o.total || 0,
-            `"${o.status || ''}"`,
-            `"${o.trackingNumber || ''}"`,
-            `"${trackingLink}"`
-        ].join(",");
+        const row = [`"${o.orderNumber || ''}"`,`"${dateStr}"`,`"${o.userEmail || ''}"`,o.total || 0,`"${o.status || ''}"`,`"${o.trackingNumber || ''}"`,`"${trackingLink}"`].join(",");
         csv += row + "\n";
     });
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
@@ -730,8 +743,7 @@ async function openEditModal(id) {
     const dropzone = document.getElementById('edit-dropzone');
     dropzone.onclick = () => {
         const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'image/*';
+        input.type = 'file'; input.accept = 'image/*';
         input.onchange = e => {
             selectedFile = e.target.files[0];
             removeCurrentImage = false;
@@ -775,7 +787,7 @@ async function saveEdit() {
     await db.collection('products').doc(currentEditId).update(data);
     await logAction("product_updated", currentEditId, { name, category });
     closeEditModal();
-    showToast('✅ Produkt gespeichert! Kategorie manuell zugewiesen.');
+    showToast('✅ Produkt gespeichert!');
 }
 // ====================== NEUES PRODUKT ======================
 document.getElementById('add-form').addEventListener('submit', async e => {
@@ -790,9 +802,7 @@ document.getElementById('add-form').addEventListener('submit', async e => {
     const description = document.getElementById('prod-description').value.trim();
     const categorySelect = document.getElementById('prod-category');
     const category = categorySelect && categorySelect.value ? categorySelect.value : (isNew ? "Neue Sorten" : "Normale Sorten");
-    const docRef = await db.collection('products').add({
-        name, price, originalPrice, stock, category, isNew: isNew || false, available: !unavailable, hasNicotine, description: description || "", sold: 0
-    });
+    const docRef = await db.collection('products').add({ name, price, originalPrice, stock, category, isNew: isNew || false, available: !unavailable, hasNicotine, description: description || "", sold: 0 });
     if (selectedFile) {
         const formData = new FormData();
         formData.append("file", selectedFile);
@@ -810,8 +820,7 @@ document.getElementById('add-form').addEventListener('submit', async e => {
 const dropzone = document.getElementById('dropzone');
 dropzone.addEventListener('click', () => {
     const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
+    input.type = 'file'; input.accept = 'image/*';
     input.onchange = e => {
         selectedFile = e.target.files[0];
         const url = URL.createObjectURL(selectedFile);
@@ -827,37 +836,20 @@ async function exportProductsToCSV() {
     let csv = "id,name,price,originalPrice,stock,category,isNew,available,hasNicotine,description,image,sold\n";
     snapshot.forEach(doc => {
         const p = doc.data();
-        const row = [
-            `"${doc.id}"`,
-            `"${(p.name || "").replace(/"/g, '""')}"`,
-            p.price || 0,
-            p.originalPrice || "",
-            p.stock || 0,
-            `"${p.category || ""}"`,
-            p.isNew === true ? "true" : "false",
-            p.available !== false ? "true" : "false",
-            p.hasNicotine !== false ? "true" : "false",
-            `"${(p.description || "").replace(/"/g, '""').replace(/\n/g, "\\n")}"`,
-            `"${p.image || ""}"`,
-            p.sold || 0
-        ].join(",");
+        const row = [`"${doc.id}"`,`"${(p.name || "").replace(/"/g, '""')}"`,p.price || 0,p.originalPrice || "",p.stock || 0,`"${p.category || ""}"`,p.isNew === true ? "true" : "false",p.available !== false ? "true" : "false",p.hasNicotine !== false ? "true" : "false",`"${(p.description || "").replace(/"/g, '""').replace(/\n/g, "\\n")}"`,`"${p.image || ""}"`,p.sold || 0].join(",");
         csv += row + "\n";
     });
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
-    const date = new Date().toISOString().slice(0,10);
     link.href = URL.createObjectURL(blob);
-    link.download = `wavevapes_products_backup_${date}.csv`;
+    link.download = `wavevapes_products_backup_${new Date().toISOString().slice(0,10)}.csv`;
     link.click();
     showToast("✅ CSV-Datei wurde heruntergeladen!", "success");
 }
 async function importProductsFromCSV(e) {
     const file = e.target.files[0];
     if (!file) return;
-    if (!confirm("⚠️ WARNUNG!\n\nAlle aktuellen Produkte werden GELÖSCHT und durch die CSV ersetzt.\n\nWirklich fortfahren?")) {
-        e.target.value = "";
-        return;
-    }
+    if (!confirm("⚠️ WARNUNG!\n\nAlle aktuellen Produkte werden GELÖSCHT und durch die CSV ersetzt.\n\nWirklich fortfahren?")) { e.target.value = ""; return; }
     const reader = new FileReader();
     reader.onload = async function(event) {
         const text = event.target.result;
@@ -870,21 +862,8 @@ async function importProductsFromCSV(e) {
         for (let i = 1; i < rows.length; i++) {
             if (!rows[i].trim()) continue;
             const values = parseCSVLine(rows[i]);
-            const data = {
-                name: values[1],
-                price: parseFloat(values[2]),
-                originalPrice: values[3] ? parseFloat(values[3]) : null,
-                stock: parseInt(values[4]),
-                category: values[5],
-                isNew: values[6] === "true",
-                available: values[7] === "true",
-                hasNicotine: values[8] === "true",
-                description: values[9],
-                image: values[10] || null,
-                sold: parseInt(values[11]) || 0
-            };
-            const docRef = db.collection("products").doc(values[0]);
-            batch.set(docRef, data);
+            const data = { name: values[1], price: parseFloat(values[2]), originalPrice: values[3] ? parseFloat(values[3]) : null, stock: parseInt(values[4]), category: values[5], isNew: values[6] === "true", available: values[7] === "true", hasNicotine: values[8] === "true", description: values[9], image: values[10] || null, sold: parseInt(values[11]) || 0 };
+            batch.set(db.collection("products").doc(values[0]), data);
         }
         await batch.commit();
         showToast("✅ Alle Produkte wurden erfolgreich wiederhergestellt!", "success");
@@ -903,16 +882,7 @@ async function exportOrdersToCSV() {
         const dateStr = o.date ? o.date.toDate().toISOString().slice(0,19).replace('T',' ') : '';
         const itemsStr = o.items.map(i => `${i.name} x${i.qty}${i.nicotine ? ' ('+i.nicotine+')' : ''}`).join(' | ');
         const addressStr = `${o.address.street || ''}, ${o.address.zip || ''} ${o.address.city || ''}`;
-        const row = [
-            `"${doc.id}"`,
-            `"${o.orderNumber || ''}"`,
-            `"${dateStr}"`,
-            `"${o.userEmail || ''}"`,
-            o.total || 0,
-            `"${o.status || 'Zahlung erwartet'}"`,
-            `"${itemsStr.replace(/"/g, '""')}"`,
-            `"${addressStr.replace(/"/g, '""')}"`
-        ].join(",");
+        const row = [`"${doc.id}"`,`"${o.orderNumber || ''}"`,`"${dateStr}"`,`"${o.userEmail || ''}"`,o.total || 0,`"${o.status || 'Zahlung erwartet'}"`,`"${itemsStr.replace(/"/g, '""')}"`,`"${addressStr.replace(/"/g, '""')}"`].join(",");
         csv += row + "\n";
     });
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
@@ -925,10 +895,7 @@ async function exportOrdersToCSV() {
 async function importOrdersFromCSV(e) {
     const file = e.target.files[0];
     if (!file) return;
-    if (!confirm("⚠️ WARNUNG!\n\nDie importierten Bestellungen werden ZUSÄTZLICH zu den bestehenden hinzugefügt.\n\nWirklich fortfahren?")) {
-        e.target.value = "";
-        return;
-    }
+    if (!confirm("⚠️ WARNUNG!\n\nDie importierten Bestellungen werden ZUSÄTZLICH zu den bestehenden hinzugefügt.\n\nWirklich fortfahren?")) { e.target.value = ""; return; }
     const reader = new FileReader();
     reader.onload = async function(event) {
         const text = event.target.result;
@@ -937,24 +904,8 @@ async function importOrdersFromCSV(e) {
         for (let i = 1; i < rows.length; i++) {
             if (!rows[i].trim()) continue;
             const values = parseCSVLine(rows[i]);
-            const data = {
-                orderNumber: values[1],
-                date: firebase.firestore.Timestamp.fromDate(new Date(values[2])),
-                userEmail: values[3],
-                total: parseFloat(values[4]),
-                status: values[5],
-                items: values[6].split(' | ').map(item => {
-                    const parts = item.match(/(.*?) x(\d+)(?:\s*\((.*)\))?/);
-                    return parts ? { name: parts[1].trim(), qty: parseInt(parts[2]), nicotine: parts[3] || "" } : {};
-                }).filter(Boolean),
-                address: {
-                    street: values[7].split(',')[0] || "",
-                    zip: values[7].split(',')[1] ? values[7].split(',')[1].trim().split(' ')[0] : "",
-                    city: values[7].split(',')[1] ? values[7].split(',')[1].trim().split(' ').slice(1).join(' ') : ""
-                }
-            };
-            const docRef = db.collection("orders").doc(values[0]);
-            batch.set(docRef, data);
+            const data = { orderNumber: values[1], date: firebase.firestore.Timestamp.fromDate(new Date(values[2])), userEmail: values[3], total: parseFloat(values[4]), status: values[5], items: values[6].split(' | ').map(item => { const parts = item.match(/(.*?) x(\d+)(?:\s*\((.*)\))?/); return parts ? { name: parts[1].trim(), qty: parseInt(parts[2]), nicotine: parts[3] || "" } : {}; }).filter(Boolean), address: { street: values[7].split(',')[0] || "", zip: values[7].split(',')[1] ? values[7].split(',')[1].trim().split(' ')[0] : "", city: values[7].split(',')[1] ? values[7].split(',')[1].trim().split(' ').slice(1).join(' ') : "" } };
+            batch.set(db.collection("orders").doc(values[0]), data);
         }
         await batch.commit();
         showToast("✅ Bestellungen erfolgreich importiert!", "success");
@@ -970,16 +921,7 @@ async function exportUsersToCSV() {
     let csv = "uid,email,username,referralCode,loyaltyPoints,freeShipping,disabled,referralCount\n";
     snapshot.forEach(doc => {
         const u = doc.data();
-        const row = [
-            `"${doc.id}"`,
-            `"${u.email || ''}"`,
-            `"${u.username || ''}"`,
-            `"${u.referralCode || ''}"`,
-            u.totalBonusPoints || 0,
-            u.freeShipping === true ? "JA" : "NEIN",
-            u.disabled === true ? "JA" : "NEIN",
-            u.referralCount || 0
-        ].join(",");
+        const row = [`"${doc.id}"`,`"${u.email || ''}"`,`"${u.username || ''}"`,`"${u.referralCode || ''}"`,u.totalBonusPoints || 0,u.freeShipping === true ? "JA" : "NEIN",u.disabled === true ? "JA" : "NEIN",u.referralCount || 0].join(",");
         csv += row + "\n";
     });
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
@@ -992,10 +934,7 @@ async function exportUsersToCSV() {
 async function importUsersFromCSV(e) {
     const file = e.target.files[0];
     if (!file) return;
-    if (!confirm("⚠️ WARNUNG!\n\nDie importierten Benutzer werden ZUSÄTZLICH zu den bestehenden hinzugefügt.\n\nWirklich fortfahren?")) {
-        e.target.value = "";
-        return;
-    }
+    if (!confirm("⚠️ WARNUNG!\n\nDie importierten Benutzer werden ZUSÄTZLICH zu den bestehenden hinzugefügt.\n\nWirklich fortfahren?")) { e.target.value = ""; return; }
     const reader = new FileReader();
     reader.onload = async function(event) {
         const text = event.target.result;
@@ -1004,17 +943,8 @@ async function importUsersFromCSV(e) {
         for (let i = 1; i < rows.length; i++) {
             if (!rows[i].trim()) continue;
             const values = parseCSVLine(rows[i]);
-            const data = {
-                email: values[1],
-                username: values[2],
-                referralCode: values[3],
-                totalBonusPoints: parseInt(values[4]),
-                freeShipping: values[5] === "JA",
-                disabled: values[6] === "JA",
-                referralCount: parseInt(values[7]) || 0
-            };
-            const docRef = db.collection("users").doc(values[0]);
-            batch.set(docRef, data);
+            const data = { email: values[1], username: values[2], referralCode: values[3], totalBonusPoints: parseInt(values[4]), freeShipping: values[5] === "JA", disabled: values[6] === "JA", referralCount: parseInt(values[7]) || 0 };
+            batch.set(db.collection("users").doc(values[0]), data);
         }
         await batch.commit();
         showToast("✅ Benutzer erfolgreich importiert!", "success");
@@ -1063,7 +993,7 @@ document.getElementById('add-category-form').addEventListener('submit', async e 
     e.target.reset();
     populateCategorySelects();
     populateAdminCategoryFilter();
-    showToast('✅ Kategorie erstellt und Dropdowns aktualisiert!');
+    showToast('✅ Kategorie erstellt!');
 });
 async function openEditCategoryModal(id) {
     const doc = await db.collection('categories').doc(id).get();
@@ -1094,7 +1024,7 @@ async function saveEditCategory(id) {
     document.getElementById('edit-modal').classList.add('hidden');
     populateCategorySelects();
     populateAdminCategoryFilter();
-    showToast('✅ Kategorie gespeichert und Dropdowns aktualisiert');
+    showToast('✅ Kategorie gespeichert!');
 }
 async function deleteCategory(id) {
     if (!confirm('Kategorie wirklich löschen? Produkte bleiben erhalten.')) return;
@@ -1106,11 +1036,7 @@ async function deleteCategory(id) {
 }
 function seedDefaultCategories() {
     if (allCategories.length > 0 && !confirm('Es existieren bereits Kategorien. Trotzdem Standard-Kategorien laden?')) return;
-    const defaults = [
-        { name: "WaveVapes Tornado 30000", order: 1, special: true },
-        { name: "Normale Sorten", order: 2, special: false },
-        { name: "Neue Sorten", order: 3, special: false }
-    ];
+    const defaults = [{ name: "WaveVapes Tornado 30000", order: 1, special: true }, { name: "Normale Sorten", order: 2, special: false }, { name: "Neue Sorten", order: 3, special: false }];
     defaults.forEach(d => db.collection('categories').add(d));
     showToast('✅ Standard-Kategorien angelegt!');
 }
@@ -1122,8 +1048,7 @@ function populateCategorySelects() {
         select.innerHTML = '<option value="">Kategorie wählen...</option>';
         allCategories.forEach(c => {
             const opt = document.createElement('option');
-            opt.value = c.name;
-            opt.textContent = c.name;
+            opt.value = c.name; opt.textContent = c.name;
             select.appendChild(opt);
         });
         if (currentValue) select.value = currentValue;
@@ -1135,8 +1060,7 @@ function populateAdminCategoryFilter() {
     select.innerHTML = '<option value="Alle">Alle Kategorien</option>';
     allCategories.forEach(cat => {
         const opt = document.createElement('option');
-        opt.value = cat.name;
-        opt.textContent = cat.name;
+        opt.value = cat.name; opt.textContent = cat.name;
         select.appendChild(opt);
     });
 }
@@ -1148,10 +1072,7 @@ document.getElementById('add-coupon-form').addEventListener('submit', async e =>
     const value = parseFloat(document.getElementById('coupon-value').value);
     const expiry = new Date(document.getElementById('coupon-expiry').value);
     const oneTime = document.getElementById('coupon-onetime').checked;
-    await db.collection('coupons').add({
-        code, type, value, expiresAt: firebase.firestore.Timestamp.fromDate(expiry),
-        oneTimeUse: oneTime, usedBy: [], createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
+    await db.collection('coupons').add({ code, type, value, expiresAt: firebase.firestore.Timestamp.fromDate(expiry), oneTimeUse: oneTime, usedBy: [], createdAt: firebase.firestore.FieldValue.serverTimestamp() });
     await logAction("coupon_created", code);
     e.target.reset();
     showToast('✅ Gutschein erstellt!');
@@ -1193,16 +1114,7 @@ async function showCouponHistory(couponId) {
                 const userDoc = await db.collection('users').doc(uid).get();
                 const user = userDoc.exists ? userDoc.data() : {};
                 const email = user.email || uid;
-                listHTML += `
-                    <div class="bg-zinc-950 border border-white/10 rounded-2xl p-5 mb-3 flex justify-between items-center">
-                        <div>
-                            <div class="font-medium text-white">${email}</div>
-                            <div class="text-xs text-gray-400">UID: ${uid}</div>
-                        </div>
-                        <div class="text-right">
-                            <span class="text-emerald-400 text-xs">verwendet</span>
-                        </div>
-                    </div>`;
+                listHTML += `<div class="bg-zinc-950 border border-white/10 rounded-2xl p-5 mb-3 flex justify-between items-center"><div><div class="font-medium text-white">${email}</div><div class="text-xs text-gray-400">UID: ${uid}</div></div><div class="text-right"><span class="text-emerald-400 text-xs">verwendet</span></div></div>`;
             } catch(e) {
                 listHTML += `<div class="bg-zinc-950 border border-white/10 rounded-2xl p-5 mb-3">UID: ${uid} (User nicht gefunden)</div>`;
             }
@@ -1217,12 +1129,7 @@ async function showCouponHistory(couponId) {
                 <h3 class="text-3xl font-bold neon">Nutzungs-History: <span class="text-amber-400">${coupon.code}</span></h3>
                 <button onclick="closeEditModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
             </div>
-            <div class="space-y-3">
-                ${listHTML}
-            </div>
-            <div class="mt-8 text-[10px] text-gray-500 text-center">
-                Hinweis: Zeitstempel werden automatisch gespeichert, sobald du den Shop-Frontend (index.html) ebenfalls aktualisierst.
-            </div>
+            <div class="space-y-3">${listHTML}</div>
         </div>
     </div>`;
     document.getElementById('edit-modal').innerHTML = modalHTML;
@@ -1269,7 +1176,7 @@ async function quickStatus(id, status) {
     await db.collection('orders').doc(id).update({ status });
     if (status === "Wird bearbeitet") await awardLoyaltyIfProcessed(id);
     await logAction("order_status_changed", id, { status });
-    showToast(`Status auf „${status}“ gesetzt`);
+    showToast(`Status auf „${status}" gesetzt`);
 }
 // ====================== ORDER DETAIL MODAL ======================
 async function showOrderModal(orderId) {
@@ -1277,14 +1184,9 @@ async function showOrderModal(orderId) {
     const doc = await db.collection('orders').doc(orderId).get();
     const order = doc.data();
     const date = order.date ? order.date.toDate().toLocaleString('de-DE') : '—';
-   
     let itemsHTML = '';
     order.items.forEach(item => {
-        itemsHTML += `
-            <div class="flex justify-between py-3 border-b border-white/10">
-                <span>${item.name} × ${item.qty} ${item.nicotine ? `(${item.nicotine})` : ''}</span>
-                <span>${(item.price * item.qty).toFixed(2)} €</span>
-            </div>`;
+        itemsHTML += `<div class="flex justify-between py-3 border-b border-white/10"><span>${item.name} × ${item.qty} ${item.nicotine ? `(${item.nicotine})` : ''}</span><span>${(item.price * item.qty).toFixed(2)} €</span></div>`;
     });
     const modalHTML = `
     <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]">
@@ -1301,16 +1203,9 @@ async function showOrderModal(orderId) {
                 <div><strong>Adresse:</strong><br>${order.address.street}<br>${order.address.zip} ${order.address.city}</div>
                 <div><strong>Artikel</strong>${itemsHTML}</div>
                 <div class="text-2xl font-bold">Gesamt: <span class="text-emerald-400">${order.total.toFixed(2)} €</span></div>
-               
                 <div class="mt-6">
-                    <label class="block text-sm font-medium text-gray-400 mb-2 flex items-center gap-2">
-                        <i class="fa-solid fa-note-sticky text-amber-400"></i>
-                        Interne Notizen (nur für dich sichtbar)
-                    </label>
-                    <textarea id="modal-internal-notes"
-                              rows="4"
-                              placeholder="z. B. Kunde hat schon überwiesen, IBAN-Ende 5812, Betrag passt..."
-                              class="w-full bg-zinc-800 border border-amber-400/30 focus:border-amber-400 rounded-2xl px-5 py-3 text-sm resize-y min-h-[100px]"></textarea>
+                    <label class="block text-sm font-medium text-gray-400 mb-2 flex items-center gap-2"><i class="fa-solid fa-note-sticky text-amber-400"></i> Interne Notizen (nur für dich sichtbar)</label>
+                    <textarea id="modal-internal-notes" rows="4" placeholder="z. B. Kunde hat schon überwiesen, IBAN-Ende 5812, Betrag passt..." class="w-full bg-zinc-800 border border-amber-400/30 focus:border-amber-400 rounded-2xl px-5 py-3 text-sm resize-y min-h-[100px]"></textarea>
                 </div>
                 <div class="bg-zinc-950 -mx-8 -mb-8 p-8 rounded-b-3xl border-t border-white/10">
                     <h4 class="font-bold mb-6 text-cyan-400 flex items-center gap-2"><i class="fa-solid fa-truck"></i> Admin-Steuerung</h4>
@@ -1322,18 +1217,8 @@ async function showOrderModal(orderId) {
                         <option value="Storniert" ${order.status === "Storniert" ? 'selected' : ''}>Storniert</option>
                     </select>
                     <div class="grid grid-cols-2 gap-6 mb-6">
-                        <div>
-                            <label class="text-xs block mb-2 text-gray-400">Versanddienst</label>
-                            <select id="modal-carrier" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
-                                <option value="DHL" ${order.carrier === "DHL" ? 'selected' : ''}>DHL</option>
-                                <option value="Hermes" ${order.carrier === "Hermes" ? 'selected' : ''}>Hermes</option>
-                                <option value="DPD" ${order.carrier === "DPD" ? 'selected' : ''}>DPD</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="text-xs block mb-2 text-gray-400">Tracking-Nummer</label>
-                            <input id="modal-tracking" value="${order.trackingNumber || ''}" placeholder="Tracking-Nummer" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4">
-                        </div>
+                        <div><label class="text-xs block mb-2 text-gray-400">Versanddienst</label><select id="modal-carrier" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4"><option value="DHL" ${order.carrier === "DHL" ? 'selected' : ''}>DHL</option><option value="Hermes" ${order.carrier === "Hermes" ? 'selected' : ''}>Hermes</option><option value="DPD" ${order.carrier === "DPD" ? 'selected' : ''}>DPD</option></select></div>
+                        <div><label class="text-xs block mb-2 text-gray-400">Tracking-Nummer</label><input id="modal-tracking" value="${order.trackingNumber || ''}" placeholder="Tracking-Nummer" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4"></div>
                     </div>
                     <div class="flex gap-4">
                         <button onclick="saveOrderChanges()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-5 rounded-3xl font-bold">Änderungen speichern</button>
@@ -1346,32 +1231,19 @@ async function showOrderModal(orderId) {
     document.getElementById('order-modal-container').innerHTML = modalHTML;
     document.getElementById('modal-internal-notes').value = order.internalNotes || '';
 }
-function closeOrderModal() {
-    document.getElementById('order-modal-container').innerHTML = '';
-}
+function closeOrderModal() { document.getElementById('order-modal-container').innerHTML = ''; }
 async function saveOrderChanges() {
     const status = document.getElementById('modal-status').value;
     const carrier = document.getElementById('modal-carrier').value;
     const tracking = document.getElementById('modal-tracking').value.trim();
     const internalNotes = document.getElementById('modal-internal-notes').value.trim();
     await handleStockOnStatusChange(currentOrderId, status);
-   
-    const updateData = {
-        status,
-        carrier,
-        trackingNumber: tracking || firebase.firestore.FieldValue.delete()
-    };
-   
-    if (internalNotes) {
-        updateData.internalNotes = internalNotes;
-    } else {
-        updateData.internalNotes = firebase.firestore.FieldValue.delete();
-    }
+    const updateData = { status, carrier, trackingNumber: tracking || firebase.firestore.FieldValue.delete() };
+    if (internalNotes) updateData.internalNotes = internalNotes;
+    else updateData.internalNotes = firebase.firestore.FieldValue.delete();
     await db.collection('orders').doc(currentOrderId).update(updateData);
-   
     if (status === "Wird bearbeitet") await awardLoyaltyIfProcessed(currentOrderId);
     await logAction("order_updated", currentOrderId, { status, hasNotes: !!internalNotes });
-   
     showToast('Bestellung + interne Notizen aktualisiert');
     closeOrderModal();
 }
@@ -1403,14 +1275,8 @@ function loadUsers() {
                 <td class="py-5 px-6">${username}</td>
                 <td class="py-5 px-6 text-center font-mono text-cyan-300">${refCode}</td>
                 <td class="py-5 px-6 text-center font-bold text-emerald-400">${points}</td>
-                <td class="py-5 px-6 text-center">
-                    <input type="checkbox" ${freeShipping ? 'checked' : ''}
-                           onchange="toggleFreeShipping('${doc.id}', this.checked)"
-                           class="accent-emerald-400 w-5 h-5 cursor-pointer">
-                </td>
-                <td class="py-5 px-6 text-center">
-                    <span class="status-badge ${disabled ? 'disabled' : 'bg-emerald-600 text-white'}">${disabled ? 'GESPERRT' : 'AKTIV'}</span>
-                </td>
+                <td class="py-5 px-6 text-center"><input type="checkbox" ${freeShipping ? 'checked' : ''} onchange="toggleFreeShipping('${doc.id}', this.checked)" class="accent-emerald-400 w-5 h-5 cursor-pointer"></td>
+                <td class="py-5 px-6 text-center"><span class="status-badge ${disabled ? 'disabled' : 'bg-emerald-600 text-white'}">${disabled ? 'GESPERRT' : 'AKTIV'}</span></td>
                 <td class="py-5 px-6 text-right space-x-3">
                     <button onclick="resetPassword('${email}')" class="text-amber-400 hover:text-amber-300 text-sm font-medium">PW zurücksetzen</button>
                     <button onclick="resetUserPoints('${doc.id}')" class="text-red-400 hover:text-red-300 text-sm font-medium">Punkte resetten</button>
@@ -1493,22 +1359,15 @@ async function resetUserPoints(uid) {
 async function loadAnalytics() {
     const thirtyDaysAgo = firebase.firestore.Timestamp.fromDate(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
     const ordersSnap = await db.collection("orders").where("date", ">=", thirtyDaysAgo).get();
-    let dailyRevenue = {};
-    let dailyOrdersCount = {};
-    let totalRevenue = 0;
-    let totalOrders = 0;
-    let productMap = new Map();
-    let userMap = new Map();
+    let dailyRevenue = {}, dailyOrdersCount = {}, totalRevenue = 0, totalOrders = 0;
+    let productMap = new Map(), userMap = new Map();
     ordersSnap.forEach(doc => {
         const o = doc.data();
         const day = o.date.toDate().toISOString().slice(0,10);
         dailyRevenue[day] = (dailyRevenue[day] || 0) + o.total;
         dailyOrdersCount[day] = (dailyOrdersCount[day] || 0) + 1;
-        totalRevenue += o.total;
-        totalOrders++;
-        o.items.forEach(item => {
-            productMap.set(item.name, (productMap.get(item.name) || 0) + item.qty);
-        });
+        totalRevenue += o.total; totalOrders++;
+        o.items.forEach(item => productMap.set(item.name, (productMap.get(item.name) || 0) + item.qty));
         if (o.userEmail) userMap.set(o.userEmail, (userMap.get(o.userEmail) || 0) + 1);
     });
     document.getElementById('metric-revenue').textContent = totalRevenue.toFixed(0) + ' €';
@@ -1518,85 +1377,39 @@ async function loadAnalytics() {
     const labels = Object.keys(dailyRevenue).sort();
     const revenueData = labels.map(d => dailyRevenue[d]);
     if (revenueChart) revenueChart.destroy();
-    revenueChart = new Chart(document.getElementById("revenueChart"), {
-        type: "line",
-        data: { labels, datasets: [{ label: "Umsatz €", data: revenueData, borderColor: "#67e8f9", tension: 0.4, fill: true, backgroundColor: "rgba(103,232,249,0.15)" }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-    });
+    revenueChart = new Chart(document.getElementById("revenueChart"), { type: "line", data: { labels, datasets: [{ label: "Umsatz €", data: revenueData, borderColor: "#67e8f9", tension: 0.4, fill: true, backgroundColor: "rgba(103,232,249,0.15)" }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } });
     const ordersData = labels.map(d => dailyOrdersCount[d] || 0);
     if (dailyOrdersChart) dailyOrdersChart.destroy();
-    dailyOrdersChart = new Chart(document.getElementById("dailyOrdersChart"), {
-        type: "line",
-        data: { labels, datasets: [{ label: "Bestellungen", data: ordersData, borderColor: "#a78bfa", tension: 0.4, fill: true, backgroundColor: "rgba(167,139,250,0.15)" }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-    });
+    dailyOrdersChart = new Chart(document.getElementById("dailyOrdersChart"), { type: "line", data: { labels, datasets: [{ label: "Bestellungen", data: ordersData, borderColor: "#a78bfa", tension: 0.4, fill: true, backgroundColor: "rgba(167,139,250,0.15)" }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } });
     const prodLabels = Array.from(productMap.keys()).slice(0,10);
     const prodData = prodLabels.map(name => productMap.get(name));
     if (topProductsChart) topProductsChart.destroy();
-    topProductsChart = new Chart(document.getElementById("topProductsChart"), {
-        type: "pie",
-        data: { labels: prodLabels, datasets: [{ data: prodData, backgroundColor: ["#67e8f9","#a78bfa","#f472b6","#fb923c","#4ade80","#22d3ee","#eab308","#ec4899","#14b8a6","#8b5cf6"] }] }
-    });
+    topProductsChart = new Chart(document.getElementById("topProductsChart"), { type: "pie", data: { labels: prodLabels, datasets: [{ data: prodData, backgroundColor: ["#67e8f9","#a78bfa","#f472b6","#fb923c","#4ade80","#22d3ee","#eab308","#ec4899","#14b8a6","#8b5cf6"] }] } });
     const usersSnap = await db.collection("users").orderBy("referralCount", "desc").limit(10).get();
     const refLabels = [], refData = [];
-    usersSnap.forEach(doc => {
-        const u = doc.data();
-        refLabels.push(u.username || u.email.split("@")[0]);
-        refData.push(u.referralCount || 0);
-    });
+    usersSnap.forEach(doc => { const u = doc.data(); refLabels.push(u.username || u.email.split("@")[0]); refData.push(u.referralCount || 0); });
     if (referralChart) referralChart.destroy();
-    referralChart = new Chart(document.getElementById("referralChart"), {
-        type: "bar",
-        data: { labels: refLabels, datasets: [{ label: "Geworbene Freunde", data: refData, backgroundColor: "#a78bfa" }] }
-    });
+    referralChart = new Chart(document.getElementById("referralChart"), { type: "bar", data: { labels: refLabels, datasets: [{ label: "Geworbene Freunde", data: refData, backgroundColor: "#a78bfa" }] } });
 }
 async function generatePDFReport() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
-    doc.setFontSize(22);
-    doc.text("WaveVapes Monatsbericht", 20, 20);
-    doc.setFontSize(11);
-    doc.text(`Erstellt am: ${new Date().toLocaleDateString("de-DE")} ${new Date().toLocaleTimeString("de-DE")}`, 20, 30);
+    doc.setFontSize(22); doc.text("WaveVapes Monatsbericht", 20, 20);
+    doc.setFontSize(11); doc.text(`Erstellt am: ${new Date().toLocaleDateString("de-DE")} ${new Date().toLocaleTimeString("de-DE")}`, 20, 30);
     const thirtyDaysAgo = firebase.firestore.Timestamp.fromDate(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
     const ordersSnap = await db.collection("orders").where("date", ">=", thirtyDaysAgo).get();
-    let totalRevenue = 0;
-    let orderCount = 0;
-    let topProducts = [];
+    let totalRevenue = 0, orderCount = 0;
     const productMap = new Map();
-    ordersSnap.forEach(doc => {
-        const o = doc.data();
-        totalRevenue += o.total || 0;
-        orderCount++;
-        o.items.forEach(item => {
-            const current = productMap.get(item.name) || 0;
-            productMap.set(item.name, current + item.qty);
-        });
-    });
-    topProducts = Array.from(productMap.entries())
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5);
-    doc.setFontSize(14);
-    doc.text("Zusammenfassung letzte 30 Tage", 20, 45);
-    doc.setFontSize(11);
-    doc.text(`Gesamtumsatz: ${totalRevenue.toFixed(2)} €`, 20, 55);
-    doc.text(`Anzahl Bestellungen: ${orderCount}`, 20, 62);
-    doc.text("Top 5 Produkte:", 20, 75);
+    ordersSnap.forEach(doc => { const o = doc.data(); totalRevenue += o.total || 0; orderCount++; o.items.forEach(item => productMap.set(item.name, (productMap.get(item.name) || 0) + item.qty)); });
+    const topProducts = Array.from(productMap.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    doc.setFontSize(14); doc.text("Zusammenfassung letzte 30 Tage", 20, 45);
+    doc.setFontSize(11); doc.text(`Gesamtumsatz: ${totalRevenue.toFixed(2)} €`, 20, 55); doc.text(`Anzahl Bestellungen: ${orderCount}`, 20, 62); doc.text("Top 5 Produkte:", 20, 75);
     let y = 82;
-    topProducts.forEach(([name, qty]) => {
-        doc.text(`${name}: ${qty} Stück`, 25, y);
-        y += 7;
-    });
+    topProducts.forEach(([name, qty]) => { doc.text(`${name}: ${qty} Stück`, 25, y); y += 7; });
     const usersSnap = await db.collection("users").orderBy("referralCount", "desc").limit(10).get();
-    doc.text("Top Referrer:", 20, y + 10);
-    y += 17;
-    usersSnap.forEach(doc => {
-        const u = doc.data();
-        const name = u.username || u.email.split("@")[0];
-        doc.text(`${name} – ${u.referralCount || 0} Freunde geworben`, 25, y);
-        y += 7;
-    });
-    doc.setFontSize(10);
-    doc.text("Bericht erstellt mit WaveVapes Admin Panel v2.0", 20, 280);
+    doc.text("Top Referrer:", 20, y + 10); y += 17;
+    usersSnap.forEach(doc => { const u = doc.data(); doc.text(`${u.username || u.email.split("@")[0]} – ${u.referralCount || 0} Freunde geworben`, 25, y); y += 7; });
+    doc.setFontSize(10); doc.text("Bericht erstellt mit WaveVapes Admin Panel v2.0", 20, 280);
     doc.save(`wavevapes-monatsbericht_${new Date().toISOString().slice(0,10)}.pdf`);
     await logAction("monthly_report_generated");
     showToast("✅ Vollständiger Monatsbericht als PDF heruntergeladen!", "success");
@@ -1610,30 +1423,14 @@ function loadAdminLogs() {
         snap.forEach(doc => {
             const l = doc.data();
             const time = l.timestamp ? l.timestamp.toDate().toLocaleString("de-DE") : "—";
-            container.innerHTML += `
-            <div class="card p-6 flex justify-between items-start">
-                <div>
-                    <div class="font-mono text-xs text-cyan-300">${l.adminEmail}</div>
-                    <div class="text-lg font-semibold">${l.action}</div>
-                    <div class="text-sm text-gray-400">${l.target}</div>
-                </div>
-                <div class="text-right text-xs text-gray-500">${time}</div>
-            </div>`;
+            container.innerHTML += `<div class="card p-6 flex justify-between items-start"><div><div class="font-mono text-xs text-cyan-300">${l.adminEmail}</div><div class="text-lg font-semibold">${l.action}</div><div class="text-sm text-gray-400">${l.target}</div></div><div class="text-right text-xs text-gray-500">${time}</div></div>`;
         });
     });
 }
 // ====================== SETTINGS ======================
 async function loadSettings() {
     const doc = await db.collection("settings").doc("main").get();
-    let data = doc.exists ? doc.data() : {
-        bank_owner: "Jakob David Hellrung",
-        iban: "DE38360200300003395812",
-        bic: "NBAGDE3EXXX",
-        shipping_cost: 4.99,
-        free_shipping_threshold: 100,
-        shop_closed: false,
-        email_template: "Deine Bestellung wurde bestätigt..."
-    };
+    let data = doc.exists ? doc.data() : { bank_owner: "Jakob David Hellrung", iban: "DE38360200300003395812", bic: "NBAGDE3EXXX", shipping_cost: 4.99, free_shipping_threshold: 100, shop_closed: false, email_template: "Deine Bestellung wurde bestätigt..." };
     if (!doc.exists) await db.collection("settings").doc("main").set(data);
     document.getElementById("set-bank-owner").value = data.bank_owner || "";
     document.getElementById("set-iban").value = data.iban || "";
@@ -1644,15 +1441,7 @@ async function loadSettings() {
     document.getElementById("set-email-template").value = data.email_template || "";
 }
 async function saveSettings() {
-    const data = {
-        bank_owner: document.getElementById("set-bank-owner").value,
-        iban: document.getElementById("set-iban").value,
-        bic: document.getElementById("set-bic").value,
-        shipping_cost: parseFloat(document.getElementById("set-shipping").value),
-        free_shipping_threshold: parseFloat(document.getElementById("set-free-threshold").value),
-        shop_closed: document.getElementById("set-closed").checked,
-        email_template: document.getElementById("set-email-template").value
-    };
+    const data = { bank_owner: document.getElementById("set-bank-owner").value, iban: document.getElementById("set-iban").value, bic: document.getElementById("set-bic").value, shipping_cost: parseFloat(document.getElementById("set-shipping").value), free_shipping_threshold: parseFloat(document.getElementById("set-free-threshold").value), shop_closed: document.getElementById("set-closed").checked, email_template: document.getElementById("set-email-template").value };
     await db.collection("settings").doc("main").set(data, {merge: true});
     await logAction("settings_updated");
     showToast("✅ Einstellungen gespeichert", "success");
@@ -1685,35 +1474,26 @@ async function handleStockOnStatusChange(orderId, newStatus) {
     if (newStatus === "Wird bearbeitet" && oldStatus !== "Wird bearbeitet") {
         for (let item of order.items) {
             if (item.id === 999) continue;
-            await db.collection("products").doc(item.id).update({
-                stock: firebase.firestore.FieldValue.increment(-item.qty),
-                sold: firebase.firestore.FieldValue.increment(item.qty)
-            });
+            await db.collection("products").doc(item.id).update({ stock: firebase.firestore.FieldValue.increment(-item.qty), sold: firebase.firestore.FieldValue.increment(item.qty) });
         }
         showToast("✅ Lager & Verkaufszahlen aktualisiert", "success");
     }
     if (newStatus === "Storniert" && oldStatus === "Wird bearbeitet") {
         for (let item of order.items) {
             if (item.id === 999) continue;
-            await db.collection("products").doc(item.id).update({
-                stock: firebase.firestore.FieldValue.increment(item.qty)
-            });
+            await db.collection("products").doc(item.id).update({ stock: firebase.firestore.FieldValue.increment(item.qty) });
         }
         showToast("✅ Lager wiederhergestellt", "success");
     }
 }
 async function resetAllStatistics() {
-    if (!confirm("⚠️ WIRKLICH ALLE STATISTIKEN ZURÜCKSETZEN?\n\nsold wird bei ALLEN Produkten auf 0 gesetzt.\nUmsatz und Top-Seller gehen auf Null.\nDas ist UNWIDERRUFLICH!")) {
-        return;
-    }
+    if (!confirm("⚠️ WIRKLICH ALLE STATISTIKEN ZURÜCKSETZEN?\n\nsold wird bei ALLEN Produkten auf 0 gesetzt.\nUmsatz und Top-Seller gehen auf Null.\nDas ist UNWIDERRUFLICH!")) return;
     try {
         const snapshot = await db.collection("products").get();
         const batch = db.batch();
-        snapshot.forEach(doc => {
-            batch.update(doc.ref, { sold: 0 });
-        });
+        snapshot.forEach(doc => batch.update(doc.ref, { sold: 0 }));
         await batch.commit();
-        showToast("✅ Alle Statistiken wurden zurückgesetzt! (verkaufte Einheiten = 0)", "success");
+        showToast("✅ Alle Statistiken wurden zurückgesetzt!", "success");
         await logAction("all_statistics_reset");
         loadProducts();
     } catch (e) {
@@ -1741,31 +1521,19 @@ function renderSortList() {
         const div = document.createElement('div');
         div.className = 'sortable-item flex items-center gap-4 bg-zinc-900 border border-white/10 rounded-3xl p-5 cursor-move select-none';
         div.dataset.id = p.id;
-        const newBadge = p.isNew
-            ? `<span onclick="toggleIsNew('${p.id}', event)" class="px-3 py-1 bg-lime-400 text-black text-xs font-black tracking-wider rounded-2xl cursor-pointer hover:scale-110 transition">NEW</span>`
-            : '';
-        const unavailableBadge = p.available === false
-            ? `<span onclick="toggleAvailableInSort('${p.id}', event)" class="px-3 py-1 bg-red-500 text-white text-xs font-medium rounded-2xl cursor-pointer hover:scale-110 transition">NICHT VERFÜGBAR</span>`
-            : '';
+        const newBadge = p.isNew ? `<span onclick="toggleIsNew('${p.id}', event)" class="px-3 py-1 bg-lime-400 text-black text-xs font-black tracking-wider rounded-2xl cursor-pointer hover:scale-110 transition">NEW</span>` : '';
+        const unavailableBadge = p.available === false ? `<span onclick="toggleAvailableInSort('${p.id}', event)" class="px-3 py-1 bg-red-500 text-white text-xs font-medium rounded-2xl cursor-pointer hover:scale-110 transition">NICHT VERFÜGBAR</span>` : '';
         div.innerHTML = `
             ${p.image ? `<img src="${p.image}" class="w-14 h-14 object-cover rounded-2xl flex-shrink-0">` : '<div class="w-14 h-14 bg-zinc-800 rounded-2xl flex items-center justify-center text-2xl">📦</div>'}
             <div class="flex-1">
                 <div class="font-medium text-lg">${p.name}</div>
-                <div class="flex items-center gap-2 mt-1">
-                    ${newBadge}
-                    ${unavailableBadge}
-                </div>
+                <div class="flex items-center gap-2 mt-1">${newBadge}${unavailableBadge}</div>
             </div>
-            <i class="fa-solid fa-grip-lines text-gray-400 text-2xl"></i>
-        `;
+            <i class="fa-solid fa-grip-lines text-gray-400 text-2xl"></i>`;
         container.appendChild(div);
     });
     if (sortableInstance) sortableInstance.destroy();
-    sortableInstance = new Sortable(container, {
-        animation: 180,
-        ghostClass: 'bg-cyan-900/60',
-        forceFallback: true
-    });
+    sortableInstance = new Sortable(container, { animation: 180, ghostClass: 'bg-cyan-900/60', forceFallback: true });
 }
 async function toggleIsNew(id, e) {
     e.stopImmediatePropagation();
@@ -1788,30 +1556,16 @@ function autoSort(mode) {
     const container = document.getElementById('sort-list');
     let items = Array.from(container.children);
     items.sort((a, b) => {
-        const idA = a.dataset.id;
-        const idB = b.dataset.id;
-        const pA = allProducts.find(p => p.id === idA);
-        const pB = allProducts.find(p => p.id === idB);
+        const pA = allProducts.find(p => p.id === a.dataset.id);
+        const pB = allProducts.find(p => p.id === b.dataset.id);
         if (!pA || !pB) return 0;
         switch(mode) {
-            case 'alpha':
-                return pA.name.localeCompare(pB.name);
-            case 'new':
-                if (pA.isNew && !pB.isNew) return -1;
-                if (!pA.isNew && pB.isNew) return 1;
-                return 0;
-            case 'tornado':
-                const catA = (pA.category === "WaveVapes Tornado 30000") ? 0 : 1;
-                const catB = (pB.category === "WaveVapes Tornado 30000") ? 0 : 1;
-                return catA - catB;
-            case 'available':
-                const availA = (pA.available !== false) ? 0 : 1;
-                const availB = (pB.available !== false) ? 0 : 1;
-                return availA - availB;
-            case 'stock':
-                return (pB.stock || 0) - (pA.stock || 0);
-            default:
-                return 0;
+            case 'alpha': return pA.name.localeCompare(pB.name);
+            case 'new': return (pB.isNew ? 1 : 0) - (pA.isNew ? 1 : 0);
+            case 'tornado': return ((pA.category === "WaveVapes Tornado 30000") ? 0 : 1) - ((pB.category === "WaveVapes Tornado 30000") ? 0 : 1);
+            case 'available': return ((pB.available !== false) ? 0 : 1) - ((pA.available !== false) ? 0 : 1);
+            case 'stock': return (pB.stock || 0) - (pA.stock || 0);
+            default: return 0;
         }
     });
     items.forEach(item => container.appendChild(item));
@@ -1821,10 +1575,8 @@ function autoSortPriority() {
     const container = document.getElementById('sort-list');
     let items = Array.from(container.children);
     items.sort((a, b) => {
-        const idA = a.dataset.id;
-        const idB = b.dataset.id;
-        const pA = allProducts.find(p => p.id === idA);
-        const pB = allProducts.find(p => p.id === idB);
+        const pA = allProducts.find(p => p.id === a.dataset.id);
+        const pB = allProducts.find(p => p.id === b.dataset.id);
         if (!pA || !pB) return 0;
         const getPriority = (p) => {
             if (p.available === false || (p.stock || 0) <= 0) return 4;
@@ -1832,8 +1584,7 @@ function autoSortPriority() {
             if (p.category !== "WaveVapes Tornado 30000") return 2;
             return 3;
         };
-        const prioA = getPriority(pA);
-        const prioB = getPriority(pB);
+        const prioA = getPriority(pA), prioB = getPriority(pB);
         if (prioA !== prioB) return prioA - prioB;
         return pA.name.localeCompare(pB.name);
     });
@@ -1854,6 +1605,181 @@ function showToast(msg, type = 'success') {
     document.getElementById('toast-container').appendChild(toast);
     setTimeout(() => toast.remove(), 3500);
 }
+
+// ====================== NEU: LIVE ONLINE (PRESENCE) ======================
+function loadPresence() {
+    const container = document.getElementById("presence-list");
+    container.innerHTML = '<p class="text-center py-8 text-gray-400">Lade Live-Besucher...</p>';
+    db.collection("presence").onSnapshot(snap => {
+        container.innerHTML = '';
+        let count = 0;
+        const now = Date.now();
+        snap.forEach(doc => {
+            const data = doc.data();
+            if (!data.lastSeen) return;
+            const last = data.lastSeen.toDate().getTime();
+            if (now - last > 45000) return;
+            count++;
+            const isGuest = data.isGuest === true || !data.uid;
+            container.innerHTML += `
+                <div class="presence-card p-6 rounded-3xl flex justify-between items-center">
+                    <div>
+                        <div class="font-medium text-lg">${data.username || 'Gast'}</div>
+                        ${data.email ? `<div class="text-xs text-cyan-300">${data.email}</div>` : ''}
+                        ${data.page ? `<div class="text-xs text-gray-400 mt-1">📍 ${data.page}</div>` : ''}
+                    </div>
+                    <div class="text-right">
+                        <span class="px-4 py-1 bg-emerald-400/20 text-emerald-400 text-xs rounded-2xl font-bold">● JETZT AKTIV</span>
+                        ${isGuest ? `<div class="mt-2 text-amber-400 text-xs">Gast</div>` : `<div class="mt-2 text-cyan-400 text-xs">Eingeloggt</div>`}
+                    </div>
+                </div>`;
+        });
+        if (count === 0) container.innerHTML = `<p class="text-center py-12 text-gray-400">Niemand ist gerade online.</p>`;
+        else {
+            container.innerHTML = `<div class="mb-4 text-emerald-400 font-bold text-lg flex items-center gap-2"><i class="fa-solid fa-circle text-xs animate-pulse"></i> ${count} Person${count !== 1 ? 'en' : ''} gerade online</div>` + container.innerHTML;
+        }
+    });
+}
+async function cleanupOldPresence() {
+    const snap = await db.collection("presence").get();
+    const batch = db.batch();
+    const now = Date.now();
+    let deleted = 0;
+    snap.forEach(doc => {
+        const data = doc.data();
+        if (data.lastSeen) {
+            const last = data.lastSeen.toDate().getTime();
+            if (now - last > 45000) { batch.delete(doc.ref); deleted++; }
+        }
+    });
+    await batch.commit();
+    showToast(`✅ ${deleted} alte Einträge gelöscht`, "success");
+}
+
+// ====================== NEU: ERWEITERTE BENUTZERVERWALTUNG ======================
+async function loadExtendedUsers() {
+    db.collection('users').onSnapshot(async snap => {
+        extendedUsers = [];
+        for (let doc of snap.docs) {
+            const u = doc.data();
+            let orderCount = 0, totalSpent = 0;
+            const ordersSnap = await db.collection('orders').where('userId', '==', doc.id).get();
+            ordersSnap.forEach(o => { orderCount++; totalSpent += o.data().total || 0; });
+            extendedUsers.push({ id: doc.id, ...u, orderCount, totalSpent: totalSpent.toFixed(2) });
+        }
+        renderExtendedUsersTable();
+    });
+}
+function renderExtendedUsersTable() {
+    const tbody = document.getElementById('extended-users-tbody');
+    const search = (document.getElementById('extended-user-search').value || '').toLowerCase();
+    const filter = document.getElementById('extended-filter').value;
+    let filtered = extendedUsers.filter(u => {
+        const matchSearch = !search || (u.email && u.email.toLowerCase().includes(search)) || (u.username && u.username.toLowerCase().includes(search));
+        if (!matchSearch) return false;
+        if (filter === 'active' && u.disabled === true) return false;
+        if (filter === 'disabled' && u.disabled !== true) return false;
+        if (filter === 'highpoints' && (u.totalBonusPoints || 0) <= 1000) return false;
+        return true;
+    });
+    let html = '';
+    filtered.forEach(u => {
+        const disabled = u.disabled === true;
+        const statusHTML = disabled ? `<span class="status-badge bg-red-600 text-white">GESPERRT</span>` : `<span class="status-badge bg-emerald-600 text-white">AKTIV</span>`;
+        html += `
+        <tr class="table-row-hover border-b border-white/10">
+            <td class="py-5 px-6"><input type="checkbox" data-id="${u.id}" onclick="toggleExtendedSelect(this)" class="accent-cyan-400 w-5 h-5"></td>
+            <td class="py-5 px-6 font-medium">${u.email || '—'}</td>
+            <td class="py-5 px-6">${u.username || '—'}</td>
+            <td class="py-5 px-6 text-center font-mono text-cyan-300">${u.referralCode || '—'}</td>
+            <td class="py-5 px-6 text-center font-bold text-emerald-400">${u.totalBonusPoints || 0}</td>
+            <td class="py-5 px-6 text-center">${u.referralCount || 0}</td>
+            <td class="py-5 px-6 text-center">${u.orderCount}</td>
+            <td class="py-5 px-6 text-center">${u.totalSpent} €</td>
+            <td class="py-5 px-6 text-center text-xs text-gray-400">${u.createdAt ? u.createdAt.toDate().toLocaleDateString('de-DE') : '—'}</td>
+            <td class="py-5 px-6 text-center">${statusHTML}</td>
+            <td class="py-5 px-6 text-right">
+                <button onclick="openExtendedUserEditModal('${u.id}')" class="text-cyan-400 hover:text-white"><i class="fa-solid fa-pen"></i></button>
+            </td>
+        </tr>`;
+    });
+    tbody.innerHTML = html || `<tr><td colspan="11" class="text-center py-16 text-gray-400">Keine Benutzer gefunden</td></tr>`;
+}
+function toggleSelectAllExtended(cb) {
+    document.querySelectorAll('#extended-users-tbody input[type="checkbox"]').forEach(ch => ch.checked = cb.checked);
+    updateSelectedExtendedIds();
+}
+function toggleExtendedSelect() { updateSelectedExtendedIds(); }
+function updateSelectedExtendedIds() {
+    selectedExtendedUserIds = Array.from(document.querySelectorAll('#extended-users-tbody input[type="checkbox"]:checked')).map(ch => ch.dataset.id);
+}
+async function bulkDisableSelected(disable) {
+    if (selectedExtendedUserIds.length === 0) return alert("Keine User ausgewählt");
+    if (!confirm(`Wirklich ${selectedExtendedUserIds.length} User ${disable ? 'SPERREN' : 'entsperren'}?`)) return;
+    const batch = db.batch();
+    for (let uid of selectedExtendedUserIds) {
+        batch.update(db.collection('users').doc(uid), { disabled: disable });
+    }
+    await batch.commit();
+    await logAction(disable ? "bulk_users_disabled" : "bulk_users_enabled", "", { count: selectedExtendedUserIds.length });
+    showToast(`${selectedExtendedUserIds.length} User ${disable ? 'gesperrt' : 'entsperrt'}!`, 'success');
+}
+async function bulkAddPoints() {
+    if (selectedExtendedUserIds.length === 0) return alert("Keine User ausgewählt");
+    const points = prompt("Wie viele Punkte sollen alle ausgewählten User bekommen?", "500");
+    if (!points) return;
+    const batch = db.batch();
+    selectedExtendedUserIds.forEach(id => batch.update(db.collection('users').doc(id), { totalBonusPoints: firebase.firestore.FieldValue.increment(parseInt(points)) }));
+    await batch.commit();
+    await logAction("bulk_points_added", "", { points, count: selectedExtendedUserIds.length });
+    showToast(`${points} Punkte an ${selectedExtendedUserIds.length} User verteilt!`, 'success');
+}
+async function openExtendedUserEditModal(uid) {
+    const doc = await db.collection('users').doc(uid).get();
+    const u = doc.data();
+    const html = `
+    <div class="bg-zinc-900 rounded-3xl p-8 max-w-2xl w-full mx-4 modal">
+        <h3 class="text-3xl font-bold mb-6 neon">User bearbeiten: <span class="text-cyan-400">${u.email}</span></h3>
+        <div class="grid grid-cols-2 gap-6">
+            <div><label class="block text-sm text-gray-400 mb-2">Username</label><input id="edit-username" value="${u.username || ''}" class="bg-zinc-800 text-white border border-cyan-400/30 focus:border-cyan-400 w-full rounded-2xl px-6 py-4 outline-none"></div>
+            <div><label class="block text-sm text-gray-400 mb-2">Loyalty Punkte</label><input id="edit-points" type="number" value="${u.totalBonusPoints || 0}" class="bg-zinc-800 text-white border border-cyan-400/30 focus:border-cyan-400 w-full rounded-2xl px-6 py-4 outline-none"></div>
+            <div><label class="block text-sm text-gray-400 mb-2">Referral Code</label><input id="edit-referral" value="${u.referralCode || ''}" class="bg-zinc-800 text-white border border-cyan-400/30 focus:border-cyan-400 w-full rounded-2xl px-6 py-4 outline-none"></div>
+            <div class="flex flex-col gap-3 mt-2">
+                <label class="flex items-center gap-3 text-white"><input id="edit-freeshipping" type="checkbox" ${u.freeShipping ? 'checked' : ''} class="w-5 h-5 accent-emerald-400"> Gratis Versand</label>
+                <label class="flex items-center gap-3 text-white"><input id="edit-disabled" type="checkbox" ${u.disabled ? 'checked' : ''} class="w-5 h-5 accent-red-400"> Gesperrt</label>
+                <label class="flex items-center gap-3 text-white"><input id="edit-role-admin" type="checkbox" ${u.role === 'admin' ? 'checked' : ''} class="w-5 h-5 accent-purple-400"> Admin-Rolle</label>
+            </div>
+        </div>
+        <div class="mt-6"><label class="block text-sm text-gray-400 mb-2">Interne Notizen</label><textarea id="edit-notes" rows="3" class="bg-zinc-800 text-white border border-cyan-400/30 focus:border-cyan-400 w-full rounded-2xl px-6 py-4 outline-none">${u.internalNotes || ''}</textarea></div>
+        <div class="flex gap-4 mt-10">
+            <button onclick="saveExtendedUser('${uid}')" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-5 rounded-3xl font-bold text-white">Speichern</button>
+            <button onclick="closeExtendedUserModal()" class="flex-1 bg-zinc-700 hover:bg-zinc-600 py-5 rounded-3xl">Abbrechen</button>
+        </div>
+    </div>`;
+    document.getElementById('extended-user-edit-modal').innerHTML = html;
+    document.getElementById('extended-user-edit-modal').classList.remove('hidden');
+}
+function closeExtendedUserModal() {
+    document.getElementById('extended-user-edit-modal').classList.add('hidden');
+}
+async function saveExtendedUser(uid) {
+    const username = document.getElementById('edit-username').value.trim();
+    const points = parseInt(document.getElementById('edit-points').value) || 0;
+    const referralCode = document.getElementById('edit-referral').value.trim();
+    const freeShipping = document.getElementById('edit-freeshipping').checked;
+    const disabled = document.getElementById('edit-disabled').checked;
+    const isAdmin = document.getElementById('edit-role-admin').checked;
+    const notes = document.getElementById('edit-notes').value.trim();
+    await db.collection('users').doc(uid).update({
+        username, totalBonusPoints: points, referralCode, freeShipping, disabled,
+        role: isAdmin ? 'admin' : firebase.firestore.FieldValue.delete(),
+        internalNotes: notes || firebase.firestore.FieldValue.delete()
+    });
+    await logAction("extended_user_updated", uid, { username, isAdmin });
+    closeExtendedUserModal();
+    showToast('✅ User erfolgreich gespeichert!', 'success');
+}
+
 // ====================== SIDEBAR & TABS ======================
 function switchTab(n) {
     document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('tab-active'));
@@ -1863,6 +1789,15 @@ function switchTab(n) {
     if (n === 5) loadAnalytics();
     if (n === 6) loadAdminLogs();
     if (n === 8) loadProductOrder();
+    // NEU: Tab 9 & 10
+    if (n === 9) {
+        loadPresence();
+        if (presenceRefreshInterval) clearInterval(presenceRefreshInterval);
+        presenceRefreshInterval = setInterval(() => {
+            if (!document.getElementById('tab-content-9').classList.contains('hidden')) loadPresence();
+        }, 15000);
+    }
+    if (n === 10) loadExtendedUsers();
 }
 function toggleSidebar() {
     document.getElementById("sidebar").classList.toggle("-translate-x-full");
@@ -1872,9 +1807,7 @@ async function logout() {
     try {
         await auth.signOut();
         showToast("👋 Erfolgreich ausgeloggt", "success");
-        setTimeout(() => {
-            window.location.href = "index.html";
-        }, 800);
+        setTimeout(() => { window.location.href = "index.html"; }, 800);
     } catch (e) {
         console.error(e);
         alert("Logout fehlgeschlagen: " + e.message);

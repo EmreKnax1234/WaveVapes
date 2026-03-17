@@ -10,6 +10,8 @@
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+    <!-- Cloudinary Upload Widget (schnell & stabil) -->
+    <script src="https://upload-widget.cloudinary.com/global/all.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
@@ -101,14 +103,14 @@
                     <div class="flex items-center gap-3"><input id="prod-unavailable" type="checkbox" class="w-5 h-5 accent-red-400"><label>Nicht verfügbar</label></div>
                     <div class="flex items-center gap-3"><input id="prod-has-nicotine" type="checkbox" checked class="w-5 h-5 accent-cyan-400"><label>Nikotin enthalten (10/20 mg Auswahl)</label></div>
                     <div class="col-span-full"><label class="text-xs text-gray-400 block mb-2">Produktbeschreibung</label><textarea id="prod-description" rows="4" placeholder="Intensiver Blue Raspberry Geschmack..." class="w-full bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl px-6 py-4"></textarea></div>
-                 
-                    <!-- BILD-UPLOAD -->
-                    <div id="dropzone" class="col-span-full border-2 border-dashed border-cyan-400/50 hover:border-cyan-400 rounded-3xl p-10 text-center cursor-pointer transition-all">
-                        <i id="drop-icon" class="fa-solid fa-cloud-arrow-up text-5xl mb-4 text-cyan-400"></i>
-                        <p id="drop-text" class="text-cyan-300">Bild per Drag & Drop oder klicken (JPG/PNG)</p>
-                        <img id="preview-thumb" class="hidden mx-auto mt-6 max-h-48 rounded-2xl border border-cyan-400/30 shadow-xl">
+                
+                    <!-- CLOUDINARY DROPZONE -->
+                    <div id="cloudinary-dropzone" class="col-span-full border-2 border-dashed border-cyan-400/50 hover:border-cyan-400 rounded-3xl p-10 text-center cursor-pointer transition-all">
+                        <i class="fa-solid fa-cloud-arrow-up text-5xl mb-4 text-cyan-400"></i>
+                        <p class="text-cyan-300 font-medium">Bild per Drag & Drop oder klicken (JPG/PNG/WebP)</p>
+                        <p id="cloudinary-filename" class="text-xs text-emerald-400 mt-3 font-medium"></p>
                     </div>
-                 
+                
                     <button type="submit" id="submit-btn" class="lg:col-span-3 bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-5 rounded-3xl text-xl">Produkt speichern</button>
                 </form>
             </div>
@@ -482,12 +484,14 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 const storage = firebase.storage();
-
+// ====================== CLOUDINARY CONFIG ======================
+let cloudinaryWidget = null;
+let selectedCloudinaryUrl = null;
+let selectedEditCloudinaryUrl = null;
+const CLOUD_NAME = "wavevapes"; // ← Dein Cloudinary Cloud Name (ändere hier falls anders)
+const UPLOAD_PRESET = "wavevapes_products";
 // ====================== GLOBALE VARIABLEN ======================
 let currentEditId = null;
-let selectedImageFile = null;
-let selectedEditImageFile = null;
-let removeCurrentImageInEdit = false;
 let allCategories = [];
 let allCoupons = [];
 let revenueChart = null;
@@ -505,7 +509,6 @@ let currentSortCategory = "global";
 let presenceRefreshInterval = null;
 let extendedUsers = [];
 let selectedExtendedUserIds = [];
-
 // ====================== LOG ACTION ======================
 async function logAction(action, target = "", details = {}) {
     if (!auth.currentUser) return;
@@ -517,7 +520,6 @@ async function logAction(action, target = "", details = {}) {
         details: details || {}
     });
 }
-
 // ====================== TOAST ======================
 function showToast(msg, type = 'success') {
     const toast = document.createElement('div');
@@ -526,7 +528,46 @@ function showToast(msg, type = 'success') {
     document.getElementById('toast-container').appendChild(toast);
     setTimeout(() => toast.remove(), 4000);
 }
-
+// ====================== CLOUDINARY WIDGET INIT ======================
+function initCloudinaryWidget() {
+    cloudinaryWidget = cloudinary.createUploadWidget({
+        cloudName: CLOUD_NAME,
+        uploadPreset: UPLOAD_PRESET,
+        sources: ["local", "url"],
+        multiple: false,
+        maxFileSize: 8000000,
+        folder: "wavevapes/products",
+        clientAllowedFormats: ["jpg", "png", "webp"],
+        cropping: false,
+        language: "de"
+    }, (error, result) => {
+        if (!error && result && result.event === "success") {
+            selectedCloudinaryUrl = result.info.secure_url;
+            document.getElementById("cloudinary-filename").innerHTML = 
+                `✅ ${result.info.original_filename} <span class="text-emerald-400">(hochgeladen in Cloudinary)</span>`;
+            showToast("✅ Bild erfolgreich hochgeladen!", "success");
+        }
+    });
+}
+// ====================== DROPZONE CLICK ======================
+document.addEventListener("DOMContentLoaded", () => {
+    const drop = document.getElementById("cloudinary-dropzone");
+    if (drop) {
+        drop.addEventListener("click", () => {
+            if (cloudinaryWidget) cloudinaryWidget.open();
+        });
+        drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add('dropzone-active'); });
+        drop.addEventListener("dragleave", () => drop.classList.remove('dropzone-active'));
+        drop.addEventListener("drop", e => {
+            e.preventDefault();
+            drop.classList.remove('dropzone-active');
+            if (e.dataTransfer.files.length > 0) {
+                // Cloudinary Widget kann Dateien direkt handhaben – wir öffnen es
+                cloudinaryWidget.open();
+            }
+        });
+    }
+});
 // ====================== PRODUKTE ======================
 function loadProducts() {
     db.collection('products').onSnapshot(snap => {
@@ -534,7 +575,6 @@ function loadProducts() {
         renderProductTable();
     });
 }
-
 function renderProductTable() {
     const tbody = document.getElementById('products-tbody');
     if (!tbody) return;
@@ -556,8 +596,8 @@ function renderProductTable() {
     });
     let html = '';
     filtered.forEach(p => {
-        const img = p.image 
-            ? `<img src="${p.image}" class="w-12 h-12 object-cover rounded-2xl" loading="lazy">` 
+        const img = p.image
+            ? `<img src="${p.image}" class="w-12 h-12 object-cover rounded-2xl" loading="lazy">`
             : `<div class="w-12 h-12 bg-zinc-800 rounded-2xl flex items-center justify-center text-xs">📦</div>`;
         html += `
         <tr class="table-row-hover border-b border-white/10">
@@ -580,7 +620,6 @@ function renderProductTable() {
     });
     tbody.innerHTML = html || `<tr><td colspan="12" class="text-center py-16 text-gray-400">Noch keine Produkte.<br>Lege dein erstes an!</td></tr>`;
 }
-
 function deleteProduct(id) {
     if (!confirm('Produkt wirklich endgültig löschen?')) return;
     db.collection('products').doc(id).delete().then(() => {
@@ -588,82 +627,37 @@ function deleteProduct(id) {
         loadProducts();
     });
 }
-
 function applyAdminFilters() {
     renderProductTable();
 }
-
 function sortAdminTable(col) {
     if (adminSortColumn === col) adminSortDirection = adminSortDirection === 'asc' ? 'desc' : 'asc';
     else { adminSortColumn = col; adminSortDirection = 'asc'; }
     renderProductTable();
 }
-
 function updateSelectedProductIds() {
     selectedProductIds = Array.from(document.querySelectorAll('#products-tbody input[type="checkbox"]:checked')).map(ch => ch.dataset.id);
 }
-
 function toggleSelectAllProducts(cb) {
     document.querySelectorAll('#products-tbody input[type="checkbox"]').forEach(c => c.checked = cb.checked);
     updateSelectedProductIds();
 }
-
-// ====================== DROPZONE ======================
-function initDropzone() {
-    const dropzone = document.getElementById('dropzone');
-    const preview = document.getElementById('preview-thumb');
-    const icon = document.getElementById('drop-icon');
-    const text = document.getElementById('drop-text');
-    dropzone.addEventListener('click', () => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'image/*';
-        input.onchange = e => handleFile(e.target.files[0]);
-        input.click();
-    });
-    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dropzone-active'); });
-    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dropzone-active'));
-    dropzone.addEventListener('drop', e => {
-        e.preventDefault();
-        dropzone.classList.remove('dropzone-active');
-        if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
-    });
-    function handleFile(file) {
-        if (!file || !file.type.startsWith('image/')) return alert("Nur Bilddateien erlaubt!");
-        selectedImageFile = file;
-        preview.src = URL.createObjectURL(file);
-        preview.classList.remove('hidden');
-        icon.classList.add('hidden');
-        text.textContent = file.name;
-    }
-}
-
-// ====================== ADD FORM – BILD UPLOAD FIX ======================
+// ====================== ADD PRODUCT MIT CLOUDINARY ======================
 function attachAddFormListener() {
     const form = document.getElementById('add-form');
     const submitBtn = document.getElementById('submit-btn');
-
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
-
         const name = document.getElementById('prod-name').value.trim();
         const category = document.getElementById('prod-category').value.trim();
         if (!name) return alert("Produktname erforderlich!");
         if (!category) return alert("Bitte eine Kategorie auswählen!");
+        if (!selectedCloudinaryUrl) return alert("Bitte zuerst ein Bild hochladen!");
 
         submitBtn.disabled = true;
-        submitBtn.innerHTML = 'Bild wird hochgeladen... <i class="fa-solid fa-spinner animate-spin"></i>';
-
-        let imageUrl = null;
+        submitBtn.innerHTML = 'Speichern... <i class="fa-solid fa-spinner animate-spin"></i>';
 
         try {
-            if (selectedImageFile) {
-                const filename = Date.now() + '_' + selectedImageFile.name;
-                const ref = storage.ref('products/' + filename);
-                const snapshot = await ref.put(selectedImageFile);
-                imageUrl = await snapshot.ref.getDownloadURL();
-            }
-
             const newProduct = {
                 name: name,
                 price: parseFloat(document.getElementById('prod-price').value) || 7.99,
@@ -674,33 +668,25 @@ function attachAddFormListener() {
                 available: !document.getElementById('prod-unavailable').checked,
                 hasNicotine: document.getElementById('prod-has-nicotine').checked,
                 description: document.getElementById('prod-description').value.trim(),
-                image: imageUrl,
+                image: selectedCloudinaryUrl,
                 sold: 0
             };
-
             await db.collection('products').add(newProduct);
-            await logAction("product_created", name, { imageUploaded: !!imageUrl });
-
+            await logAction("product_created", name, { imageUploaded: true, cloudinaryUrl: selectedCloudinaryUrl });
             showToast("✅ Produkt + Bild gespeichert!", "success");
-
             form.reset();
-            document.getElementById('preview-thumb').classList.add('hidden');
-            document.getElementById('drop-icon').classList.remove('hidden');
-            document.getElementById('drop-text').textContent = "Bild per Drag & Drop oder klicken (JPG/PNG)";
-            selectedImageFile = null;
-
+            selectedCloudinaryUrl = null;
+            document.getElementById("cloudinary-filename").innerHTML = "";
             loadProducts();
         } catch (err) {
             console.error(err);
             showToast("❌ Fehler: " + err.message, "error");
-            alert("Fehler beim Speichern: " + err.message);
         } finally {
             submitBtn.disabled = false;
             submitBtn.innerHTML = 'Produkt speichern';
         }
     });
 }
-
 // ====================== KATEGORIEN ======================
 function loadCategories() {
     db.collection('categories').orderBy('order').onSnapshot(snap => {
@@ -815,7 +801,6 @@ function populateAdminCategoryFilter() {
         select.appendChild(opt);
     });
 }
-
 // ====================== GUTSCHEINE ======================
 document.getElementById('add-coupon-form').addEventListener('submit', async e => {
     e.preventDefault();
@@ -884,7 +869,6 @@ async function deleteCoupon(id) {
         loadCoupons();
     }
 }
-
 // ====================== BESTELLUNGEN ======================
 function loadOrders() {
     db.collection('orders').orderBy('date', 'desc').onSnapshot(snap => {
@@ -1011,7 +995,6 @@ async function deleteOrder() {
     showToast('Bestellung gelöscht');
     closeOrderModal();
 }
-
 // ====================== BENUTZER ======================
 function loadUsers() {
     db.collection('users').onSnapshot(snapshot => {
@@ -1051,7 +1034,6 @@ async function resetPassword(email) {
     await auth.sendPasswordResetEmail(email);
     showToast(`Reset-E-Mail gesendet an ${email}`);
 }
-
 // ====================== ANALYTICS ======================
 async function loadAnalytics() {
     const thirtyDaysAgo = firebase.firestore.Timestamp.fromDate(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
@@ -1164,7 +1146,6 @@ async function generatePDFReport() {
     await logAction("monthly_report_generated");
     showToast("✅ Vollständiger Monatsbericht als PDF heruntergeladen!", "success");
 }
-
 // ====================== ADMIN LOGS ======================
 function loadAdminLogs() {
     if (logsUnsubscribe) logsUnsubscribe();
@@ -1185,7 +1166,6 @@ function loadAdminLogs() {
         });
     });
 }
-
 // ====================== SETTINGS ======================
 async function loadSettings() {
     const doc = await db.collection("settings").doc("main").get();
@@ -1227,7 +1207,6 @@ async function awardLoyaltyIfProcessed(orderId) {
         await db.collection('orders').doc(orderId).update({ loyaltyCredited: true });
     }
 }
-
 // ====================== LIVE PRESENCE ======================
 function loadPresence() {
     const container = document.getElementById("presence-list");
@@ -1274,7 +1253,6 @@ async function cleanupOldPresence() {
     });
     await batch.commit();
 }
-
 // ====================== ERWEITERTE BENUTZERVERWALTUNG ======================
 async function loadExtendedUsers() {
     db.collection('users').onSnapshot(async snap => {
@@ -1447,7 +1425,6 @@ async function saveExtendedUser(uid) {
     closeExtendedUserModal();
     showToast(`✅ User gespeichert!${disabled && banIp ? ' + IP gesperrt' : ''}`, 'success');
 }
-
 // ====================== SORTIERUNG ======================
 async function loadProductOrder() {
     const doc = await db.collection('settings').doc('product_order').get();
@@ -1505,7 +1482,6 @@ function loadSortListForCategory() {
     currentSortCategory = document.getElementById('sort-category-select').value;
     renderSortList();
 }
-
 // ====================== SWITCH TAB ======================
 function switchTab(n) {
     document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('tab-active'));
@@ -1525,7 +1501,6 @@ async function logout() {
     await auth.signOut();
     window.location.href = "index.html";
 }
-
 // ====================== PRODUCT EDIT MODAL ======================
 async function openEditModal(id) {
     currentEditId = id;
@@ -1543,9 +1518,9 @@ async function openEditModal(id) {
                 <div>
                     <label class="block text-sm text-gray-400 mb-3">Aktuelles Bild</label>
                     ${p.image ? `<img src="${p.image}" id="current-image-preview" class="w-full rounded-3xl mb-4 shadow-xl">` : `<div class="w-full h-48 bg-zinc-800 rounded-3xl flex items-center justify-center text-5xl mb-4">📦</div>`}
-                    <div id="edit-dropzone" class="border-2 border-dashed border-cyan-400/50 hover:border-cyan-400 rounded-3xl p-10 text-center cursor-pointer transition-all">
+                    <div id="edit-cloudinary-dropzone" class="border-2 border-dashed border-cyan-400/50 hover:border-cyan-400 rounded-3xl p-10 text-center cursor-pointer transition-all">
                         <i class="fa-solid fa-cloud-arrow-up text-5xl mb-4 text-cyan-400"></i>
-                        <p class="text-cyan-300">Neues Bild hochladen (ersetzt das alte)</p>
+                        <p class="text-cyan-300">Neues Bild hochladen (Cloudinary)</p>
                     </div>
                     <button onclick="removeImageInEdit()" class="mt-4 text-red-400 hover:text-red-300 text-sm flex items-center gap-2">
                         <i class="fa-solid fa-trash"></i> Bild komplett entfernen
@@ -1595,39 +1570,25 @@ async function openEditModal(id) {
         if (c.name === p.category) opt.selected = true;
         catSelect.appendChild(opt);
     });
-    initEditDropzone();
+    initEditCloudinaryDropzone();
 }
-function initEditDropzone() {
-    const dz = document.getElementById('edit-dropzone');
+function initEditCloudinaryDropzone() {
+    const dz = document.getElementById('edit-cloudinary-dropzone');
     dz.addEventListener('click', () => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'image/*';
-        input.onchange = e => e.target.files[0] && handleEditImage(e.target.files[0]);
-        input.click();
+        if (cloudinaryWidget) cloudinaryWidget.open();
     });
-    dz.addEventListener('drop', e => {
-        e.preventDefault();
-        if (e.dataTransfer.files[0]) handleEditImage(e.dataTransfer.files[0]);
-    });
-}
-function handleEditImage(file) {
-    if (!file.type.startsWith('image/')) return alert("Nur Bilder erlaubt!");
-    selectedEditImageFile = file;
-    showToast("✅ Neues Bild ausgewählt – wird beim Speichern hochgeladen", "success");
 }
 async function removeImageInEdit() {
     if (!confirm("Bild wirklich dauerhaft entfernen?")) return;
-    removeCurrentImageInEdit = true;
+    selectedEditCloudinaryUrl = null;
     const preview = document.getElementById('current-image-preview');
     if (preview) preview.style.display = 'none';
-    showToast("Bild wird beim Speichern gelöscht", "success");
+    showToast("Bild wird beim Speichern entfernt", "success");
 }
 function closeEditModal() {
     document.getElementById('edit-modal').classList.add('hidden');
     currentEditId = null;
-    selectedEditImageFile = null;
-    removeCurrentImageInEdit = false;
+    selectedEditCloudinaryUrl = null;
 }
 async function saveProductEdit() {
     if (!currentEditId) return;
@@ -1645,13 +1606,9 @@ async function saveProductEdit() {
         hasNicotine: document.getElementById('edit-nicotine').checked,
         description: document.getElementById('edit-description').value.trim()
     };
-    if (selectedEditImageFile) {
-        const filename = Date.now() + '_' + selectedEditImageFile.name;
-        const ref = storage.ref('products/' + filename);
-        const snapshot = await ref.put(selectedEditImageFile);
-        imageUrl = await snapshot.ref.getDownloadURL();
-        updateData.image = imageUrl;
-    } else if (removeCurrentImageInEdit) {
+    if (selectedEditCloudinaryUrl) {
+        updateData.image = selectedEditCloudinaryUrl;
+    } else if (selectedEditCloudinaryUrl === null) {
         updateData.image = null;
     }
     await db.collection('products').doc(currentEditId).update(updateData);
@@ -1660,7 +1617,6 @@ async function saveProductEdit() {
     closeEditModal();
     loadProducts();
 }
-
 // ====================== INITIALISIERUNG ======================
 auth.onAuthStateChanged(async (user) => {
     if (!user) return window.location.href = 'index.html';
@@ -1673,8 +1629,8 @@ auth.onAuthStateChanged(async (user) => {
     }
     loadSettings();
     switchTab(0);
+    initCloudinaryWidget();
 });
-
 window.onload = () => {
     loadProducts();
     loadCategories();
@@ -1682,9 +1638,7 @@ window.onload = () => {
     loadOrders();
     loadUsers();
     loadProductOrder();
-    initDropzone();
     attachAddFormListener();
-
     setTimeout(() => {
         populateAdminCategoryFilter();
         populateSortCategorySelect();

@@ -109,7 +109,7 @@
                         <img id="preview-thumb" class="hidden mx-auto mt-6 max-h-48 rounded-2xl border border-cyan-400/30 shadow-xl">
                     </div>
                  
-                    <button type="submit" class="lg:col-span-3 bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-5 rounded-3xl text-xl">Produkt speichern</button>
+                    <button type="submit" id="submit-btn" class="lg:col-span-3 bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-5 rounded-3xl text-xl">Produkt speichern</button>
                 </form>
             </div>
             <div class="flex flex-wrap gap-3 mb-6">
@@ -538,33 +538,27 @@ function loadProducts() {
 function renderProductTable() {
     const tbody = document.getElementById('products-tbody');
     if (!tbody) return;
-
     let filtered = [...allProducts];
-
     const search = (document.getElementById('product-search') || {}).value?.toLowerCase().trim() || '';
     const catFilter = document.getElementById('admin-category-filter')?.value || 'Alle';
     const statusFilter = document.getElementById('admin-status-filter')?.value || '';
-
     if (catFilter !== 'Alle') filtered = filtered.filter(p => p.category === catFilter);
     if (statusFilter === 'available') filtered = filtered.filter(p => p.available !== false);
     if (statusFilter === 'unavailable') filtered = filtered.filter(p => p.available === false);
     if (statusFilter === 'new') filtered = filtered.filter(p => p.isNew);
     if (statusFilter === 'tornado') filtered = filtered.filter(p => p.category === "WaveVapes Tornado 30000");
     if (search) filtered = filtered.filter(p => p.name.toLowerCase().includes(search));
-
     filtered.sort((a, b) => {
         let va = a[adminSortColumn] ?? 0;
         let vb = b[adminSortColumn] ?? 0;
         if (adminSortColumn === 'name') return (a.name || '').localeCompare(b.name || '') * (adminSortDirection === 'asc' ? 1 : -1);
         return (va - vb) * (adminSortDirection === 'asc' ? 1 : -1);
     });
-
     let html = '';
     filtered.forEach(p => {
         const img = p.image 
             ? `<img src="${p.image}" class="w-12 h-12 object-cover rounded-2xl" loading="lazy">` 
             : `<div class="w-12 h-12 bg-zinc-800 rounded-2xl flex items-center justify-center text-xs">📦</div>`;
-
         html += `
         <tr class="table-row-hover border-b border-white/10">
             <td class="py-5 px-6 text-center"><input type="checkbox" data-id="${p.id}" class="accent-cyan-400 w-5 h-5" onchange="updateSelectedProductIds()"></td>
@@ -584,7 +578,6 @@ function renderProductTable() {
             </td>
         </tr>`;
     });
-
     tbody.innerHTML = html || `<tr><td colspan="12" class="text-center py-16 text-gray-400">Noch keine Produkte.<br>Lege dein erstes an!</td></tr>`;
 }
 
@@ -645,23 +638,25 @@ function initDropzone() {
     }
 }
 
-// ====================== ADD FORM ======================
+// ====================== ADD FORM – BILD UPLOAD FIX ======================
 function attachAddFormListener() {
     const form = document.getElementById('add-form');
-    if (!form) return console.error("Formular nicht gefunden!");
+    const submitBtn = document.getElementById('submit-btn');
 
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
-        console.log("✅ Formular-Submit ausgelöst");
 
         const name = document.getElementById('prod-name').value.trim();
         const category = document.getElementById('prod-category').value.trim();
-
         if (!name) return alert("Produktname erforderlich!");
         if (!category) return alert("Bitte eine Kategorie auswählen!");
 
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = 'Bild wird hochgeladen... <i class="fa-solid fa-spinner animate-spin"></i>';
+
+        let imageUrl = null;
+
         try {
-            let imageUrl = null;
             if (selectedImageFile) {
                 const filename = Date.now() + '_' + selectedImageFile.name;
                 const ref = storage.ref('products/' + filename);
@@ -670,11 +665,11 @@ function attachAddFormListener() {
             }
 
             const newProduct = {
-                name, 
+                name: name,
                 price: parseFloat(document.getElementById('prod-price').value) || 7.99,
                 originalPrice: document.getElementById('prod-original-price').value ? parseFloat(document.getElementById('prod-original-price').value) : null,
                 stock: parseInt(document.getElementById('prod-stock').value) || 0,
-                category,
+                category: category,
                 isNew: document.getElementById('prod-new').checked,
                 available: !document.getElementById('prod-unavailable').checked,
                 hasNicotine: document.getElementById('prod-has-nicotine').checked,
@@ -685,6 +680,7 @@ function attachAddFormListener() {
 
             await db.collection('products').add(newProduct);
             await logAction("product_created", name, { imageUploaded: !!imageUrl });
+
             showToast("✅ Produkt + Bild gespeichert!", "success");
 
             form.reset();
@@ -696,8 +692,11 @@ function attachAddFormListener() {
             loadProducts();
         } catch (err) {
             console.error(err);
-            alert("Fehler beim Speichern:\n" + err.message);
             showToast("❌ Fehler: " + err.message, "error");
+            alert("Fehler beim Speichern: " + err.message);
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'Produkt speichern';
         }
     });
 }

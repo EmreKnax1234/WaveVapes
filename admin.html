@@ -247,7 +247,7 @@
                 </div>
             </div>
         </div>
-        <!-- TAB 4: GUTSCHEINE + COUPON-NUTZUNGS-HISTORY -->
+        <!-- TAB 4: GUTSCHEINE -->
         <div id="tab-content-4" class="hidden">
             <div class="card p-8">
                 <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><i class="fa-solid fa-ticket"></i> Gutschein-Manager + Nutzungs-History</h2>
@@ -331,6 +331,8 @@
         <div id="tab-content-6" class="hidden">
             <h2 class="text-3xl font-bold mb-6">Admin Activity Log (Live)</h2>
             <div id="logs-container" class="space-y-4 max-h-[40vh] overflow-y-auto mb-12"></div>
+
+            <!-- UNBEFUGTE ZUGRIFFSVERSUCHE -->
             <div class="card p-8 border border-red-500/40 bg-red-950/20">
                 <div class="flex items-center justify-between mb-6">
                     <h2 class="text-2xl font-bold text-red-400 flex items-center gap-3">
@@ -344,7 +346,23 @@
                     <p class="text-center py-8 text-gray-400">Lade...</p>
                 </div>
             </div>
+
+            <!-- GEBANNTE IPs -->
+            <div class="card p-8 border border-red-900/50 bg-red-950/10 mt-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-2xl font-bold text-red-400 flex items-center gap-3">
+                        <i class="fa-solid fa-ban"></i> Gebannte IP-Adressen
+                    </h2>
+                    <button onclick="loadBannedIPs()" class="bg-zinc-700 hover:bg-zinc-600 px-5 py-2 rounded-2xl text-sm font-medium flex items-center gap-2">
+                        <i class="fa-solid fa-sync"></i> Aktualisieren
+                    </button>
+                </div>
+                <div id="banned-ips-container" class="space-y-3">
+                    <p class="text-center py-8 text-gray-400 text-sm">Lade...</p>
+                </div>
+            </div>
         </div>
+
         <!-- TAB 7: SETTINGS -->
         <div id="tab-content-7" class="hidden">
             <h2 class="text-3xl font-bold mb-8">Shop Settings</h2>
@@ -1071,7 +1089,7 @@ function populateAdminCategoryFilter() {
         select.appendChild(opt);
     });
 }
-// ====================== GUTSCHEINE + COUPON-NUTZUNGS-HISTORY (FIXED) ======================
+// ====================== GUTSCHEINE ======================
 document.getElementById('add-coupon-form').addEventListener('submit', async e => {
     e.preventDefault();
     const code = document.getElementById('coupon-code').value.trim().toUpperCase();
@@ -1090,13 +1108,11 @@ async function loadCoupons() {
     allCoupons = snap.docs.map(d => ({id: d.id, ...d.data()}));
     renderCouponsTable();
 }
-// FIX: totalUsages statt usedBy.length für korrekten Zähler
 function renderCouponsTable() {
     const tbody = document.getElementById('coupons-tbody');
     let html = '';
     allCoupons.forEach(c => {
         const expired = c.expiresAt.toDate() < new Date();
-        // totalUsages zählt jede Einlösung; usedBy.length zählt nur unique User
         const usageCount = c.totalUsages !== undefined ? c.totalUsages : (c.usedBy ? c.usedBy.length : 0);
         html += `
         <tr class="table-row-hover border-b border-white/10">
@@ -1112,7 +1128,6 @@ function renderCouponsTable() {
     });
     tbody.innerHTML = html || `<tr><td colspan="5" class="text-center py-16 text-gray-400">Noch keine Gutscheine</td></tr>`;
 }
-// ====================== FIXED: showCouponHistory ======================
 async function showCouponHistory(couponId) {
     const couponDoc = await db.collection('coupons').doc(couponId).get();
     if (!couponDoc.exists) return showToast("Gutschein nicht gefunden", "error");
@@ -1460,6 +1475,7 @@ function loadAdminLogs() {
         });
     });
     loadUnauthorizedLogs();
+    loadBannedIPs();
 }
 async function loadUnauthorizedLogs() {
     const container = document.getElementById("unauthorized-logs-container");
@@ -1475,6 +1491,8 @@ async function loadUnauthorizedLogs() {
             const l = doc.data();
             const time = l.timestamp ? l.timestamp.toDate().toLocaleString("de-DE") : "—";
             const reasonColor = l.reason === "Nicht eingeloggt" ? "text-amber-400" : "text-red-400";
+            const ip = l.ip || "unbekannt";
+            const canBan = ip !== "unbekannt";
             container.innerHTML += `
                 <div class="bg-zinc-950 border border-red-500/30 rounded-2xl p-5 flex flex-col sm:flex-row justify-between gap-3">
                     <div class="space-y-1">
@@ -1483,7 +1501,10 @@ async function loadUnauthorizedLogs() {
                             <span class="font-semibold ${reasonColor} text-sm">${l.reason}</span>
                         </div>
                         <div class="text-sm text-gray-300"><i class="fa-solid fa-envelope text-xs text-gray-500 mr-1"></i>${l.email}</div>
-                        <div class="text-xs text-gray-500"><i class="fa-solid fa-network-wired text-xs mr-1"></i>IP: ${l.ip || "unbekannt"}</div>
+                        <div class="text-xs text-gray-500 flex items-center gap-2">
+                            <i class="fa-solid fa-network-wired text-xs mr-1"></i>IP: <span class="font-mono text-white">${ip}</span>
+                            ${canBan ? `<button onclick="openBanIPModal('${ip}')" class="ml-2 px-3 py-1 bg-red-600 hover:bg-red-500 text-white text-xs rounded-xl font-bold transition flex items-center gap-1"><i class="fa-solid fa-ban"></i> Bannen</button>` : ''}
+                        </div>
                         <div class="text-xs text-gray-500 truncate max-w-xs"><i class="fa-solid fa-link text-xs mr-1"></i>${l.referrer}</div>
                     </div>
                     <div class="text-right text-xs text-gray-500 whitespace-nowrap">${time}</div>
@@ -1501,6 +1522,161 @@ async function clearUnauthorizedLogs() {
     await batch.commit();
     showToast("✅ Alle Zugriffsversuche gelöscht", "success");
     loadUnauthorizedLogs();
+}
+// ====================== IP BAN SYSTEM ======================
+function openBanIPModal(ip) {
+    const modalHTML = `
+    <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]">
+        <div class="bg-zinc-900 rounded-3xl p-8 max-w-md w-full mx-4 modal">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-bold text-red-400 flex items-center gap-2">
+                    <i class="fa-solid fa-ban"></i> IP Bannen
+                </h3>
+                <button onclick="closeEditModal()" class="text-3xl text-gray-400 hover:text-white">✕</button>
+            </div>
+            <div class="bg-zinc-950 border border-white/10 rounded-2xl px-6 py-4 mb-6 font-mono text-cyan-300 text-lg text-center">
+                ${ip}
+            </div>
+            <div class="space-y-4 mb-6">
+                <label class="block text-sm text-gray-400 mb-2">Ban-Dauer</label>
+                <div class="grid grid-cols-2 gap-3">
+                    <label class="flex items-center gap-3 bg-zinc-800 rounded-2xl px-5 py-4 cursor-pointer border-2 border-red-400 transition">
+                        <input type="radio" name="ban-duration" value="permanent" class="accent-red-400" checked>
+                        <div>
+                            <div class="font-semibold text-sm">Permanent</div>
+                            <div class="text-xs text-gray-400">Keine Ablaufzeit</div>
+                        </div>
+                    </label>
+                    <label class="flex items-center gap-3 bg-zinc-800 rounded-2xl px-5 py-4 cursor-pointer border-2 border-transparent hover:border-amber-400/50 transition">
+                        <input type="radio" name="ban-duration" value="temporary" class="accent-amber-400">
+                        <div>
+                            <div class="font-semibold text-sm">Zeitraum</div>
+                            <div class="text-xs text-gray-400">Datum wählen</div>
+                        </div>
+                    </label>
+                </div>
+                <div id="ban-date-picker" class="hidden">
+                    <label class="block text-sm text-gray-400 mb-2">Gesperrt bis</label>
+                    <input type="datetime-local" id="ban-until-date" class="w-full bg-zinc-800 border border-white/10 focus:border-amber-400 rounded-2xl px-6 py-4">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-2">Grund (optional)</label>
+                    <input id="ban-reason-input" type="text" placeholder="z. B. Wiederholter Angriff" class="w-full bg-zinc-800 border border-white/10 focus:border-red-400 rounded-2xl px-6 py-4">
+                </div>
+            </div>
+            <div class="flex gap-4">
+                <button onclick="executeBanIP('${ip}')" class="flex-1 bg-red-600 hover:bg-red-500 py-5 rounded-3xl font-bold transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-ban"></i> IP Bannen
+                </button>
+                <button onclick="closeEditModal()" class="flex-1 bg-zinc-700 hover:bg-zinc-600 py-5 rounded-3xl">Abbrechen</button>
+            </div>
+        </div>
+    </div>`;
+    document.getElementById('edit-modal').innerHTML = modalHTML;
+    document.getElementById('edit-modal').classList.remove('hidden');
+
+    // Radio-Buttons steuern Datepicker + Border-Highlighting
+    document.querySelectorAll('input[name="ban-duration"]').forEach(radio => {
+        radio.addEventListener('change', () => {
+            document.getElementById('ban-date-picker').classList.toggle('hidden', radio.value !== 'temporary');
+            document.querySelectorAll('input[name="ban-duration"]').forEach(r => {
+                r.closest('label').classList.toggle('border-red-400', r.value === 'permanent' && r.checked);
+                r.closest('label').classList.toggle('border-amber-400', r.value === 'temporary' && r.checked);
+                r.closest('label').classList.toggle('border-transparent', !r.checked);
+            });
+        });
+    });
+}
+
+async function executeBanIP(ip) {
+    const isPermanent = document.querySelector('input[name="ban-duration"]:checked').value === 'permanent';
+    const reason = document.getElementById('ban-reason-input').value.trim();
+    let bannedUntil = null;
+
+    if (!isPermanent) {
+        const dateVal = document.getElementById('ban-until-date').value;
+        if (!dateVal) return showToast('Bitte ein Datum auswählen!', 'error');
+        bannedUntil = firebase.firestore.Timestamp.fromDate(new Date(dateVal));
+    }
+
+    // Prüfen ob IP bereits gebannt
+    const existing = await db.collection('banned_ips').where('ip', '==', ip).limit(1).get();
+    if (!existing.empty) {
+        if (!confirm(`IP ${ip} ist bereits gebannt. Trotzdem überschreiben?`)) return;
+        await existing.docs[0].ref.delete();
+    }
+
+    await db.collection('banned_ips').add({
+        ip,
+        permanent: isPermanent,
+        bannedUntil: bannedUntil,
+        reason: reason || '—',
+        bannedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        bannedBy: auth.currentUser?.email || 'Admin'
+    });
+
+    await logAction("ip_banned", ip, { permanent: isPermanent, reason });
+    closeEditModal();
+    showToast(`🚫 IP ${ip} wurde ${isPermanent ? 'permanent' : 'temporär'} gebannt!`, 'success');
+    loadBannedIPs();
+}
+
+async function unbanIP(docId, ip) {
+    if (!confirm(`IP ${ip} wirklich entbannen?`)) return;
+    await db.collection('banned_ips').doc(docId).delete();
+    await logAction("ip_unbanned", ip);
+    showToast(`✅ IP ${ip} wurde entbannt`, 'success');
+    loadBannedIPs();
+}
+
+async function loadBannedIPs() {
+    const container = document.getElementById('banned-ips-container');
+    if (!container) return;
+    try {
+        const snap = await db.collection('banned_ips').orderBy('bannedAt', 'desc').get();
+        if (snap.empty) {
+            container.innerHTML = `<p class="text-center py-8 text-gray-400 text-sm">Keine gebannten IPs.</p>`;
+            return;
+        }
+        const now = new Date();
+        let html = '';
+        snap.forEach(doc => {
+            const b = doc.data();
+            const bannedAt = b.bannedAt ? b.bannedAt.toDate().toLocaleString('de-DE') : '—';
+            const isExpired = !b.permanent && b.bannedUntil && b.bannedUntil.toDate() < now;
+            const untilStr = b.permanent
+                ? `<span class="text-red-400 font-bold">Permanent</span>`
+                : `<span class="${isExpired ? 'text-gray-400 line-through' : 'text-amber-400'} font-bold">${b.bannedUntil ? b.bannedUntil.toDate().toLocaleString('de-DE') : '—'}</span>`;
+
+            html += `
+            <div class="bg-zinc-950 border ${isExpired ? 'border-white/10 opacity-60' : 'border-red-500/40'} rounded-2xl p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div class="space-y-1">
+                    <div class="flex items-center gap-3">
+                        <i class="fa-solid fa-ban text-red-400 text-sm"></i>
+                        <span class="font-mono text-lg text-white font-bold">${b.ip}</span>
+                        ${isExpired
+                            ? `<span class="text-xs bg-gray-700 text-gray-300 px-2 py-1 rounded-xl">Abgelaufen</span>`
+                            : `<span class="text-xs bg-red-500/20 text-red-400 px-2 py-1 rounded-xl font-bold">AKTIV</span>`
+                        }
+                    </div>
+                    <div class="text-xs text-gray-400 flex items-center gap-2">
+                        <i class="fa-solid fa-clock text-xs"></i> Gesperrt bis: ${untilStr}
+                    </div>
+                    <div class="text-xs text-gray-500">
+                        <i class="fa-solid fa-comment text-xs mr-1"></i>Grund: <span class="text-gray-300">${b.reason}</span>
+                        &nbsp;·&nbsp; Gebannt am: ${bannedAt}
+                        &nbsp;·&nbsp; von <span class="text-cyan-400">${b.bannedBy}</span>
+                    </div>
+                </div>
+                <button onclick="unbanIP('${doc.id}', '${b.ip}')" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold rounded-2xl transition flex items-center gap-2 whitespace-nowrap">
+                    <i class="fa-solid fa-unlock"></i> Entbannen
+                </button>
+            </div>`;
+        });
+        container.innerHTML = html;
+    } catch(e) {
+        container.innerHTML = `<p class="text-center py-8 text-red-400 text-sm">Fehler: ${e.message}</p>`;
+    }
 }
 // ====================== SETTINGS ======================
 async function loadSettings() {
@@ -1852,13 +2028,13 @@ async function saveExtendedUser(uid) {
     closeExtendedUserModal();
     showToast('✅ User erfolgreich gespeichert!', 'success');
 }
-// ====================== SIDEBAR & TABS (FIXED: loadCoupons bei Tab 4) ======================
+// ====================== SIDEBAR & TABS ======================
 function switchTab(n) {
     document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('tab-active'));
     document.getElementById('sidebar-' + n).classList.add('tab-active');
     document.querySelectorAll('[id^="tab-content-"]').forEach(el => el.classList.add('hidden'));
     document.getElementById('tab-content-' + n).classList.remove('hidden');
-    if (n === 4) loadCoupons(); // FIX: Gutscheine immer frisch laden wenn Tab geöffnet wird
+    if (n === 4) loadCoupons();
     if (n === 5) loadAnalytics();
     if (n === 6) loadAdminLogs();
     if (n === 8) loadProductOrder();

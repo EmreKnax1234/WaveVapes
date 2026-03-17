@@ -555,7 +555,7 @@ function loadProducts() {
     });
 }
 
-// ====================== DROPZONE (FIXED) ======================
+// ====================== DROPZONE ======================
 function initDropzone() {
     const dropzone = document.getElementById('dropzone');
     const preview = document.getElementById('preview-thumb');
@@ -570,10 +570,7 @@ function initDropzone() {
         input.click();
     });
 
-    dropzone.addEventListener('dragover', e => {
-        e.preventDefault();
-        dropzone.classList.add('dropzone-active');
-    });
+    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dropzone-active'); });
     dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dropzone-active'));
     dropzone.addEventListener('drop', e => {
         e.preventDefault();
@@ -582,10 +579,7 @@ function initDropzone() {
     });
 
     function handleFile(file) {
-        if (!file || !file.type.startsWith('image/')) {
-            alert("Nur Bilddateien erlaubt!");
-            return;
-        }
+        if (!file || !file.type.startsWith('image/')) return alert("Nur Bilddateien erlaubt!");
         selectedImageFile = file;
         preview.src = URL.createObjectURL(file);
         preview.classList.remove('hidden');
@@ -594,295 +588,66 @@ function initDropzone() {
     }
 }
 
-// ====================== ADD FORM – KOMPLETT FIXIERT ======================
-document.getElementById('add-form').addEventListener('submit', async function(e) {
-    e.preventDefault();
+// ====================== ADD FORM – JETZT IN ONLOAD (FIX!) ======================
+function attachAddFormListener() {
+    const form = document.getElementById('add-form');
+    if (!form) return console.error("Formular nicht gefunden!");
 
-    const name = document.getElementById('prod-name').value.trim();
-    const category = document.getElementById('prod-category').value.trim();
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        console.log("✅ Submit-Event ausgelöst!");
 
-    if (!name) return alert("Produktname erforderlich!");
-    if (!category) return alert("Bitte eine Kategorie auswählen!");
+        const name = document.getElementById('prod-name').value.trim();
+        const category = document.getElementById('prod-category').value.trim();
 
-    let imageUrl = null;
+        if (!name) return alert("Produktname erforderlich!");
+        if (!category) return alert("Bitte eine Kategorie auswählen!");
 
-    try {
-        if (selectedImageFile) {
-            const filename = Date.now() + '_' + selectedImageFile.name;
-            const ref = storage.ref('products/' + filename);
-            const snapshot = await ref.put(selectedImageFile);
-            imageUrl = await snapshot.ref.getDownloadURL();
-        }
+        let imageUrl = null;
 
-        const newProduct = {
-            name: name,
-            price: parseFloat(document.getElementById('prod-price').value) || 7.99,
-            originalPrice: document.getElementById('prod-original-price').value ? parseFloat(document.getElementById('prod-original-price').value) : null,
-            stock: parseInt(document.getElementById('prod-stock').value) || 0,
-            category: category,
-            isNew: document.getElementById('prod-new').checked,
-            available: !document.getElementById('prod-unavailable').checked,
-            hasNicotine: document.getElementById('prod-has-nicotine').checked,
-            description: document.getElementById('prod-description').value.trim(),
-            image: imageUrl,
-            sold: 0
-        };
+        try {
+            if (selectedImageFile) {
+                const filename = Date.now() + '_' + selectedImageFile.name;
+                const ref = storage.ref('products/' + filename);
+                const snapshot = await ref.put(selectedImageFile);
+                imageUrl = await snapshot.ref.getDownloadURL();
+            }
 
-        await db.collection('products').add(newProduct);
-        await logAction("product_created", name, { imageUploaded: !!imageUrl });
-
-        showToast("✅ Produkt + Bild erfolgreich gespeichert!", "success");
-
-        // Form zurücksetzen
-        this.reset();
-        document.getElementById('preview-thumb').classList.add('hidden');
-        document.getElementById('drop-icon').classList.remove('hidden');
-        document.getElementById('drop-text').textContent = "Bild per Drag & Drop oder klicken (JPG/PNG)";
-        selectedImageFile = null;
-
-        loadProducts();
-    } catch (err) {
-        console.error(err);
-        alert("Fehler beim Speichern: " + err.message);
-        showToast("❌ Fehler beim Speichern: " + err.message, "error");
-    }
-});
-
-// ====================== KATEGORIE-SELECT ======================
-function populateSortCategorySelect() {
-    const select = document.getElementById('sort-category-select');
-    select.innerHTML = '<option value="global">Alle Produkte (globale Sortierung)</option>';
-    allCategories.forEach(c => {
-        const opt = document.createElement('option');
-        opt.value = c.name;
-        opt.textContent = c.name;
-        select.appendChild(opt);
-    });
-}
-function loadSortListForCategory() {
-    currentSortCategory = document.getElementById('sort-category-select').value;
-    renderSortList();
-}
-
-// ====================== SORTIERUNG ======================
-async function loadProductOrder() {
-    const doc = await db.collection('settings').doc('product_order').get();
-    productOrderMap = doc.exists ? (doc.data() || {}) : {};
-    renderSortList();
-}
-function renderSortList() {
-    const container = document.getElementById('sort-list');
-    container.innerHTML = '';
-    let filtered = allProducts;
-    if (currentSortCategory !== "global") filtered = allProducts.filter(p => p.category === currentSortCategory);
-    const currentOrder = productOrderMap[currentSortCategory] || [];
-    const sorted = [...filtered].sort((a, b) => {
-        const idxA = currentOrder.indexOf(a.id);
-        const idxB = currentOrder.indexOf(b.id);
-        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-        if (idxA !== -1) return -1;
-        if (idxB !== -1) return 1;
-        return a.name.localeCompare(b.name);
-    });
-    sorted.forEach(p => {
-        const div = document.createElement('div');
-        div.className = 'sortable-item flex items-center gap-4 bg-zinc-900 border border-white/10 rounded-3xl p-5 cursor-move select-none';
-        div.dataset.id = p.id;
-        div.innerHTML = `
-            ${p.image ? `<img src="${p.image}" class="w-14 h-14 object-cover rounded-2xl flex-shrink-0">` : '<div class="w-14 h-14 bg-zinc-800 rounded-2xl flex items-center justify-center text-2xl">📦</div>'}
-            <div class="flex-1"><div class="font-medium text-lg">${p.name}</div></div>
-            <i class="fa-solid fa-grip-lines text-gray-400 text-2xl"></i>
-        `;
-        container.appendChild(div);
-    });
-    if (sortableInstance) sortableInstance.destroy();
-    sortableInstance = new Sortable(container, { animation: 180, ghostClass: 'bg-cyan-900/60' });
-}
-async function saveProductOrder() {
-    const items = document.querySelectorAll('#sort-list .sortable-item');
-    const newOrder = Array.from(items).map(item => item.dataset.id);
-    const docRef = db.collection('settings').doc('product_order');
-    let currentData = (await docRef.get()).exists ? (await docRef.get()).data() : {};
-    currentData[currentSortCategory] = newOrder;
-    await docRef.set(currentData, { merge: true });
-    showToast(`✅ Sortierung für <strong>${currentSortCategory === "global" ? "Alle Produkte" : currentSortCategory}</strong> gespeichert!`, "success");
-}
-
-// ====================== PRODUKT-TABELLE RENDER ======================
-function renderProductTable() {
-    const tbody = document.getElementById('products-tbody');
-    tbody.innerHTML = '';
-    allProducts.forEach(p => {
-        const row = document.createElement('tr');
-        row.className = 'table-row-hover border-b border-white/10';
-        row.innerHTML = `
-            <td class="py-5 px-6"><input type="checkbox" data-id="${p.id}" class="accent-cyan-400 w-5 h-5 product-checkbox"></td>
-            <td class="py-5 px-6"><img src="${p.image || ''}" class="w-12 h-12 object-cover rounded-xl"> ${p.name}</td>
-            <td class="py-5 px-6">${p.category}</td>
-            <td class="py-5 px-6 text-center">${p.isNew ? '✅' : '—'}</td>
-            <td class="py-5 px-6 text-center">${p.price} €</td>
-            <td class="py-5 px-6 text-center">${p.originalPrice || '—'} €</td>
-            <td class="py-5 px-6 text-center">${p.stock}</td>
-            <td class="py-5 px-6 text-center">${p.hasNicotine !== false ? 'Ja' : 'Nein'}</td>
-            <td class="py-5 px-6 text-center">${p.available !== false ? '✅' : '❌'}</td>
-            <td class="py-5 px-6 text-right">${p.sold || 0}</td>
-            <td class="py-5 px-6 text-right">${(p.sold || 0) * (p.price || 0)} €</td>
-            <td class="py-5 px-6 text-right">
-                <button onclick="openEditModal('${p.id}')" class="text-cyan-400"><i class="fa-solid fa-pen"></i></button>
-            </td>
-        `;
-        tbody.appendChild(row);
-    });
-}
-
-// ====================== BULK EDIT ======================
-function toggleSelectAllProducts(cb) {
-    document.querySelectorAll('.product-checkbox').forEach(ch => ch.checked = cb.checked);
-}
-function openBulkEditModal() {
-    selectedProductIds = [];
-    document.querySelectorAll('.product-checkbox:checked').forEach(cb => selectedProductIds.push(cb.dataset.id));
-    if (selectedProductIds.length === 0) return alert("Bitte zuerst Produkte per Checkbox auswählen!");
-    const html = `
-    <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]">
-        <div class="bg-zinc-900 rounded-3xl p-8 max-w-lg w-full mx-4 modal">
-            <h3 class="text-3xl font-bold mb-6 neon">Bulk-Edit (${selectedProductIds.length} Produkte)</h3>
-            <div class="space-y-6">
-                <div><label class="block text-sm text-gray-400 mb-2">Neuer Preis (€)</label><input id="bulk-price" type="number" step="0.01" placeholder="z.B. 7.99" class="w-full bg-zinc-800 rounded-2xl px-6 py-4"></div>
-                <div><label class="block text-sm text-gray-400 mb-2">Lagerbestand</label><input id="bulk-stock" type="number" placeholder="z.B. 50" class="w-full bg-zinc-800 rounded-2xl px-6 py-4"></div>
-                <div class="flex items-center gap-4">
-                    <label class="flex items-center gap-3"><input id="bulk-available" type="checkbox" class="w-5 h-5 accent-cyan-400"> Verfügbar</label>
-                    <label class="flex items-center gap-3"><input id="bulk-new" type="checkbox" class="w-5 h-5 accent-lime-400"> Neue Sorte</label>
-                </div>
-                <div><label class="block text-sm text-gray-400 mb-2">Kategorie</label><select id="bulk-category" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4"></select></div>
-            </div>
-            <div class="flex gap-4 mt-10">
-                <button onclick="executeBulkEdit()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-5 rounded-3xl font-bold">JETZT ÄNDERN</button>
-                <button onclick="closeBulkModal()" class="flex-1 bg-zinc-700 hover:bg-zinc-600 py-5 rounded-3xl">Abbrechen</button>
-            </div>
-        </div>
-    </div>`;
-    document.getElementById('edit-modal').innerHTML = html;
-    document.getElementById('edit-modal').classList.remove('hidden');
-    populateCategorySelects();
-}
-function closeBulkModal() {
-    document.getElementById('edit-modal').classList.add('hidden');
-}
-async function executeBulkEdit() {
-    const price = document.getElementById('bulk-price').value ? parseFloat(document.getElementById('bulk-price').value) : null;
-    const stock = document.getElementById('bulk-stock').value ? parseInt(document.getElementById('bulk-stock').value) : null;
-    const available = document.getElementById('bulk-available').checked ? true : null;
-    const isNew = document.getElementById('bulk-new').checked ? true : null;
-    const category = document.getElementById('bulk-category').value || null;
-    const batch = db.batch();
-    let changed = 0;
-    for (let id of selectedProductIds) {
-        const updateData = {};
-        if (price !== null) updateData.price = price;
-        if (stock !== null) updateData.stock = stock;
-        if (available !== null) updateData.available = available;
-        if (isNew !== null) updateData.isNew = isNew;
-        if (category) updateData.category = category;
-        if (Object.keys(updateData).length > 0) {
-            batch.update(db.collection('products').doc(id), updateData);
-            changed++;
-        }
-    }
-    await batch.commit();
-    await logAction("bulk_edit", "", { count: changed });
-    closeBulkModal();
-    showToast(`✅ ${changed} Produkte erfolgreich bearbeitet!`);
-    loadProducts();
-}
-async function enforceCategories() {
-    if (!confirm('Alle Produkte automatisch kategorisieren?')) return;
-    const snap = await db.collection('products').get();
-    const batch = db.batch();
-    let changed = 0;
-    snap.forEach(doc => {
-        const p = doc.data();
-        const targetCat = p.isNew === true ? "Neue Sorten" : "Normale Sorten";
-        if (p.category !== targetCat) {
-            batch.update(doc.ref, { category: targetCat });
-            changed++;
-        }
-    });
-    if (changed > 0) {
-        await batch.commit();
-        showToast(`✅ ${changed} Produkte automatisch kategorisiert!`, "success");
-    }
-    loadProducts();
-}
-
-// ====================== EXPORT / IMPORT ======================
-async function exportProductsToCSV() {
-    const snapshot = await db.collection("products").get();
-    if (snapshot.empty) return alert("Keine Produkte!");
-    let csv = "id,name,price,originalPrice,stock,category,isNew,available,hasNicotine,description,image,sold\n";
-    snapshot.forEach(doc => {
-        const p = doc.data();
-        const row = [
-            `"${doc.id}"`,
-            `"${(p.name || "").replace(/"/g, '""')}"`,
-            p.price || 0,
-            p.originalPrice || "",
-            p.stock || 0,
-            `"${p.category || ""}"`,
-            p.isNew === true ? "true" : "false",
-            p.available !== false ? "true" : "false",
-            p.hasNicotine !== false ? "true" : "false",
-            `"${(p.description || "").replace(/"/g, '""').replace(/\n/g, "\\n")}"`,
-            `"${p.image || ""}"`,
-            p.sold || 0
-        ].join(",");
-        csv += row + "\n";
-    });
-    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `wavevapes_products_backup_${new Date().toISOString().slice(0,10)}.csv`;
-    link.click();
-    showToast("✅ CSV exportiert!", "success");
-}
-async function importProductsFromCSV(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    if (!confirm("Alle aktuellen Produkte werden GELÖSCHT! Fortfahren?")) return;
-    const reader = new FileReader();
-    reader.onload = async function(event) {
-        const text = event.target.result;
-        const rows = text.trim().split("\n");
-        const deleteSnapshot = await db.collection("products").get();
-        const batchDelete = db.batch();
-        deleteSnapshot.forEach(doc => batchDelete.delete(doc.ref));
-        await batchDelete.commit();
-        const batch = db.batch();
-        for (let i = 1; i < rows.length; i++) {
-            if (!rows[i].trim()) continue;
-            const values = parseCSVLine(rows[i]);
-            const data = {
-                name: values[1],
-                price: parseFloat(values[2]),
-                originalPrice: values[3] ? parseFloat(values[3]) : null,
-                stock: parseInt(values[4]),
-                category: values[5],
-                isNew: values[6] === "true",
-                available: values[7] === "true",
-                hasNicotine: values[8] === "true",
-                description: values[9],
-                image: values[10] || null,
-                sold: parseInt(values[11]) || 0
+            const newProduct = {
+                name: name,
+                price: parseFloat(document.getElementById('prod-price').value) || 7.99,
+                originalPrice: document.getElementById('prod-original-price').value ? parseFloat(document.getElementById('prod-original-price').value) : null,
+                stock: parseInt(document.getElementById('prod-stock').value) || 0,
+                category: category,
+                isNew: document.getElementById('prod-new').checked,
+                available: !document.getElementById('prod-unavailable').checked,
+                hasNicotine: document.getElementById('prod-has-nicotine').checked,
+                description: document.getElementById('prod-description').value.trim(),
+                image: imageUrl,
+                sold: 0
             };
-            const docRef = db.collection("products").doc(values[0]);
-            batch.set(docRef, data);
+
+            await db.collection('products').add(newProduct);
+            await logAction("product_created", name, { imageUploaded: !!imageUrl });
+
+            showToast("✅ Produkt + Bild erfolgreich gespeichert!", "success");
+
+            // Form zurücksetzen
+            form.reset();
+            document.getElementById('preview-thumb').classList.add('hidden');
+            document.getElementById('drop-icon').classList.remove('hidden');
+            document.getElementById('drop-text').textContent = "Bild per Drag & Drop oder klicken (JPG/PNG)";
+            selectedImageFile = null;
+
+            loadProducts();
+        } catch (err) {
+            console.error(err);
+            alert("Fehler beim Speichern: " + err.message);
+            showToast("❌ Fehler: " + err.message, "error");
         }
-        await batch.commit();
-        showToast("✅ Produkte importiert!", "success");
-        loadProducts();
-    };
-    reader.readAsText(file);
-    e.target.value = "";
+    });
+
+    console.log("✅ Add-Form Listener erfolgreich angehängt!");
 }
 
 // ====================== KATEGORIEN ======================
@@ -1647,6 +1412,64 @@ async function saveExtendedUser(uid) {
     showToast(`✅ User gespeichert!${disabled && banIp ? ' + IP gesperrt' : ''}`, 'success');
 }
 
+// ====================== SORTIERUNG ======================
+async function loadProductOrder() {
+    const doc = await db.collection('settings').doc('product_order').get();
+    productOrderMap = doc.exists ? (doc.data() || {}) : {};
+    renderSortList();
+}
+function renderSortList() {
+    const container = document.getElementById('sort-list');
+    container.innerHTML = '';
+    let filtered = allProducts;
+    if (currentSortCategory !== "global") filtered = allProducts.filter(p => p.category === currentSortCategory);
+    const currentOrder = productOrderMap[currentSortCategory] || [];
+    const sorted = [...filtered].sort((a, b) => {
+        const idxA = currentOrder.indexOf(a.id);
+        const idxB = currentOrder.indexOf(b.id);
+        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+        if (idxA !== -1) return -1;
+        if (idxB !== -1) return 1;
+        return a.name.localeCompare(b.name);
+    });
+    sorted.forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'sortable-item flex items-center gap-4 bg-zinc-900 border border-white/10 rounded-3xl p-5 cursor-move select-none';
+        div.dataset.id = p.id;
+        div.innerHTML = `
+            ${p.image ? `<img src="${p.image}" class="w-14 h-14 object-cover rounded-2xl flex-shrink-0">` : '<div class="w-14 h-14 bg-zinc-800 rounded-2xl flex items-center justify-center text-2xl">📦</div>'}
+            <div class="flex-1"><div class="font-medium text-lg">${p.name}</div></div>
+            <i class="fa-solid fa-grip-lines text-gray-400 text-2xl"></i>
+        `;
+        container.appendChild(div);
+    });
+    if (sortableInstance) sortableInstance.destroy();
+    sortableInstance = new Sortable(container, { animation: 180, ghostClass: 'bg-cyan-900/60' });
+}
+async function saveProductOrder() {
+    const items = document.querySelectorAll('#sort-list .sortable-item');
+    const newOrder = Array.from(items).map(item => item.dataset.id);
+    const docRef = db.collection('settings').doc('product_order');
+    let currentData = (await docRef.get()).exists ? (await docRef.get()).data() : {};
+    currentData[currentSortCategory] = newOrder;
+    await docRef.set(currentData, { merge: true });
+    showToast(`✅ Sortierung für <strong>${currentSortCategory === "global" ? "Alle Produkte" : currentSortCategory}</strong> gespeichert!`, "success");
+}
+function populateSortCategorySelect() {
+    const select = document.getElementById('sort-category-select');
+    select.innerHTML = '<option value="global">Alle Produkte (globale Sortierung)</option>';
+    allCategories.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.name;
+        opt.textContent = c.name;
+        select.appendChild(opt);
+    });
+}
+function loadSortListForCategory() {
+    currentSortCategory = document.getElementById('sort-category-select').value;
+    renderSortList();
+}
+
 // ====================== SWITCH TAB ======================
 function switchTab(n) {
     document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('tab-active'));
@@ -1681,26 +1504,21 @@ async function openEditModal(id) {
                 <button onclick="closeEditModal()" class="text-4xl text-gray-400 hover:text-white">✕</button>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <!-- Bild -->
                 <div>
                     <label class="block text-sm text-gray-400 mb-3">Aktuelles Bild</label>
                     ${p.image ? `<img src="${p.image}" id="current-image-preview" class="w-full rounded-3xl mb-4 shadow-xl">` : `<div class="w-full h-48 bg-zinc-800 rounded-3xl flex items-center justify-center text-5xl mb-4">📦</div>`}
-                   
                     <div id="edit-dropzone" class="border-2 border-dashed border-cyan-400/50 hover:border-cyan-400 rounded-3xl p-10 text-center cursor-pointer transition-all">
                         <i class="fa-solid fa-cloud-arrow-up text-5xl mb-4 text-cyan-400"></i>
                         <p class="text-cyan-300">Neues Bild hochladen (ersetzt das alte)</p>
                     </div>
-                   
                     <button onclick="removeImageInEdit()" class="mt-4 text-red-400 hover:text-red-300 text-sm flex items-center gap-2">
                         <i class="fa-solid fa-trash"></i> Bild komplett entfernen
                     </button>
                 </div>
-                <!-- Daten -->
                 <div class="space-y-6">
                     <div><label class="block text-sm text-gray-400 mb-2">Name</label>
                         <input id="edit-name" value="${p.name || ''}" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-2xl px-6 py-4 text-lg">
                     </div>
-                   
                     <div class="grid grid-cols-2 gap-4">
                         <div><label class="block text-sm text-gray-400 mb-2">Preis (€)</label>
                             <input id="edit-price" type="number" step="0.01" value="${p.price || 7.99}" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-2xl px-6 py-4">
@@ -1819,8 +1637,8 @@ auth.onAuthStateChanged(async (user) => {
     }
     loadSettings();
     switchTab(0);
-    initDropzone();
 });
+
 window.onload = () => {
     loadProducts();
     loadCategories();
@@ -1828,6 +1646,66 @@ window.onload = () => {
     loadOrders();
     loadUsers();
     loadProductOrder();
+    initDropzone();
+
+    // === WICHTIG: Form-Listener erst HIER anhängen ===
+    const addForm = document.getElementById('add-form');
+    if (addForm) {
+        addForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            console.log("✅ Submit-Event ausgelöst!");
+
+            const name = document.getElementById('prod-name').value.trim();
+            const category = document.getElementById('prod-category').value.trim();
+
+            if (!name) return alert("Produktname erforderlich!");
+            if (!category) return alert("Bitte eine Kategorie auswählen!");
+
+            let imageUrl = null;
+
+            try {
+                if (selectedImageFile) {
+                    const filename = Date.now() + '_' + selectedImageFile.name;
+                    const ref = storage.ref('products/' + filename);
+                    const snapshot = await ref.put(selectedImageFile);
+                    imageUrl = await snapshot.ref.getDownloadURL();
+                }
+
+                const newProduct = {
+                    name: name,
+                    price: parseFloat(document.getElementById('prod-price').value) || 7.99,
+                    originalPrice: document.getElementById('prod-original-price').value ? parseFloat(document.getElementById('prod-original-price').value) : null,
+                    stock: parseInt(document.getElementById('prod-stock').value) || 0,
+                    category: category,
+                    isNew: document.getElementById('prod-new').checked,
+                    available: !document.getElementById('prod-unavailable').checked,
+                    hasNicotine: document.getElementById('prod-has-nicotine').checked,
+                    description: document.getElementById('prod-description').value.trim(),
+                    image: imageUrl,
+                    sold: 0
+                };
+
+                await db.collection('products').add(newProduct);
+                await logAction("product_created", name, { imageUploaded: !!imageUrl });
+
+                showToast("✅ Produkt + Bild erfolgreich gespeichert!", "success");
+
+                addForm.reset();
+                document.getElementById('preview-thumb').classList.add('hidden');
+                document.getElementById('drop-icon').classList.remove('hidden');
+                document.getElementById('drop-text').textContent = "Bild per Drag & Drop oder klicken (JPG/PNG)";
+                selectedImageFile = null;
+
+                loadProducts();
+            } catch (err) {
+                console.error(err);
+                alert("Fehler beim Speichern: " + err.message);
+                showToast("❌ Fehler: " + err.message, "error");
+            }
+        });
+        console.log("✅ Add-Form Listener erfolgreich angehängt!");
+    }
+
     setTimeout(() => {
         updateStats();
         populateAdminCategoryFilter();

@@ -188,9 +188,9 @@
         .qty-btn:hover { background-color: #22d3ee; color: black; }
         @keyframes boltPulse { 0%, 100% { transform: scale(1) rotate(0deg); color: #fde047; } 50% { transform: scale(1.35) rotate(20deg); color: #facc15; } }
         .animate-bolt { animation: boltPulse 650ms infinite alternate ease-in-out; display: inline-block; text-shadow: 0 0 15px #facc15; }
-        #notification-toast { position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); backdrop-filter: blur(12px); color: #67e8f9; padding: 12px 24px; border-radius: 9999px; font-size: 13px; opacity: 0; transition: all 0.6s cubic-bezier(0.34,1.56,0.64,1); z-index: 1000; max-width: 92%; text-align: center; box-shadow: 0 10px 30px -10px rgb(103 232 249); }
+        #notification-toast { position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); backdrop-filter: blur(12px); color: #67e8f9; padding: 12px 24px; border-radius: 9999px; font-size: 13px; opacity: 0; transition: all 0.6s cubic-bezier(0.34,1.56,0.64,1); z-index: 1000; max-width: 92%; text-align: center; box-shadow: none; pointer-events: none; }
         @media (max-width: 1023px) { #notification-toast { bottom: 15px !important; } }
-        #notification-toast.visible { opacity: 1; transform: translateX(-50%) translateY(-10px); }
+        #notification-toast.visible { opacity: 1; transform: translateX(-50%) translateY(-10px); box-shadow: 0 10px 30px -10px rgb(103 232 249); pointer-events: auto; }
         .price-row { display: flex; justify-content: center; align-items: baseline; gap: 8px; margin-bottom: 12px; }
         .discount-price { font-size: 1.35rem; text-decoration: line-through; color: #9ca3af; }
         .sale-price { font-size: 1.85rem; font-weight: 700; color: #ef4444; }
@@ -2615,7 +2615,7 @@
                 renderReviews(snap.docs.map(d => ({id:d.id,...d.data()})));
             }, err => {
                 console.error('rvLoad error:', err.code, err.message);
-                listEl.innerHTML = `<div class="rv-empty" style="color:#f87171;font-size:11px">Fehler ${err.code}: ${err.message}<br><br>Bitte firestore.rules deployen (reviews allow read: if true)</div>`;
+                listEl.innerHTML = `<div class="rv-empty" style="color:#f87171;font-size:11px">Fehler ${err.code}: ${err.message}<br><br>Firestore Index fehlt – Link in der Konsole (F12) anklicken!</div>`;
             });
             _rvUnsubscribers[productId] = unsub;
         }

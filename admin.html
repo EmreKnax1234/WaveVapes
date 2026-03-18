@@ -3898,7 +3898,7 @@ function renderProductTable() {
                 </label>
             </td>
             <td style="text-align:right"><span class="prd-sold-val">${p.sold || 0}</span></td>
-            <td style="text-align:right"><span class="prd-rev-val">${((p.sold||0)*(p.price||0)).toFixed(2)} €</span></td>
+            <td style="text-align:right"><span class="prd-rev-val" title="Näherung: sold × akt. Preis. Exakter Gesamtumsatz oben im KPI.">${((p.sold||0)*(p.price||0)).toFixed(2)} €</span></td>
             <td style="text-align:right;padding-right:12px">
                 <div class="prd-actions">
                     <button class="prd-act-btn cyan"   onclick="openEditModal('${p.id}')"      title="Bearbeiten"><i class="fa-solid fa-pen"></i></button>
@@ -6626,14 +6626,16 @@ function rvAdminLoad(mode) {
         const filteredDocs = mode === 'pending'
             ? allDocs.filter(r => !r.rejected)
             : allDocs;
+        // Bug fix 1: b was plain object, not Firestore doc — .data() doesn't exist
         const docs = filteredDocs
             .slice()
             .sort((a, b) => {
                 const ta = a.createdAt?.toDate?.() || new Date(0);
-                const tb = b.data().createdAt?.toDate?.() || new Date(0);
+                const tb = b.createdAt?.toDate?.() || new Date(0);
                 return tb - ta;
             });
-        if (snap.empty) {
+        // Bug fix 2: check filteredDocs.length, not snap.empty (snap may not be empty but filter can be)
+        if (filteredDocs.length === 0) {
             listEl.innerHTML = `<div class="rv-admin-empty"><i class="fa-solid fa-star"></i>${
                 mode==='pending' ? 'Keine ausstehenden Bewertungen' :
                 mode==='approved' ? 'Noch keine freigegebenen Bewertungen' :
@@ -6644,15 +6646,14 @@ function rvAdminLoad(mode) {
 
         // Get product names from already-loaded allProducts
         const productNames = {};
-        snap.docs.forEach(d => {
-            const pid = d.data().productId;
-            const p = allProducts.find(pr => pr.id === pid);
-            productNames[pid] = p ? p.name : pid;
+        docs.forEach(r => {
+            const p = allProducts.find(pr => pr.id === r.productId);
+            productNames[r.productId] = p ? p.name : r.productId;
         });
 
         listEl.innerHTML = '';
-        snap.docs.forEach(doc => {
-            const r = doc.data();
+        // Bug fix 3: iterate over filtered+sorted docs, not raw snap.docs
+        docs.forEach(r => {
             const stars = [1,2,3,4,5].map(n =>
                 `<span class="rv-admin-star ${n<=(r.rating||0)?'':'empty'}">★</span>`
             ).join('');
@@ -6671,8 +6672,8 @@ function rvAdminLoad(mode) {
                     ${r.text ? `<div class="rv-admin-text">${r.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>` : '<div class="rv-admin-text" style="font-style:italic;opacity:.4">Kein Text</div>'}
                 </div>
                 <div class="rv-admin-actions">
-                    ${mode !== 'approved' ? `<button class="rv-admin-btn approve" onclick="rvAdminApprove('${doc.id}')" title="Freigeben"><i class="fa-solid fa-check"></i></button>` : ''}
-                    ${mode !== 'rejected' ? `<button class="rv-admin-btn reject"  onclick="rvAdminReject('${doc.id}')"  title="Ablehnen"><i class="fa-solid fa-xmark"></i></button>` : ''}
+                    ${mode !== 'approved' ? `<button class="rv-admin-btn approve" onclick="rvAdminApprove('${r.id}')" title="Freigeben"><i class="fa-solid fa-check"></i></button>` : ''}
+                    ${mode !== 'rejected' ? `<button class="rv-admin-btn reject"  onclick="rvAdminReject('${r.id}')"  title="Ablehnen"><i class="fa-solid fa-xmark"></i></button>` : ''}
                 </div>`;
             listEl.appendChild(card);
         });

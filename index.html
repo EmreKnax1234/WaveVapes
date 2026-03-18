@@ -286,7 +286,7 @@
         #user-banner .hidden.sm\:inline { display: inline !important; }
 
         /* ── CATEGORY TABS ── */
-        .category-tabs { gap: 6px !important; padding-bottom: 10px !important; }
+        .category-tabs { gap: 6px !important; padding-bottom: 10px !important; -webkit-overflow-scrolling: touch !important; scroll-behavior: smooth !important; }
         .category-tabs button { font-size: 0.8rem !important; padding: 6px 14px !important; white-space: nowrap; }
 
         /* ── SEARCH ── */
@@ -376,6 +376,7 @@
             border-top-right-radius: 24px !important;
             width: 100% !important; max-width: 100% !important;
             margin: 0 !important; padding: 20px 16px 32px !important;
+            max-height: 88vh !important; overflow-y: auto !important;
         }
 
         /* ── SUCCESS MODAL ── */
@@ -394,6 +395,17 @@
         .review-card p { font-size: 0.9rem !important; }
         .grid.grid-cols-1.md\:grid-cols-2.lg\:grid-cols-3 { gap: 16px !important; }
 
+        /* ── HERO BANNERS ── */
+        .hero-banner {
+            display: flex !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+            padding-left: 16px !important;
+            padding-right: 16px !important;
+            font-size: 0.82rem !important;
+            text-align: left !important;
+        }
+
         /* ── FOOTER ── */
         footer .flex.justify-center.items-center.gap-x-8 {
             flex-wrap: wrap !important; gap: 10px 16px !important;
@@ -401,7 +413,21 @@
         footer .mt-10.flex.justify-center { margin-top: 24px !important; gap: 32px !important; }
 
         /* ── NOTIFICATIONS TOAST ── */
-        #notification-toast { bottom: 80px !important; left: 12px !important; right: 12px !important; font-size: 0.85rem !important; }
+        #notification-toast {
+            bottom: 80px !important;
+            left: 12px !important;
+            right: 12px !important;
+            transform: none !important;   /* reset left:50%+translateX(-50%) */
+            width: auto !important;
+            max-width: calc(100% - 24px) !important;
+            font-size: 0.85rem !important;
+            border-radius: 16px !important;
+            text-align: center !important;
+        }
+        #notification-toast.visible {
+            opacity: 1 !important;
+            transform: translateY(-6px) !important;  /* subtle lift, no X offset */
+        }
 
         /* ── AGB / DATENSCHUTZ / IMPRESSUM MODALS ── */
         #agb-modal > div,
@@ -439,7 +465,19 @@
             border-top-left-radius: 24px !important;
             border-top-right-radius: 24px !important;
             width: 100% !important; max-width: 100% !important;
-            margin: 0 !important;
+            margin: 0 !important; padding: 20px 16px 32px !important;
+            max-height: 88vh !important; overflow-y: auto !important;
+        }
+
+        /* ── AGE MODAL ── */
+        #age-modal { align-items: flex-end !important; }
+        #age-modal > div {
+            border-bottom-left-radius: 0 !important;
+            border-bottom-right-radius: 0 !important;
+            border-top-left-radius: 24px !important;
+            border-top-right-radius: 24px !important;
+            width: 100% !important; max-width: 100% !important;
+            margin: 0 !important; padding: 28px 20px 40px !important;
         }
 
         /* ── SAFE AREA für iPhone notch ── */
@@ -460,6 +498,7 @@
         #widerruf-modal.flex > div,
         #datenschutz-modal.flex > div,
         #impressum-modal.flex > div,
+        #age-modal.flex > div,
         #product-detail-modal.flex .modal-inner {
             animation: sheet-up 0.3s cubic-bezier(0.32, 0.72, 0, 1) !important;
         }
@@ -488,7 +527,7 @@
                         class="flex items-center justify-center bg-zinc-900 hover:bg-zinc-800 border border-cyan-400/30
                                w-10 h-10 rounded-full text-xs font-medium transition-all overflow-hidden
                                sm:w-auto sm:h-auto sm:rounded-3xl sm:px-6 sm:py-3 sm:gap-2">
-                    <i class="fa-solid fa-user text-cyan-300 hidden sm:inline"></i>
+                    <i class="fa-solid fa-user text-cyan-300"></i>
                     <span id="current-user-display" class="font-medium truncate">Account</span>
                 </button>
                 <button onclick="toggleCart()" class="relative flex items-center gap-2 bg-gradient-to-r from-cyan-400 to-purple-500 hover:from-cyan-300 hover:to-purple-400 text-black font-semibold px-5 sm:px-7 py-2 sm:py-3 rounded-3xl transition-all text-sm">
@@ -513,13 +552,13 @@
             <p class="hero-subtitle text-xl sm:text-2xl text-cyan-200 max-w-md mx-auto">7,99 € pro Flasche • 10 ml • Nikotin frei wählbar (10 oder 20 mg)</p>
             <p class="text-base sm:text-lg text-gray-300 mt-4">Alle Liquids von ELFLIQ</p>
             <!-- MYSTERY VAPE BANNER -->
-            <div class="mt-4 inline-flex items-center gap-3 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-400/30 hover:border-emerald-400 px-7 py-3 rounded-3xl text-emerald-300 text-base font-semibold transition-all">
-                <i class="fa-solid fa-gift text-2xl"></i>
+            <div class="hero-banner mt-4 inline-flex items-center gap-3 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-400/30 hover:border-emerald-400 px-7 py-3 rounded-3xl text-emerald-300 text-base font-semibold transition-all">
+                <i class="fa-solid fa-gift text-2xl flex-shrink-0"></i>
                 <span>Ab <span class="wv-free-threshold">100€</span> Bestellwert gibt's eine <span class="text-white font-bold underline">Mystery Vape gratis</span> dazu! 🎁</span>
             </div>
             <!-- GRATIS VERSAND BANNER -->
-            <div class="mt-4 inline-flex items-center gap-3 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-400/30 px-7 py-3 rounded-3xl text-amber-300 text-base font-semibold transition-all">
-                <i class="fa-solid fa-truck text-2xl"></i>
+            <div class="hero-banner mt-4 inline-flex items-center gap-3 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-400/30 px-7 py-3 rounded-3xl text-amber-300 text-base font-semibold transition-all">
+                <i class="fa-solid fa-truck text-2xl flex-shrink-0"></i>
                 <span>Gratis Versand ab <span class="text-white font-bold wv-free-threshold">100 €</span> Bestellwert! 🚚</span>
             </div>
         </div>
@@ -550,11 +589,11 @@
             <div class="flex items-center gap-4 flex-wrap justify-end">
                 <button onclick="event.stopImmediatePropagation(); showOrderHistory()" class="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-cyan-300 hover:text-white px-4 py-2 rounded-2xl text-sm font-medium transition-all">
                     <i class="fa-solid fa-clock-rotate-left"></i>
-                    <span class="hidden sm:inline">Meine Bestellungen</span>
+                    <span>Bestellungen</span>
                 </button>
                 <button onclick="event.stopImmediatePropagation(); shareReferral()" class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-2xl text-sm font-medium transition-all">
                     <i class="fa-solid fa-share-nodes"></i>
-                    <span class="hidden sm:inline">Freunde einladen</span>
+                    <span>Einladen</span>
                 </button>
                 <button onclick="event.stopImmediatePropagation(); showMyReferrals()" class="flex items-center gap-2 bg-purple-600/80 hover:bg-purple-600 text-white px-4 py-2 rounded-2xl text-sm font-medium transition-all border border-purple-400/50">
                     <i class="fa-solid fa-gift"></i>
@@ -563,7 +602,7 @@
             </div>
         </div>
         <!-- TABS -->
-        <div id="category-tabs" class="category-tabs flex overflow-x-auto gap-x-6 pb-4 border-b border-white/10 mb-8 text-base whitespace-nowrap"></div>
+        <div id="category-tabs" class="category-tabs flex overflow-x-auto gap-x-6 pb-4 border-b border-white/10 mb-8 text-base whitespace-nowrap" style="-webkit-overflow-scrolling:touch"></div>
         <!-- SEARCH -->
         <div class="relative mb-8">
             <i class="fa-solid fa-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-cyan-400"></i>
@@ -677,7 +716,7 @@
         <div class="bg-zinc-900 max-w-lg w-full mx-auto rounded-3xl p-8 text-center max-h-[90vh] overflow-y-auto">
             <div class="mx-auto w-20 h-20 bg-emerald-400/10 text-emerald-400 rounded-3xl flex items-center justify-center text-6xl mb-8">✓</div>
             <h3 class="text-4xl font-bold mb-3">Bestellung gesendet!</h3>
-            <p class="text-cyan-300 text-xl mb-2">Bestellnummer: <span id="success-order-id" class="font-mono font-bold"></span></p>
+            <p class="text-cyan-300 text-xl mb-2">Bestellnummer:<br><span id="success-order-id" class="font-mono font-bold text-2xl"></span></p>
             <p id="success-loyalty-info" class="text-emerald-400 text-sm mb-6"></p>
             <div class="bg-zinc-950 border border-cyan-400/30 rounded-2xl p-6 mb-8 text-left">
                 <h4 class="text-emerald-400 font-bold mb-4 flex items-center gap-2"><i class="fa-solid fa-money-bill-transfer"></i> Bitte jetzt überweisen</h4>

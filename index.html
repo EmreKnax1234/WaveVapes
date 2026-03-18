@@ -188,9 +188,10 @@
         .qty-btn:hover { background-color: #22d3ee; color: black; }
         @keyframes boltPulse { 0%, 100% { transform: scale(1) rotate(0deg); color: #fde047; } 50% { transform: scale(1.35) rotate(20deg); color: #facc15; } }
         .animate-bolt { animation: boltPulse 650ms infinite alternate ease-in-out; display: inline-block; text-shadow: 0 0 15px #facc15; }
-        #notification-toast { position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%); background: transparent; backdrop-filter: none; color: #67e8f9; padding: 12px 24px; border-radius: 9999px; font-size: 13px; opacity: 0; visibility: hidden; transition: opacity 0.6s cubic-bezier(0.34,1.56,0.64,1), transform 0.6s cubic-bezier(0.34,1.56,0.64,1), visibility 0s linear 0.6s; z-index: 1000; max-width: 92%; text-align: center; box-shadow: none; pointer-events: none; }
+        #notification-toast { position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%); background: transparent; backdrop-filter: none; color: #67e8f9; padding: 12px 24px; border-radius: 9999px; font-size: 13px; opacity: 0; visibility: hidden; transition: opacity 0.4s ease, transform 0.4s ease, visibility 0s linear 0.4s; z-index: 1000; max-width: 92%; text-align: center; box-shadow: none; pointer-events: none; }
         @media (max-width: 1023px) { #notification-toast { bottom: 15px !important; } }
-        #notification-toast.visible { opacity: 1; visibility: visible; background: rgba(0,0,0,0.85); backdrop-filter: blur(12px); transform: translateX(-50%) translateY(-10px); box-shadow: 0 10px 30px -10px rgb(103 232 249); pointer-events: auto; transition: opacity 0.6s cubic-bezier(0.34,1.56,0.64,1), transform 0.6s cubic-bezier(0.34,1.56,0.64,1), visibility 0s linear 0s; }
+        #notification-toast.visible { opacity: 1; visibility: visible; background: rgba(0,0,0,0.85); backdrop-filter: blur(12px); transform: translateX(-50%) translateY(-10px); box-shadow: 0 10px 30px -10px rgb(103 232 249); pointer-events: auto; transition: opacity 0.4s ease, transform 0.4s ease, visibility 0s linear 0s; }
+
         .price-row { display: flex; justify-content: center; align-items: baseline; gap: 8px; margin-bottom: 12px; }
         .discount-price { font-size: 1.35rem; text-decoration: line-through; color: #9ca3af; }
         .sale-price { font-size: 1.85rem; font-weight: 700; color: #ef4444; }
@@ -409,29 +410,6 @@
                 flex-wrap: wrap !important; gap: 10px 16px !important;
             }
             footer .mt-10.flex.justify-center { margin-top: 24px !important; gap: 32px !important; }
-
-            /* ── NOTIFICATIONS TOAST ── */
-            #notification-toast {
-                bottom: 80px !important;
-                left: 12px !important;
-                right: 12px !important;
-                transform: none !important;   /* reset left:50%+translateX(-50%) */
-                width: auto !important;
-                max-width: calc(100% - 24px) !important;
-                font-size: 0.85rem !important;
-                border-radius: 16px !important;
-                text-align: center !important;
-                background: transparent !important;
-                backdrop-filter: none !important;
-                box-shadow: none !important;
-            }
-            #notification-toast.visible {
-                opacity: 1 !important;
-                transform: translateY(-6px) !important;  /* subtle lift, no X offset */
-                background: rgba(0,0,0,0.85) !important;
-                backdrop-filter: blur(12px) !important;
-                box-shadow: 0 10px 30px -10px rgb(103 232 249) !important;
-            }
 
             /* ── AGB / DATENSCHUTZ / IMPRESSUM MODALS ── */
             #agb-modal > div,
@@ -1027,7 +1005,7 @@
             "LOYAL50": { type: "fixed", value: 50, points: 5000 }
         };
         const MYSTERY_ID = 999;
-        const fakeNames = ["Tim","Anna","Max","Sophie","Luca","Mia","Felix","Emma","Noah","Lena","Leon","Julia","Paul","Laura","Ben","Sarah","David","Hannah","Jonas","Lea"];
+
         const NICOTINE_OPTIONS = ["10 mg", "20 mg"];
         const BANK_OWNER = "Jakob David Hellrung";
         const BANK_IBAN = "DE38360200300003395812";
@@ -1049,11 +1027,7 @@
         let userAddress = JSON.parse(localStorage.getItem("wavevapes_address")) || {};
         let loyaltyPoints = 0;
         let currentCategoryFilter = "Alle";
-        let notificationList = [];
-        const NOTIFICATION_DURATION = 6500;
-        const HOUR_MS = 3600000;
-        let currentNotificationIndex = 0;
-        let notificationCyclePaused = false;
+
         let appliedDiscount = null;
         let ordersUnsubscribe = null;
         let userSnapshotUnsubscribe = null;
@@ -1660,7 +1634,6 @@
         }
         function showLoyaltyPrompt(r) {
             const toast = document.getElementById('notification-toast');
-            notificationCyclePaused = true;
             toast.style.background = "rgba(16, 185, 129, 0.9)";
             toast.style.color = "#fff";
             toast.innerHTML = `🎉 <strong>${r.text} verfügbar!</strong> &nbsp;<button onclick="redeemLoyaltyCode('${r.code}')" style="background:#fff;color:#000;padding:4px 12px;border-radius:999px;font-weight:700;font-size:12px;margin-left:8px">Einlösen</button> <button onclick="dismissLoyaltyPrompt()" style="color:rgba(255,255,255,.6);margin-left:8px;font-size:12px">Später</button>`;
@@ -1677,9 +1650,7 @@
             toast.classList.remove('visible');
             toast.style.background = "";
             toast.style.color = "";
-            notificationCyclePaused = false;
             _loyaltyPromptShown = false;
-            setTimeout(showNextNotification, 1000);
         }
         function showAddressModal() {
             document.getElementById("addr-street").value = userAddress.street || "";
@@ -1799,8 +1770,6 @@
                     });
                 });
                 renderProducts();
-                // Generate notification list once products are loaded
-                if (notificationList.length === 0) generateNotificationList();
             }, err => {
                 console.error("Produkte laden:", err);
                 document.getElementById("products-grid").innerHTML =
@@ -1941,13 +1910,10 @@
         }
         function showDealToast(label) {
             const toast = document.getElementById('notification-toast');
-            notificationCyclePaused = true;
             toast.innerHTML = `⚡ <strong>${label || '4 FÜR 3'} EINGELÖST!</strong>`;
             toast.classList.add('visible');
             setTimeout(() => {
                 toast.classList.remove('visible');
-                notificationCyclePaused = false;
-                showNextNotification();
             }, 5000);
         }
         function updateCartDisplay() {
@@ -2088,13 +2054,10 @@
         }
         function showMysteryToast() {
             const toast = document.getElementById('notification-toast');
-            notificationCyclePaused = true;
             toast.innerHTML = `🎉 <strong>Mystery Vape gratis hinzugefügt!</strong>`;
             toast.classList.add('visible');
             setTimeout(() => {
                 toast.classList.remove('visible');
-                notificationCyclePaused = false;
-                showNextNotification();
             }, 4800);
         }
         function generateOrderNumber() {
@@ -2348,48 +2311,7 @@
             toast.classList.add('visible');
             setTimeout(() => toast.classList.remove('visible'), 4000);
         }
-        function generateNotificationList() {
-            if (!allProducts || allProducts.length === 0) return; // wait until products loaded
-            notificationList = [];
-            for (let i = 0; i < 10; i++) {
-                const name = fakeNames[Math.floor(Math.random() * fakeNames.length)];
-                const prod = allProducts[Math.floor(Math.random() * allProducts.length)];
-                if (!prod) continue;
-                const min = Math.floor(Math.random() * 59) + 1;
-                const text = min === 1 ? "Minute" : "Minuten";
-                notificationList.push(`${name} bestellte vor ${min} ${text} ${prod.name}.`);
-            }
-            if (notificationList.length > 0) {
-                localStorage.setItem('wavevapes_notifications', JSON.stringify(notificationList));
-                localStorage.setItem('wavevapes_last_generate', Date.now());
-            }
-        }
-        function checkAndGenerateNotifications() {
-            if (!allProducts || allProducts.length === 0) return; // not ready yet
-            const last = localStorage.getItem('wavevapes_last_generate');
-            if (!last || (Date.now() - last > HOUR_MS)) generateNotificationList();
-            else {
-                const stored = localStorage.getItem('wavevapes_notifications');
-                if (stored) {
-                    try { notificationList = JSON.parse(stored); } catch(e) { generateNotificationList(); }
-                } else generateNotificationList();
-            }
-        }
-        function showNextNotification() {
-            if (notificationCyclePaused) return;
-            if (!notificationList || notificationList.length === 0) return;
-            const toast = document.getElementById('notification-toast');
-            toast.textContent = notificationList[currentNotificationIndex];
-            toast.classList.add('visible');
-            setTimeout(() => toast.classList.remove('visible'), NOTIFICATION_DURATION - 700);
-            currentNotificationIndex = (currentNotificationIndex + 1) % notificationList.length;
-        }
-        function startNotificationCycle() {
-            checkAndGenerateNotifications();
-            showNextNotification();
-            setInterval(showNextNotification, NOTIFICATION_DURATION);
-            setInterval(checkAndGenerateNotifications, 60000);
-        }
+
         async function renderCategoryTabs() {
             const snap = await db.collection("categories").orderBy("order").get();
             // Rebuild offer config cache
@@ -2870,45 +2792,19 @@
                 referral: new URLSearchParams(window.location.search).get('ref') || null,
             }, { merge: true });
         }
-        let lastOrderTimestamp = 0;
-        function listenForNewOrders() {
-            db.collection("orders").orderBy("date", "desc").limit(1).onSnapshot(snap => {
-                snap.forEach(doc => {
-                    const o = doc.data();
-                    if (!o.date) return;
-                    const orderTime = o.date.toDate().getTime();
-                    // Don't show toast for own orders or on first load
-                    if (orderTime > lastOrderTimestamp && lastOrderTimestamp !== 0) {
-                        const isOwn = currentUser && o.userId === currentUser.uid;
-                        if (!isOwn) {
-                            const messages = [
-                                "🔥 Jemand hat gerade bestellt!",
-                                "⚡ Neue Bestellung eingegangen!",
-                                "🛒 Jemand hat gerade seinen Warenkorb abgeschlossen!",
-                            ];
-                            showToast(messages[Math.floor(Math.random()*messages.length)], "success");
-                        }
-                    }
-                    lastOrderTimestamp = orderTime;
-                });
-            });
-        }
+
         function initialize() {
             initEmailJS();
             if (!localStorage.getItem("age_verified")) showAgeModal();
-            localStorage.removeItem('wavevapes_notifications');
-            localStorage.removeItem('wavevapes_last_generate');
             updateAuthUI();
             updateUserDisplay();
             updateLoyaltyDisplay();
             renderCategoryTabs();
             loadProducts();
-            startNotificationCycle();
             checkAndAutoRedeemLoyalty();
             clearDiscountField();
             updatePresence();
             setInterval(updatePresence, 30000);
-            listenForNewOrders();
             checkProductUrl();
         }
 

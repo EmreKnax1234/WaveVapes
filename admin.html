@@ -925,13 +925,32 @@
         .prd-stock-warn { color:var(--prd-amber); }
         .prd-stock-ok   { color:rgba(255,255,255,.55); }
 
-        /* available toggle */
-        .prd-avail-sw { position:relative; width:34px; height:18px; }
-        .prd-avail-sw input { opacity:0; width:0; height:0; position:absolute; }
-        .prd-avail-sl { position:absolute; inset:0; background:#2a2a3a; border-radius:99px; cursor:pointer; transition:.2s; border:1px solid rgba(255,255,255,.07); }
-        .prd-avail-sl::before { content:''; position:absolute; width:12px; height:12px; border-radius:50%; background:#fff; top:2px; left:2px; transition:.2s; }
-        .prd-avail-sw input:checked + .prd-avail-sl { background:rgba(52,211,153,.35); border-color:rgba(52,211,153,.5); }
-        .prd-avail-sw input:checked + .prd-avail-sl::before { transform:translateX(16px); background:var(--prd-green); }
+        /* available pill badge */
+        .prd-avail-sw { display:inline-block; cursor:pointer; }
+        .prd-avail-sw input { display:none; }
+        .prd-avail-pill {
+            display:inline-flex; align-items:center; gap:5px;
+            padding:4px 10px; border-radius:99px; font-size:10px; font-weight:700;
+            letter-spacing:.04em; text-transform:uppercase;
+            border:1px solid rgba(239,68,68,.35); background:rgba(239,68,68,.08);
+            color:#f87171; transition:all .2s; white-space:nowrap; user-select:none;
+        }
+        .prd-avail-pill::before {
+            content:''; width:6px; height:6px; border-radius:50%;
+            background:#f87171; flex-shrink:0; transition:all .2s;
+            box-shadow:0 0 0 0 rgba(248,113,113,.4);
+        }
+        .prd-avail-sw input:checked ~ .prd-avail-pill {
+            border-color:rgba(52,211,153,.4); background:rgba(52,211,153,.1); color:#34d399;
+        }
+        .prd-avail-sw input:checked ~ .prd-avail-pill::before {
+            background:#34d399; box-shadow:0 0 6px rgba(52,211,153,.6);
+            animation:avail-pulse 2s ease-in-out infinite;
+        }
+        @keyframes avail-pulse {
+            0%,100%{ box-shadow:0 0 4px rgba(52,211,153,.4); }
+            50%    { box-shadow:0 0 10px rgba(52,211,153,.8); }
+        }
 
         /* stats cells */
         .prd-sold-val  { font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:700; color:var(--prd-purple); }
@@ -1597,12 +1616,20 @@
         .usr-pts-bar { height:100%; border-radius:99px; background:linear-gradient(90deg,var(--usr-amber),#f97316); }
 
         /* ── Shipping toggle ── */
-        .usr-toggle { position:relative; width:36px; height:20px; flex-shrink:0; }
-        .usr-toggle input { opacity:0; width:0; height:0; position:absolute; }
-        .usr-toggle-sl { position:absolute; inset:0; background:#2a2a3a; border-radius:99px; cursor:pointer; transition:.22s; border:1px solid rgba(255,255,255,.08); }
-        .usr-toggle-sl::before { content:''; position:absolute; width:14px; height:14px; border-radius:50%; background:#fff; top:2px; left:2px; transition:.22s; }
-        .usr-toggle input:checked + .usr-toggle-sl { background:rgba(52,211,153,.35); border-color:rgba(52,211,153,.5); }
-        .usr-toggle input:checked + .usr-toggle-sl::before { transform:translateX(16px); background:var(--usr-green); }
+        .usr-ship-label { display:inline-flex; align-items:center; gap:6px; cursor:pointer; }
+        .usr-ship-label input { display:none; }
+        .usr-ship-pill {
+            display:inline-flex; align-items:center; gap:5px;
+            padding:4px 10px; border-radius:99px; font-size:10px; font-weight:700;
+            letter-spacing:.04em; text-transform:uppercase;
+            border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.04);
+            color:rgba(255,255,255,.3); transition:all .2s; white-space:nowrap; user-select:none;
+        }
+        .usr-ship-pill i { font-size:9px; transition:all .2s; }
+        .usr-ship-label input:checked ~ .usr-ship-pill {
+            border-color:rgba(52,211,153,.4); background:rgba(52,211,153,.1); color:#34d399;
+        }
+        .usr-ship-label input:checked ~ .usr-ship-pill i { color:#34d399; text-shadow:0 0 6px rgba(52,211,153,.6); }
 
         /* ── Status badge ── */
         .usr-badge { display:inline-block; padding:3px 9px; border-radius:999px; font-size:9px; font-weight:800; letter-spacing:.07em; }
@@ -3733,31 +3760,14 @@ function checkStockWarnings() {
 
 function updateStats() {
     const active = allProducts.filter(p => p.available !== false).length;
+    const soldTotal = allProducts.reduce((sum, p) => sum + (p.sold || 0), 0);
+    const revenue = allProducts.reduce((sum, p) => sum + (p.sold || 0) * (p.price || 0), 0);
     const top = [...allProducts].sort((a, b) => (b.sold || 0) - (a.sold || 0))[0];
     document.getElementById('active-products').textContent = active;
+    document.getElementById('total-sold').textContent = soldTotal;
+    document.getElementById('total-revenue').textContent = revenue.toFixed(0) + ' €';
     document.getElementById('top-seller').textContent = top ? `${top.name} (${top.sold || 0}×)` : '—';
     checkStockWarnings();
-
-    // Umsatz & verkaufte Einheiten direkt aus echten Bestellungen berechnen
-    // (identische Logik wie Analyse-Tab & Superadmin → immer synchron)
-    db.collection('orders').get().then(snap => {
-        let totalRevenue = 0;
-        let totalUnitsSold = 0;
-        snap.forEach(doc => {
-            const o = doc.data();
-            if ((o.status || '') === 'Storniert') return; // stornierte Bestellungen ignorieren
-            totalRevenue += parseFloat(o.total || 0);
-            (o.items || []).forEach(item => { totalUnitsSold += (item.qty || 0); });
-        });
-        document.getElementById('total-sold').textContent = totalUnitsSold;
-        document.getElementById('total-revenue').textContent = totalRevenue.toFixed(0) + ' €';
-    }).catch(() => {
-        // Fallback auf Produktdaten falls orders nicht erreichbar
-        const soldTotal = allProducts.reduce((sum, p) => sum + (p.sold || 0), 0);
-        const revenue = allProducts.reduce((sum, p) => sum + (p.sold || 0) * (p.price || 0), 0);
-        document.getElementById('total-sold').textContent = soldTotal;
-        document.getElementById('total-revenue').textContent = revenue.toFixed(0) + ' €';
-    });
 }
 
 // ====================== PRODUKTE ======================
@@ -3884,7 +3894,7 @@ function renderProductTable() {
             <td style="text-align:center">
                 <label class="prd-avail-sw">
                     <input type="checkbox" ${p.available !== false ? 'checked' : ''} onchange="toggleAvailable('${p.id}',this.checked)">
-                    <span class="prd-avail-sl"></span>
+                    <span class="prd-avail-pill">${p.available !== false ? 'Aktiv' : 'Inaktiv'}</span>
                 </label>
             </td>
             <td style="text-align:right"><span class="prd-sold-val">${p.sold || 0}</span></td>
@@ -3902,7 +3912,15 @@ function renderProductTable() {
 }
 document.getElementById('product-search').addEventListener('input', applyAdminFilters);
 
-async function toggleAvailable(id, val) { await db.collection('products').doc(id).update({ available: val }); await logAction("product_availability_changed", id, { available: val }); showToast('Verfügbarkeit aktualisiert'); }
+async function toggleAvailable(id, val) {
+    // Update pill text instantly
+    const cb = event.target;
+    const pill = cb.parentElement.querySelector('.prd-avail-pill');
+    if (pill) pill.textContent = val ? 'Aktiv' : 'Inaktiv';
+    await db.collection('products').doc(id).update({ available: val });
+    await logAction("product_availability_changed", id, { available: val });
+    showToast('Verfügbarkeit aktualisiert');
+}
 async function deleteProduct(id) {
     if (!confirm('⚠️ Produkt WIRKLICH PERMANENT löschen?\n\nDas kann nicht rückgängig gemacht werden!')) return;
     try { await db.collection('products').doc(id).delete(); await logAction("product_deleted", id); showToast('✅ Produkt erfolgreich gelöscht'); }
@@ -4778,9 +4796,9 @@ function usrRenderTable() {
                 </div>
             </td>
             <td style="text-align:center">
-                <label class="usr-toggle" title="${freeShipping ? 'Gratisversand aktiv' : 'Kein Gratisversand'}">
+                <label class="usr-ship-label" title="${freeShipping ? 'Gratisversand aktiv' : 'Kein Gratisversand'}">
                     <input type="checkbox" ${freeShipping ? 'checked' : ''} onchange="toggleFreeShipping('${doc.id}',this.checked)">
-                    <span class="usr-toggle-sl"></span>
+                    <span class="usr-ship-pill"><i class="fa-solid fa-truck"></i>${freeShipping ? 'Gratis' : 'Standard'}</span>
                 </label>
             </td>
             <td style="text-align:center">
@@ -4800,7 +4818,15 @@ function usrRenderTable() {
 }
 
 document.getElementById('user-search').addEventListener('input', usrRenderTable);
-async function toggleFreeShipping(uid, enable) { await db.collection('users').doc(uid).update({freeShipping:enable}); await logAction(enable?"free_shipping_enabled":"free_shipping_disabled",uid); showToast(enable?'✅ Gratisversand AKTIVIERT':'Gratisversand deaktiviert','success'); }
+async function toggleFreeShipping(uid, enable) {
+    // Update pill text instantly
+    const cb = event.target;
+    const pill = cb.parentElement.querySelector('.usr-ship-pill');
+    if (pill) pill.innerHTML = `<i class="fa-solid fa-truck"></i>${enable ? 'Gratis' : 'Standard'}`;
+    await db.collection('users').doc(uid).update({freeShipping:enable});
+    await logAction(enable?"free_shipping_enabled":"free_shipping_disabled",uid);
+    showToast(enable?'✅ Gratisversand AKTIVIERT':'Gratisversand deaktiviert','success');
+}
 async function resetPassword(email) { if (!confirm(`Passwort-Reset an ${email} senden?`)) return; try { await auth.sendPasswordResetEmail(email); showToast(`✅ Reset-E-Mail gesendet!`); await logAction("password_reset_requested",email); } catch(e) { showToast("Fehler: "+e.message,"error"); } }
 // ═══════════════════════════════════════════════════════
 //  IP-BAN BEI NUTZER-SPERRUNG – zentrale Hilfsfunktion

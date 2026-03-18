@@ -1793,7 +1793,8 @@
                     });
                 });
                 renderProducts();
-                // no toast on every live-update — only on first load silently
+                // Generate notification list once products are loaded
+                if (notificationList.length === 0) generateNotificationList();
             }, err => {
                 console.error("Produkte laden:", err);
                 document.getElementById("products-grid").innerHTML =
@@ -2342,25 +2343,30 @@
             setTimeout(() => toast.classList.remove('visible'), 4000);
         }
         function generateNotificationList() {
+            if (!allProducts || allProducts.length === 0) return; // wait until products loaded
             notificationList = [];
-            const available = allProducts;
             for (let i = 0; i < 10; i++) {
                 const name = fakeNames[Math.floor(Math.random() * fakeNames.length)];
-                const prod = available[Math.floor(Math.random() * available.length)].name;
+                const prod = allProducts[Math.floor(Math.random() * allProducts.length)];
+                if (!prod) continue;
                 const min = Math.floor(Math.random() * 59) + 1;
                 const text = min === 1 ? "Minute" : "Minuten";
-                notificationList.push(`${name} bestellte vor ${min} ${text} ${prod}.`);
+                notificationList.push(`${name} bestellte vor ${min} ${text} ${prod.name}.`);
             }
-            localStorage.setItem('wavevapes_notifications', JSON.stringify(notificationList));
-            localStorage.setItem('wavevapes_last_generate', Date.now());
+            if (notificationList.length > 0) {
+                localStorage.setItem('wavevapes_notifications', JSON.stringify(notificationList));
+                localStorage.setItem('wavevapes_last_generate', Date.now());
+            }
         }
         function checkAndGenerateNotifications() {
+            if (!allProducts || allProducts.length === 0) return; // not ready yet
             const last = localStorage.getItem('wavevapes_last_generate');
             if (!last || (Date.now() - last > HOUR_MS)) generateNotificationList();
             else {
                 const stored = localStorage.getItem('wavevapes_notifications');
-                if (stored) notificationList = JSON.parse(stored);
-                else generateNotificationList();
+                if (stored) {
+                    try { notificationList = JSON.parse(stored); } catch(e) { generateNotificationList(); }
+                } else generateNotificationList();
             }
         }
         function showNextNotification() {

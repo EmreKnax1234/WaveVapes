@@ -994,13 +994,7 @@
         </div>
         <!-- FILTER BAR -->
         <div id="product-filter-bar" role="group" aria-label="Produktfilter">
-            <span class="filter-label"><i class="fa-solid fa-filter" style="margin-right:4px"></i>Filter</span>
-            <div class="filter-divider"></div>
-            <span class="filter-label">Nikotin</span>
-            <button class="filter-pill active" data-filter-nic="alle"  onclick="setNicFilter('alle')" >Alle</button>
-            <button class="filter-pill"        data-filter-nic="10"    onclick="setNicFilter('10')"   >10 mg</button>
-            <button class="filter-pill"        data-filter-nic="20"    onclick="setNicFilter('20')"   >20 mg</button>
-            <button class="filter-pill"        data-filter-nic="keine" onclick="setNicFilter('keine')"><i class="fa-solid fa-ban" style="font-size:9px"></i> Kein Nik.</button>
+            <span class="filter-label"><i class="fa-solid fa-arrow-up-short-wide" style="margin-right:4px"></i>Sortierung</span>
             <div class="filter-divider"></div>
             <span class="filter-label">Preis</span>
             <button class="filter-pill active" data-filter-sort="default"   onclick="setPriceSort('default')"  >Standard</button>
@@ -1563,7 +1557,6 @@
         let userAddress = JSON.parse(localStorage.getItem("wavevapes_address")) || {};
         let loyaltyPoints = 0;
         let currentCategoryFilter = "Alle";
-        let currentNicFilter   = "alle";   // "alle" | "10" | "20" | "keine"
         let currentPriceSort   = "default"; // "default" | "price-asc" | "price-desc"
 
         let appliedDiscount = null;
@@ -2328,13 +2321,8 @@
             let filtered = allProducts.filter(p => {
                 const catMatch  = currentCategoryFilter === "Alle" || p.category === currentCategoryFilter;
                 const searchMatch = !searchTerm || p.name.toLowerCase().includes(searchTerm);
-                // Nicotine filter
-                let nicMatch = true;
-                if (currentNicFilter === "keine") nicMatch = !p.hasNicotine || p.hasNicotine === false;
-                else if (currentNicFilter === "10")    nicMatch = p.hasNicotine !== false;
-                else if (currentNicFilter === "20")    nicMatch = p.hasNicotine !== false;
-                // (10/20 are options on the same products — filter shows products with nicotine)
-                return catMatch && searchMatch && nicMatch;
+
+                return catMatch && searchMatch;
             });
             if (currentPriceSort === "price-asc") {
                 filtered.sort((a, b) => (a.price || 0) - (b.price || 0));
@@ -3076,13 +3064,7 @@
         })();
 
         // ── PRODUCT FILTERS ────────────────────────────────────────────────────
-        function setNicFilter(val) {
-            currentNicFilter = val;
-            document.querySelectorAll('[data-filter-nic]').forEach(el => {
-                el.classList.toggle('active', el.dataset.filterNic === val);
-            });
-            renderProducts();
-        }
+
         function setPriceSort(val) {
             currentPriceSort = val;
             document.querySelectorAll('[data-filter-sort]').forEach(el => {

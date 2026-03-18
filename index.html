@@ -435,6 +435,7 @@
         .neon-text { text-shadow: 0 0 15px var(--neon-cyan), 0 0 30px var(--neon-cyan); }
         .product-card { transition: all 0.3s ease; display: flex; flex-direction: column; height: 100%; }
         .product-card:hover { transform: translateY(-12px) scale(1.04); box-shadow: 0 25px 50px -12px rgb(103 232 249); }
+        /* tornado-image wird nur noch im Produkt-Detail-Modal verwendet */
         .tornado-image {
             width: 100%;
             aspect-ratio: 16 / 12;
@@ -578,6 +579,67 @@
         .stock-high { background: rgba(16, 185, 129, 0.15); color: #10b981; }
         .stock-low { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
         .stock-zero { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+
+        /* ── Stock-Countdown Puls-Animation ── */
+        @keyframes stockPulse {
+            0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+            50%       { opacity: 0.75; box-shadow: 0 0 0 5px rgba(245, 158, 11, 0); }
+        }
+        .stock-low { animation: stockPulse 1.8s ease-in-out infinite; }
+
+        @keyframes stockPulseCritical {
+            0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
+            50%       { opacity: 0.7; box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+        }
+        .stock-critical { background: rgba(239, 68, 68, 0.18); color: #ef4444; animation: stockPulseCritical 1.2s ease-in-out infinite; }
+
+        /* ── Lazy-Load Blur-Placeholder ── */
+        .img-wrap {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16 / 12;
+            border-radius: 16px;
+            margin-bottom: 12px;
+            overflow: hidden;
+            background: linear-gradient(110deg, #1f2937 30%, #2d3a4a 50%, #1f2937 70%);
+            background-size: 200% 100%;
+            animation: imgShimmer 1.6s linear infinite;
+        }
+        @keyframes imgShimmer {
+            0%   { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        /* Sobald das Bild geladen ist, stoppt der Shimmer */
+        .img-wrap.loaded { animation: none; background: #1f2937; }
+
+        .img-wrap img {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 16px;
+            opacity: 0;
+            filter: blur(10px);
+            transform: scale(1.04);
+            transition: opacity 0.45s ease, filter 0.45s ease, transform 0.45s ease;
+            will-change: opacity, filter, transform;
+        }
+        .img-wrap img.img-loaded {
+            opacity: 1;
+            filter: blur(0);
+            transform: scale(1);
+        }
+        /* Fallback-Placeholder (kein Bild vorhanden) */
+        .img-placeholder {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #4c1d95, #9d174d);
+        }
         img { max-width: 100%; height: auto; display: block; }
         @keyframes modalPop {
             from { transform: scale(0.92); opacity: 0; }
@@ -2345,8 +2407,16 @@
                 const nicotine = pendingNicotine[product.id] || cartItem?.nicotine || "20 mg";
                 const isVape = product.category === "WaveVapes Tornado 30000";
                 const imageHTML = product.image
-                    ? `<img src="${product.image}" class="tornado-image" alt="${product.name} – WaveVapes Disposable Vape" loading="lazy" decoding="async" width="400" height="160">`
-                    : `<div class="tornado-image bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-4xl">🧪</div>`;
+                    ? `<div class="img-wrap" id="imgwrap-${product.id}">
+                           <img src="${product.image}"
+                                alt="${product.name} – WaveVapes Disposable Vape"
+                                loading="lazy"
+                                decoding="async"
+                                width="400" height="300"
+                                onload="this.classList.add('img-loaded');this.closest('.img-wrap').classList.add('loaded')"
+                                onerror="this.closest('.img-wrap').innerHTML='<div class=\'img-placeholder\'>🧪</div>'">
+                       </div>`
+                    : `<div class="img-wrap loaded"><div class="img-placeholder">🧪</div></div>`;
                 const oldPrice = product.originalPrice
                     ? product.originalPrice.toFixed(2).replace('.', ',')
                     : (isVape ? "35,99" : "10,99");
@@ -2369,9 +2439,10 @@
                 let stockHTML = '';
                 if (product.available) {
                     const stock = product.stock || 0;
-                    if (stock > 5) stockHTML = `<div class="stock-info stock-high">✅ Noch ${stock} auf Lager</div>`;
-                    else if (stock > 0) stockHTML = `<div class="stock-info stock-low">⚠️ Nur noch ${stock} auf Lager</div>`;
-                    else stockHTML = `<div class="stock-info stock-zero">❌ Ausverkauft</div>`;
+                    if (stock > 5)      stockHTML = `<div class="stock-info stock-high">✅ Auf Lager</div>`;
+                    else if (stock > 2) stockHTML = `<div class="stock-info stock-low">⚡ Nur noch ${stock} auf Lager!</div>`;
+                    else if (stock > 0) stockHTML = `<div class="stock-info stock-critical">🔥 Nur noch ${stock}x verfügbar!</div>`;
+                    else                stockHTML = `<div class="stock-info stock-zero">❌ Ausverkauft</div>`;
                 } else {
                     stockHTML = `<div class="stock-info stock-zero">❌ Ausverkauft</div>`;
                 }

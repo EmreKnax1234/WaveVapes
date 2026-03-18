@@ -7153,7 +7153,7 @@ async function saLoadDashboard() {
             db.collection('users').where('role','==','admin').get(),
             db.collection('presence').get(),
             db.collection('reviews').where('approved','==',false).where('rejected','==',false).get().catch(()=>({size:0})),
-            db.collection('bannedIPs').get().catch(()=>({size:0}))
+            db.collection('banned_ips').get().catch(()=>({size:0}))
         ]);
 
         let totalRevenue = 0;
@@ -7451,11 +7451,11 @@ async function saDangerShopOpen() {
 
 async function saDangerClearBannedIPs() {
     if (!confirm('Alle gesperrten IPs wirklich entsperren?')) return;
-    const snap = await db.collection('bannedIPs').get();
+    const snap = await db.collection('banned_ips').get();
     const batch = db.batch();
     snap.docs.forEach(d => batch.delete(d.ref));
     await batch.commit();
-    await logAction('danger_clear_banned_ips', 'bannedIPs', { count: snap.size });
+    await logAction('danger_clear_banned_ips', 'banned_ips', { count: snap.size });
     showToast(`✅ ${snap.size} IP-Sperren aufgehoben`);
 }
 

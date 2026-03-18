@@ -2900,6 +2900,21 @@
                     </div>
                 </div>
 
+                <!-- ── Admin-Benachrichtigungen ── -->
+                <div class="cfg-section">
+                    <div class="cfg-section-hdr">
+                        <div class="cfg-section-icon" style="background:rgba(103,232,249,.1);color:var(--cfg-cyan)"><i class="fa-solid fa-bell"></i></div>
+                        <div class="cfg-section-title">Admin-Benachrichtigungen</div>
+                    </div>
+                    <div class="cfg-section-body">
+                        <div class="cfg-field">
+                            <label class="cfg-label">E-Mail bei kritischem Lagerbestand</label>
+                            <input id="set-notify-email" type="email" class="cfg-input" placeholder="admin@wavevapes.de">
+                            <span class="cfg-input-hint">Wird automatisch benachrichtigt wenn ein Produkt den kritischen Schwellenwert unterschreitet. Leer lassen = keine E-Mail.</span>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- ── Shop-Status ── -->
                 <div class="cfg-section">
                     <div class="cfg-section-hdr">
@@ -3582,6 +3597,12 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
+// EmailJS — same service/key as shop frontend
+const ADMIN_EMAILJS_SERVICE  = "service_lzvte0x";
+const ADMIN_EMAILJS_PUBLIC   = "t19pJAHgBpbKpZFGU";
+const ADMIN_EMAILJS_TEMPLATE = "template_cgcu1m8";
+emailjs.init(ADMIN_EMAILJS_PUBLIC);
+
 // ====================== GLOBALE VARIABLEN ======================
 let currentEditId = null;
 let selectedFile = null;
@@ -3737,6 +3758,10 @@ async function logAction(action, target = "", details = {}) {
 }
 
 // ====================== LAGERWARNUNG ======================
+// Tracks which product IDs have already triggered a stock alert this session
+// to avoid sending duplicate emails on every Firestore snapshot.
+const _stockAlertSent = new Set();
+
 function checkStockWarnings() {
     const critical = allProducts.filter(p => p.available !== false && (p.stock || 0) <= stockCriticalThreshold);
     const warning  = allProducts.filter(p => p.available !== false && (p.stock || 0) > stockCriticalThreshold && (p.stock || 0) <= stockWarningThreshold);
@@ -3760,6 +3785,44 @@ function checkStockWarnings() {
             </span>
         </div>`;
     }).join('');
+
+    // ── Notify for newly critical products ────────────────────────────────
+    const newlyCritical = critical.filter(p => !_stockAlertSent.has(p.id));
+    if (newlyCritical.length === 0) return;
+
+    newlyCritical.forEach(p => {
+        _stockAlertSent.add(p.id);
+
+        // In-app push notification
+        pushNotification(
+            'warning',
+            `⚠ Kritischer Lagerbestand: ${p.name}`,
+            `Noch ${p.stock || 0} Stk. — bitte nachbestellen!`,
+            () => switchTab(0)
+        );
+
+        // Email alert (only if admin has set a notification address)
+        const notifyEmail = window._adminNotifyEmail;
+        if (!notifyEmail) return;
+        emailjs.send(
+            ADMIN_EMAILJS_SERVICE,
+            ADMIN_EMAILJS_TEMPLATE,
+            {
+                email:          notifyEmail,
+                order_id:       "LAGERWARNUNG",
+                orders:         [{ name: `⚠ ${p.name}`, units: p.stock || 0, price: "Stk. verbleibend", image_url: p.image || "https://wavevapes.de/logo.png" }],
+                cost:           { shipping: "—", tax: "—", total: "Bitte sofort nachbestellen!" },
+                loyalty_earned: 0
+            }
+        ).catch(err => console.warn("Lagerwarnung E-Mail fehlgeschlagen:", err));
+    });
+
+    // Remove products from alert-sent set if stock was restocked above critical threshold
+    // so a future stock drop will trigger a new alert
+    _stockAlertSent.forEach(id => {
+        const p = allProducts.find(pr => pr.id === id);
+        if (!p || (p.stock || 0) > stockCriticalThreshold) _stockAlertSent.delete(id);
+    });
 }
 
 function updateStats() {
@@ -4696,26 +4759,28 @@ async function saveOrderChanges() {
 async function deleteOrder() {
     if (!confirm('Bestellung IRREVERSIBEL löschen?')) return;
 
-    // Before deleting: reverse any stock/sold changes this order caused
+    // Before deleting: reverse any stock/sold changes this order caused.
+    // For new orders (stockReserved=true): stock was decremented at placement — always restore.
+    // For legacy orders: only restore if was already processed (Wird bearbeitet / Versendet / Zugestellt).
     const orderDoc = await db.collection('orders').doc(currentOrderId).get();
     if (orderDoc.exists) {
         const order = orderDoc.data();
         const status = order.status || 'Zahlung erwartet';
-        // If order was already processed (stock was decremented + sold incremented),
-        // we need to reverse that. This applies to: Wird bearbeitet, Versendet, Zugestellt
         const wasProcessed = ['Wird bearbeitet', 'Versendet', 'Zugestellt'].includes(status);
-        if (wasProcessed && order.items?.length) {
+        const shouldRestoreStock = order.stockReserved || wasProcessed;
+        if (shouldRestoreStock && order.items?.length) {
             const batch = db.batch();
             for (const item of order.items) {
-                if (item.id == 999) continue; // mystery vape
+                if (item.id == 999) continue;
                 const ref = db.collection('products').doc(String(item.id));
-                batch.update(ref, {
-                    stock: firebase.firestore.FieldValue.increment(item.qty),
-                    sold:  firebase.firestore.FieldValue.increment(-item.qty)
-                });
+                const update = (order.stockReserved && !wasProcessed)
+                    ? { stock: firebase.firestore.FieldValue.increment(item.qty) }
+                    : { stock: firebase.firestore.FieldValue.increment(item.qty),
+                        sold:  firebase.firestore.FieldValue.increment(-item.qty) };
+                batch.update(ref, update);
             }
             await batch.commit();
-            showToast(`↩ Lager + Statistiken für ${order.items.length} Artikel zurückgesetzt`, 'warning');
+            showToast(`↩ Lager für ${order.items.length} Artikel wiederhergestellt`, 'warning');
         }
     }
 
@@ -5446,8 +5511,10 @@ async function loadSettings() {
     document.getElementById("set-email-template").value = data.email_template||"";
     document.getElementById("set-stock-critical").value = data.stock_critical !== undefined ? data.stock_critical : 3;
     document.getElementById("set-stock-warning").value  = data.stock_warning  !== undefined ? data.stock_warning  : 10;
+    document.getElementById("set-notify-email").value   = data.admin_notify_email || "";
     stockCriticalThreshold = parseInt(data.stock_critical) || 3;
     stockWarningThreshold  = parseInt(data.stock_warning)  || 10;
+    window._adminNotifyEmail = data.admin_notify_email || "";
     cfgUpdateStatusPill();
     cfgUpdatePreviews();
     // live preview on input
@@ -5465,7 +5532,8 @@ async function saveSettings() {
         shop_closed:             document.getElementById("set-closed").checked,
         email_template:          document.getElementById("set-email-template").value,
         stock_critical:          parseInt(document.getElementById("set-stock-critical").value) || 3,
-        stock_warning:           parseInt(document.getElementById("set-stock-warning").value)  || 10
+        stock_warning:           parseInt(document.getElementById("set-stock-warning").value)  || 10,
+        admin_notify_email:      document.getElementById("set-notify-email").value.trim() || null
     };
     await db.collection("settings").doc("main").set(data, {merge:true});
     stockCriticalThreshold = data.stock_critical;
@@ -5476,8 +5544,9 @@ async function saveSettings() {
     renderProductTable();
     checkStockWarnings();
     // Push to live cache so admin panel reflects new values immediately
-    window._FREE_THRESHOLD = data.free_shipping_threshold;
-    window._SHIPPING_COST  = data.shipping_cost;
+    window._FREE_THRESHOLD   = data.free_shipping_threshold;
+    window._SHIPPING_COST    = data.shipping_cost;
+    window._adminNotifyEmail = data.admin_notify_email || "";
 }
 
 function getStatusClass(s) {
@@ -5506,33 +5575,40 @@ async function handleStockOnStatusChange(orderId, newStatus) {
     const order = doc.data();
     const oldStatus = order.status || 'Zahlung erwartet';
 
-    // Zahlung erwartet → Wird bearbeitet: decrement stock + increment sold
+    // stockReserved=true means stock was already decremented when the order was placed.
+    // For new orders: "Wird bearbeitet" only increments sold (stock already gone).
+    // For old orders (no flag): keep legacy behaviour — decrement stock + increment sold.
     if (newStatus === 'Wird bearbeitet' && oldStatus !== 'Wird bearbeitet') {
         const batch = db.batch();
         for (const item of order.items) {
             if (item.id == 999) continue;
-            batch.update(db.collection('products').doc(String(item.id)), {
-                stock: firebase.firestore.FieldValue.increment(-item.qty),
-                sold:  firebase.firestore.FieldValue.increment(item.qty)
-            });
+            const update = order.stockReserved
+                ? { sold: firebase.firestore.FieldValue.increment(item.qty) }          // new: stock already reserved
+                : { stock: firebase.firestore.FieldValue.increment(-item.qty),         // legacy: decrement stock too
+                    sold:  firebase.firestore.FieldValue.increment(item.qty) };
+            batch.update(db.collection('products').doc(String(item.id)), update);
         }
         await batch.commit();
-        showToast('✅ Lager aktualisiert', 'success');
+        showToast('✅ Statistiken aktualisiert', 'success');
     }
 
-    // Any processed status → Storniert: restore stock AND decrement sold
+    // → Storniert: always restore stock.
+    // For new orders stock was reserved at placement, so restore regardless of old status.
+    // For legacy orders: only restore if stock was already decremented (wasProcessed).
     const wasProcessed = ['Wird bearbeitet', 'Versendet', 'Zugestellt'].includes(oldStatus);
-    if (newStatus === 'Storniert' && wasProcessed) {
+    const shouldRestoreStock = newStatus === 'Storniert' && (order.stockReserved || wasProcessed);
+    if (shouldRestoreStock) {
         const batch = db.batch();
         for (const item of order.items) {
             if (item.id == 999) continue;
-            batch.update(db.collection('products').doc(String(item.id)), {
-                stock: firebase.firestore.FieldValue.increment(item.qty),
-                sold:  firebase.firestore.FieldValue.increment(-item.qty)
-            });
+            const update = (order.stockReserved && !wasProcessed)
+                ? { stock: firebase.firestore.FieldValue.increment(item.qty) }                     // new order, not yet processed — only restore stock
+                : { stock: firebase.firestore.FieldValue.increment(item.qty),                      // processed or legacy — restore stock + undo sold
+                    sold:  firebase.firestore.FieldValue.increment(-item.qty) };
+            batch.update(db.collection('products').doc(String(item.id)), update);
         }
         await batch.commit();
-        showToast('↩ Lager + Statistiken wiederhergestellt', 'success');
+        showToast('↩ Lager wiederhergestellt', 'success');
     }
 }
 async function resetAllStatistics() {

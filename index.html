@@ -791,6 +791,15 @@
         body.cart-open #cart-sidebar {
             touch-action: pan-y;
         }
+        /* Produkt-Modal: Hintergrund-Scroll sperren */
+        body.modal-open {
+            overflow: hidden;
+            touch-action: none;
+        }
+        /* Modal selbst darf scrollen */
+        body.modal-open #product-detail-modal {
+            touch-action: pan-y;
+        }
         /* Warenkorb-Backdrop (Desktop: Mausrad im Hintergrund blockieren) */
         #cart-backdrop {
             display: none;
@@ -2794,7 +2803,7 @@
             manageMysteryVape();
             saveUserCart();
             updateCartDisplay();
-            renderProducts();
+            patchProductCardQty(id);
         }
         function clearCart() {
             // Soft confirm via inline state — avoid blocking confirm()
@@ -2808,6 +2817,8 @@
                 }, 3000);
                 return;
             }
+            // IDs vorher merken, damit wir alle Karten patchen können
+            const prevIds = cart.filter(i => i.id != MYSTERY_ID).map(i => i.id);
             cart = [];
             appliedDiscount = null;
             pendingNicotine = {};
@@ -2815,7 +2826,8 @@
             document.getElementById("discount-status").innerHTML = "";
             saveUserCart();
             updateCartDisplay();
-            renderProducts();
+            // Jede betroffene Produktkarte auf qty=0 zurücksetzen
+            prevIds.forEach(id => patchProductCardQty(id));
             toggleCart();
         }
         // Merkt sich die Scroll-Position beim Öffnen des Carts / Modals
@@ -3753,7 +3765,7 @@
             manageMysteryVape();
             saveUserCart();
             updateCartDisplay();
-            renderProducts();
+            patchProductCardQty(id);
             closeProductDetail();
             const nicLabel = product.hasNicotine ? ` (${chosenNic})` : '';
             showToast(`✅ ${product.name}${nicLabel} zum Warenkorb hinzugefügt!`);

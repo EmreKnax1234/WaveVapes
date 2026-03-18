@@ -646,6 +646,45 @@
             to { transform: scale(1); opacity: 1; }
         }
         /* ═══════════════════════════════════════════
+           ADD-TO-CART FLUG-ANIMATION
+        ═══════════════════════════════════════════ */
+        .fly-particle {
+            position: fixed;
+            pointer-events: none;
+            z-index: 99999;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #67e8f9, #a78bfa);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            box-shadow: 0 0 16px rgba(103,232,249,0.6);
+            will-change: transform, opacity;
+        }
+        /* Cart-Badge Bounce wenn Artikel landet */
+        @keyframes badge-bounce {
+            0%   { transform: scale(1); }
+            30%  { transform: scale(1.7); }
+            55%  { transform: scale(0.85); }
+            75%  { transform: scale(1.25); }
+            90%  { transform: scale(0.95); }
+            100% { transform: scale(1); }
+        }
+        #cart-count-badge.badge-pop {
+            animation: badge-bounce 0.5s cubic-bezier(0.34,1.56,0.64,1);
+        }
+        /* Cart-Button kurzes Glühen wenn Artikel landet */
+        @keyframes cart-btn-glow {
+            0%,100% { box-shadow: none; }
+            50%     { box-shadow: 0 0 0 4px rgba(103,232,249,0.4), 0 0 20px rgba(103,232,249,0.3); }
+        }
+        #cart-nav-btn.cart-glow {
+            animation: cart-btn-glow 0.45s ease;
+        }
+
+        /* ═══════════════════════════════════════════
            PULL-TO-REFRESH INDIKATOR
         ═══════════════════════════════════════════ */
         #ptr-indicator {
@@ -1060,7 +1099,7 @@
                     <i class="fa-solid fa-user text-cyan-300"></i>
                     <span id="current-user-display" class="font-medium truncate">Account</span>
                 </button>
-                <button onclick="toggleCart()" class="relative flex items-center gap-2 bg-gradient-to-r from-cyan-400 to-purple-500 hover:from-cyan-300 hover:to-purple-400 text-black font-semibold px-5 sm:px-7 py-2 sm:py-3 rounded-3xl transition-all text-sm">
+                <button id="cart-nav-btn" onclick="toggleCart()" class="relative flex items-center gap-2 bg-gradient-to-r from-cyan-400 to-purple-500 hover:from-cyan-300 hover:to-purple-400 text-black font-semibold px-5 sm:px-7 py-2 sm:py-3 rounded-3xl transition-all text-sm">
                     <i class="fa-solid fa-cart-shopping text-lg"></i>
                     <span class="hidden sm:inline">Warenkorb</span>
                     <div id="cart-count-badge" class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow-md">0</div>
@@ -2537,9 +2576,9 @@
                 }
                 let qtyHTML = product.available ? `
                     <div class="flex items-center bg-zinc-800 rounded-3xl" onclick="event.stopImmediatePropagation()">
-                        <button onclick="changeQuantity('${product.id}', -1); event.stopImmediatePropagation()" class="qty-btn w-9 h-9 text-2xl text-cyan-300 flex-1 flex items-center justify-center">-</button>
+                        <button onclick="changeQuantity('${product.id}', -1, event); event.stopImmediatePropagation()" class="qty-btn w-9 h-9 text-2xl text-cyan-300 flex-1 flex items-center justify-center">-</button>
                         <div class="w-10 text-center font-bold text-xl flex items-center justify-center">${qty}</div>
-                        <button onclick="changeQuantity('${product.id}', 1); event.stopImmediatePropagation()" class="qty-btn w-9 h-9 text-2xl text-cyan-300 flex-1 flex items-center justify-center">+</button>
+                        <button onclick="changeQuantity('${product.id}', 1, event); event.stopImmediatePropagation()" class="qty-btn w-9 h-9 text-2xl text-cyan-300 flex-1 flex items-center justify-center">+</button>
                     </div>` : '';
                 let stockHTML = '';
                 if (product.available) {
@@ -2580,7 +2619,7 @@
             if (item) item.nicotine = value;
             updateCartDisplay();
         }
-        function changeQuantity(id, delta) {
+        function changeQuantity(id, delta, ev) {
             const product = allProducts.find(p => p.id === id);
             if (!product) return;
             if (!product.available) {
@@ -2594,6 +2633,10 @@
             }
             existing.qty = Math.max(0, existing.qty + delta);
             if (existing.qty === 0) cart = cart.filter(item => item.id !== id);
+
+            // Flug-Animation nur beim Hinzufügen (+)
+            if (delta > 0 && ev) flyToCart(ev, product);
+
             manageMysteryVape();
             // Check all offer categories for deal threshold
             for (const [catName, offer] of Object.entries(_offerCats)) {
@@ -3978,6 +4021,85 @@
             window.visualViewport.addEventListener('resize', fixCartHeight);
         }
         document.getElementById('cart-sidebar')?.addEventListener('transitionend', fixCartHeight);
+
+        // ═══════════════════════════════════════════════════════════════
+        //  ADD-TO-CART FLUG-ANIMATION
+        // ═══════════════════════════════════════════════════════════════
+        function flyToCart(ev, product) {
+            const cartBtn = document.getElementById('cart-nav-btn');
+            if (!cartBtn) return;
+
+            // Start: Mitte des geklickten Buttons
+            const srcRect = ev.currentTarget.getBoundingClientRect();
+            const dstRect = cartBtn.getBoundingClientRect();
+
+            const startX = srcRect.left + srcRect.width  / 2;
+            const startY = srcRect.top  + srcRect.height / 2;
+            const endX   = dstRect.left + dstRect.width  / 2;
+            const endY   = dstRect.top  + dstRect.height / 2;
+
+            // Emoji je nach Produkttyp
+            const isVape = product.category === 'WaveVapes Tornado 30000';
+            const icon = isVape ? '💨' : '🧪';
+
+            // Partikel erzeugen
+            const el = document.createElement('div');
+            el.className = 'fly-particle';
+            el.textContent = icon;
+            el.style.left = (startX - 18) + 'px';
+            el.style.top  = (startY - 18) + 'px';
+            document.body.appendChild(el);
+
+            // Kurvenflug via Web Animations API
+            // Kontrollpunkt: oben zwischen Start und Ziel (Bogen nach oben)
+            const cpX = (startX + endX) / 2;
+            const cpY = Math.min(startY, endY) - 120;
+
+            const frames = 40;
+            const duration = 520; // ms
+
+            let frame = 0;
+            const startTime = performance.now();
+
+            function step(now) {
+                const elapsed = now - startTime;
+                const t = Math.min(elapsed / duration, 1);
+                // Ease-in-out cubic
+                const ease = t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2;
+
+                // Quadratische Bezier-Kurve
+                const bx = (1-ease)*(1-ease)*startX + 2*(1-ease)*ease*cpX + ease*ease*endX;
+                const by = (1-ease)*(1-ease)*startY + 2*(1-ease)*ease*cpY + ease*ease*endY;
+
+                // Schrumpfen + verblassen am Ende
+                const scale = t < 0.75 ? 1 : 1 - (t - 0.75) * 3.2;
+                const opacity = t < 0.7 ? 1 : 1 - (t - 0.7) * 3;
+
+                el.style.left    = (bx - 18) + 'px';
+                el.style.top     = (by - 18) + 'px';
+                el.style.transform = `scale(${Math.max(0.1, scale)})`;
+                el.style.opacity   = Math.max(0, opacity);
+
+                if (t < 1) {
+                    requestAnimationFrame(step);
+                } else {
+                    // Partikel entfernen + Badge bounced + Cart-Button leuchtet
+                    el.remove();
+                    const badge = document.getElementById('cart-count-badge');
+                    if (badge) {
+                        badge.classList.remove('badge-pop');
+                        void badge.offsetWidth; // reflow → Animation neu starten
+                        badge.classList.add('badge-pop');
+                        badge.addEventListener('animationend', () => badge.classList.remove('badge-pop'), { once: true });
+                    }
+                    cartBtn.classList.remove('cart-glow');
+                    void cartBtn.offsetWidth;
+                    cartBtn.classList.add('cart-glow');
+                    cartBtn.addEventListener('animationend', () => cartBtn.classList.remove('cart-glow'), { once: true });
+                }
+            }
+            requestAnimationFrame(step);
+        }
 
         // ═══════════════════════════════════════════════════════════════
         //  PULL-TO-REFRESH

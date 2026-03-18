@@ -330,6 +330,35 @@
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Inter:wght@400;500;600&display=swap');
         :root { --neon-cyan: #67e8f9; color-scheme: dark; }
 
+        /* ── ANDROID CHROME SPECIFIC FIXES ── */
+        /* Use dynamic viewport height (dvh) everywhere 100vh is used.
+           On Android Chrome, 100vh includes the browser toolbar which 
+           disappears on scroll — dvh adjusts dynamically. */
+        @supports (height: 100dvh) {
+            #product-detail-modal .modal-inner { max-height: 94dvh !important; }
+            #auth-modal > div,
+            #address-modal > div,
+            #name-modal > div,
+            #history-modal > div,
+            #success-modal > div,
+            #referrals-modal > div,
+            #agb-modal > div,
+            #widerruf-modal > div,
+            #datenschutz-modal > div,
+            #impressum-modal > div,
+            #age-modal > div { max-height: 92dvh !important; }
+        }
+        /* Android: prevent text selection on interactive elements */
+        button, .qty-btn, .filter-pill, .product-card,
+        .category-tabs button, .similar-card {
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        /* Android Chrome: remove tap highlight on all clickable elements */
+        * { -webkit-tap-highlight-color: transparent; }
+        /* Android: input zoom already handled, but also prevent double-tap zoom */
+        input, textarea, select, button { touch-action: manipulation; }
+
         /* ── LIGHT MODE ─────────────────────────────────────────── */
         html.light-mode { color-scheme: light; }
         html.light-mode body { background: #f4f4f8 !important; color: #111 !important; }
@@ -438,7 +467,7 @@
         .similar-card-name { font-size: 10px; font-weight: 600; color: rgba(255,255,255,.8); line-height: 1.3; margin-bottom: 3px; }
         html.light-mode .similar-card-name { color: #111 !important; }
         .similar-card-price{ font-size: 11px; font-weight: 800; color: #67e8f9; }
-        html, body { touch-action: manipulation !important; -webkit-text-size-adjust: 100% !important; -webkit-tap-highlight-color: transparent !important; }
+        html, body { touch-action: manipulation !important; -webkit-text-size-adjust: 100% !important; -webkit-tap-highlight-color: transparent !important; overscroll-behavior-y: none; }
         * { touch-action: manipulation !important; -webkit-tap-highlight-color: transparent !important; }
         input, select, button, textarea, .qty-btn, .product-card, .nicotine-select { touch-action: manipulation !important; }
         /* Force dark dropdown menu on all selects */
@@ -1123,7 +1152,7 @@
         </footer>
     </main>
     <!-- CART SIDEBAR -->
-    <div id="cart-sidebar" class="fixed top-0 right-0 h-full w-full md:w-96 bg-zinc-950 border-l border-cyan-400/30 shadow-2xl translate-x-full transition-all duration-300 z-[999] flex flex-col">
+    <div id="cart-sidebar" class="fixed top-0 right-0 w-full md:w-96 bg-zinc-950 border-l border-cyan-400/30 shadow-2xl translate-x-full transition-all duration-300 z-[999] flex flex-col" style="height:100%;height:100dvh">
         <!-- ── HEADER (always visible) ── -->
         <div class="flex justify-between items-center px-6 pt-6 pb-4 border-b border-white/10 flex-shrink-0">
             <h3 class="text-2xl font-bold">Dein Warenkorb</h3>
@@ -3704,6 +3733,99 @@
                 }
             });
         });
+        // ═══════════════════════════════════════════════════════════════
+        //  ANDROID & CROSS-PLATFORM MOBILE FIXES
+        // ═══════════════════════════════════════════════════════════════
+
+        // ── Android back button closes modals ───────────────────────────────
+        // iOS uses popstate for product detail (already handled).
+        // Android hardware back button fires popstate too — but we also need
+        // it to close overlay modals that don't push history entries.
+        (function initAndroidBack() {
+            const MODAL_IDS = [
+                'cart-sidebar', 'auth-modal', 'address-modal', 'name-modal',
+                'history-modal', 'payment-info-modal', 'referrals-modal',
+                'success-modal', 'agb-modal', 'widerruf-modal',
+                'impressum-modal', 'datenschutz-modal'
+            ];
+            const MODAL_CLOSERS = {
+                'cart-sidebar':        () => { const s = document.getElementById('cart-sidebar'); if (s && !s.classList.contains('translate-x-full')) toggleCart(); },
+                'auth-modal':          closeAuthModal,
+                'address-modal':       closeAddressModal,
+                'name-modal':          closeNameModal,
+                'history-modal':       closeHistoryModal,
+                'payment-info-modal':  closePaymentInfoModal,
+                'referrals-modal':     closeReferralsModal,
+                'success-modal':       closeSuccessModal,
+                'agb-modal':           closeAgbModal,
+                'widerruf-modal':      closeWiderrufModal,
+                'impressum-modal':     closeImpressumModal,
+                'datenschutz-modal':   closeDatenschutzModal,
+            };
+            // Push a dummy history entry when a modal opens so back button has something to pop
+            function pushModalHistory() {
+                if (!history.state?.modal) history.pushState({ modal: true }, '');
+            }
+            // Intercept existing close-triggering events to push history first
+            // We monkey-patch toggleCart and showAuthModal etc. to push a state
+            const _origToggleCart = typeof toggleCart !== 'undefined' ? toggleCart : null;
+            // Use popstate to handle back button
+            window.addEventListener('popstate', function(e) {
+                if (e.state?.productId) { showProductDetail(e.state.productId); return; }
+                // Close any visible modal
+                for (const id of MODAL_IDS) {
+                    const el = document.getElementById(id);
+                    if (!el) continue;
+                    const isVisible = id === 'cart-sidebar'
+                        ? !el.classList.contains('translate-x-full')
+                        : !el.classList.contains('hidden') && el.style.display !== 'none';
+                    if (isVisible) {
+                        MODAL_CLOSERS[id]?.();
+                        return;
+                    }
+                }
+                // Close product detail if open
+                const pd = document.getElementById('product-detail-modal');
+                if (pd && !pd.classList.contains('hidden')) { closeProductDetail(); return; }
+            });
+        })();
+
+        // ── Android keyboard: scroll focused input into view ────────────────
+        // When keyboard opens, Android may hide the focused input behind it.
+        // visualViewport API lets us detect the keyboard height and scroll up.
+        if (window.visualViewport) {
+            let _kbLastHeight = window.visualViewport.height;
+            window.visualViewport.addEventListener('resize', () => {
+                const newH = window.visualViewport.height;
+                const diff = _kbLastHeight - newH;
+                _kbLastHeight = newH;
+                // Keyboard opened (viewport shrank > 100px)
+                if (diff > 100) {
+                    const focused = document.activeElement;
+                    if (focused && ['INPUT','TEXTAREA','SELECT'].includes(focused.tagName)) {
+                        setTimeout(() => focused.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+                    }
+                }
+            });
+        }
+
+        // ── Android: fix cart sidebar height when keyboard opens ────────────
+        // `h-full` on fixed elements uses the layout viewport, not visual viewport,
+        // which collapses when keyboard opens on Android Chrome.
+        function fixCartHeight() {
+            const cart = document.getElementById('cart-sidebar');
+            if (!cart) return;
+            if (window.visualViewport) {
+                cart.style.height = window.visualViewport.height + 'px';
+            } else {
+                cart.style.height = '100dvh';
+            }
+        }
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', fixCartHeight);
+        }
+        document.getElementById('cart-sidebar')?.addEventListener('transitionend', fixCartHeight);
+
         window.onload = initialize;
         // Re-render on orientation change so layout adjusts correctly
         window.addEventListener('orientationchange', () => setTimeout(renderProducts, 200));

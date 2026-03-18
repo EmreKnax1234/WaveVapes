@@ -190,7 +190,7 @@
         .animate-bolt { animation: boltPulse 650ms infinite alternate ease-in-out; display: inline-block; text-shadow: 0 0 15px #facc15; }
         #notification-toast { position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%); background: transparent; backdrop-filter: none; color: #67e8f9; padding: 12px 24px; border-radius: 9999px; font-size: 13px; opacity: 0; visibility: hidden; transition: opacity 0.6s cubic-bezier(0.34,1.56,0.64,1), transform 0.6s cubic-bezier(0.34,1.56,0.64,1), visibility 0s linear 0.6s; z-index: 1000; max-width: 92%; text-align: center; box-shadow: none; pointer-events: none; }
         @media (max-width: 1023px) { #notification-toast { bottom: 15px !important; } }
-        #notification-toast.visible { opacity: 1; visibility: visible; background: rgba(0,0,0,0.85); backdrop-filter: blur(12px); transform: translateX(-50%) translateY(-10px); box-shadow: 0 10px 30px -10px rgb(103 232 249); pointer-events: auto; transition: opacity 0.6s cubic-bezier(0.34,1.56,0.64,1), transform 0.6s cubic-bezier(0.34,1.56,0.64,1), visibility 0s linear 0s; }
+        #notification-toast.visible { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(-10px); background: rgba(0,0,0,0.85); backdrop-filter: blur(12px); box-shadow: 0 10px 30px -10px rgb(103 232 249); pointer-events: auto; transition: opacity 0.6s cubic-bezier(0.34,1.56,0.64,1), transform 0.6s cubic-bezier(0.34,1.56,0.64,1), visibility 0s linear 0s; }
         .price-row { display: flex; justify-content: center; align-items: baseline; gap: 8px; margin-bottom: 12px; }
         .discount-price { font-size: 1.35rem; text-decoration: line-through; color: #9ca3af; }
         .sale-price { font-size: 1.85rem; font-weight: 700; color: #ef4444; }
@@ -415,16 +415,24 @@
                 bottom: 80px !important;
                 left: 12px !important;
                 right: 12px !important;
-                transform: none !important;   /* reset left:50%+translateX(-50%) */
+                transform: none !important;
                 width: auto !important;
                 max-width: calc(100% - 24px) !important;
                 font-size: 0.85rem !important;
                 border-radius: 16px !important;
                 text-align: center !important;
+                visibility: hidden !important;
+                background: transparent !important;
+                backdrop-filter: none !important;
+                box-shadow: none !important;
             }
             #notification-toast.visible {
                 opacity: 1 !important;
-                transform: translateY(-6px) !important;  /* subtle lift, no X offset */
+                visibility: visible !important;
+                transform: translateY(-6px) !important;
+                background: rgba(0,0,0,0.85) !important;
+                backdrop-filter: blur(12px) !important;
+                box-shadow: 0 10px 30px -10px rgb(103 232 249) !important;
             }
 
             /* ── AGB / DATENSCHUTZ / IMPRESSUM MODALS ── */
@@ -599,10 +607,21 @@
         </div>
         <!-- TABS -->
         <div id="category-tabs" class="category-tabs flex overflow-x-auto gap-x-6 pb-4 border-b border-white/10 mb-8 text-base whitespace-nowrap" style="-webkit-overflow-scrolling:touch"></div>
-        <!-- SEARCH -->
-        <div class="relative mb-8">
-            <i class="fa-solid fa-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-cyan-400"></i>
-            <input id="search-input" type="search" inputmode="search" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Flavor suchen..." onkeyup="filterProducts()" oninput="filterProducts()" class="w-full bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl pl-12 pr-6 py-4 text-base outline-none transition" autocomplete="off">
+        <!-- SEARCH + SORT -->
+        <div class="flex gap-3 mb-8">
+            <div class="relative flex-1">
+                <i class="fa-solid fa-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-cyan-400"></i>
+                <input id="search-input" type="search" inputmode="search" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Flavor suchen..." onkeyup="filterProducts()" oninput="filterProducts()" class="w-full bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl pl-12 pr-6 py-4 text-base outline-none transition" autocomplete="off">
+            </div>
+            <div class="relative flex-shrink-0">
+                <i class="fa-solid fa-arrow-up-wide-short absolute left-4 top-1/2 -translate-y-1/2 text-cyan-400 pointer-events-none" style="z-index:1"></i>
+                <select id="sort-select" onchange="filterProducts()" class="h-full bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl pl-10 pr-5 py-4 text-sm outline-none transition appearance-none cursor-pointer text-white" style="color-scheme:dark">
+                    <option value="standard">Standard</option>
+                    <option value="price_asc">💰 Günstigste</option>
+                    <option value="price_desc">💎 Teuerste</option>
+                    <option value="popular">🔥 Beliebteste</option>
+                </select>
+            </div>
         </div>
         <!-- PRODUCTS GRID -->
         <div id="products-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6"></div>
@@ -1011,6 +1030,8 @@
         const EMAILJS_SERVICE_ID = "service_lzvte0x";
         const EMAILJS_PUBLIC_KEY = "t19pJAHgBpbKpZFGU";
         const EMAILJS_ORDER_TEMPLATE = "template_cgcu1m8";
+        const EMAILJS_ABANDONED_TEMPLATE = "template_abandoned"; // ← In EmailJS anlegen!
+        const ABANDONED_CART_DELAY_MS = 60 * 60 * 1000; // 1 Stunde
         // ====================== KONFIGURATION ======================
         const VALID_DISCOUNTS = {
             "LOYAL5": { type: "fixed", value: 5, points: 300 },
@@ -1263,6 +1284,8 @@
                 manageMysteryVape();
                 await saveUserCart();
                 updateCartDisplay();
+                // Check if user left items from a previous session
+                setTimeout(() => checkAbandonedCart(), 3000);
             } catch (e) {
                 console.error("Cart laden fehlgeschlagen", e);
                 cart = [];
@@ -1270,16 +1293,70 @@
         }
         // Debounced cart save — prevents rapid Firestore writes on fast +-clicks
         let _saveCartTimer = null;
+        let _abandonedCartTimer = null;
         function saveUserCart() {
             if (!currentUser) return;
             clearTimeout(_saveCartTimer);
             _saveCartTimer = setTimeout(async () => {
                 try {
-                    await db.collection("users").doc(currentUser.uid).update({ cart });
+                    const updateData = { cart };
+                    if (cart.length > 0) {
+                        // Save timestamp when cart was last filled — used for abandoned cart detection
+                        updateData.cartSavedAt = firebase.firestore.FieldValue.serverTimestamp();
+                        updateData.cartReminderSent = false;
+                        // Schedule abandoned cart check in 1 hour
+                        clearTimeout(_abandonedCartTimer);
+                        _abandonedCartTimer = setTimeout(() => checkAbandonedCart(), ABANDONED_CART_DELAY_MS);
+                    } else {
+                        // Cart emptied — clear abandoned cart flags
+                        updateData.cartSavedAt = firebase.firestore.FieldValue.delete();
+                        updateData.cartReminderSent = firebase.firestore.FieldValue.delete();
+                        clearTimeout(_abandonedCartTimer);
+                    }
+                    await db.collection("users").doc(currentUser.uid).update(updateData);
                 } catch(e) {
                     console.error("Cart speichern fehlgeschlagen:", e.message);
                 }
             }, 600);
+        }
+
+        async function checkAbandonedCart() {
+            if (!currentUser) return;
+            try {
+                const userDoc = await db.collection("users").doc(currentUser.uid).get();
+                if (!userDoc.exists) return;
+                const data = userDoc.data();
+
+                // Skip if cart is empty, reminder already sent, or no timestamp
+                if (!data.cart || data.cart.length === 0) return;
+                if (data.cartReminderSent === true) return;
+                if (!data.cartSavedAt) return;
+
+                // Check if enough time has passed
+                const savedAt = data.cartSavedAt.toMillis();
+                if (Date.now() - savedAt < ABANDONED_CART_DELAY_MS) return;
+
+                // Build item list for email
+                const itemLines = data.cart.map(item =>
+                    `${item.name}${item.nicotine ? ' (' + item.nicotine + ')' : ''} × ${item.qty} — ${(item.price * item.qty).toFixed(2).replace('.', ',')} €`
+                ).join('
+');
+                const cartTotal = data.cart.reduce((s, i) => s + (i.price * i.qty), 0).toFixed(2).replace('.', ',');
+
+                // Send email
+                await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_ABANDONED_TEMPLATE, {
+                    email:      data.email || currentUser.email,
+                    cart_items: itemLines,
+                    cart_total: cartTotal,
+                    shop_url:   "https://wavevapes.de"
+                });
+
+                // Mark as sent so we don't spam
+                await db.collection("users").doc(currentUser.uid).update({ cartReminderSent: true });
+                console.log("📧 Abandoned cart reminder sent to", currentUser.email);
+            } catch(e) {
+                console.warn("Abandoned cart check fehlgeschlagen:", e.message);
+            }
         }
         // ====================== AUTH + LOYALTY SYNC + LIVE BAN + IP-BAN ======================
         auth.onAuthStateChanged(async (user) => {
@@ -1817,7 +1894,12 @@
                 const searchMatch = !searchTerm || p.name.toLowerCase().includes(searchTerm);
                 return catMatch && searchMatch;
             });
+            const sortMode = document.getElementById('sort-select')?.value || 'standard';
             filtered.sort((a, b) => {
+                if (sortMode === 'price_asc')  return a.price - b.price;
+                if (sortMode === 'price_desc') return b.price - a.price;
+                if (sortMode === 'popular')    return (b.sold || 0) - (a.sold || 0);
+                // standard: respect manual product order
                 const idxA = productOrder.indexOf(a.id);
                 const idxB = productOrder.indexOf(b.id);
                 if (idxA !== -1 && idxB !== -1) return idxA - idxB;
@@ -2172,6 +2254,14 @@
                 pendingNicotine = {};
                 document.getElementById("discount-status").innerHTML = "";
                 document.getElementById("discount-input").value = "";
+                // Clear abandoned cart flags — order was placed successfully
+                clearTimeout(_abandonedCartTimer);
+                try {
+                    await db.collection("users").doc(currentUser.uid).update({
+                        cartSavedAt: firebase.firestore.FieldValue.delete(),
+                        cartReminderSent: firebase.firestore.FieldValue.delete()
+                    });
+                } catch(e) { /* non-blocking */ }
                 await saveUserCart();
                 showSuccessModal(orderNumber, finalTotal, loyaltyEarned);
                 loadProducts();
@@ -2561,8 +2651,8 @@
             modal.classList.remove("hidden");
             modal.classList.add("flex");
             // Load reviews after modal renders
-            rvLoad('${product.id}');
-            rvCheckCanReview('${product.id}');
+            rvLoad(product.id);
+            rvCheckCanReview(product.id);
         }
 
         // ====================== BEWERTUNGEN ======================
@@ -2606,23 +2696,18 @@
             }
 
             // Try get() first (works even without real-time rules)
-            db.collection('reviews')
+            const reviewQuery = db.collection('reviews')
                 .where('productId', '==', productId)
-                .get()
-                .then(snap => {
-                    renderReviews(snap.docs.map(d => ({id:d.id,...d.data()})));
-                    // Then also attach live listener for real-time updates
-                    const unsub = db.collection('reviews')
-                        .where('productId', '==', productId)
-                        .onSnapshot(snap2 => {
-                            renderReviews(snap2.docs.map(d => ({id:d.id,...d.data()})));
-                        }, () => {}); // silent — get() already showed data
-                    _rvUnsubscribers[productId] = unsub;
-                })
-                .catch(err => {
-                    console.error('rvLoad error:', err.code, err.message);
-                    listEl.innerHTML = `<div class="rv-empty" style="color:#f87171;font-size:11px">Fehler ${err.code}: ${err.message}<br><br>Bitte firestore.rules deployen (reviews allow read: if true)</div>`;
-                });
+                .where('approved', '==', true);
+
+            // Live listener — updates automatically when admin approves a review
+            const unsub = reviewQuery.onSnapshot(snap => {
+                renderReviews(snap.docs.map(d => ({id:d.id,...d.data()})));
+            }, err => {
+                console.error('rvLoad error:', err.code, err.message);
+                listEl.innerHTML = `<div class="rv-empty" style="color:#f87171;font-size:11px">Fehler ${err.code}: ${err.message}<br><br>Firestore Index fehlt – Link in der Konsole (F12) anklicken!</div>`;
+            });
+            _rvUnsubscribers[productId] = unsub;
         }
 
         async function rvCheckCanReview(productId) {

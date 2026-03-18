@@ -94,6 +94,45 @@
         .cs-option.selected { background:rgba(103,232,249,.15); color:var(--neon-cyan); font-weight:600; }
         .cs-option.placeholder { color:rgba(255,255,255,.3); }
 
+
+        /* ═══════════════════════════════════
+           BEWERTUNGEN TAB (tab 11)
+        ═══════════════════════════════════ */
+        :root {
+            --rv-cyan:#67e8f9; --rv-amber:#fbbf24; --rv-red:#f87171;
+            --rv-green:#34d399; --rv-card:#13131f; --rv-border:rgba(255,255,255,.07);
+        }
+        .rv-shell { display:flex; flex-direction:column; gap:16px; }
+        .rv-admin-header { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; }
+        .rv-admin-title { font-family:'Orbitron',sans-serif; font-size:18px; font-weight:700; color:var(--rv-cyan); text-shadow:0 0 16px rgba(103,232,249,.4); display:flex; align-items:center; gap:10px; }
+        .rv-admin-tabs { display:flex; gap:8px; background:var(--rv-card); border:1px solid var(--rv-border); border-radius:14px; padding:6px; }
+        .rv-admin-tab { padding:7px 18px; border-radius:10px; font-size:12px; font-weight:600; cursor:pointer; color:rgba(255,255,255,.4); transition:all .15s; border:none; background:transparent; }
+        .rv-admin-tab.active { background:rgba(103,232,249,.1); color:var(--rv-cyan); }
+        .rv-admin-card { background:var(--rv-card); border:1px solid var(--rv-border); border-radius:20px; padding:18px 20px; display:flex; align-items:flex-start; gap:16px; transition:background .15s; }
+        .rv-admin-card:hover { background:rgba(255,255,255,.03); }
+        .rv-admin-stars { display:flex; gap:2px; flex-shrink:0; }
+        .rv-admin-star { color:#fbbf24; font-size:15px; }
+        .rv-admin-star.empty { color:rgba(255,255,255,.15); }
+        .rv-admin-body { flex:1; min-width:0; }
+        .rv-admin-meta { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:6px; }
+        .rv-admin-user { font-size:13px; font-weight:600; color:rgba(255,255,255,.85); }
+        .rv-admin-product { font-size:11px; color:var(--rv-cyan); background:rgba(103,232,249,.08); padding:2px 10px; border-radius:20px; }
+        .rv-admin-date { font-size:10px; color:rgba(255,255,255,.25); }
+        .rv-admin-text { font-size:13px; color:rgba(255,255,255,.6); line-height:1.55; margin-top:4px; }
+        .rv-admin-actions { display:flex; gap:8px; flex-shrink:0; }
+        .rv-admin-btn { width:34px; height:34px; border-radius:10px; border:none; cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center; transition:all .15s; }
+        .rv-admin-btn.approve { background:rgba(52,211,153,.12); color:var(--rv-green); }
+        .rv-admin-btn.approve:hover { background:rgba(52,211,153,.25); }
+        .rv-admin-btn.reject { background:rgba(248,113,113,.12); color:var(--rv-red); }
+        .rv-admin-btn.reject:hover { background:rgba(248,113,113,.25); }
+        .rv-admin-empty { text-align:center; padding:60px 20px; color:rgba(255,255,255,.2); font-size:13px; }
+        .rv-admin-empty i { font-size:36px; display:block; margin-bottom:12px; opacity:.3; }
+        .rv-admin-list { display:flex; flex-direction:column; gap:10px; }
+        .rv-admin-stat-row { display:flex; gap:12px; flex-wrap:wrap; }
+        .rv-admin-stat { background:var(--rv-card); border:1px solid var(--rv-border); border-radius:16px; padding:14px 18px; flex:1; min-width:140px; }
+        .rv-admin-stat-val { font-family:'JetBrains Mono',monospace; font-size:24px; font-weight:700; color:var(--rv-cyan); }
+        .rv-admin-stat-lbl { font-size:10px; color:rgba(255,255,255,.3); text-transform:uppercase; letter-spacing:.06em; margin-top:4px; }
+
         /* ═══════════════════════════════════════════
            SIDEBAR v2
         ═══════════════════════════════════════════ */
@@ -1604,6 +1643,7 @@
             <div onclick="switchTab(7)" id="sidebar-7" class="sidebar-item"><i class="fa-solid fa-sliders"></i><span>Settings</span></div>
             <div onclick="switchTab(8)" id="sidebar-8" class="sidebar-item"><i class="fa-solid fa-arrows-up-down"></i><span>Sortierung</span></div>
             <div onclick="switchTab(10)" id="sidebar-10" class="sidebar-item"><i class="fa-solid fa-users-cog"></i><span>Erw. Benutzer</span></div>
+            <div onclick="switchTab(11)" id="sidebar-11" class="sidebar-item"><i class="fa-solid fa-star"></i><span>Bewertungen</span><span class="sidebar-badge" id="sb-reviews-badge" style="display:none">0</span></div>
         </div>
     </div>
     <!-- MAIN CONTENT -->
@@ -2676,6 +2716,35 @@
             <!-- Card grid -->
             <div class="prs-grid" id="presence-list">
                 <div class="prs-empty"><span class="eu-spinner"></span><br><br>Lade...</div>
+            </div>
+
+        </div>
+        </div>
+
+        <!-- TAB 11: BEWERTUNGEN -->
+        <div id="tab-content-11" class="hidden">
+        <div class="rv-shell">
+
+            <div class="rv-admin-header">
+                <div class="rv-admin-title"><i class="fa-solid fa-star"></i> Bewertungs-Moderation</div>
+                <div class="rv-admin-tabs">
+                    <button class="rv-admin-tab active" id="rv-tab-pending" onclick="rvAdminSwitch('pending',this)">
+                        Ausstehend <span id="rv-pending-count" style="background:rgba(251,191,36,.2);color:#fbbf24;padding:1px 7px;border-radius:20px;font-size:10px;margin-left:4px">0</span>
+                    </button>
+                    <button class="rv-admin-tab" id="rv-tab-approved" onclick="rvAdminSwitch('approved',this)">Freigegeben</button>
+                    <button class="rv-admin-tab" id="rv-tab-rejected" onclick="rvAdminSwitch('rejected',this)">Abgelehnt</button>
+                </div>
+            </div>
+
+            <!-- Stats row -->
+            <div class="rv-admin-stat-row">
+                <div class="rv-admin-stat"><div class="rv-admin-stat-val" id="rv-stat-total">—</div><div class="rv-admin-stat-lbl">Bewertungen gesamt</div></div>
+                <div class="rv-admin-stat"><div class="rv-admin-stat-val" id="rv-stat-avg">—</div><div class="rv-admin-stat-lbl">Ø Bewertung</div></div>
+                <div class="rv-admin-stat"><div class="rv-admin-stat-val" id="rv-stat-pending">—</div><div class="rv-admin-stat-lbl">Ausstehend</div></div>
+            </div>
+
+            <div class="rv-admin-list" id="rv-admin-list">
+                <div class="rv-admin-empty"><i class="fa-solid fa-spinner fa-spin"></i>Lade Bewertungen...</div>
             </div>
 
         </div>
@@ -5393,6 +5462,7 @@ function switchTab(n) {
     if(n===5)loadAnalytics();
     if(n===6)loadAdminLogs();
     if(n===8)loadProductOrder();
+    if(n===11){ rvAdminLoad('pending'); rvAdminLoadStats(); }
     if(n===9){
         loadPresence();
         if(presenceRefreshInterval)clearInterval(presenceRefreshInterval);
@@ -5880,6 +5950,118 @@ function initStaticSelects() {
         { value:'lowstock',    label:'⚠ Niedriger Bestand' },
     ], '', val => { adminStatusFilter = val; renderProductTable(); });
 }
+
+// ═══════════════════════════════════════════════════
+//  BEWERTUNGS-MODERATION (Tab 11)
+// ═══════════════════════════════════════════════════
+let _rvAdminMode = 'pending';
+
+function rvAdminSwitch(mode, btn) {
+    _rvAdminMode = mode;
+    document.querySelectorAll('.rv-admin-tab').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    rvAdminLoad(mode);
+}
+
+async function rvAdminLoadStats() {
+    try {
+        const all = await db.collection('reviews').get();
+        const docs = all.docs.map(d => d.data());
+        const approved = docs.filter(d => d.approved === true);
+        const pending  = docs.filter(d => d.approved === false && !d.rejected);
+        const avg = approved.length
+            ? (approved.reduce((s,d) => s+(d.rating||0), 0) / approved.length).toFixed(1)
+            : '—';
+        document.getElementById('rv-stat-total').textContent   = docs.length;
+        document.getElementById('rv-stat-avg').textContent     = avg;
+        document.getElementById('rv-stat-pending').textContent = pending.length;
+        // Sidebar badge
+        const badge = document.getElementById('sb-reviews-badge');
+        if (badge) {
+            badge.textContent = pending.length;
+            badge.style.display = pending.length > 0 ? '' : 'none';
+        }
+        const pendingCount = document.getElementById('rv-pending-count');
+        if (pendingCount) pendingCount.textContent = pending.length;
+    } catch(e) { console.warn('rv stats error', e); }
+}
+
+async function rvAdminLoad(mode) {
+    const listEl = document.getElementById('rv-admin-list');
+    if (!listEl) return;
+    listEl.innerHTML = '<div class="rv-admin-empty"><i class="fa-solid fa-spinner fa-spin"></i></div>';
+
+    try {
+        let query = db.collection('reviews').orderBy('createdAt', 'desc');
+        if (mode === 'pending')  query = query.where('approved','==',false);
+        if (mode === 'approved') query = query.where('approved','==',true);
+        if (mode === 'rejected') query = query.where('rejected','==',true);
+        const snap = await query.limit(50).get();
+
+        if (snap.empty) {
+            listEl.innerHTML = `<div class="rv-admin-empty"><i class="fa-solid fa-star"></i>${
+                mode==='pending' ? 'Keine ausstehenden Bewertungen' :
+                mode==='approved' ? 'Noch keine freigegebenen Bewertungen' :
+                'Keine abgelehnten Bewertungen'
+            }</div>`;
+            return;
+        }
+
+        // Get product names for display
+        const productIds = [...new Set(snap.docs.map(d => d.data().productId))];
+        const productNames = {};
+        for (const pid of productIds) {
+            const p = allProducts.find(pr => pr.id === pid);
+            productNames[pid] = p ? p.name : pid;
+        }
+
+        listEl.innerHTML = '';
+        snap.docs.forEach(doc => {
+            const r = doc.data();
+            const stars = [1,2,3,4,5].map(n =>
+                `<span class="rv-admin-star ${n<=(r.rating||0)?'':'empty'}">★</span>`
+            ).join('');
+            const date = r.createdAt ? r.createdAt.toDate().toLocaleDateString('de-DE') : '—';
+            const productName = productNames[r.productId] || r.productId;
+            const card = document.createElement('div');
+            card.className = 'rv-admin-card';
+            card.innerHTML = `
+                <div class="rv-admin-stars">${stars}</div>
+                <div class="rv-admin-body">
+                    <div class="rv-admin-meta">
+                        <span class="rv-admin-user">${r.username || r.userEmail || 'Anonym'}</span>
+                        <span class="rv-admin-product">${productName}</span>
+                        <span class="rv-admin-date">${date}</span>
+                    </div>
+                    ${r.text ? `<div class="rv-admin-text">${r.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>` : '<div class="rv-admin-text" style="font-style:italic;opacity:.4">Kein Text</div>'}
+                </div>
+                <div class="rv-admin-actions">
+                    ${mode !== 'approved' ? `<button class="rv-admin-btn approve" onclick="rvAdminApprove('${doc.id}')" title="Freigeben"><i class="fa-solid fa-check"></i></button>` : ''}
+                    ${mode !== 'rejected' ? `<button class="rv-admin-btn reject"  onclick="rvAdminReject('${doc.id}')"  title="Ablehnen"><i class="fa-solid fa-xmark"></i></button>` : ''}
+                </div>`;
+            listEl.appendChild(card);
+        });
+    } catch(e) {
+        listEl.innerHTML = `<div class="rv-admin-empty">Fehler: ${e.message}</div>`;
+    }
+}
+
+async function rvAdminApprove(reviewId) {
+    await db.collection('reviews').doc(reviewId).update({ approved: true, rejected: false });
+    await logAction('review_approved', reviewId);
+    showToast('✅ Bewertung freigegeben!');
+    rvAdminLoad(_rvAdminMode);
+    rvAdminLoadStats();
+}
+
+async function rvAdminReject(reviewId) {
+    await db.collection('reviews').doc(reviewId).update({ approved: false, rejected: true });
+    await logAction('review_rejected', reviewId);
+    showToast('Bewertung abgelehnt', 'warning');
+    rvAdminLoad(_rvAdminMode);
+    rvAdminLoadStats();
+}
+
 auth.onAuthStateChanged(async (user) => {
     if (!user) { await logUnauthorizedAccess('not-logged-in',null); showAccessDenied('not-logged-in'); return; }
     document.getElementById('admin-email').textContent = user.email;
@@ -5887,6 +6069,7 @@ auth.onAuthStateChanged(async (user) => {
     if (!userDoc.exists || userDoc.data().role !== 'admin') { await logUnauthorizedAccess('not-admin',user.email); await auth.signOut(); showAccessDenied('not-admin'); return; }
     initStaticSelects();
     loadSettings();
+    rvAdminLoadStats();
     // Load all data after admin check passes
     loadProducts();
     loadCategories();

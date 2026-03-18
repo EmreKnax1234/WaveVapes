@@ -852,7 +852,7 @@
             nav   { padding-top:    env(safe-area-inset-top,    0px); }
 
             /* ── NAVBAR ── */
-            nav .max-w-7xl {
+            nav .wv-container {
                 padding-left: 12px !important; padding-right: 12px !important;
                 padding-top: 8px !important; padding-bottom: 8px !important;
             }
@@ -1095,12 +1095,90 @@
                 to   { transform: translateY(0);    opacity: 1;   }
             }
         }
+        /* ── Zentraler Container: passt sich allen Bildschirmbreiten an ── */
+        .wv-container {
+            max-width: 1280px;  /* Tailwind xl = Standard-Desktop */
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* ═══════════════════════════════════════════════════════════════
+           DESKTOP RESPONSIVE — alle gängigen PC-Formate
+           1280px → 1440px → 1600px → 1920px → 2560px (QHD/4K)
+        ═══════════════════════════════════════════════════════════════ */
+
+        /* Fluid Typography: skaliert smooth mit dem Viewport */
+        .hero-title   { font-size: clamp(2rem, 5vw, 5rem); }
+        .hero-subtitle { font-size: clamp(1rem, 1.8vw, 1.5rem); }
+
+        /* ── 1440px: großes Laptop-Display / normaler Desktop ── */
+        @media (min-width: 1440px) {
+            .wv-container { max-width: 1380px; }
+            #products-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 20px; }
+            #cart-sidebar { width: 420px !important; }
+            #product-detail-modal .modal-inner { max-width: 1100px; }
+        }
+
+        /* ── 1600px: breite Monitore, FHD-nah ── */
+        @media (min-width: 1600px) {
+            .wv-container { max-width: 1540px; }
+            #products-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 22px; }
+            #cart-sidebar { width: 460px !important; }
+            #product-detail-modal .modal-inner { max-width: 1200px; }
+        }
+
+        /* ── 1920px: Full HD – häufigste Desktop-Auflösung ── */
+        @media (min-width: 1920px) {
+            .wv-container { max-width: 1800px; padding-left: 48px; padding-right: 48px; }
+            #products-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 24px; }
+            .product-card h4 { font-size: 1.1rem; }
+            .sale-price { font-size: 2rem; }
+            .discount-price { font-size: 1.5rem; }
+            #cart-sidebar { width: 500px !important; }
+            #product-detail-modal .modal-inner { max-width: 1400px; }
+            #product-detail-modal img { max-height: 75vh; }
+            #product-detail-modal h2 { font-size: 3.2rem; }
+            #product-detail-modal .sale-price { font-size: 4.5rem !important; }
+            .hero-banner { padding: 16px 28px; font-size: 1.1rem; }
+            nav h1 { font-size: 2.8rem !important; }
+            .grid.grid-cols-1.md\:grid-cols-2.lg\:grid-cols-3 { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+            #faq-list { max-width: 960px; }
+            .category-tabs button { font-size: 1rem; padding: 8px 20px; }
+        }
+
+        /* ── 2560px: QHD / 4K / Ultra-Wide ── */
+        @media (min-width: 2560px) {
+            .wv-container { max-width: 2400px; padding-left: 80px; padding-right: 80px; }
+            #products-grid { grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 28px; }
+            .product-card h4 { font-size: 1.15rem; }
+            #cart-sidebar { width: 560px !important; }
+            #product-detail-modal .modal-inner { max-width: 1600px; }
+            #product-detail-modal { padding: 40px 32px; }
+            .grid.grid-cols-1.md\:grid-cols-2.lg\:grid-cols-3 { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
+            body { font-size: 17px; }
+            nav h1 { font-size: 3.2rem !important; }
+            .category-tabs button { font-size: 1.1rem; padding: 10px 24px; }
+            .filter-pill { font-size: 0.9rem; padding: 8px 18px; }
+            #search-input { font-size: 1.1rem; padding: 20px 24px 20px 56px; }
+        }
+
+        /* ── User-Banner: ab 1024px zweispaltig ── */
+        @media (min-width: 1024px) {
+            #user-banner {
+                display: grid;
+                grid-template-columns: 1fr auto;
+                align-items: center;
+                gap: 24px;
+            }
+            #user-banner > div.flex.items-center.gap-4.mb-3 { margin-bottom: 0; }
+        }
+
     </style>
 </head>
 <body class="wave-bg text-white min-h-screen">
     <!-- NAVBAR -->
     <nav class="bg-black/90 backdrop-blur-xl border-b border-cyan-400/30 sticky top-0 z-50" aria-label="Hauptnavigation WaveVapes">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex justify-between items-center">
+        <div class="wv-container mx-auto px-4 sm:px-6 py-3 flex justify-between items-center">
             <div class="flex items-center gap-3">
                 <img src="logo.png" alt="WaveVapes Logo" class="h-8 sm:h-11 w-auto drop-shadow-xl" loading="eager" fetchpriority="high">
                 <div>
@@ -1127,7 +1205,7 @@
             18+ • NUR FÜR VOLLJÄHRIGE • NIKOTINPRODUKTE
         </div>
     </nav>
-    <main id="main-content" class="max-w-7xl mx-auto px-4 sm:px-6 pt-8 pb-20">
+    <main id="main-content" class="wv-container mx-auto px-4 sm:px-6 pt-8 pb-20">
         <!-- HERO -->
         <section class="text-center mb-12" aria-label="WaveVapes Angebote und Aktionen">
             <div class="inline-flex items-center gap-2 bg-white/10 px-5 py-1.5 rounded-3xl text-xs mb-6 backdrop-blur-md">
@@ -2039,6 +2117,11 @@
                             updateUserDisplay();
                         }
                     }
+                    // Sync address from Firestore → local (source of truth = Firestore)
+                    if (data.address && data.address.street) {
+                        userAddress = data.address;
+                        localStorage.setItem("wavevapes_address", JSON.stringify(userAddress));
+                    }
                     updateLoyaltyDisplay();
                     checkAndAutoRedeemLoyalty();
                     updateCartDisplay();
@@ -2421,6 +2504,12 @@
             if (!/^\d{4,6}$/.test(zip)) { showToast("❌ Ungültige PLZ (4–6 Ziffern)", "error"); return; }
             userAddress = {street, zip, city};
             localStorage.setItem("wavevapes_address", JSON.stringify(userAddress));
+            // Sync to Firestore so address persists across devices & sessions
+            if (currentUser) {
+                db.collection("users").doc(currentUser.uid)
+                  .set({ address: userAddress }, { merge: true })
+                  .catch(e => console.warn("Adresse Firestore-Sync fehlgeschlagen:", e));
+            }
             closeAddressModal();
             updateCartDisplay();
             showToast("✅ Adresse gespeichert!");

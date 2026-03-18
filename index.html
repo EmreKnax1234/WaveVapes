@@ -54,6 +54,40 @@
         /* Force dark dropdown menu on all selects */
         select { color-scheme: dark; background-color: #18181b; color: #fff; }
         body { font-family: 'Inter', system-ui, sans-serif; }
+
+        /* ── PRODUCT REVIEWS ── */
+        .rv-section { margin-top: 32px; border-top: 1px solid rgba(255,255,255,.08); padding-top: 28px; }
+        .rv-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:10px; }
+        .rv-title { font-size:16px; font-weight:700; color:#fff; display:flex; align-items:center; gap:8px; }
+        .rv-avg-wrap { display:flex; align-items:center; gap:8px; }
+        .rv-avg-num { font-family:'JetBrains Mono',monospace; font-size:28px; font-weight:700; color:#fbbf24; line-height:1; }
+        .rv-stars-row { display:flex; gap:2px; }
+        .rv-star { font-size:14px; color:#fbbf24; }
+        .rv-star.empty { color:rgba(255,255,255,.2); }
+        .rv-count { font-size:11px; color:rgba(255,255,255,.3); }
+        .rv-write-btn { display:flex; align-items:center; gap:6px; padding:8px 16px; border-radius:40px; font-size:12px; font-weight:600; cursor:pointer; border:1px solid rgba(103,232,249,.3); background:rgba(103,232,249,.08); color:#67e8f9; transition:all .18s; }
+        .rv-write-btn:hover { background:rgba(103,232,249,.15); border-color:rgba(103,232,249,.5); }
+        .rv-write-btn:disabled { opacity:.4; cursor:not-allowed; }
+        .rv-list { display:flex; flex-direction:column; gap:14px; }
+        .rv-card { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07); border-radius:18px; padding:16px 18px; }
+        .rv-card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; gap:8px; flex-wrap:wrap; }
+        .rv-card-user { font-size:13px; font-weight:600; color:rgba(255,255,255,.85); }
+        .rv-card-date { font-size:10px; color:rgba(255,255,255,.25); }
+        .rv-card-text { font-size:13px; color:rgba(255,255,255,.65); line-height:1.6; }
+        .rv-empty { text-align:center; padding:28px 16px; font-size:12px; color:rgba(255,255,255,.25); }
+        .rv-more-btn { width:100%; padding:10px; border-radius:12px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); color:rgba(255,255,255,.4); font-size:12px; cursor:pointer; transition:background .15s; margin-top:10px; }
+        .rv-more-btn:hover { background:rgba(255,255,255,.08); color:#fff; }
+        /* write form */
+        .rv-form { background:rgba(103,232,249,.05); border:1px solid rgba(103,232,249,.15); border-radius:18px; padding:18px; margin-bottom:18px; display:none; flex-direction:column; gap:12px; }
+        .rv-form.open { display:flex; }
+        .rv-star-picker { display:flex; gap:6px; }
+        .rv-star-pick { font-size:24px; cursor:pointer; color:rgba(255,255,255,.2); transition:color .1s; }
+        .rv-star-pick.lit { color:#fbbf24; }
+        .rv-textarea { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:10px 14px; color:#fff; font-size:13px; resize:vertical; outline:none; min-height:80px; font-family:inherit; width:100%; box-sizing:border-box; }
+        .rv-textarea:focus { border-color:rgba(103,232,249,.4); }
+        .rv-submit-btn { align-self:flex-end; padding:9px 22px; border-radius:40px; background:linear-gradient(135deg,#67e8f9,#a78bfa); color:#000; font-weight:700; font-size:13px; cursor:pointer; border:none; transition:opacity .15s; }
+        .rv-submit-btn:disabled { opacity:.5; cursor:not-allowed; }
+        .rv-login-hint { font-size:12px; color:rgba(255,255,255,.3); text-align:center; padding:12px; }
         .neon-text { text-shadow: 0 0 15px var(--neon-cyan), 0 0 30px var(--neon-cyan); }
         .product-card { transition: all 0.3s ease; display: flex; flex-direction: column; height: 100%; }
         .product-card:hover { transform: translateY(-12px) scale(1.04); box-shadow: 0 25px 50px -12px rgb(103 232 249); }
@@ -1975,6 +2009,11 @@
                                         class="w-full bg-zinc-800 hover:bg-zinc-700 text-cyan-300 py-3 rounded-2xl text-sm font-medium transition-all">
                                     Überweisungsdaten anzeigen
                                 </button>
+                                ${['Wird bearbeitet','Versendet','Zugestellt'].includes(status) ? `
+                                <button onclick="rvOpenFromOrder(${JSON.stringify(order.items.filter(i=>i.id!=999))})"
+                                        class="w-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 py-3 rounded-2xl text-sm font-medium transition-all flex items-center justify-center gap-2">
+                                    <i class="fa-solid fa-star"></i> Produkte bewerten
+                                </button>` : ''}
                             </div>
                         `;
                         container.appendChild(card);
@@ -2222,12 +2261,220 @@
                                 </div>
                             </div>
                         </div>
+                        <!-- Reviews section -->
+                        <div class="rv-section" id="rv-section-${product.id}">
+                            <div class="rv-header">
+                                <div class="rv-title"><i class="fa-solid fa-star" style="color:#fbbf24"></i> Bewertungen <span id="rv-avg-display-${product.id}"></span></div>
+                                <button class="rv-write-btn" id="rv-write-btn-${product.id}" onclick="rvToggleForm('${product.id}')">
+                                    <i class="fa-solid fa-pen"></i> Bewertung schreiben
+                                </button>
+                            </div>
+                            <div class="rv-form" id="rv-form-${product.id}">
+                                <div style="font-size:12px;font-weight:600;color:rgba(255,255,255,.5)">Deine Bewertung</div>
+                                <div class="rv-star-picker" id="rv-star-picker-${product.id}">
+                                    ${[1,2,3,4,5].map(n => `<span class="rv-star-pick" data-val="${n}" onclick="rvSetStar('${product.id}',${n})">★</span>`).join('')}
+                                </div>
+                                <textarea class="rv-textarea" id="rv-text-${product.id}" placeholder="Deine Erfahrung mit diesem Produkt..." maxlength="600"></textarea>
+                                <button class="rv-submit-btn" onclick="rvSubmit('${product.id}')">Abschicken</button>
+                            </div>
+                            <div class="rv-list" id="rv-list-${product.id}">
+                                <div class="rv-empty"><i class="fa-solid fa-spinner fa-spin"></i></div>
+                            </div>
+                        </div>
                     </div>
                 </div>`;
             document.getElementById('detail-content').innerHTML = html;
             const modal = document.getElementById("product-detail-modal");
             modal.classList.remove("hidden");
             modal.classList.add("flex");
+            // Load reviews after modal renders
+            rvLoad('${product.id}');
+            rvCheckCanReview('${product.id}');
+        }
+
+        // ====================== BEWERTUNGEN ======================
+        let _rvPickedStars = {}; // productId → star rating
+        const RV_PAGE_SIZE = 5;
+        let _rvPage = {};
+
+        async function rvLoad(productId) {
+            const listEl = document.getElementById(`rv-list-${productId}`);
+            const avgEl  = document.getElementById(`rv-avg-display-${productId}`);
+            if (!listEl) return;
+
+            const page = _rvPage[productId] || 0;
+            try {
+                const snap = await db.collection('reviews')
+                    .where('productId', '==', productId)
+                    .where('approved',  '==', true)
+                    .orderBy('createdAt', 'desc')
+                    .limit(RV_PAGE_SIZE * (page + 1))
+                    .get();
+
+                const reviews = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+                // Average
+                if (reviews.length > 0) {
+                    const avg = reviews.reduce((s,r) => s + (r.rating||0), 0) / reviews.length;
+                    if (avgEl) avgEl.innerHTML = `
+                        <div class="rv-avg-wrap">
+                            <span class="rv-avg-num">${avg.toFixed(1)}</span>
+                            <div>
+                                <div class="rv-stars-row">${[1,2,3,4,5].map(n=>`<span class="rv-star ${n<=Math.round(avg)?'':'empty'}">★</span>`).join('')}</div>
+                                <div class="rv-count">${reviews.length} Bewertung${reviews.length!==1?'en':''}</div>
+                            </div>
+                        </div>`;
+                } else {
+                    if (avgEl) avgEl.innerHTML = '';
+                }
+
+                // List
+                if (reviews.length === 0) {
+                    listEl.innerHTML = '<div class="rv-empty">Noch keine Bewertungen. Sei der Erste!</div>';
+                    return;
+                }
+                listEl.innerHTML = reviews.map(r => {
+                    const stars = [1,2,3,4,5].map(n=>`<span class="rv-star ${n<=(r.rating||0)?'':'empty'}">★</span>`).join('');
+                    const date  = r.createdAt ? r.createdAt.toDate().toLocaleDateString('de-DE') : '';
+                    const name  = r.username || 'Anonym';
+                    return `<div class="rv-card">
+                        <div class="rv-card-header">
+                            <div style="display:flex;align-items:center;gap:8px">
+                                <div class="rv-stars-row">${stars}</div>
+                                <span class="rv-card-user">${name}</span>
+                            </div>
+                            <span class="rv-card-date">${date}</span>
+                        </div>
+                        ${r.text ? `<div class="rv-card-text">${r.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>` : ''}
+                    </div>`;
+                }).join('');
+
+                // Load more button
+                if (snap.docs.length >= RV_PAGE_SIZE * (page + 1)) {
+                    const btn = document.createElement('button');
+                    btn.className = 'rv-more-btn';
+                    btn.textContent = 'Mehr Bewertungen laden';
+                    btn.onclick = () => { _rvPage[productId] = (page + 1); rvLoad(productId); };
+                    listEl.appendChild(btn);
+                }
+            } catch(e) {
+                if (listEl) listEl.innerHTML = '<div class="rv-empty">Bewertungen konnten nicht geladen werden.</div>';
+            }
+        }
+
+        async function rvCheckCanReview(productId) {
+            const btn = document.getElementById(`rv-write-btn-${productId}`);
+            if (!btn) return;
+            if (!currentUser) {
+                btn.title = 'Einloggen um zu bewerten';
+                return;
+            }
+            // Check if user has a qualifying order for this product
+            try {
+                const ordSnap = await db.collection('orders')
+                    .where('userId', '==', currentUser.uid)
+                    .where('status', 'in', ['Wird bearbeitet', 'Versendet', 'Zugestellt'])
+                    .get();
+                const hasBought = ordSnap.docs.some(doc =>
+                    doc.data().items?.some(item => item.id === productId)
+                );
+                if (!hasBought) {
+                    btn.title = 'Nur Käufer können bewerten';
+                    btn.style.opacity = '0.4';
+                    btn.onclick = () => showToast('Nur verifizierte Käufer dieses Produkts können eine Bewertung abgeben.', 'error');
+                }
+                // Check if already reviewed
+                const existingSnap = await db.collection('reviews')
+                    .where('productId', '==', productId)
+                    .where('userId',    '==', currentUser.uid)
+                    .limit(1).get();
+                if (!existingSnap.empty) {
+                    btn.textContent = '✅ Bereits bewertet';
+                    btn.disabled = true;
+                }
+            } catch(e) { /* non-blocking */ }
+        }
+
+        function rvToggleForm(productId) {
+            const form = document.getElementById(`rv-form-${productId}`);
+            if (!form) return;
+            if (!currentUser) { showToast('Bitte zuerst einloggen!', 'error'); showAuthModal(); return; }
+            form.classList.toggle('open');
+        }
+
+        function rvSetStar(productId, n) {
+            _rvPickedStars[productId] = n;
+            document.querySelectorAll(`#rv-star-picker-${productId} .rv-star-pick`).forEach((el, i) => {
+                el.classList.toggle('lit', i < n);
+            });
+        }
+
+        async function rvSubmit(productId) {
+            if (!currentUser) { showToast('Bitte zuerst einloggen!', 'error'); return; }
+            const rating = _rvPickedStars[productId] || 0;
+            if (!rating) { showToast('Bitte erst Sterne auswählen!', 'error'); return; }
+            const text = (document.getElementById(`rv-text-${productId}`)?.value || '').trim();
+            const btn = document.querySelector(`#rv-form-${productId} .rv-submit-btn`);
+            if (btn) { btn.disabled = true; btn.textContent = 'Wird gespeichert...'; }
+
+            try {
+                // Verify purchase
+                const ordSnap = await db.collection('orders')
+                    .where('userId', '==', currentUser.uid)
+                    .where('status', 'in', ['Wird bearbeitet', 'Versendet', 'Zugestellt'])
+                    .get();
+                const hasBought = ordSnap.docs.some(doc =>
+                    doc.data().items?.some(item => item.id === productId)
+                );
+                if (!hasBought) {
+                    showToast('Nur verifizierte Käufer können bewerten.', 'error');
+                    if (btn) { btn.disabled = false; btn.textContent = 'Abschicken'; }
+                    return;
+                }
+                // Check for duplicate
+                const dupSnap = await db.collection('reviews')
+                    .where('productId', '==', productId)
+                    .where('userId',    '==', currentUser.uid)
+                    .limit(1).get();
+                if (!dupSnap.empty) {
+                    showToast('Du hast dieses Produkt bereits bewertet.', 'error');
+                    if (btn) { btn.disabled = false; btn.textContent = 'Abschicken'; }
+                    return;
+                }
+                await db.collection('reviews').add({
+                    productId,
+                    userId:    currentUser.uid,
+                    userEmail: currentUser.email,
+                    username:  localStorage.getItem('wavevapes_username') || currentUser.email.split('@')[0],
+                    rating,
+                    text,
+                    approved:  false, // needs admin approval
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                showToast('✅ Bewertung eingereicht! Sie wird nach Prüfung veröffentlicht.');
+                document.getElementById(`rv-form-${productId}`)?.classList.remove('open');
+                const writBtn = document.getElementById(`rv-write-btn-${productId}`);
+                if (writBtn) { writBtn.textContent = '✅ Bereits bewertet'; writBtn.disabled = true; }
+            } catch(e) {
+                showToast('Fehler beim Speichern: ' + e.message, 'error');
+                if (btn) { btn.disabled = false; btn.textContent = 'Abschicken'; }
+            }
+        }
+
+        function rvOpenFromOrder(items) {
+            // Close history modal, open first product detail with review form open
+            closeHistoryModal();
+            if (!items?.length) return;
+            // Find first item that exists in allProducts
+            const first = items.find(i => allProducts.find(p => p.id === i.id));
+            if (!first) return;
+            setTimeout(() => {
+                showProductDetail(first.id);
+                setTimeout(() => {
+                    const form = document.getElementById(`rv-form-${first.id}`);
+                    if (form) form.classList.add('open');
+                }, 400);
+            }, 300);
         }
         function closeProductDetail() {
             const modal = document.getElementById("product-detail-modal");

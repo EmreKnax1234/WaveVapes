@@ -645,6 +645,99 @@
             from { transform: scale(0.92); opacity: 0; }
             to { transform: scale(1); opacity: 1; }
         }
+        /* ═══════════════════════════════════════════
+           PULL-TO-REFRESH INDIKATOR
+        ═══════════════════════════════════════════ */
+        #ptr-indicator {
+            position: fixed;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%) translateY(-80px);
+            z-index: 9990;
+            background: rgba(10,10,10,0.92);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(103,232,249,0.3);
+            border-radius: 999px;
+            padding: 10px 22px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #67e8f9;
+            box-shadow: 0 8px 32px -8px rgba(103,232,249,0.25);
+            transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1), opacity 0.25s;
+            opacity: 0;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+        #ptr-indicator.ptr-visible {
+            opacity: 1;
+        }
+        #ptr-indicator.ptr-ready {
+            transform: translateX(-50%) translateY(16px);
+            border-color: rgba(52,211,153,0.5);
+            color: #34d399;
+        }
+        #ptr-indicator.ptr-loading {
+            transform: translateX(-50%) translateY(16px);
+            opacity: 1;
+        }
+        #ptr-indicator.ptr-done {
+            transform: translateX(-50%) translateY(16px);
+            opacity: 0;
+        }
+        #ptr-spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(103,232,249,0.3);
+            border-top-color: #67e8f9;
+            border-radius: 50%;
+            display: none;
+        }
+        #ptr-indicator.ptr-loading #ptr-spinner {
+            display: block;
+            animation: ptr-spin 0.7s linear infinite;
+        }
+        #ptr-indicator.ptr-loading #ptr-arrow { display: none; }
+        @keyframes ptr-spin { to { transform: rotate(360deg); } }
+
+        /* ═══════════════════════════════════════════
+           SWIPE KATEGORIE – visuelles Feedback
+        ═══════════════════════════════════════════ */
+        #swipe-hint {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: rgba(10,10,10,0.88);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(103,232,249,0.2);
+            border-radius: 999px;
+            padding: 8px 18px;
+            font-size: 12px;
+            font-weight: 600;
+            color: rgba(103,232,249,0.8);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s, transform 0.3s;
+            z-index: 999;
+            white-space: nowrap;
+        }
+        #swipe-hint.swipe-hint-visible {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        /* Produkt-Grid beim Kategorie-Wechsel per Swipe */
+        #products-grid.swipe-exit-left  { animation: swipeExitLeft  0.22s ease forwards; }
+        #products-grid.swipe-exit-right { animation: swipeExitRight 0.22s ease forwards; }
+        #products-grid.swipe-enter-left  { animation: swipeEnterLeft  0.25s ease forwards; }
+        #products-grid.swipe-enter-right { animation: swipeEnterRight 0.25s ease forwards; }
+        @keyframes swipeExitLeft   { to { opacity:0; transform: translateX(-40px); } }
+        @keyframes swipeExitRight  { to { opacity:0; transform: translateX(40px); } }
+        @keyframes swipeEnterLeft  { from { opacity:0; transform: translateX(40px);  } to { opacity:1; transform:none; } }
+        @keyframes swipeEnterRight { from { opacity:0; transform: translateX(-40px); } to { opacity:1; transform:none; } }
+
         /* ── Warenkorb: Hintergrund-Scroll sperren ── */
         body.cart-open {
             overflow: hidden;
@@ -1177,6 +1270,18 @@
         </footer>
     </main>
     <!-- CART SIDEBAR -->
+    <!-- Pull-to-Refresh Indikator -->
+    <div id="ptr-indicator" aria-hidden="true">
+        <svg id="ptr-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+        <div id="ptr-spinner"></div>
+        <span id="ptr-text">Zum Aktualisieren ziehen</span>
+    </div>
+
+    <!-- Swipe-Kategorie Hint -->
+    <div id="swipe-hint" aria-hidden="true">
+        <span id="swipe-hint-text">← Alle</span>
+    </div>
+
     <!-- Backdrop: schließt Cart per Klick + blockiert Mausrad im Hintergrund -->
     <div id="cart-backdrop" onclick="toggleCart()"></div>
 
@@ -3873,6 +3978,160 @@
             window.visualViewport.addEventListener('resize', fixCartHeight);
         }
         document.getElementById('cart-sidebar')?.addEventListener('transitionend', fixCartHeight);
+
+        // ═══════════════════════════════════════════════════════════════
+        //  PULL-TO-REFRESH
+        // ═══════════════════════════════════════════════════════════════
+        (function initPullToRefresh() {
+            const PTR_THRESHOLD = 72;   // px ziehen bis "bereit"
+            const PTR_MAX       = 110;  // max px die der Nutzer ziehen kann
+            let touchStartY = 0;
+            let pulling     = false;
+            let refreshing  = false;
+            const indicator = document.getElementById('ptr-indicator');
+            const ptrText   = document.getElementById('ptr-text');
+            const ptrArrow  = document.getElementById('ptr-arrow');
+
+            document.addEventListener('touchstart', e => {
+                // Nur auslösen wenn Cart zu ist und ganz oben gescrollt
+                if (document.body.classList.contains('cart-open')) return;
+                if (window.scrollY > 5) return;
+                touchStartY = e.touches[0].clientY;
+                pulling = true;
+            }, { passive: true });
+
+            document.addEventListener('touchmove', e => {
+                if (!pulling || refreshing) return;
+                const delta = Math.min(e.touches[0].clientY - touchStartY, PTR_MAX);
+                if (delta <= 0) { pulling = false; return; }
+
+                // Zeige Indikator
+                indicator.classList.add('ptr-visible');
+                const progress = Math.min(delta / PTR_THRESHOLD, 1);
+
+                if (delta >= PTR_THRESHOLD) {
+                    indicator.classList.add('ptr-ready');
+                    ptrText.textContent = 'Loslassen zum Aktualisieren';
+                    ptrArrow.style.transform = `rotate(180deg)`;
+                } else {
+                    indicator.classList.remove('ptr-ready');
+                    ptrText.textContent = 'Zum Aktualisieren ziehen';
+                    ptrArrow.style.transform = `rotate(${progress * 180}deg)`;
+                }
+            }, { passive: true });
+
+            document.addEventListener('touchend', () => {
+                if (!pulling || refreshing) { pulling = false; return; }
+                const ready = indicator.classList.contains('ptr-ready');
+                pulling = false;
+                if (!ready) {
+                    // Nicht weit genug gezogen → Indikator ausblenden
+                    indicator.classList.remove('ptr-visible', 'ptr-ready');
+                    ptrArrow.style.transform = '';
+                    return;
+                }
+                // Refresh starten
+                refreshing = true;
+                indicator.classList.remove('ptr-ready');
+                indicator.classList.add('ptr-loading');
+                ptrText.textContent = 'Wird aktualisiert…';
+                ptrArrow.style.transform = '';
+
+                // Produkte neu laden (Firebase onSnapshot) + min 900ms zeigen
+                loadProducts();
+                setTimeout(() => {
+                    indicator.classList.add('ptr-done');
+                    setTimeout(() => {
+                        indicator.classList.remove('ptr-visible', 'ptr-loading', 'ptr-done');
+                        refreshing = false;
+                        ptrText.textContent = 'Zum Aktualisieren ziehen';
+                    }, 350);
+                }, 900);
+            });
+        })();
+
+        // ═══════════════════════════════════════════════════════════════
+        //  SWIPE ZWISCHEN KATEGORIEN
+        // ═══════════════════════════════════════════════════════════════
+        (function initCategorySwipe() {
+            const SWIPE_THRESHOLD = 55;   // Mindest-px horizontal
+            const SWIPE_MAX_VERT  = 80;   // max px vertikal damit es kein Scroll ist
+            let tx = 0, ty = 0;
+            let swiping = false;
+            const grid     = document.getElementById('products-section');
+            const hint     = document.getElementById('swipe-hint');
+            const hintText = document.getElementById('swipe-hint-text');
+            let hintTimer  = null;
+
+            function getCategoryList() {
+                // Holt die aktuelle Tab-Reihenfolge direkt aus dem DOM
+                return Array.from(document.querySelectorAll('#category-tabs button'))
+                    .map(btn => {
+                        // onclick="setCategoryFilter('Alle')" → extrahiere den Namen
+                        const m = btn.getAttribute('onclick').match(/setCategoryFilter\('(.+?)'\)/);
+                        return m ? m[1] : null;
+                    }).filter(Boolean);
+            }
+
+            function showSwipeHint(direction, catName) {
+                hintText.textContent = direction === 'left'
+                    ? `${catName} →`
+                    : `← ${catName}`;
+                hint.classList.add('swipe-hint-visible');
+                clearTimeout(hintTimer);
+                hintTimer = setTimeout(() => hint.classList.remove('swipe-hint-visible'), 1600);
+            }
+
+            function switchCategoryAnimated(newCat, direction) {
+                const exitClass  = direction === 'left' ? 'swipe-exit-left'  : 'swipe-exit-right';
+                const enterClass = direction === 'left' ? 'swipe-enter-left' : 'swipe-enter-right';
+                const g = document.getElementById('products-grid');
+                g.classList.add(exitClass);
+                setTimeout(() => {
+                    g.classList.remove(exitClass);
+                    setCategoryFilter(newCat);
+                    // Scroll Kategorie-Tab in Sichtfeld
+                    const tabs = document.getElementById('category-tabs');
+                    const activeBtn = tabs.querySelector(`button.tab-active`);
+                    if (activeBtn) activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                    g.classList.add(enterClass);
+                    setTimeout(() => g.classList.remove(enterClass), 280);
+                }, 220);
+            }
+
+            grid.addEventListener('touchstart', e => {
+                if (document.body.classList.contains('cart-open')) return;
+                tx = e.touches[0].clientX;
+                ty = e.touches[0].clientY;
+                swiping = true;
+            }, { passive: true });
+
+            grid.addEventListener('touchend', e => {
+                if (!swiping) return;
+                swiping = false;
+                const dx = e.changedTouches[0].clientX - tx;
+                const dy = Math.abs(e.changedTouches[0].clientY - ty);
+                if (Math.abs(dx) < SWIPE_THRESHOLD || dy > SWIPE_MAX_VERT) return;
+
+                const cats = getCategoryList();
+                const idx  = cats.indexOf(currentCategoryFilter);
+                if (idx === -1) return;
+
+                if (dx < 0) {
+                    // Swipe links → nächste Kategorie
+                    if (idx < cats.length - 1) {
+                        showSwipeHint('left', cats[idx + 1]);
+                        switchCategoryAnimated(cats[idx + 1], 'left');
+                    }
+                } else {
+                    // Swipe rechts → vorherige Kategorie
+                    if (idx > 0) {
+                        showSwipeHint('right', cats[idx - 1]);
+                        switchCategoryAnimated(cats[idx - 1], 'right');
+                    }
+                }
+            });
+        })();
 
         window.onload = initialize;
         // Re-render on orientation change so layout adjusts correctly

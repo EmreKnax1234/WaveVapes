@@ -7182,12 +7182,17 @@ async function saLoadRecentSALog() {
     const el = document.getElementById('sa-dash-log');
     if (!el) return;
     try {
-        const snap = await db.collection('adminLogs')
-            .where('action','in',['superadmin_zone_access','admin_added','admin_removed','admin_permissions_updated','ip_whitelist_updated','sa_danger_action','sa_export','sa_security_settings'])
-            .orderBy('timestamp','desc').limit(8).get().catch(() =>
-                db.collection('adminLogs').orderBy('timestamp','desc').limit(8).get()
-            );
-        renderLogEntries(el, snap.docs, true);
+        const SA_ACTIONS = ['superadmin_zone_access','admin_added','admin_removed','admin_permissions_updated','ip_whitelist_updated','sa_danger_action','sa_export','sa_security_settings','sa_fullexport','danger_shop_close','danger_shop_open','danger_clear_banned_ips','danger_reject_reviews','danger_purge_logs','danger_reset_loyalty','danger_delete_orders'];
+        const snap = await db.collection('adminLogs').limit(200).get();
+        const filtered = snap.docs
+            .filter(d => SA_ACTIONS.includes(d.data().action))
+            .sort((a,b) => {
+                const ta = a.data().timestamp?.toDate?.()?.getTime?.() || 0;
+                const tb = b.data().timestamp?.toDate?.()?.getTime?.() || 0;
+                return tb - ta;
+            })
+            .slice(0, 8);
+        renderLogEntries(el, filtered, true);
     } catch(e) { el.innerHTML = '<div style="color:rgba(255,255,255,.2);font-size:12px;padding:12px">Log konnte nicht geladen werden.</div>'; }
 }
 
@@ -7200,8 +7205,13 @@ async function saLoadActivityLog() {
     if (!el) return;
     el.innerHTML = '<div style="color:rgba(255,255,255,.2);font-size:12px;padding:12px"><i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>Lade...</div>';
     try {
-        const snap = await db.collection('adminLogs').orderBy('timestamp','desc').limit(100).get();
-        _saLogAllDocs = snap.docs;
+        const snap = await db.collection('adminLogs').limit(200).get();
+        // Sort client-side — avoids Firestore composite index requirement
+        _saLogAllDocs = snap.docs.slice().sort((a, b) => {
+            const ta = a.data().timestamp?.toDate?.()?.getTime?.() || 0;
+            const tb = b.data().timestamp?.toDate?.()?.getTime?.() || 0;
+            return tb - ta;
+        });
         saRenderFilteredLog();
     } catch(e) { el.innerHTML = `<div style="color:rgba(248,113,113,.5);font-size:12px;padding:12px">Fehler: ${e.message}</div>`; }
 }
@@ -7456,13 +7466,20 @@ async function saDangerRejectAllReviews() {
 
 async function saDangerPurgeLogs() {
     if (!confirm('Alle Admin-Logs älter als 90 Tage löschen?')) return;
-    const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
-    const snap = await db.collection('adminLogs').where('timestamp','<',cutoff).get();
-    const batch = db.batch();
-    snap.docs.forEach(d => batch.delete(d.ref));
-    await batch.commit();
-    await logAction('danger_purge_logs', 'adminLogs', { count: snap.size });
-    showToast(`✅ ${snap.size} alte Logs gelöscht`);
+    const cutoff = Date.now() - 90 * 24 * 60 * 60 * 1000;
+    const snap = await db.collection('adminLogs').limit(2000).get();
+    const old = snap.docs.filter(d => {
+        const t = d.data().timestamp?.toDate?.()?.getTime?.() || 0;
+        return t > 0 && t < cutoff;
+    });
+    // Delete in batches of 400
+    for (let i = 0; i < old.length; i += 400) {
+        const batch = db.batch();
+        old.slice(i, i + 400).forEach(d => batch.delete(d.ref));
+        await batch.commit();
+    }
+    await logAction('danger_purge_logs', 'adminLogs', { count: old.length });
+    showToast(`✅ ${old.length} alte Logs gelöscht`);
 }
 
 async function saDangerResetLoyalty() {

@@ -698,21 +698,38 @@
             }
             .stock-info { font-size: 0.72rem !important; }
 
-            /* ── CART SIDEBAR ── */
+            /* ── CART SIDEBAR — mobile compact ── */
             #cart-sidebar         { width: 100% !important; border-radius: 0 !important; }
-            #cart-items-list      { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 10px 14px !important; }
+            #cart-items-list      { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 10px 12px !important; gap: 8px !important; }
             #cart-checkout-panel  {
                 box-shadow: 0 -12px 28px rgba(0,0,0,.65);
-                padding: 10px 14px calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+                padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)) !important;
             }
-            /* Compact checkout inputs on mobile */
-            #discount-input       { font-size: 16px !important; min-height: 42px !important; padding: 10px 12px !important; }
-            #cart-checkout-panel button[onclick="applyDiscountCode()"] { min-height: 42px !important; padding: 8px 12px !important; font-size: 12px !important; }
-            button[onclick="placeOrder()"] { min-height: 52px !important; font-size: 0.95rem !important; padding: 14px !important; }
-            button[onclick="clearCart()"]  { min-height: 36px !important; font-size: 11px !important; padding: 8px !important; }
-            /* Compact header on mobile */
-            #cart-sidebar .flex.justify-between.items-center.border-b { padding: 12px 14px !important; }
-            #cart-sidebar h3 { font-size: 1.1rem !important; }
+            /* Compact header */
+            #cart-header          { padding: 10px 14px 10px !important; }
+            #cart-header h3       { font-size: 1.1rem !important; }
+            #cart-header button   { font-size: 1.5rem !important; }
+            /* Compact address row */
+            #cart-address-row     { padding: 8px 12px !important; border-radius: 14px !important; margin-bottom: 8px !important; }
+            #cart-address-display { font-size: 11px !important; }
+            /* Compact discount row */
+            #cart-discount-row    { margin-bottom: 8px !important; }
+            #discount-input       { font-size: 16px !important; padding: 9px 12px !important; border-radius: 10px !important; }
+            #cart-checkout-panel button[onclick="applyDiscountCode()"] { padding: 9px 12px !important; font-size: 12px !important; border-radius: 10px !important; }
+            #discount-status      { min-height: 14px !important; margin-top: 4px !important; }
+            /* Compact total */
+            #cart-total-price     { font-size: 1rem !important; }
+            /* Compact CTA */
+            button[onclick="placeOrder()"]  { min-height: 50px !important; font-size: 0.95rem !important; padding: 12px !important; margin-top: 6px !important; }
+            button[onclick="clearCart()"]   { min-height: 34px !important; font-size: 11px !important; padding: 6px !important; margin-top: 4px !important; }
+            /* Compact cart item cards */
+            .cart-item            { padding: 10px 12px !important; border-radius: 16px !important; }
+            .cart-item .font-medium { font-size: 0.82rem !important; line-height: 1.25 !important; }
+            .cart-item .font-bold.text-xl { font-size: 0.9rem !important; }
+            .cart-item .text-xs   { font-size: 0.7rem !important; }
+            .cart-item .text-3xl  { font-size: 1.4rem !important; }
+            .cart-item .gap-6     { gap: 10px !important; }
+            .cart-item .p-5       { padding: 10px 12px !important; }
 
             /* ── PRODUCT DETAIL MODAL (bottom sheet) ── */
             #product-detail-modal { padding: 0 !important; align-items: flex-end !important; }
@@ -1079,48 +1096,50 @@
     <div id="cart-sidebar" class="fixed top-0 right-0 w-full md:w-96 bg-zinc-950 border-l border-cyan-400/30 shadow-2xl translate-x-full transition-all duration-300 z-[999] flex flex-col" style="height:100%;height:100dvh">
 
         <!-- ── HEADER ── -->
-        <div class="flex justify-between items-center px-4 pt-4 pb-3 border-b border-white/10 flex-shrink-0">
-            <h3 class="text-xl font-bold">Dein Warenkorb</h3>
-            <button onclick="toggleCart()" class="w-9 h-9 flex items-center justify-center text-2xl text-gray-400 hover:text-white rounded-xl">✕</button>
+        <div id="cart-header" class="flex justify-between items-center px-6 pt-6 pb-4 border-b border-white/10 flex-shrink-0">
+            <h3 class="text-2xl font-bold">Dein Warenkorb</h3>
+            <button onclick="toggleCart()" class="text-3xl text-gray-400 hover:text-white leading-none">✕</button>
         </div>
 
         <!-- ── ITEMS (scrollable) ── -->
-        <div id="cart-items-list" class="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-0"></div>
+        <div id="cart-items-list" class="flex-1 overflow-y-auto px-6 py-5 space-y-4 min-h-0"></div>
 
         <!-- ── CHECKOUT FOOTER ── -->
-        <div id="cart-checkout-panel" class="flex-shrink-0 border-t border-white/10 bg-zinc-950 px-4 pt-3 pb-4">
+        <div id="cart-checkout-panel" class="flex-shrink-0 border-t border-white/10 bg-zinc-950 px-6 pt-4 pb-6">
 
-            <!-- Address + Discount in one compact row -->
-            <div class="flex items-center gap-2 mb-2">
-                <div class="flex items-center gap-2 flex-1 min-w-0 bg-zinc-900 border border-cyan-400/20 rounded-xl px-3 py-2">
-                    <i class="fa-solid fa-location-dot text-cyan-400 text-xs flex-shrink-0"></i>
-                    <div id="cart-address-display" class="text-xs text-gray-300 truncate flex-1"></div>
-                    <button onclick="showAddressModal()" class="text-cyan-400 text-xs font-semibold flex-shrink-0 ml-1">Ändern</button>
+            <!-- Address row -->
+            <div id="cart-address-row" class="flex items-center justify-between bg-zinc-900 border border-cyan-400/20 rounded-2xl px-4 py-3 mb-3">
+                <div class="flex items-center gap-3 min-w-0">
+                    <i class="fa-solid fa-location-dot text-cyan-400 flex-shrink-0 text-sm"></i>
+                    <div id="cart-address-display" class="text-sm text-gray-300 truncate"></div>
                 </div>
+                <button onclick="showAddressModal()" class="text-cyan-400 text-xs font-semibold hover:text-cyan-300 flex-shrink-0 ml-3">Ändern</button>
             </div>
 
-            <!-- Discount -->
-            <div class="flex gap-2 mb-2">
-                <input id="discount-input" type="text" placeholder="Rabattcode"
-                       autocomplete="off" spellcheck="false"
-                       class="flex-1 bg-zinc-900 border border-white/20 focus:border-cyan-400 rounded-xl px-3 py-2 text-sm outline-none min-w-0">
-                <button onclick="applyDiscountCode()" class="bg-white hover:bg-cyan-300 text-black font-semibold px-3 py-2 rounded-xl text-xs transition flex-shrink-0">Einlösen</button>
+            <!-- Discount row -->
+            <div id="cart-discount-row" class="mb-3">
+                <div class="flex gap-2">
+                    <input id="discount-input" type="text" placeholder="Rabattcode eingeben"
+                           autocomplete="off" spellcheck="false"
+                           class="flex-1 bg-zinc-900 border border-white/20 focus:border-cyan-400 rounded-xl px-4 py-2.5 text-sm outline-none min-w-0">
+                    <button onclick="applyDiscountCode()" class="bg-white hover:bg-cyan-300 text-black font-semibold px-4 py-2.5 rounded-xl text-sm transition flex-shrink-0">Einlösen</button>
+                </div>
+                <div id="discount-status" class="mt-1.5 text-xs min-h-[18px]"></div>
             </div>
-            <div id="discount-status" class="text-xs min-h-[14px] mb-1"></div>
 
-            <!-- Total -->
+            <!-- Total row -->
             <div id="cart-total-section" style="display:none">
-                <div class="flex justify-between items-center py-1.5 border-t border-white/10">
-                    <span class="text-xs text-gray-400">Gesamt inkl. Versand</span>
-                    <span id="cart-total-price" class="text-base font-bold text-cyan-300 whitespace-nowrap">0,00 €</span>
+                <div class="flex justify-between items-center py-2 border-t border-white/10">
+                    <span class="text-sm text-gray-400">Gesamt inkl. Versand</span>
+                    <span id="cart-total-price" class="text-lg font-bold text-cyan-300 whitespace-nowrap">0,00 €</span>
                 </div>
-                <p id="cart-payment-info" class="text-xs text-gray-500"></p>
-                <p id="loyalty-cart-info" class="text-emerald-400 text-xs flex items-center gap-1 font-medium"></p>
+                <p id="cart-payment-info" class="text-xs text-gray-500 mb-1"></p>
+                <p id="loyalty-cart-info" class="text-emerald-400 text-xs flex items-center gap-2 font-medium mb-3"></p>
             </div>
 
-            <!-- CTA -->
-            <button onclick="placeOrder()" class="w-full mt-2 py-4 bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 text-black font-bold text-base rounded-2xl transition-all" style="min-height:52px">BESTELLUNG ABSCHICKEN</button>
-            <button onclick="clearCart()" class="mt-1.5 text-red-400/50 hover:text-red-400 text-xs w-full py-1.5 transition">Warenkorb leeren</button>
+            <!-- CTA Button -->
+            <button onclick="placeOrder()" class="w-full py-4 bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 text-black font-bold text-lg rounded-2xl transition-all" style="min-height:56px">BESTELLUNG ABSCHICKEN</button>
+            <button onclick="clearCart()" class="mt-2 text-red-400/60 hover:text-red-400 text-xs w-full py-2 transition">Warenkorb leeren</button>
         </div>
     </div>
     <!-- SUCCESS MODAL -->
@@ -2466,20 +2485,20 @@
                 const prod = allProducts.find(pr => pr.id === item.id);
                 const nicDisplay = (item.nicotine && prod && prod.hasNicotine) ? ` (${item.nicotine})` : '';
                 if (item.id == MYSTERY_ID) {
-                    itemsHTML += `<div class="mystery-item flex justify-between items-center rounded-2xl px-4 py-3"><div class="flex items-center gap-2"><i class="fa-solid fa-gift text-xl"></i><div><div class="font-medium text-sm">${item.name}</div><div class="text-xs bg-white/30 px-2 py-0.5 rounded-full inline-block mt-0.5">GRATIS AB 100€</div></div></div><div class="font-bold text-sm text-emerald-900 whitespace-nowrap">0,00 €</div></div>`;
+                    itemsHTML += `<div class="mystery-item cart-item flex justify-between items-center rounded-3xl p-5"><div class="flex items-center gap-3"><i class="fa-solid fa-gift text-3xl"></i><div><div class="font-medium">${item.name}</div><div class="text-xs bg-white/30 px-3 py-0.5 rounded-full inline-block">GRATIS AB 100€</div></div></div><div class="text-right"><div class="font-bold text-xl text-emerald-900 whitespace-nowrap">0,00 €</div></div></div>`;
                 } else {
-                    itemsHTML += `<div class="flex justify-between items-center bg-zinc-900 border border-white/10 rounded-2xl px-4 py-3"><div class="flex-1 min-w-0 mr-3"><div class="font-medium text-sm leading-tight">${item.name}${nicDisplay}</div><div class="text-xs text-gray-400 mt-0.5 whitespace-nowrap">${item.qty} × ${p.toFixed(2).replace('.', ',')} €</div></div><div class="flex items-center gap-3 flex-shrink-0"><div class="font-bold text-sm whitespace-nowrap">${(item.qty * p).toFixed(2).replace('.', ',')} €</div><button onclick="removeCartItem('${item.id}'); event.stopImmediatePropagation()" class="text-red-400 p-1"><i class="fa-solid fa-trash text-sm"></i></button></div></div>`;
+                    itemsHTML += `<div class="cart-item flex justify-between items-center bg-zinc-900 border border-white/10 rounded-3xl p-5"><div><div class="font-medium">${item.name}${nicDisplay}</div><div class="text-xs text-gray-400 whitespace-nowrap">${item.qty} × ${p.toFixed(2).replace('.', ',')} €</div></div><div class="flex items-center gap-6"><div class="font-bold text-xl whitespace-nowrap">${(item.qty * p).toFixed(2).replace('.', ',')} €</div><button onclick="removeCartItem('${item.id}'); event.stopImmediatePropagation()" class="text-red-400"><i class="fa-solid fa-trash"></i></button></div></div>`;
                 }
             });
             const shippingCost = getShippingCost();
             const isFree = shippingCost === 0;
             const shippingHTML = `
-                <div class="flex justify-between items-center bg-zinc-900 border ${isFree ? 'border-emerald-400/30' : 'border-white/10'} rounded-2xl px-4 py-3 mt-2">
+                <div class="cart-item flex justify-between items-center bg-zinc-900 border ${isFree ? 'border-emerald-400/30' : 'border-white/10'} rounded-3xl p-5 mt-3">
                     <div>
-                        <div class="text-sm font-medium">${isFree ? 'Gratis Versand' : 'Versand (DHL)'}</div>
+                        <div class="font-medium">${isFree ? 'Gratis Versand' : 'Versand (DHL)'}</div>
                         ${isFree ? `<div class="text-xs text-emerald-400">ab 100 € Warenwert oder für dich aktiviert</div>` : ''}
                     </div>
-                    <div class="font-bold text-sm whitespace-nowrap ${isFree ? 'text-emerald-400' : ''}">
+                    <div class="font-bold text-xl ${isFree ? 'text-emerald-400' : ''} whitespace-nowrap">
                         ${isFree ? '0,00' : shippingCost.toFixed(2).replace('.', ',')} €
                     </div>
                 </div>`;

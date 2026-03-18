@@ -457,6 +457,36 @@
                 <input id="register-password" type="password" placeholder="Passwort (min. 6 Zeichen)" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-4 outline-none mb-6">
                 <button onclick="registerUser()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-5 rounded-3xl font-bold text-xl">Konto erstellen</button>
             </div>
+
+            <!-- E-MAIL VERIFIKATIONS-BANNER -->
+            <div id="verify-email-view" class="hidden">
+                <div class="text-center mb-6">
+                    <div class="mx-auto w-20 h-20 rounded-3xl flex items-center justify-center mb-5" style="background:rgba(103,232,249,0.1)">
+                        <i class="fa-solid fa-envelope-circle-check" style="font-size:2.5rem;color:#67e8f9"></i>
+                    </div>
+                    <h4 class="text-2xl font-bold text-white mb-2">Fast geschafft!</h4>
+                    <p class="text-gray-400 text-sm">Wir haben eine Bestaetigungs-E-Mail an</p>
+                    <p id="verify-email-addr" class="text-cyan-300 font-semibold mt-1 mb-4 text-sm break-all"></p>
+                </div>
+                <div style="background:rgba(103,232,249,0.07);border:1px solid rgba(103,232,249,0.2);border-radius:18px;padding:18px 20px;margin-bottom:14px">
+                    <div class="flex items-start gap-3">
+                        <i class="fa-solid fa-circle-info mt-0.5 flex-shrink-0" style="color:#67e8f9"></i>
+                        <p class="text-sm text-gray-300 leading-relaxed">Klicke auf den Link in der E-Mail um dein Konto zu aktivieren. Danach kannst du dich einloggen.</p>
+                    </div>
+                </div>
+                <div style="background:rgba(251,191,36,0.07);border:1px solid rgba(251,191,36,0.2);border-radius:18px;padding:14px 18px;margin-bottom:20px">
+                    <div class="flex items-start gap-3">
+                        <i class="fa-solid fa-triangle-exclamation mt-0.5 flex-shrink-0" style="color:#fbbf24;font-size:13px"></i>
+                        <p class="text-xs leading-relaxed" style="color:#fbbf24"><strong>Keine Mail erhalten?</strong> Bitte pruefe auch deinen <strong>Spam-Ordner</strong> oder <strong>Junk-Mail-Ordner</strong>. Die Mail kommt von <span class="font-mono text-xs">noreply@wavevapes-7a960.firebaseapp.com</span></p>
+                    </div>
+                </div>
+                <button onclick="resendVerificationFromBanner()" class="w-full py-4 rounded-3xl font-semibold text-sm mb-3 transition-all" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.7)">
+                    <i class="fa-solid fa-rotate-right mr-2"></i>E-Mail erneut senden
+                </button>
+                <button onclick="switchAuthTab(0)" class="w-full text-gray-400 hover:text-white text-sm py-2 transition">
+                    Zurueck zum Login
+                </button>
+            </div>
             <div id="logged-in-view" class="hidden text-center">
                 <i class="fa-solid fa-circle-user text-6xl text-cyan-300 mb-4"></i>
                 <p id="logged-in-email" class="text-xl font-medium mb-2"></p>
@@ -567,7 +597,7 @@
                 <p>Die gelieferte Ware bleibt bis zur vollständigen Bezahlung Eigentum des Verkäufers.</p>
 
                 <h4 class="font-semibold text-cyan-300">§ 7 Gewährleistung</h4>
-                <p>Es gelten die gesetzlichen Gewährleistungsrechte. Bei Mängeln wendet sich der Käufer per E-Mail an support@wavevapes.de. Gewährleistungsansprüche verjähren nach 2 Jahren ab Lieferung.</p>
+                <p>Es gelten die gesetzlichen Gewährleistungsrechte. Bei Mängeln wendet sich der Käufer per E-Mail an <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="99eaece9e9f6ebedd9eef8effceff8e9fceab7fdfc">[email&#160;protected]</a>. Gewährleistungsansprüche verjähren nach 2 Jahren ab Lieferung.</p>
 
                 <h4 class="font-semibold text-cyan-300">§ 8 Haftungsbeschränkung</h4>
                 <p>Der Verkäufer haftet unbegrenzt bei Vorsatz und grober Fahrlässigkeit sowie bei Verletzung von Leben, Körper und Gesundheit. Im Übrigen ist die Haftung auf den vertragstypisch vorhersehbaren Schaden begrenzt. Eine Haftung für den Missbrauch von Nikotinprodukten durch Minderjährige wird ausgeschlossen, sofern der Verkäufer die zumutbaren Maßnahmen zur Altersprüfung ergriffen hat.</p>
@@ -602,7 +632,7 @@
                     Jakob David Hellrung<br>
                     Wennemannstraße 1a<br>
                     45475 Mülheim an der Ruhr<br>
-                    E-Mail: support@wavevapes.de</p>
+                    E-Mail: <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="97e4e2e7e7f8e5e3d7e0f6e1f2e1f6e7f2e4b9f3f2">[email&#160;protected]</a></p>
                 </div>
                 <p>mittels einer eindeutigen Erklärung (z.B. ein mit der Post versandter Brief oder E-Mail) über Ihren Entschluss, diesen Vertrag zu widerrufen, informieren.</p>
 
@@ -661,7 +691,7 @@
     </div>
     <div id="notification-toast"></div>
     <!--Start of Tawk.to Script-->
-    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script type="text/javascript">
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script type="text/javascript">
     var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
     (function(){
     var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
@@ -1010,6 +1040,11 @@
         function closeAuthModal() {
             const modal = document.getElementById("auth-modal");
             modal.classList.add("hidden"); modal.classList.remove("flex");
+            // Reset verify banner state
+            const v = document.getElementById("verify-email-view");
+            if (v) v.classList.add("hidden");
+            window._verifyEmail = null;
+            window._verifyPassword = null;
         }
         function switchAuthTab(tab) {
             document.getElementById("tab-login").classList.toggle("auth-tab-active", tab === 0);
@@ -1017,7 +1052,10 @@
             document.getElementById("login-form").classList.toggle("hidden", tab !== 0);
             document.getElementById("register-form").classList.toggle("hidden", tab !== 1);
             document.getElementById("logged-in-view").classList.add("hidden");
+            document.getElementById("verify-email-view").classList.add("hidden");
             document.getElementById("auth-title").textContent = tab === 0 ? "Anmelden" : "Registrieren";
+            document.getElementById("tab-login").classList.toggle("auth-tab-active", tab === 0);
+            document.getElementById("tab-register").classList.toggle("auth-tab-active", tab === 1);
         }
         async function registerUser() {
             const email = document.getElementById("register-email").value.trim();
@@ -1026,8 +1064,19 @@
             try {
                 const cred = await auth.createUserWithEmailAndPassword(email, password);
                 await cred.user.sendEmailVerification();
-                closeAuthModal();
-                showToast("✅ Konto erstellt! Bitte bestätige deine E-Mail-Adresse (Postfach prüfen).");
+                // Store email for banner, then show banner instead of toast
+                document.getElementById("verify-email-addr").textContent = email;
+                // Hide all views, show banner
+                document.getElementById("login-form").classList.add("hidden");
+                document.getElementById("register-form").classList.add("hidden");
+                document.getElementById("logged-in-view").classList.add("hidden");
+                document.getElementById("verify-email-view").classList.remove("hidden");
+                document.getElementById("auth-title").textContent = "E-Mail bestätigen";
+                document.getElementById("tab-login").classList.remove("auth-tab-active");
+                document.getElementById("tab-register").classList.remove("auth-tab-active");
+                // Store credentials for resend
+                window._verifyEmail = email;
+                window._verifyPassword = password;
             } catch (e) {
                 const msg = e.code === 'auth/email-already-in-use' ? 'Diese E-Mail ist bereits registriert.'
                           : e.code === 'auth/invalid-email' ? 'Ungültige E-Mail-Adresse.'
@@ -1075,6 +1124,20 @@
             auth.signOut();
             closeAuthModal();
             showToast("👋 Erfolgreich ausgeloggt");
+        }
+
+        async function resendVerificationFromBanner() {
+            const email    = window._verifyEmail;
+            const password = window._verifyPassword;
+            if (!email || !password) { showToast("Bitte neu registrieren", "error"); return; }
+            try {
+                const cred = await auth.signInWithEmailAndPassword(email, password);
+                await cred.user.sendEmailVerification();
+                await auth.signOut();
+                showToast("E-Mail erneut gesendet! Bitte auch Spam-Ordner pruefen.");
+            } catch(e) {
+                showToast("Fehler: " + e.message, "error");
+            }
         }
 
         async function resendVerificationEmail() {
@@ -2243,6 +2306,8 @@
                     else if (id === 'referrals-modal') closeReferralsModal();
                     else if (id === 'product-detail-modal') closeProductDetail();
                     else if (id === 'impressum-modal') closeImpressumModal();
+                    else if (id === 'agb-modal') closeAgbModal();
+                    else if (id === 'widerruf-modal') closeWiderrufModal();
                     else if (id === 'datenschutz-modal') closeDatenschutzModal();
                 }
             });

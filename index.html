@@ -490,7 +490,11 @@
         }
         #product-detail-modal {
             padding: 16px;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            scrollbar-width: none;
         }
+        #product-detail-modal::-webkit-scrollbar { display: none; }
         #product-detail-modal .modal-inner {
             max-width: 960px;
             width: 100%;
@@ -2814,8 +2818,9 @@
             renderProducts();
             toggleCart();
         }
-        // Merkt sich die Scroll-Position beim Öffnen des Carts
+        // Merkt sich die Scroll-Position beim Öffnen des Carts / Modals
         let _cartScrollY = 0;
+        let _modalScrollY = 0;
 
         function toggleCart() {
             const sidebar = document.getElementById("cart-sidebar");
@@ -3334,6 +3339,12 @@
         function showProductDetail(id) {
             const product = allProducts.find(p => p.id === id);
             if (!product) return;
+            // Hintergrund-Scroll sperren (gleiche Logik wie Cart)
+            _modalScrollY = window.scrollY;
+            document.body.style.top = `-${_modalScrollY}px`;
+            document.body.style.position = "fixed";
+            document.body.style.width = "100%";
+            document.body.classList.add("modal-open");
             // Update URL without page reload
             const slug = slugify(product.name);
             history.pushState({ productId: id }, product.name, `?product=${slug}`);
@@ -3709,6 +3720,12 @@
             const modal = document.getElementById("product-detail-modal");
             modal.classList.add("hidden");
             modal.classList.remove("flex");
+            // Hintergrund-Scroll wiederherstellen
+            document.body.classList.remove("modal-open");
+            document.body.style.position = "";
+            document.body.style.top = "";
+            document.body.style.width = "";
+            window.scrollTo({ top: _modalScrollY, behavior: "instant" });
             // Cancel all active review listeners
             Object.values(_rvUnsubscribers).forEach(unsub => unsub());
             _rvUnsubscribers = {};
@@ -3814,8 +3831,8 @@
             setTimeout(() => {
                 overlay.style.display = 'none';
                 overlay.style.animation = '';
-                // Nur zurücksetzen wenn Cart nicht offen ist
-                if (!document.body.classList.contains('cart-open')) {
+                // Nur zurücksetzen wenn Cart und Modal nicht offen sind
+                if (!document.body.classList.contains('cart-open') && !document.body.classList.contains('modal-open')) {
                     document.body.style.overflow = '';
                 }
             }, 380);

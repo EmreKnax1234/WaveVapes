@@ -2520,7 +2520,7 @@
                 priceSnaps.forEach(snap => {
                     if (snap.exists) serverPriceMap[snap.id] = snap.data().price || 0;
                 });
-                // Verify all products still exist and are available
+                // Verify all products still exist
                 for (const id of cartProductIds) {
                     if (serverPriceMap[id] === undefined) {
                         throw new Error("Ein Produkt im Warenkorb ist nicht mehr verfügbar.");
@@ -2534,6 +2534,30 @@
                     price: item.id == MYSTERY_ID ? (item.price || 0) : serverPriceMap[String(item.id)],
                     nicotine: item.nicotine || ""
                 }));
+
+                // ═══════════════════════════════════════════════════════
+                // STOCK: Atomically check availability and reserve stock.
+                // This prevents two users from buying the last item at
+                // the same time — Firestore transactions are serialised.
+                // ═══════════════════════════════════════════════════════
+                const qtyMap = {};
+                cart.filter(i => i.id != MYSTERY_ID).forEach(i => {
+                    qtyMap[String(i.id)] = (qtyMap[String(i.id)] || 0) + i.qty;
+                });
+                await db.runTransaction(async (tx) => {
+                    for (const id of cartProductIds) {
+                        const ref = db.collection("products").doc(id);
+                        const snap = await tx.get(ref);
+                        if (!snap.exists) throw new Error(`Ein Produkt ist nicht mehr im Sortiment.`);
+                        const p = snap.data();
+                        if (p.available === false) throw new Error(`„${p.name}" ist derzeit nicht verfügbar.`);
+                        const needed = qtyMap[id] || 0;
+                        if ((p.stock || 0) < needed) {
+                            throw new Error(`„${p.name}" ist leider nur noch ${p.stock || 0}× auf Lager.`);
+                        }
+                        tx.update(ref, { stock: firebase.firestore.FieldValue.increment(-needed) });
+                    }
+                });
                 // Server-side subtotal (mystery vape excluded from subtotal)
                 let serverSubtotal = verifiedItems.reduce((sum, item) => {
                     return item.id == MYSTERY_ID ? sum : sum + item.qty * item.price;
@@ -2627,7 +2651,8 @@
                     trackingNumber: null,
                     carrier: null,
                     loyaltyEarned: loyaltyEarned,
-                    loyaltyCredited: false
+                    loyaltyCredited: false,
+                    stockReserved: true   // stock was already decremented at order placement
                 };
                 if (savedCouponInfo) {
                     orderData.discountCode   = savedCouponInfo.code;

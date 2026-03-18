@@ -3733,14 +3733,31 @@ function checkStockWarnings() {
 
 function updateStats() {
     const active = allProducts.filter(p => p.available !== false).length;
-    const soldTotal = allProducts.reduce((sum, p) => sum + (p.sold || 0), 0);
-    const revenue = allProducts.reduce((sum, p) => sum + (p.sold || 0) * (p.price || 0), 0);
     const top = [...allProducts].sort((a, b) => (b.sold || 0) - (a.sold || 0))[0];
     document.getElementById('active-products').textContent = active;
-    document.getElementById('total-sold').textContent = soldTotal;
-    document.getElementById('total-revenue').textContent = revenue.toFixed(0) + ' €';
     document.getElementById('top-seller').textContent = top ? `${top.name} (${top.sold || 0}×)` : '—';
     checkStockWarnings();
+
+    // Umsatz & verkaufte Einheiten direkt aus echten Bestellungen berechnen
+    // (identische Logik wie Analyse-Tab & Superadmin → immer synchron)
+    db.collection('orders').get().then(snap => {
+        let totalRevenue = 0;
+        let totalUnitsSold = 0;
+        snap.forEach(doc => {
+            const o = doc.data();
+            if ((o.status || '') === 'Storniert') return; // stornierte Bestellungen ignorieren
+            totalRevenue += parseFloat(o.total || 0);
+            (o.items || []).forEach(item => { totalUnitsSold += (item.qty || 0); });
+        });
+        document.getElementById('total-sold').textContent = totalUnitsSold;
+        document.getElementById('total-revenue').textContent = totalRevenue.toFixed(0) + ' €';
+    }).catch(() => {
+        // Fallback auf Produktdaten falls orders nicht erreichbar
+        const soldTotal = allProducts.reduce((sum, p) => sum + (p.sold || 0), 0);
+        const revenue = allProducts.reduce((sum, p) => sum + (p.sold || 0) * (p.price || 0), 0);
+        document.getElementById('total-sold').textContent = soldTotal;
+        document.getElementById('total-revenue').textContent = revenue.toFixed(0) + ' €';
+    });
 }
 
 // ====================== PRODUKTE ======================

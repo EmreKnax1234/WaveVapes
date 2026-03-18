@@ -5955,6 +5955,8 @@ function initStaticSelects() {
 //  BEWERTUNGS-MODERATION (Tab 11)
 // ═══════════════════════════════════════════════════
 let _rvAdminMode = 'pending';
+let _rvAdminUnsub = null;
+let _rvStatsUnsub = null;
 
 function rvAdminSwitch(mode, btn) {
     _rvAdminMode = mode;
@@ -5963,18 +5965,23 @@ function rvAdminSwitch(mode, btn) {
     rvAdminLoad(mode);
 }
 
-async function rvAdminLoadStats() {
-    try {
-        const all = await db.collection('reviews').get();
-        const docs = all.docs.map(d => d.data());
+function rvAdminLoadStats() {
+    // Cancel previous stats listener
+    if (_rvStatsUnsub) { _rvStatsUnsub(); _rvStatsUnsub = null; }
+
+    _rvStatsUnsub = db.collection('reviews').onSnapshot(snap => {
+        const docs = snap.docs.map(d => d.data());
         const approved = docs.filter(d => d.approved === true);
         const pending  = docs.filter(d => d.approved === false && !d.rejected);
         const avg = approved.length
             ? (approved.reduce((s,d) => s+(d.rating||0), 0) / approved.length).toFixed(1)
             : '—';
-        document.getElementById('rv-stat-total').textContent   = docs.length;
-        document.getElementById('rv-stat-avg').textContent     = avg;
-        document.getElementById('rv-stat-pending').textContent = pending.length;
+        const statTotal   = document.getElementById('rv-stat-total');
+        const statAvg     = document.getElementById('rv-stat-avg');
+        const statPending = document.getElementById('rv-stat-pending');
+        if (statTotal)   statTotal.textContent   = docs.length;
+        if (statAvg)     statAvg.textContent     = avg;
+        if (statPending) statPending.textContent = pending.length;
         // Sidebar badge
         const badge = document.getElementById('sb-reviews-badge');
         if (badge) {
@@ -5983,21 +5990,24 @@ async function rvAdminLoadStats() {
         }
         const pendingCount = document.getElementById('rv-pending-count');
         if (pendingCount) pendingCount.textContent = pending.length;
-    } catch(e) { console.warn('rv stats error', e); }
+    }, err => console.warn('rvAdminLoadStats error:', err));
 }
 
-async function rvAdminLoad(mode) {
+function rvAdminLoad(mode) {
     const listEl = document.getElementById('rv-admin-list');
     if (!listEl) return;
+
+    // Cancel previous list listener
+    if (_rvAdminUnsub) { _rvAdminUnsub(); _rvAdminUnsub = null; }
+
     listEl.innerHTML = '<div class="rv-admin-empty"><i class="fa-solid fa-spinner fa-spin"></i></div>';
 
-    try {
-        let query = db.collection('reviews').orderBy('createdAt', 'desc');
-        if (mode === 'pending')  query = query.where('approved','==',false);
-        if (mode === 'approved') query = query.where('approved','==',true);
-        if (mode === 'rejected') query = query.where('rejected','==',true);
-        const snap = await query.limit(50).get();
+    let query = db.collection('reviews').orderBy('createdAt', 'desc');
+    if (mode === 'pending')  query = query.where('approved','==',false);
+    if (mode === 'approved') query = query.where('approved','==',true);
+    if (mode === 'rejected') query = query.where('rejected','==',true);
 
+    _rvAdminUnsub = query.limit(50).onSnapshot(snap => {
         if (snap.empty) {
             listEl.innerHTML = `<div class="rv-admin-empty"><i class="fa-solid fa-star"></i>${
                 mode==='pending' ? 'Keine ausstehenden Bewertungen' :
@@ -6007,13 +6017,13 @@ async function rvAdminLoad(mode) {
             return;
         }
 
-        // Get product names for display
-        const productIds = [...new Set(snap.docs.map(d => d.data().productId))];
+        // Get product names from already-loaded allProducts
         const productNames = {};
-        for (const pid of productIds) {
+        snap.docs.forEach(d => {
+            const pid = d.data().productId;
             const p = allProducts.find(pr => pr.id === pid);
             productNames[pid] = p ? p.name : pid;
-        }
+        });
 
         listEl.innerHTML = '';
         snap.docs.forEach(doc => {
@@ -6041,25 +6051,23 @@ async function rvAdminLoad(mode) {
                 </div>`;
             listEl.appendChild(card);
         });
-    } catch(e) {
-        listEl.innerHTML = `<div class="rv-admin-empty">Fehler: ${e.message}</div>`;
-    }
+    }, err => {
+        listEl.innerHTML = `<div class="rv-admin-empty">Fehler: ${err.message}</div>`;
+    });
 }
 
 async function rvAdminApprove(reviewId) {
     await db.collection('reviews').doc(reviewId).update({ approved: true, rejected: false });
     await logAction('review_approved', reviewId);
     showToast('✅ Bewertung freigegeben!');
-    rvAdminLoad(_rvAdminMode);
-    rvAdminLoadStats();
+    // onSnapshot listeners auto-update — no manual reload needed
 }
 
 async function rvAdminReject(reviewId) {
     await db.collection('reviews').doc(reviewId).update({ approved: false, rejected: true });
     await logAction('review_rejected', reviewId);
     showToast('Bewertung abgelehnt', 'warning');
-    rvAdminLoad(_rvAdminMode);
-    rvAdminLoadStats();
+    // onSnapshot listeners auto-update — no manual reload needed
 }
 
 auth.onAuthStateChanged(async (user) => {

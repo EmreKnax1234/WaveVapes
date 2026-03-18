@@ -299,7 +299,7 @@
         <!-- SEARCH -->
         <div class="relative mb-8">
             <i class="fa-solid fa-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-cyan-400"></i>
-            <input id="search-input" type="text" placeholder="Flavor suchen..." onkeyup="filterProducts()" class="w-full bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl pl-12 pr-6 py-4 text-base outline-none transition">
+            <input id="search-input" type="text" placeholder="Flavor suchen..." onkeyup="filterProducts()" oninput="filterProducts()" class="w-full bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl pl-12 pr-6 py-4 text-base outline-none transition" autocomplete="off">
         </div>
         <!-- PRODUCTS GRID -->
         <div id="products-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6"></div>
@@ -448,6 +448,7 @@
                 <input id="login-email" type="email" placeholder="E-Mail Adresse" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-4 outline-none mb-4">
                 <input id="login-password" type="password" placeholder="Passwort" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-4 outline-none mb-6">
                 <button onclick="loginUser()" class="w-full bg-cyan-400 hover:bg-cyan-300 text-black py-5 rounded-3xl font-bold text-xl">Einloggen</button>
+                <button onclick="sendPasswordReset()" class="mt-3 w-full text-gray-400 hover:text-white text-sm py-2 transition">Passwort vergessen?</button>
             </div>
             <div id="register-form" class="hidden">
                 <input id="register-email" type="email" placeholder="E-Mail Adresse" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-4 outline-none mb-4">
@@ -505,7 +506,7 @@
         </div>
     </div>
     <!-- AGE MODAL -->
-    <div id="age-modal" class="hidden fixed inset-0 flex items-center justify-center z-[10000]">
+    <div id="age-modal" class="hidden fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-[10000]">
         <div class="bg-zinc-900 rounded-3xl p-10 max-w-sm w-full mx-4 text-center border border-red-500/50">
             <div class="mx-auto w-24 h-24 bg-red-500/10 text-red-400 rounded-3xl flex items-center justify-center text-7xl mb-8">🚫</div>
             <h2 class="text-5xl font-bold tracking-tighter mb-4 text-white">18+</h2>
@@ -914,29 +915,62 @@
         async function registerUser() {
             const email = document.getElementById("register-email").value.trim();
             const password = document.getElementById("register-password").value.trim();
-            if (!email || password.length < 6) return alert("Bitte gültige E-Mail und Passwort (min. 6 Zeichen) eingeben");
+            if (!email || password.length < 6) { showToast("❌ Bitte gültige E-Mail und Passwort (min. 6 Zeichen) eingeben", "error"); return; }
             try {
                 await auth.createUserWithEmailAndPassword(email, password);
                 closeAuthModal();
                 showToast("✅ Konto erstellt! Willkommen bei WaveVapes");
             } catch (e) {
-                alert("Registrierung fehlgeschlagen: " + e.message);
+                const msg = e.code === 'auth/email-already-in-use' ? 'Diese E-Mail ist bereits registriert.'
+                          : e.code === 'auth/invalid-email' ? 'Ungültige E-Mail-Adresse.'
+                          : e.code === 'auth/weak-password' ? 'Passwort zu schwach (min. 6 Zeichen).'
+                          : e.message;
+                showToast("❌ " + msg, "error");
             }
         }
         async function loginUser() {
             const email = document.getElementById("login-email").value.trim();
             const password = document.getElementById("login-password").value.trim();
-            if (!email || !password) return alert("Bitte E-Mail und Passwort eingeben");
+            if (!email || !password) { showToast("❌ Bitte E-Mail und Passwort eingeben", "error"); return; }
             try {
                 await auth.signInWithEmailAndPassword(email, password);
                 closeAuthModal();
+                showToast("✅ Erfolgreich eingeloggt!");
             } catch (e) {
-                alert("Login fehlgeschlagen: " + e.message);
+                const msg = e.code === 'auth/user-not-found' || e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential'
+                          ? 'E-Mail oder Passwort falsch.'
+                          : e.code === 'auth/invalid-email' ? 'Ungültige E-Mail-Adresse.'
+                          : e.code === 'auth/too-many-requests' ? 'Zu viele Versuche. Kurz warten.'
+                          : e.message;
+                showToast("❌ " + msg, "error");
             }
         }
         function logoutUser() {
+            cart = [];
+            appliedDiscount = null;
+            pendingNicotine = {};
+            _loyaltyPromptShown = false;
+            loyaltyPoints = 0;
+            userHasFreeShipping = false;
+            myReferralCode = "";
+            updateCartDisplay();
+            updateLoyaltyDisplay();
             auth.signOut();
             closeAuthModal();
+            showToast("👋 Erfolgreich ausgeloggt");
+        }
+        async function sendPasswordReset() {
+            const email = document.getElementById("login-email").value.trim();
+            if (!email) { showToast("❌ E-Mail-Adresse eingeben", "error"); return; }
+            try {
+                await auth.sendPasswordResetEmail(email);
+                showToast("✅ Reset-E-Mail gesendet! Bitte prüfe dein Postfach.");
+            } catch(e) {
+                const msg = e.code === 'auth/user-not-found' ? 'Kein Account mit dieser E-Mail gefunden.'
+                          : e.code === 'auth/invalid-email' ? 'Ungültige E-Mail-Adresse.'
+                          : e.message;
+                showToast("❌ " + msg, "error");
+            }
         }
         function showNameModal() {
             document.getElementById("name-input-field").value = localStorage.getItem("wavevapes_username") || "";
@@ -949,7 +983,7 @@
         }
         function saveUserName() {
             const name = document.getElementById("name-input-field").value.trim();
-            if (name.length < 2) return alert("Mindestens 2 Zeichen");
+            if (name.length < 2) { showToast("❌ Mindestens 2 Zeichen erforderlich", "error"); return; }
             localStorage.setItem("wavevapes_username", name);
             closeNameModal();
             updateUserDisplay();
@@ -1012,16 +1046,11 @@
                     status.innerHTML = `<span class="text-red-400">Bereits verwendet</span>`;
                     return;
                 }
-                appliedDiscount = { code: input, type: coupon.type, value: coupon.value, couponId: couponDocRef.id };
+                // Store coupon ref — mark used only at order placement (not on apply, to avoid waste on abandoned carts)
+                appliedDiscount = { code: input, type: coupon.type, value: coupon.value, couponId: couponDocRef.id, needsFirestoreUpdate: true };
                 const display = coupon.type === "percent" ? `${coupon.value}%` : `${coupon.value}€`;
                 status.innerHTML = `<span class="text-emerald-400">✓ ${input} (${display}) eingelöst!</span>`;
                 updateCartDisplay();
-                // FIX: usedBy für Einmalcheck (arrayUnion verhindert Duplikate)
-                // + totalUsages zählt JEDE Einlösung korrekt hoch
-                await db.collection("coupons").doc(couponDocRef.id).update({
-                    usedBy: firebase.firestore.FieldValue.arrayUnion(currentUser.uid),
-                    totalUsages: firebase.firestore.FieldValue.increment(1)
-                });
                 return;
             }
             const d = VALID_DISCOUNTS[input];
@@ -1062,20 +1091,43 @@
             }
         }
 
+        let _loyaltyPromptShown = false;
         function checkAndAutoRedeemLoyalty() {
+            if (_loyaltyPromptShown || appliedDiscount) return;
             for (let r of REWARDS) {
-                if (loyaltyPoints >= r.points && !appliedDiscount) {
+                if (loyaltyPoints >= r.points) {
                     const alreadyRedeemed = localStorage.getItem(`redeemed_${r.code}`) === "true";
                     if (!alreadyRedeemed) {
-                        if (confirm(`🎉 Du hast genug Punkte für ${r.text}!\nJetzt einlösen?`)) {
-                            document.getElementById("discount-input").value = r.code;
-                            applyDiscountCode();
-                            localStorage.setItem(`redeemed_${r.code}`, "true");
-                            return;
-                        }
+                        _loyaltyPromptShown = true;
+                        // Use toast-style prompt instead of blocking confirm()
+                        showLoyaltyPrompt(r);
+                        return;
                     }
                 }
             }
+        }
+        function showLoyaltyPrompt(r) {
+            const toast = document.getElementById('notification-toast');
+            notificationCyclePaused = true;
+            toast.style.background = "rgba(16, 185, 129, 0.9)";
+            toast.style.color = "#fff";
+            toast.innerHTML = `🎉 <strong>${r.text} verfügbar!</strong> &nbsp;<button onclick="redeemLoyaltyCode('${r.code}')" style="background:#fff;color:#000;padding:4px 12px;border-radius:999px;font-weight:700;font-size:12px;margin-left:8px">Einlösen</button> <button onclick="dismissLoyaltyPrompt()" style="color:rgba(255,255,255,.6);margin-left:8px;font-size:12px">Später</button>`;
+            toast.classList.add('visible');
+        }
+        function redeemLoyaltyCode(code) {
+            document.getElementById("discount-input").value = code;
+            applyDiscountCode();
+            localStorage.setItem(`redeemed_${code}`, "true");
+            dismissLoyaltyPrompt();
+        }
+        function dismissLoyaltyPrompt() {
+            const toast = document.getElementById('notification-toast');
+            toast.classList.remove('visible');
+            toast.style.background = "";
+            toast.style.color = "";
+            notificationCyclePaused = false;
+            _loyaltyPromptShown = false;
+            setTimeout(showNextNotification, 1000);
         }
         function showAddressModal() {
             document.getElementById("addr-street").value = userAddress.street || "";
@@ -1092,11 +1144,13 @@
             const street = document.getElementById("addr-street").value.trim();
             const zip = document.getElementById("addr-zip").value.trim();
             const city = document.getElementById("addr-city").value.trim();
-            if (!street || !zip || !city) return alert("Bitte alle Felder ausfüllen!");
+            if (!street || !zip || !city) { showToast("❌ Bitte alle Felder ausfüllen!", "error"); return; }
+            if (!/^\d{4,6}$/.test(zip)) { showToast("❌ Ungültige PLZ (4–6 Ziffern)", "error"); return; }
             userAddress = {street, zip, city};
             localStorage.setItem("wavevapes_address", JSON.stringify(userAddress));
             closeAddressModal();
             updateCartDisplay();
+            showToast("✅ Adresse gespeichert!");
         }
         function getSubtotal() {
             return cart.reduce((sum, item) => item.id === MYSTERY_ID ? sum : sum + item.qty * (item.price || 7.99), 0);
@@ -1105,7 +1159,13 @@
             let subtotal = getSubtotal();
             const tornadoQty = getTornadoQuantity();
             const free = Math.floor(tornadoQty / 4);
-            let total = Math.max(0, subtotal - free * 19.99);
+            // Use actual tornado price from cart (cheapest), not hardcoded 19.99
+            const tornadoItem = cart.find(i => {
+                const p = allProducts.find(pr => pr.id === i.id);
+                return p && p.category === "WaveVapes Tornado 30000";
+            });
+            const tornadoPrice = tornadoItem ? (tornadoItem.price || 19.99) : 19.99;
+            let total = Math.max(0, subtotal - free * tornadoPrice);
             if (appliedDiscount) {
                 if (appliedDiscount.type === "percent") {
                     total = Math.max(0, total - total * appliedDiscount.value / 100);
@@ -1121,7 +1181,9 @@
                 if (item.id === MYSTERY_ID) return sum;
                 return sum + item.qty * (item.price || 7.99);
             }, 0);
-            return rawSubtotal >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_COST;
+            const threshold = window._FREE_THRESHOLD !== undefined ? window._FREE_THRESHOLD : FREE_SHIPPING_THRESHOLD;
+            const cost      = window._SHIPPING_COST   !== undefined ? window._SHIPPING_COST   : SHIPPING_COST;
+            return rawSubtotal >= threshold ? 0 : cost;
         }
         function calculateCartTotal() {
             return getProductTotal() + getShippingCost();
@@ -1131,7 +1193,7 @@
 
         function loadProducts() {
             const container = document.getElementById("products-grid");
-            container.innerHTML = `<p class="col-span-full text-center py-16 text-gray-400 flex items-center justify-center gap-3"><i class="fa-solid fa-spinner animate-spin text-2xl"></i> Produkte werden live aus deinem Admin-Panel geladen...</p>`;
+            container.innerHTML = `<p class="col-span-full text-center py-16 text-gray-400 flex items-center justify-center gap-3"><i class="fa-solid fa-spinner animate-spin text-2xl"></i> Produkte werden geladen...</p>`;
 
             if (productsUnsubscribe) productsUnsubscribe();
 
@@ -1154,7 +1216,11 @@
                     });
                 });
                 renderProducts();
-                showToast("✅ Produkte live aktualisiert");
+                // no toast on every live-update — only on first load silently
+            }, err => {
+                console.error("Produkte laden:", err);
+                document.getElementById("products-grid").innerHTML =
+                    `<p class="col-span-full text-center py-16 text-red-400"><i class="fa-solid fa-circle-exclamation mr-2"></i>Produkte konnten nicht geladen werden. Seite neu laden.</p>`;
             });
         }
 
@@ -1365,16 +1431,26 @@
             renderProducts();
         }
         function clearCart() {
-            if (confirm("Wirklich ganzen Warenkorb leeren?")) {
-                cart = [];
-                appliedDiscount = null;
-                pendingNicotine = {};
-                document.getElementById("discount-status").innerHTML = "";
-                saveUserCart();
-                updateCartDisplay();
-                renderProducts();
-                toggleCart();
+            // Soft confirm via inline state — avoid blocking confirm()
+            const btn = document.querySelector('[onclick="clearCart()"]');
+            if (btn && btn.dataset.confirming !== "true") {
+                btn.dataset.confirming = "true";
+                btn.textContent = "Wirklich leeren? Nochmal klicken";
+                btn.style.color = "#ef4444";
+                setTimeout(() => {
+                    if (btn) { btn.dataset.confirming = ""; btn.textContent = "Warenkorb leeren"; btn.style.color = ""; }
+                }, 3000);
+                return;
             }
+            cart = [];
+            appliedDiscount = null;
+            pendingNicotine = {};
+            _loyaltyPromptShown = false;
+            document.getElementById("discount-status").innerHTML = "";
+            saveUserCart();
+            updateCartDisplay();
+            renderProducts();
+            toggleCart();
         }
         function toggleCart() {
             const sidebar = document.getElementById("cart-sidebar");
@@ -1410,22 +1486,37 @@
             const dateStr = now.getFullYear().toString().slice(2) + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0');
             return `WV-${dateStr}-${Math.floor(1000 + Math.random() * 9000)}`;
         }
+        let _orderInProgress = false;
         async function placeOrder() {
+            if (_orderInProgress) return;
             if (!currentUser) {
-                alert("Bitte melde dich zuerst an!");
+                showToast("❌ Bitte zuerst einloggen!", "error");
                 showAuthModal();
                 return;
             }
-            if (cart.length === 0) return alert("Dein Warenkorb ist leer.");
+            if (cart.length === 0) { showToast("❌ Dein Warenkorb ist leer.", "error"); return; }
             if (!userAddress.street) {
-                alert("Bitte zuerst deine Lieferadresse eingeben!");
+                showToast("❌ Bitte zuerst Lieferadresse angeben!", "error");
                 showAddressModal();
                 return;
             }
+            _orderInProgress = true;
+            const orderButton = document.querySelector('[onclick="placeOrder()"]');
+            if (orderButton) { orderButton.disabled = true; orderButton.textContent = "Bestellung wird verarbeitet..."; }
             const orderNumber = generateOrderNumber();
             const finalTotal = calculateCartTotal();
             const loyaltyEarned = Math.floor(getProductTotal());
             try {
+                // Mark coupon as used now that order is confirmed
+                if (appliedDiscount?.needsFirestoreUpdate && appliedDiscount?.couponId) {
+                    try {
+                        await db.collection("coupons").doc(appliedDiscount.couponId).update({
+                            usedBy: firebase.firestore.FieldValue.arrayUnion(currentUser.uid),
+                            totalUsages: firebase.firestore.FieldValue.increment(1)
+                        });
+                    } catch(e) { console.warn("Coupon update fehlgeschlagen", e); }
+                }
+
                 await db.collection("orders").add({
                     userId: currentUser.uid,
                     userEmail: currentUser.email,
@@ -1463,7 +1554,11 @@
                 renderProducts();
                 toggleCart();
             } catch (e) {
-                alert("Fehler beim Speichern: " + e.message);
+                showToast("❌ Fehler beim Speichern: " + e.message, "error");
+            } finally {
+                _orderInProgress = false;
+                const ob = document.querySelector('[onclick="placeOrder()"]');
+                if (ob) { ob.disabled = false; ob.textContent = "BESTELLUNG ABSCHICKEN"; }
             }
         }
         function showSuccessModal(orderNumber, total, loyaltyEarned) {
@@ -1474,9 +1569,9 @@
             document.getElementById("bank-payment-info").innerHTML = `
                 <div class="space-y-3">
                     <div><strong>Bank:</strong> ${BANK_NAME}</div>
-                    <div><strong>Empfänger:</strong> ${BANK_OWNER}</div>
-                    <div><strong>IBAN:</strong> <span class="font-mono break-all">${BANK_IBAN}</span></div>
-                    ${BANK_BIC ? `<div><strong>BIC:</strong> ${BANK_BIC}</div>` : ''}
+                    <div><strong>Empfänger:</strong> ${window._BANK_OWNER || BANK_OWNER}</div>
+                    <div><strong>IBAN:</strong> <span class="font-mono break-all">${window._BANK_IBAN || BANK_IBAN}</span></div>
+                    ${(window._BANK_BIC || BANK_BIC) ? `<div><strong>BIC:</strong> ${window._BANK_BIC || BANK_BIC}</div>` : ''}
                     <div><strong>Betrag:</strong> <span class="font-bold text-xl">${total.toFixed(2).replace('.', ',')} €</span></div>
                     <div class="pt-4 border-t border-white/20">
                         <div class="text-amber-300 text-xs tracking-wider">VERWENDUNGSZWECK</div>
@@ -1755,10 +1850,15 @@
                                 ${stockHTML}
                                 ${nicotineHTML}
                                 <div class="mt-auto pt-8 flex flex-col gap-4">
-                                    <button onclick="addFromDetail('${product.id}')"
+                                    ${product.available
+                                        ? `<button onclick="addFromDetail('${product.id}')"
                                             class="w-full bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold py-6 rounded-3xl text-2xl hover:scale-[1.03] transition-all shadow-xl">
-                                        In den Warenkorb
-                                    </button>
+                                            In den Warenkorb
+                                          </button>`
+                                        : `<button disabled class="w-full bg-zinc-800 text-gray-500 font-bold py-6 rounded-3xl text-2xl cursor-not-allowed">
+                                            Nicht verfügbar
+                                          </button>`
+                                    }
                                     <button onclick="closeProductDetail()"
                                             class="text-gray-400 hover:text-white text-sm py-3">
                                         ← Zurück zum Shop
@@ -1798,11 +1898,20 @@
             updateCartDisplay();
             renderProducts();
             closeProductDetail();
-            showToast(`✅ ${product.name} (${chosenNic}) wurde hinzugefügt!`);
+            const nicLabel = product.hasNicotine ? ` (${chosenNic})` : '';
+            showToast(`✅ ${product.name}${nicLabel} zum Warenkorb hinzugefügt!`);
         }
         // ====================== SETTINGS SYNC ======================
         db.collection("settings").doc("main").onSnapshot(doc => {
+            if (!doc.exists) return;
             const s = doc.data();
+            // Sync live shop settings
+            if (s.bank_owner) window._BANK_OWNER = s.bank_owner;
+            if (s.bank_iban)  window._BANK_IBAN  = s.iban || s.bank_iban;
+            if (s.bic)        window._BANK_BIC   = s.bic;
+            if (s.iban)       window._BANK_IBAN  = s.iban;
+            if (typeof s.shipping_cost !== 'undefined')           window._SHIPPING_COST = s.shipping_cost;
+            if (typeof s.free_shipping_threshold !== 'undefined') window._FREE_THRESHOLD = s.free_shipping_threshold;
             if (s && s.shop_closed === true) {
                 document.body.innerHTML = `
                 <div class="fixed inset-0 bg-gradient-to-br from-black via-zinc-950 to-black flex items-center justify-center z-[99999] overflow-hidden">
@@ -1837,6 +1946,7 @@
         }
         function updatePresence() {
             const docId = currentUser ? currentUser.uid : sessionId;
+            const cartCount = cart.filter(i => i.id !== 999).reduce((s,i)=>s+i.qty,0);
             db.collection("presence").doc(docId).set({
                 uid: currentUser ? currentUser.uid : null,
                 email: currentUser ? currentUser.email : null,
@@ -1845,7 +1955,9 @@
                     : "Gast",
                 lastSeen: firebase.firestore.FieldValue.serverTimestamp(),
                 page: "shop",
-                isGuest: !currentUser
+                isGuest: !currentUser,
+                cartCount: cartCount,   // visible in Live Online admin tab
+                referral: new URLSearchParams(window.location.search).get('ref') || null,
             }, { merge: true });
         }
         let lastOrderTimestamp = 0;
@@ -1856,7 +1968,13 @@
                     if (!o.date) return;
                     const orderTime = o.date.toDate().getTime();
                     if (orderTime > lastOrderTimestamp && lastOrderTimestamp !== 0) {
-                        showToast(`🔥 Jemand hat gerade ${o.total.toFixed(2)} € bestellt!`, "success");
+                        // Don't reveal exact total — keep it vague for social proof
+                        const messages = [
+                            "🔥 Jemand hat gerade bestellt!",
+                            "⚡ Neue Bestellung eingegangen!",
+                            "🛒 Jemand hat gerade seinen Warenkorb abgeschlossen!",
+                        ];
+                        showToast(messages[Math.floor(Math.random()*messages.length)], "success");
                     }
                     lastOrderTimestamp = orderTime;
                 });
@@ -1879,6 +1997,49 @@
             setInterval(updatePresence, 30000);
             listenForNewOrders();
         }
+
+        // Close modals on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key !== 'Escape') return;
+            const modals = [
+                { id: 'cart-sidebar', close: () => { if (!document.getElementById('cart-sidebar').classList.contains('translate-x-full')) toggleCart(); } },
+                { id: 'auth-modal', close: closeAuthModal },
+                { id: 'address-modal', close: closeAddressModal },
+                { id: 'name-modal', close: closeNameModal },
+                { id: 'history-modal', close: closeHistoryModal },
+                { id: 'payment-info-modal', close: closePaymentInfoModal },
+                { id: 'referrals-modal', close: closeReferralsModal },
+                { id: 'product-detail-modal', close: closeProductDetail },
+                { id: 'success-modal', close: closeSuccessModal },
+                { id: 'impressum-modal', close: closeImpressumModal },
+                { id: 'datenschutz-modal', close: closeDatenschutzModal },
+            ];
+            for (const m of modals) {
+                const el = document.getElementById(m.id);
+                if (el && !el.classList.contains('hidden') && !el.classList.contains('translate-x-full')) {
+                    m.close();
+                    break;
+                }
+            }
+        });
+
+        // Close modals on backdrop click
+        document.querySelectorAll('.fixed.inset-0').forEach(el => {
+            el.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    const id = this.id;
+                    if (id === 'auth-modal') closeAuthModal();
+                    else if (id === 'address-modal') closeAddressModal();
+                    else if (id === 'name-modal') closeNameModal();
+                    else if (id === 'history-modal') closeHistoryModal();
+                    else if (id === 'payment-info-modal') closePaymentInfoModal();
+                    else if (id === 'referrals-modal') closeReferralsModal();
+                    else if (id === 'product-detail-modal') closeProductDetail();
+                    else if (id === 'impressum-modal') closeImpressumModal();
+                    else if (id === 'datenschutz-modal') closeDatenschutzModal();
+                }
+            });
+        });
         window.onload = initialize;
 
         // Cleanup beim Verlassen der Seite

@@ -1437,7 +1437,7 @@
             <div id="cart-address-row" class="flex items-center justify-between bg-zinc-900 border border-cyan-400/20 rounded-2xl px-4 py-3 mb-3">
                 <div class="flex items-center gap-3 min-w-0">
                     <i class="fa-solid fa-location-dot text-cyan-400 flex-shrink-0 text-sm"></i>
-                    <div id="cart-address-display" class="text-sm text-gray-300 leading-snug"></div>
+                    <div id="cart-address-display" class="text-sm text-gray-300 truncate"></div>
                 </div>
                 <button onclick="showAddressModal()" class="text-cyan-400 text-xs font-semibold hover:text-cyan-300 flex-shrink-0 ml-3">Ändern</button>
             </div>
@@ -2117,11 +2117,6 @@
                             updateUserDisplay();
                         }
                     }
-                    // Sync address from Firestore → local (source of truth = Firestore)
-                    if (data.address && data.address.street) {
-                        userAddress = data.address;
-                        localStorage.setItem("wavevapes_address", JSON.stringify(userAddress));
-                    }
                     updateLoyaltyDisplay();
                     checkAndAutoRedeemLoyalty();
                     updateCartDisplay();
@@ -2504,12 +2499,6 @@
             if (!/^\d{4,6}$/.test(zip)) { showToast("❌ Ungültige PLZ (4–6 Ziffern)", "error"); return; }
             userAddress = {street, zip, city};
             localStorage.setItem("wavevapes_address", JSON.stringify(userAddress));
-            // Sync to Firestore so address persists across devices & sessions
-            if (currentUser) {
-                db.collection("users").doc(currentUser.uid)
-                  .set({ address: userAddress }, { merge: true })
-                  .catch(e => console.warn("Adresse Firestore-Sync fehlgeschlagen:", e));
-            }
             closeAddressModal();
             updateCartDisplay();
             showToast("✅ Adresse gespeichert!");
@@ -2814,15 +2803,6 @@
             // Don't count mystery vape in badge (it's always qty 1 and free)
             const totalItems = cart.filter(i => i.id != 999).reduce((sum, item) => sum + item.qty, 0);
             countEl.textContent = totalItems;
-            // Address display always updated, regardless of cart state
-            if (addressDisplay) {
-                if (userAddress && userAddress.street) {
-                    addressDisplay.innerHTML = `<span style="display:block;line-height:1.3">${userAddress.street}, ${userAddress.zip} ${userAddress.city}</span>`;
-                } else {
-                    addressDisplay.innerHTML = `<span class="text-red-400">Noch keine Adresse angegeben</span>`;
-                }
-            }
-
             if (cart.length === 0) {
                 listEl.innerHTML = `<p class="text-center py-16 text-gray-400">Dein Warenkorb ist leer</p>`;
                 totalSection.style.display = "none";
@@ -2837,6 +2817,11 @@
                 loyaltyCartInfo.innerHTML = `🎁 Mit diesem Kauf erhältst du <span class="font-bold">+${pointsEarned}</span> Loyalty-Punkte!`;
             } else {
                 loyaltyCartInfo.innerHTML = "";
+            }
+            if (userAddress.street) {
+                addressDisplay.innerHTML = `${userAddress.street}<br>${userAddress.zip} ${userAddress.city}`;
+            } else {
+                addressDisplay.innerHTML = `<span class="text-red-400">Noch keine Adresse angegeben</span>`;
             }
             let itemsHTML = "";
             // Show offer banners for all active category deals

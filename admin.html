@@ -3860,8 +3860,32 @@ async function saveOrderChanges() {
 
 async function deleteOrder() {
     if (!confirm('Bestellung IRREVERSIBEL löschen?')) return;
+
+    // Before deleting: reverse any stock/sold changes this order caused
+    const orderDoc = await db.collection('orders').doc(currentOrderId).get();
+    if (orderDoc.exists) {
+        const order = orderDoc.data();
+        const status = order.status || 'Zahlung erwartet';
+        // If order was already processed (stock was decremented + sold incremented),
+        // we need to reverse that. This applies to: Wird bearbeitet, Versendet, Zugestellt
+        const wasProcessed = ['Wird bearbeitet', 'Versendet', 'Zugestellt'].includes(status);
+        if (wasProcessed && order.items?.length) {
+            const batch = db.batch();
+            for (const item of order.items) {
+                if (item.id == 999) continue; // mystery vape
+                const ref = db.collection('products').doc(String(item.id));
+                batch.update(ref, {
+                    stock: firebase.firestore.FieldValue.increment(item.qty),
+                    sold:  firebase.firestore.FieldValue.increment(-item.qty)
+                });
+            }
+            await batch.commit();
+            showToast(`↩ Lager + Statistiken für ${order.items.length} Artikel zurückgesetzt`, 'warning');
+        }
+    }
+
     await db.collection('orders').doc(currentOrderId).delete();
-    await logAction("order_deleted", currentOrderId);
+    await logAction('order_deleted', currentOrderId);
     showToast('🗑️ Bestellung gelöscht');
     closeOrderModal();
 }
@@ -4115,17 +4139,63 @@ async function euDrawerDanger(action){
         // IP-Ban vor dem Löschen
         const { ipsBanned } = await banUserWithIPs(euCurrentUid, u?.email || euCurrentUid, 'Account gelöscht');
         await db.collection('users').doc(euCurrentUid).delete();
-        const orders=await db.collection('orders').where('userId','==',euCurrentUid).get();
-        const batch=db.batch();orders.forEach(doc=>batch.delete(doc.ref));await batch.commit();
+        const orders = await db.collection('orders').where('userId','==',euCurrentUid).get();
+        // Reverse stats for processed orders before deleting them
+        const statsBatch = db.batch();
+        let statsReversed = 0;
+        orders.forEach(doc => {
+            const o = doc.data();
+            const wasProcessed = ['Wird bearbeitet','Versendet','Zugestellt'].includes(o.status);
+            if (wasProcessed && o.items?.length) {
+                o.items.forEach(item => {
+                    if (item.id == 999) return;
+                    statsBatch.update(db.collection('products').doc(String(item.id)), {
+                        stock: firebase.firestore.FieldValue.increment(item.qty),
+                        sold:  firebase.firestore.FieldValue.increment(-item.qty)
+                    });
+                    statsReversed++;
+                });
+            }
+        });
+        if (statsReversed > 0) await statsBatch.commit();
+        const delBatch = db.batch();
+        orders.forEach(doc => delBatch.delete(doc.ref));
+        await delBatch.commit();
         await logAction('user_deleted_with_ip_ban', euCurrentUid, { ipsBanned });
         showToast(`🗑️ Account gelöscht${ipsBanned>0?' + '+ipsBanned+' IPs gebannt':''}`, 'error');
         euCloseDrawer();
     }
 }
 async function deleteUser(uid, email) {
-    if (!confirm(`⚠️ Account von ${email} WIRKLICH LÖSCHEN?`)) return; if (!confirm('LETZTE WARNUNG – unwiderruflich!')) return;
-    try { await db.collection('users').doc(uid).delete(); const orders = await db.collection('orders').where('userId','==',uid).get(); const batch = db.batch(); orders.forEach(doc=>batch.delete(doc.ref)); await batch.commit(); showToast(`✅ Account ${email} gelöscht`); await logAction("user_deleted",uid); }
-    catch(e) { showToast("Fehler: "+e.message,"error"); }
+    if (!confirm(`⚠️ Account von ${email} WIRKLICH LÖSCHEN?`)) return;
+    if (!confirm('LETZTE WARNUNG – unwiderruflich!')) return;
+    try {
+        await db.collection('users').doc(uid).delete();
+        const orders = await db.collection('orders').where('userId','==',uid).get();
+        // Reverse stats for processed orders
+        const statsBatch = db.batch();
+        orders.forEach(doc => {
+            const o = doc.data();
+            const wasProcessed = ['Wird bearbeitet','Versendet','Zugestellt'].includes(o.status);
+            if (wasProcessed && o.items?.length) {
+                o.items.forEach(item => {
+                    if (item.id == 999) return;
+                    statsBatch.update(db.collection('products').doc(String(item.id)), {
+                        stock: firebase.firestore.FieldValue.increment(item.qty),
+                        sold:  firebase.firestore.FieldValue.increment(-item.qty)
+                    });
+                });
+            }
+        });
+        await statsBatch.commit();
+        const delBatch = db.batch();
+        orders.forEach(doc => delBatch.delete(doc.ref));
+        await delBatch.commit();
+        showToast(`✅ Account ${email} gelöscht`);
+        await logAction('user_deleted', uid);
+    } catch(e) {
+        showToast('Fehler: ' + e.message, 'error');
+    }
 }
 async function resetAllLoyaltyPoints() {
     if (!confirm("⚠️ WIRKLICH ALLE Loyalty-Punkte auf 0?")) return; if (!confirm("LETZTE WARNUNG!")) return;
@@ -4589,9 +4659,38 @@ async function awardLoyaltyIfProcessed(orderId) {
     showToast(`🎉 +${points} Loyalty-Punkte gutgeschrieben!`, 'success');
 }
 async function handleStockOnStatusChange(orderId, newStatus) {
-    const doc=await db.collection('orders').doc(orderId).get();const order=doc.data();const oldStatus=order.status||"Zahlung erwartet";
-    if(newStatus==="Wird bearbeitet"&&oldStatus!=="Wird bearbeitet"){for(let item of order.items){if(item.id==999)continue;await db.collection("products").doc(item.id).update({stock:firebase.firestore.FieldValue.increment(-item.qty),sold:firebase.firestore.FieldValue.increment(item.qty)});}showToast("✅ Lager aktualisiert","success");}
-    if(newStatus==="Storniert"&&oldStatus==="Wird bearbeitet"){for(let item of order.items){if(item.id==999)continue;await db.collection("products").doc(item.id).update({stock:firebase.firestore.FieldValue.increment(item.qty)});}showToast("✅ Lager wiederhergestellt","success");}
+    const doc = await db.collection('orders').doc(orderId).get();
+    const order = doc.data();
+    const oldStatus = order.status || 'Zahlung erwartet';
+
+    // Zahlung erwartet → Wird bearbeitet: decrement stock + increment sold
+    if (newStatus === 'Wird bearbeitet' && oldStatus !== 'Wird bearbeitet') {
+        const batch = db.batch();
+        for (const item of order.items) {
+            if (item.id == 999) continue;
+            batch.update(db.collection('products').doc(String(item.id)), {
+                stock: firebase.firestore.FieldValue.increment(-item.qty),
+                sold:  firebase.firestore.FieldValue.increment(item.qty)
+            });
+        }
+        await batch.commit();
+        showToast('✅ Lager aktualisiert', 'success');
+    }
+
+    // Any processed status → Storniert: restore stock AND decrement sold
+    const wasProcessed = ['Wird bearbeitet', 'Versendet', 'Zugestellt'].includes(oldStatus);
+    if (newStatus === 'Storniert' && wasProcessed) {
+        const batch = db.batch();
+        for (const item of order.items) {
+            if (item.id == 999) continue;
+            batch.update(db.collection('products').doc(String(item.id)), {
+                stock: firebase.firestore.FieldValue.increment(item.qty),
+                sold:  firebase.firestore.FieldValue.increment(-item.qty)
+            });
+        }
+        await batch.commit();
+        showToast('↩ Lager + Statistiken wiederhergestellt', 'success');
+    }
 }
 async function resetAllStatistics() {
     if (!confirm("⚠️ WIRKLICH ALLE STATISTIKEN ZURÜCKSETZEN?")) return;

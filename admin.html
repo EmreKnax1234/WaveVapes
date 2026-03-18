@@ -7431,15 +7431,21 @@ function saDownload(filename, content, mime) {
 // ── Danger Zone Actions ───────────────────────────────
 async function saDangerShopClose() {
     if (!confirm('Shop wirklich SOFORT für alle Kunden schließen?')) return;
-    await db.collection('settings').doc('shopStatus').set({ closed: true, closedAt: new Date() }, { merge: true });
-    await logAction('danger_shop_close', 'shopStatus');
-    showToast('🔴 Shop ist jetzt geschlossen');
+    await db.collection('settings').doc('main').set({ shop_closed: true }, { merge: true });
+    // Sync Settings tab checkbox if visible
+    const cb = document.getElementById('set-closed');
+    if (cb) { cb.checked = true; cfgUpdateStatusPill && cfgUpdateStatusPill(); }
+    await logAction('danger_shop_close', 'main');
+    showToast('🔴 Shop ist jetzt geschlossen — Kunden sehen die Wartungsseite');
 }
 
 async function saDangerShopOpen() {
     if (!confirm('Shop für alle Kunden wieder öffnen?')) return;
-    await db.collection('settings').doc('shopStatus').set({ closed: false, openedAt: new Date() }, { merge: true });
-    await logAction('danger_shop_open', 'shopStatus');
+    await db.collection('settings').doc('main').set({ shop_closed: false }, { merge: true });
+    // Sync Settings tab checkbox if visible
+    const cb = document.getElementById('set-closed');
+    if (cb) { cb.checked = false; cfgUpdateStatusPill && cfgUpdateStatusPill(); }
+    await logAction('danger_shop_open', 'main');
     showToast('🟢 Shop ist jetzt wieder geöffnet');
 }
 

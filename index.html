@@ -2290,7 +2290,7 @@
         }
         function showOrderHistory() {
             if (!currentUser) {
-                alert("Bitte zuerst einloggen!");
+                showToast('Bitte zuerst einloggen!', 'error');
                 showAuthModal();
                 return;
             }
@@ -2643,6 +2643,39 @@
                 });
 
             _rvUnsubscribers[productId] = unsub;
+
+            // Fallback: if onSnapshot doesn't fire within 3s, try get() instead
+            setTimeout(() => {
+                const el = document.getElementById(`rv-list-${productId}`);
+                if (el && el.querySelector('.fa-spinner')) {
+                    // Still spinning — try get() as fallback
+                    db.collection('reviews')
+                        .where('productId', '==', productId)
+                        .get()
+                        .then(snap => {
+                            const reviews = snap.docs
+                                .map(d => ({id: d.id, ...d.data()}))
+                                .filter(r => r.approved === true)
+                                .sort((a,b) => (b.createdAt?.toMillis?.()||0) - (a.createdAt?.toMillis?.()||0));
+                            if (reviews.length === 0) {
+                                el.innerHTML = '<div class="rv-empty">Noch keine Bewertungen. Sei der Erste!</div>';
+                            } else {
+                                el.innerHTML = reviews.map(r => {
+                                    const stars = [1,2,3,4,5].map(n=>`<span class="rv-star ${n<=(r.rating||0)?'':'empty'}">★</span>`).join('');
+                                    const date = r.createdAt ? r.createdAt.toDate().toLocaleDateString('de-DE') : '';
+                                    return `<div class="rv-card"><div class="rv-card-header"><div style="display:flex;align-items:center;gap:8px"><div class="rv-stars-row">${stars}</div><span class="rv-card-user">${r.username||'Anonym'}</span></div><span class="rv-card-date">${date}</span></div>${r.text?`<div class="rv-card-text">${r.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`:''}</div>`;
+                                }).join('');
+                                // Also update average
+                                const avg = reviews.reduce((s,r)=>s+(r.rating||0),0)/reviews.length;
+                                const avgEl = document.getElementById(`rv-avg-display-${productId}`);
+                                if (avgEl) avgEl.innerHTML = `<div class="rv-avg-wrap"><span class="rv-avg-num">${avg.toFixed(1)}</span><div><div class="rv-stars-row">${[1,2,3,4,5].map(n=>`<span class="rv-star ${n<=Math.round(avg)?'':'empty'}">★</span>`).join('')}</div><div class="rv-count">${reviews.length} Bewertung${reviews.length!==1?'en':''}</div></div></div>`;
+                            }
+                        })
+                        .catch(e => {
+                            if (el) el.innerHTML = `<div class="rv-empty" style="color:#f87171">Fehler: ${e.code} – ${e.message}</div>`;
+                        });
+                }
+            }, 3000);
         }
 
         async function rvCheckCanReview(productId) {

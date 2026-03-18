@@ -2606,23 +2606,18 @@
             }
 
             // Try get() first (works even without real-time rules)
-            db.collection('reviews')
+            const reviewQuery = db.collection('reviews')
                 .where('productId', '==', productId)
-                .get()
-                .then(snap => {
-                    renderReviews(snap.docs.map(d => ({id:d.id,...d.data()})));
-                    // Then also attach live listener for real-time updates
-                    const unsub = db.collection('reviews')
-                        .where('productId', '==', productId)
-                        .onSnapshot(snap2 => {
-                            renderReviews(snap2.docs.map(d => ({id:d.id,...d.data()})));
-                        }, () => {}); // silent — get() already showed data
-                    _rvUnsubscribers[productId] = unsub;
-                })
-                .catch(err => {
-                    console.error('rvLoad error:', err.code, err.message);
-                    listEl.innerHTML = `<div class="rv-empty" style="color:#f87171;font-size:11px">Fehler ${err.code}: ${err.message}<br><br>Bitte firestore.rules deployen (reviews allow read: if true)</div>`;
-                });
+                .where('approved', '==', true);
+
+            // Live listener — updates automatically when admin approves a review
+            const unsub = reviewQuery.onSnapshot(snap => {
+                renderReviews(snap.docs.map(d => ({id:d.id,...d.data()})));
+            }, err => {
+                console.error('rvLoad error:', err.code, err.message);
+                listEl.innerHTML = `<div class="rv-empty" style="color:#f87171;font-size:11px">Fehler ${err.code}: ${err.message}<br><br>Bitte firestore.rules deployen (reviews allow read: if true)</div>`;
+            });
+            _rvUnsubscribers[productId] = unsub;
         }
 
         async function rvCheckCanReview(productId) {

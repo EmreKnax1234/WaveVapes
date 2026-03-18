@@ -590,15 +590,17 @@
             .nicotine-select { font-size: 0.75rem !important; padding: 5px 6px !important; width: 95px !important; }
 
             /* ── CART SIDEBAR ── */
-            #cart-sidebar { width: 100% !important; border-radius: 0 !important; }
-            #cart-sidebar .p-6 { padding: 16px !important; padding-bottom: 100px !important; }
-            #cart-sidebar h3 { font-size: 1.5rem !important; }
-            /* Sticky order button at bottom */
-            #cart-sidebar button[onclick="placeOrder()"] {
-                position: sticky !important; bottom: 16px !important;
-                z-index: 10 !important;
-                font-size: 1rem !important; padding-top: 18px !important; padding-bottom: 18px !important;
-                box-shadow: 0 -8px 32px rgba(103,232,249,.25) !important;
+            #cart-sidebar {
+                width: 100% !important;
+                border-radius: 0 !important;
+            }
+            /* Items list: scrollable, never overflow past footer */
+            #cart-items-list {
+                -webkit-overflow-scrolling: touch;
+            }
+            /* Checkout footer: subtle top shadow to hint scrollable content above */
+            #cart-checkout-panel {
+                box-shadow: 0 -12px 32px rgba(0,0,0,.6);
             }
 
             /* ── MODALS ── */
@@ -1000,40 +1002,52 @@
         </footer>
     </main>
     <!-- CART SIDEBAR -->
-    <div id="cart-sidebar" class="fixed top-0 right-0 h-full w-full md:w-96 bg-zinc-950 border-l border-cyan-400/30 shadow-2xl translate-x-full transition-all duration-300 z-[999] overflow-y-auto">
-        <div class="p-6">
-            <div class="flex justify-between items-center mb-8">
-                <h3 class="text-3xl font-bold">Dein Warenkorb</h3>
-                <button onclick="toggleCart()" class="text-4xl text-gray-400 hover:text-white">✕</button>
-            </div>
-            <div id="cart-items-list" class="space-y-6 min-h-[300px]"></div>
-            <div class="mt-6 p-5 bg-zinc-900 rounded-3xl border border-cyan-400/30">
-                <div class="flex justify-between items-center mb-3">
-                    <p class="text-xs uppercase tracking-widest text-gray-400">Lieferadresse</p>
-                    <button onclick="showAddressModal()" class="text-cyan-400 text-sm font-medium hover:text-cyan-300">ändern</button>
+    <div id="cart-sidebar" class="fixed top-0 right-0 h-full w-full md:w-96 bg-zinc-950 border-l border-cyan-400/30 shadow-2xl translate-x-full transition-all duration-300 z-[999] flex flex-col">
+        <!-- ── HEADER (always visible) ── -->
+        <div class="flex justify-between items-center px-6 pt-6 pb-4 border-b border-white/10 flex-shrink-0">
+            <h3 class="text-2xl font-bold">Dein Warenkorb</h3>
+            <button onclick="toggleCart()" class="text-3xl text-gray-400 hover:text-white leading-none">✕</button>
+        </div>
+
+        <!-- ── ITEMS (scrollable) ── -->
+        <div id="cart-items-list" class="flex-1 overflow-y-auto px-6 py-5 space-y-4 min-h-0"></div>
+
+        <!-- ── CHECKOUT FOOTER (always visible on mobile, normal flow on desktop) ── -->
+        <div id="cart-checkout-panel" class="flex-shrink-0 border-t border-white/10 bg-zinc-950 px-6 pt-4 pb-6">
+
+            <!-- Address row -->
+            <div class="flex items-center justify-between bg-zinc-900 border border-cyan-400/20 rounded-2xl px-4 py-3 mb-3">
+                <div class="flex items-center gap-3 min-w-0">
+                    <i class="fa-solid fa-location-dot text-cyan-400 flex-shrink-0 text-sm"></i>
+                    <div id="cart-address-display" class="text-sm text-gray-300 truncate"></div>
                 </div>
-                <div id="cart-address-display" class="text-sm text-gray-300"></div>
+                <button onclick="showAddressModal()" class="text-cyan-400 text-xs font-semibold hover:text-cyan-300 flex-shrink-0 ml-3">Ändern</button>
             </div>
-            <div class="mt-8 pt-6 border-t border-white/10">
-                <p class="text-xs uppercase tracking-widest text-gray-400 mb-3">Rabattcode oder Referral</p>
-                <div class="flex flex-col gap-3">
-                    <input id="discount-input" type="text" placeholder="Code eingeben (z.B. REF-ABC123)"
+
+            <!-- Discount row -->
+            <div class="mb-3">
+                <div class="flex gap-2">
+                    <input id="discount-input" type="text" placeholder="Rabattcode eingeben"
                            autocomplete="off" spellcheck="false"
-                           class="w-full bg-zinc-900 border border-white/20 focus:border-cyan-400 rounded-2xl px-5 py-3.5 text-sm outline-none">
-                    <button onclick="applyDiscountCode()" class="w-full bg-white hover:bg-cyan-300 text-black font-semibold py-3.5 rounded-2xl transition">Anwenden</button>
+                           class="flex-1 bg-zinc-900 border border-white/20 focus:border-cyan-400 rounded-xl px-4 py-2.5 text-sm outline-none min-w-0">
+                    <button onclick="applyDiscountCode()" class="bg-white hover:bg-cyan-300 text-black font-semibold px-4 py-2.5 rounded-xl text-sm transition flex-shrink-0">Einlösen</button>
                 </div>
-                <div id="discount-status" class="mt-3 text-sm min-h-[24px]"></div>
+                <div id="discount-status" class="mt-1.5 text-xs min-h-[18px]"></div>
             </div>
-            <div id="cart-total-section" class="mt-10 pt-8 border-t border-white/10">
-                <div class="flex justify-between text-xl font-semibold mb-1">
-                    <span>Gesamt inkl. Versand</span>
-                    <span id="cart-total-price" class="text-cyan-300">0,00 €</span>
+
+            <!-- Total row -->
+            <div id="cart-total-section" style="display:none">
+                <div class="flex justify-between items-center py-2 border-t border-white/10">
+                    <span class="text-sm text-gray-400">Gesamt inkl. Versand</span>
+                    <span id="cart-total-price" class="text-lg font-bold text-cyan-300">0,00 €</span>
                 </div>
-                <p id="cart-payment-info" class="text-xs text-gray-400"></p>
-                <p id="loyalty-cart-info" class="text-emerald-400 text-xs mt-3 flex items-center gap-2 font-medium"></p>
+                <p id="cart-payment-info" class="text-xs text-gray-500 mb-1"></p>
+                <p id="loyalty-cart-info" class="text-emerald-400 text-xs flex items-center gap-2 font-medium mb-3"></p>
             </div>
-            <button onclick="placeOrder()" class="mt-8 w-full py-6 bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 text-black font-bold text-xl rounded-3xl transition-all" style="min-height:64px">BESTELLUNG ABSCHICKEN</button>
-            <button onclick="clearCart()" class="mt-4 text-red-400 text-sm w-full py-3">Warenkorb leeren</button>
+
+            <!-- CTA Button -->
+            <button onclick="placeOrder()" class="w-full py-4 bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 text-black font-bold text-lg rounded-2xl transition-all" style="min-height:56px">BESTELLUNG ABSCHICKEN</button>
+            <button onclick="clearCart()" class="mt-2 text-red-400/60 hover:text-red-400 text-xs w-full py-2 transition">Warenkorb leeren</button>
         </div>
     </div>
     <!-- SUCCESS MODAL -->

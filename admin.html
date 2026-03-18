@@ -755,9 +755,7 @@
 
         /* KPI strip */
         .an-kpi-strip { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:22px; }
-        @media(max-width:1300px){ .an-kpi-strip{grid-template-columns:repeat(4,1fr);} }
-        @media(max-width:900px) { .an-kpi-strip{grid-template-columns:repeat(2,1fr);} }
-        @media(max-width:480px) { .an-kpi-strip{grid-template-columns:1fr;} }
+        @media(max-width:900px){ .an-kpi-strip{grid-template-columns:repeat(2,1fr);} }
         .an-kpi { position:relative; border-radius:22px; padding:22px 24px 18px; overflow:hidden; border:1px solid transparent; transition:transform .25s,border-color .25s; }
         .an-kpi:hover { transform:translateY(-4px); }
         .an-kpi::after { content:''; position:absolute; inset:0; border-radius:inherit; border:1px solid var(--an-accent,rgba(103,232,249,.18)); pointer-events:none; }
@@ -2692,27 +2690,6 @@
                     <div class="an-kpi-value" id="metric-avg">—</div>
                     <div class="an-kpi-delta an-delta-neu"><i class="fa-solid fa-chart-bar"></i> pro Bestellung</div>
                 </div>
-                <div class="an-kpi" style="background:linear-gradient(135deg,#1a0e0e,#1f1010);--an-accent:rgba(248,113,113,.22);--an-glow:#f87171;--an-color:#f87171">
-                    <div class="an-kpi-glow"></div>
-                    <div class="an-kpi-icon-bg"><i class="fa-solid fa-rotate-left"></i></div>
-                    <div class="an-kpi-label">Stornierungsrate</div>
-                    <div class="an-kpi-value" id="metric-cancel-rate">—</div>
-                    <div class="an-kpi-delta an-delta-neu"><i class="fa-solid fa-ban"></i> Storniert / Gesamt</div>
-                </div>
-                <div class="an-kpi" style="background:linear-gradient(135deg,#0f1a14,#111f17);--an-accent:rgba(52,211,153,.22);--an-glow:#34d399;--an-color:#6ee7b7">
-                    <div class="an-kpi-glow"></div>
-                    <div class="an-kpi-icon-bg"><i class="fa-solid fa-user-tag"></i></div>
-                    <div class="an-kpi-label">Ø Umsatz / Kunde</div>
-                    <div class="an-kpi-value" id="metric-ltv">—</div>
-                    <div class="an-kpi-delta an-delta-neu"><i class="fa-solid fa-arrow-up-right-dots"></i> Customer Value</div>
-                </div>
-                <div class="an-kpi" style="background:linear-gradient(135deg,#0d1520,#101b28);--an-accent:rgba(96,165,250,.22);--an-glow:#60a5fa;--an-color:#60a5fa">
-                    <div class="an-kpi-glow"></div>
-                    <div class="an-kpi-icon-bg"><i class="fa-solid fa-repeat"></i></div>
-                    <div class="an-kpi-label">Wiederkäufer-Anteil</div>
-                    <div class="an-kpi-value" id="metric-repeat">—</div>
-                    <div class="an-kpi-delta an-delta-neu"><i class="fa-solid fa-users-between-lines"></i> &gt; 1 Bestellung</div>
-                </div>
             </div>
 
             <!-- Charts Row 1: Revenue (wide) -->
@@ -2759,26 +2736,6 @@
                         <span class="an-chart-badge">geworbene Freunde</span>
                     </div>
                     <div class="an-chart-inner"><canvas id="referralChart"></canvas></div>
-                </div>
-            </div>
-
-            <!-- Charts Row 4: Customer Insights -->
-            <div class="an-chart-grid">
-                <div class="an-chart-card">
-                    <div class="an-chart-hdr">
-                        <div class="an-chart-title"><i class="fa-solid fa-users-between-lines" style="color:#60a5fa"></i> Kundensegmentierung</div>
-                        <span class="an-chart-badge" id="an-seg-badge">Zeitraum</span>
-                    </div>
-                    <div class="an-chart-inner" style="display:flex;align-items:center;justify-content:center">
-                        <canvas id="customerSegChart"></canvas>
-                    </div>
-                </div>
-                <div class="an-chart-card">
-                    <div class="an-chart-hdr">
-                        <div class="an-chart-title"><i class="fa-solid fa-user-tag" style="color:#6ee7b7"></i> Top-Kunden nach Umsatz</div>
-                        <span class="an-chart-badge">Top 8 im Zeitraum</span>
-                    </div>
-                    <div class="an-chart-inner"><canvas id="topCustomersChart"></canvas></div>
                 </div>
             </div>
 
@@ -3657,8 +3614,6 @@ let revenueChart = null;
 let dailyOrdersChart = null;
 let topProductsChart = null;
 let referralChart = null;
-let customerSegChart = null;
-let topCustomersChart = null;
 let logsUnsubscribe = null;
 let allProducts = [];
 let productOrder = [];
@@ -5216,8 +5171,6 @@ async function loadAnalytics() {
 
     let dailyRevenue={}, dailyOrdersCount={}, totalRevenue=0, totalOrders=0;
     let productMap=new Map(), userMap=new Map(), statusMap=new Map();
-    // customerRevMap: email → total spent (for LTV + top-customers chart)
-    const customerRevMap = new Map();
 
     ordersSnap.forEach(doc=>{
         const o=doc.data();
@@ -5226,32 +5179,17 @@ async function loadAnalytics() {
         dailyOrdersCount[day]=(dailyOrdersCount[day]||0)+1;
         totalRevenue+=o.total; totalOrders++;
         o.items.forEach(item=>productMap.set(item.name,(productMap.get(item.name)||0)+item.qty));
-        if(o.userEmail) {
-            userMap.set(o.userEmail,(userMap.get(o.userEmail)||0)+1);
-            customerRevMap.set(o.userEmail,(customerRevMap.get(o.userEmail)||0)+(o.total||0));
-        }
+        if(o.userEmail) userMap.set(o.userEmail,(userMap.get(o.userEmail)||0)+1);
         const st=o.status||'Zahlung erwartet';
         statusMap.set(st,(statusMap.get(st)||0)+1);
     });
 
-    // ── Derived metrics ────────────────────────────────────────────────────
-    const cancelledOrders  = statusMap.get('Storniert') || 0;
-    const cancelRate       = totalOrders > 0 ? (cancelledOrders / totalOrders * 100) : 0;
-    const uniqueCustomers  = userMap.size;
-    const avgRevenuePerCust= uniqueCustomers > 0 ? (totalRevenue / uniqueCustomers) : 0;
-    const repeatCustomers  = [...userMap.values()].filter(v => v > 1).length;
-    const repeatRate       = uniqueCustomers > 0 ? (repeatCustomers / uniqueCustomers * 100) : 0;
-    const newCustomers     = uniqueCustomers - repeatCustomers;
-
     // KPIs
     const anm = v => { const el=document.getElementById(v[0]); if(el) el.textContent=v[1]; };
-    anm(['metric-revenue',     totalRevenue.toFixed(0)+' €']);
-    anm(['metric-orders',      totalOrders]);
-    anm(['metric-users',       uniqueCustomers]);
-    anm(['metric-avg',         totalOrders>0?(totalRevenue/totalOrders).toFixed(2)+' €':'0 €']);
-    anm(['metric-cancel-rate', cancelRate.toFixed(1)+'%']);
-    anm(['metric-ltv',         avgRevenuePerCust.toFixed(2)+' €']);
-    anm(['metric-repeat',      repeatRate.toFixed(1)+'%']);
+    anm(['metric-revenue', totalRevenue.toFixed(0)+' €']);
+    anm(['metric-orders',  totalOrders]);
+    anm(['metric-users',   userMap.size]);
+    anm(['metric-avg',     totalOrders>0?(totalRevenue/totalOrders).toFixed(2)+' €':'0 €']);
 
     const labels = [];
     const startDate = anCustomFrom ? new Date(anCustomFrom) : new Date(Date.now() - (labelDays-1)*86400000);
@@ -5339,72 +5277,6 @@ async function loadAnalytics() {
         data:{ labels:refLabels, datasets:[{ label:'Referrals', data:refData, backgroundColor:refColors.map(c=>c+'99'), borderColor:refColors, borderWidth:1.5, borderRadius:8, borderSkipped:false }] },
         options: anChartOpts({ indexAxis:'y', scales:{ x:{ grid:{color:'rgba(255,255,255,.04)'}, ticks:{color:'rgba(255,255,255,.3)',font:{size:10},stepSize:1}, border:{color:'transparent'} }, y:{ grid:{display:false}, ticks:{color:'rgba(255,255,255,.55)',font:{size:11,weight:'600'}}, border:{color:'transparent'} } } })
     });
-    // ── Customer Segmentation Donut ───────────────────────────────────────────
-    const segBadge = document.getElementById('an-seg-badge');
-    if (segBadge) segBadge.textContent = uniqueCustomers + ' Kunden';
-    if(customerSegChart) customerSegChart.destroy();
-    const segCtx = document.getElementById('customerSegChart');
-    if (segCtx) {
-        customerSegChart = new Chart(segCtx.getContext('2d'), {
-            type: 'doughnut',
-            data: {
-                labels: ['Neukunden', 'Wiederkäufer'],
-                datasets: [{
-                    data: [newCustomers, repeatCustomers],
-                    backgroundColor: ['rgba(103,232,249,.7)', 'rgba(96,165,250,.7)'],
-                    borderColor:     ['#67e8f9', '#60a5fa'],
-                    borderWidth: 2,
-                    hoverOffset: 8
-                }]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                cutout: '65%',
-                plugins: {
-                    legend: { position:'bottom', labels:{ color:'rgba(255,255,255,.55)', font:{size:11}, padding:16, boxWidth:12 } },
-                    tooltip: { backgroundColor:'#1a1a2e', borderColor:'rgba(103,232,249,.25)', borderWidth:1, titleColor:'#67e8f9', bodyColor:'rgba(255,255,255,.75)', padding:12, cornerRadius:10,
-                        callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed} (${uniqueCustomers>0?(ctx.parsed/uniqueCustomers*100).toFixed(1):0}%)` }
-                    }
-                }
-            }
-        });
-    }
-
-    // ── Top Customers by Revenue Bar ───────────────────────────────────────────
-    const topCusts = [...customerRevMap.entries()]
-        .sort((a,b) => b[1]-a[1])
-        .slice(0, 8);
-    const custLabels = topCusts.map(([email]) => email.split('@')[0]);
-    const custData   = topCusts.map(([,rev]) => parseFloat(rev.toFixed(2)));
-    if(topCustomersChart) topCustomersChart.destroy();
-    const tcCtx = document.getElementById('topCustomersChart');
-    if (tcCtx) {
-        const tcGrad = tcCtx.getContext('2d').createLinearGradient(0,0,0,240);
-        tcGrad.addColorStop(0,'rgba(110,231,183,.6)');
-        tcGrad.addColorStop(1,'rgba(110,231,183,.1)');
-        topCustomersChart = new Chart(tcCtx.getContext('2d'), {
-            type: 'bar',
-            data: {
-                labels: custLabels,
-                datasets: [{
-                    label: 'Umsatz €',
-                    data: custData,
-                    backgroundColor: tcGrad,
-                    borderColor: 'rgba(110,231,183,.8)',
-                    borderWidth: 1.5,
-                    borderRadius: 6,
-                    borderSkipped: false
-                }]
-            },
-            options: anChartOpts({
-                plugins: { legend:{display:false}, tooltip:{ callbacks:{ label: ctx=>' '+ctx.parsed.y.toFixed(2)+' €' } }, backgroundColor:'#1a2e22', borderColor:'rgba(110,231,183,.25)', borderWidth:1, titleColor:'#6ee7b7', bodyColor:'rgba(255,255,255,.75)', padding:12, cornerRadius:10 } },
-                scales: {
-                    x: { grid:{color:'rgba(255,255,255,.04)'}, ticks:{color:'rgba(255,255,255,.45)',font:{size:10},maxRotation:30}, border:{color:'transparent'} },
-                    y: { grid:{color:'rgba(255,255,255,.04)'}, ticks:{color:'rgba(255,255,255,.3)',font:{size:10}, callback: v=>v+'€'}, border:{color:'transparent'} }
-                }
-            })
-        });
-    }
 }
 async function generatePDFReport() {
     const {jsPDF}=window.jspdf; const pdfDoc=new jsPDF();
@@ -5412,19 +5284,8 @@ async function generatePDFReport() {
     const thirtyDaysAgo=firebase.firestore.Timestamp.fromDate(new Date(Date.now()-30*24*60*60*1000)); const ordersSnap=await db.collection("orders").where("date",">=",thirtyDaysAgo).get();
     let totalRevenue=0,orderCount=0;const productMap=new Map(); ordersSnap.forEach(doc=>{const o=doc.data();totalRevenue+=o.total||0;orderCount++;o.items.forEach(item=>productMap.set(item.name,(productMap.get(item.name)||0)+item.qty));});
     const topProducts=Array.from(productMap.entries()).sort((a,b)=>b[1]-a[1]).slice(0,5);
-    // Compute extra metrics for PDF
-    const pdfUserMap = new Map(); const pdfCancelMap = new Map(); const pdfRevMap = new Map();
-    ordersSnap.forEach(doc=>{const o=doc.data(); if(o.userEmail){pdfUserMap.set(o.userEmail,(pdfUserMap.get(o.userEmail)||0)+1);pdfRevMap.set(o.userEmail,(pdfRevMap.get(o.userEmail)||0)+(o.total||0));} if((o.status||'')==='Storniert') pdfCancelMap.set(doc.id,1);});
-    const pdfUnique=pdfUserMap.size; const pdfRepeat=[...pdfUserMap.values()].filter(v=>v>1).length;
-    const pdfCancelRate=orderCount>0?(pdfCancelMap.size/orderCount*100):0;
-    const pdfLTV=pdfUnique>0?(totalRevenue/pdfUnique):0;
-    const pdfRepeatRate=pdfUnique>0?(pdfRepeat/pdfUnique*100):0;
-    pdfDoc.setFontSize(14);pdfDoc.text("Zusammenfassung letzte 30 Tage",20,45); pdfDoc.setFontSize(11);
-    pdfDoc.text(`Gesamtumsatz: ${totalRevenue.toFixed(2)} €`,20,55);
-    pdfDoc.text(`Bestellungen: ${orderCount}  |  Stornierungsrate: ${pdfCancelRate.toFixed(1)}%`,20,62);
-    pdfDoc.text(`Ø Umsatz/Kunde: ${pdfLTV.toFixed(2)} €  |  Wiederkäufer: ${pdfRepeatRate.toFixed(1)}%`,20,69);
-    pdfDoc.text("Top 5 Produkte:",20,80);
-    let y=87;topProducts.forEach(([name,qty])=>{pdfDoc.text(`${name}: ${qty} Stück`,25,y);y+=7;});
+    pdfDoc.setFontSize(14);pdfDoc.text("Zusammenfassung letzte 30 Tage",20,45); pdfDoc.setFontSize(11);pdfDoc.text(`Gesamtumsatz: ${totalRevenue.toFixed(2)} €`,20,55);pdfDoc.text(`Bestellungen: ${orderCount}`,20,62);pdfDoc.text("Top 5 Produkte:",20,75);
+    let y=82;topProducts.forEach(([name,qty])=>{pdfDoc.text(`${name}: ${qty} Stück`,25,y);y+=7;});
     const usersSnap=await db.collection("users").orderBy("referralCount","desc").limit(10).get(); pdfDoc.text("Top Referrer:",20,y+10);y+=17;
     usersSnap.forEach(doc=>{const u=doc.data();pdfDoc.text(`${u.username||u.email.split("@")[0]} – ${u.referralCount||0} Freunde`,25,y);y+=7;});
     pdfDoc.setFontSize(10);pdfDoc.text("WaveVapes Admin Panel v2.0",20,280); pdfDoc.save(`wavevapes-monatsbericht_${new Date().toISOString().slice(0,10)}.pdf`);

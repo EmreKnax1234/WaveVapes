@@ -2840,6 +2840,7 @@ let stockWarningThreshold = 10;
 // ====================== LOG ACTION ======================
 async function logAction(action, target = "", details = {}) {
     if (!auth.currentUser) return;
+    target = target || "";
     await db.collection("admin_logs").add({
         action, target,
         adminEmail: auth.currentUser.email,
@@ -2952,6 +2953,16 @@ function renderProductTable() {
     document.querySelectorAll('.prd-table thead th').forEach(th => {
         th.classList.remove('prd-sort-asc','prd-sort-desc');
     });
+    // Re-add sort indicator to active column
+    const sortColMap = { name:1, category:2, price:3, stock:4, available:5, sold:6, revenue:7 };
+    if (adminSortColumn && sortColMap[adminSortColumn]) {
+        const ths = document.querySelectorAll('.prd-table thead th');
+        if (ths[sortColMap[adminSortColumn]]) {
+            ths[sortColMap[adminSortColumn]].classList.add(
+                adminSortDirection === 'asc' ? 'prd-sort-asc' : 'prd-sort-desc'
+            );
+        }
+    }
 
     if (!filtered.length) {
         tbody.innerHTML = `<tr><td colspan="9"><div class="prd-empty"><i class="fa-solid fa-box-open"></i>Keine Produkte gefunden</div></td></tr>`;
@@ -2990,7 +3001,7 @@ function renderProductTable() {
             </td>
             <td style="font-size:11px;color:var(--prd-muted)">${catShort}</td>
             <td style="text-align:right">
-                <div class="prd-price">${p.price.toFixed(2)} €</div>
+                <div class="prd-price">${(p.price||0).toFixed(2)} €</div>
                 ${p.originalPrice ? `<div class="prd-price-orig">${p.originalPrice.toFixed(2)} €</div>` : ''}
             </td>
             <td style="text-align:center">
@@ -3004,7 +3015,7 @@ function renderProductTable() {
                 </label>
             </td>
             <td style="text-align:right"><span class="prd-sold-val">${p.sold || 0}</span></td>
-            <td style="text-align:right"><span class="prd-rev-val">${((p.sold||0)*p.price).toFixed(2)} €</span></td>
+            <td style="text-align:right"><span class="prd-rev-val">${((p.sold||0)*(p.price||0)).toFixed(2)} €</span></td>
             <td style="text-align:right;padding-right:12px">
                 <div class="prd-actions">
                     <button class="prd-act-btn cyan"   onclick="openEditModal('${p.id}')"      title="Bearbeiten"><i class="fa-solid fa-pen"></i></button>
@@ -3037,41 +3048,10 @@ async function duplicateProduct(id) {
 }
 
 function toggleSelectAllProducts(cb) { document.querySelectorAll('.product-checkbox').forEach(ch => ch.checked = cb.checked); }
-function openBulkEditModal() {
-    selectedProductIds = [];
-    document.querySelectorAll('.product-checkbox:checked').forEach(cb => selectedProductIds.push(cb.dataset.id));
-    if (selectedProductIds.length === 0) { alert("Bitte zuerst Produkte per Checkbox auswählen!"); return; }
-    const html = `<div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]"><div class="bg-zinc-900 rounded-3xl p-8 max-w-lg w-full mx-4 modal"><h3 class="text-3xl font-bold mb-6 neon">Bulk-Edit (${selectedProductIds.length} Produkte)</h3><div class="space-y-6"><div><label class="block text-sm text-gray-400 mb-2">Neuer Preis (€)</label><input id="bulk-price" type="number" step="0.01" placeholder="z.B. 7.99" class="w-full bg-zinc-800 rounded-2xl px-6 py-4"></div><div><label class="block text-sm text-gray-400 mb-2">Lagerbestand</label><input id="bulk-stock" type="number" placeholder="z.B. 50" class="w-full bg-zinc-800 rounded-2xl px-6 py-4"></div><div class="flex items-center gap-4"><label class="flex items-center gap-3"><input id="bulk-available" type="checkbox" class="w-5 h-5 accent-cyan-400"> Verfügbar</label><label class="flex items-center gap-3"><input id="bulk-new" type="checkbox" class="w-5 h-5 accent-lime-400"> Neue Sorte</label></div><div><label class="block text-sm text-gray-400 mb-2">Kategorie</label><select id="bulk-category" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4"></select></div></div><div class="flex gap-4 mt-10"><button onclick="executeBulkEdit()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-5 rounded-3xl font-bold">JETZT ÄNDERN</button><button onclick="closeBulkModal()" class="flex-1 bg-zinc-700 hover:bg-zinc-600 py-5 rounded-3xl">Abbrechen</button></div></div></div>`;
-    document.getElementById('edit-modal').innerHTML = html;
-    document.getElementById('edit-modal').classList.remove('hidden');
-    populateCategorySelects();
-    const sel = document.getElementById('bulk-category');
-    if (sel) sel.innerHTML = '<option value="">Kategorie nicht ändern</option>' + sel.innerHTML;
-}
-function closeBulkModal() { document.getElementById('edit-modal').classList.add('hidden'); }
-async function executeBulkEdit() {
-    const price = document.getElementById('bulk-price').value ? parseFloat(document.getElementById('bulk-price').value) : null;
-    const stock = document.getElementById('bulk-stock').value ? parseInt(document.getElementById('bulk-stock').value) : null;
-    const available = document.getElementById('bulk-available').checked ? true : null;
-    const isNew = document.getElementById('bulk-new').checked ? true : null;
-    const category = document.getElementById('bulk-category').value || null;
-    const batch = db.batch(); let changed = 0;
-    for (let id of selectedProductIds) {
-        const updateData = {};
-        if (price !== null) updateData.price = price;
-        if (stock !== null) updateData.stock = stock;
-        if (available !== null) updateData.available = available;
-        if (isNew !== null) updateData.isNew = isNew;
-        if (category) updateData.category = category;
-        if (Object.keys(updateData).length > 0) { batch.update(db.collection('products').doc(id), updateData); changed++; }
-    }
-    await batch.commit();
-    await logAction("bulk_edit", "", { count: changed });
-    closeBulkModal(); showToast(`✅ ${changed} Produkte erfolgreich bearbeitet!`); loadProducts();
-}
+// [old bulk modal removed — new bottom-sheet version below]
 
 async function enforceCategories() {
-    if (!confirm('Alle Produkte automatisch kategorisieren?')) return;
+    if (!confirm('Alle Produkte automatisch kategorisieren? (WaveVapes Tornado-Produkte werden NICHT verändert)')) return;
     const snap = await db.collection('products').get();
     const batch = db.batch(); let changed = 0;
     snap.forEach(doc => {
@@ -3086,7 +3066,7 @@ async function enforceCategories() {
 
 async function exportOrdersWithTracking() {
     const snapshot = await db.collection("orders").orderBy("date", "desc").get();
-    if (snapshot.empty) return alert("Keine Bestellungen!");
+    if (snapshot.empty) { showToast('Keine Bestellungen vorhanden', 'error'); return; }
     let csv = "Bestellnr.,Datum,Kunde,Gesamt,Status,Tracking-Nummer,Tracking-Link\n";
     snapshot.forEach(doc => {
         const o = doc.data();
@@ -3101,46 +3081,7 @@ async function exportOrdersWithTracking() {
     await logAction("orders_export_with_tracking");
 }
 
-async function openEditModal(id) {
-    currentEditId = id; removeCurrentImage = false;
-    const doc = await db.collection('products').doc(id).get();
-    const p = doc.data();
-    const html = `<div class="bg-zinc-900 rounded-3xl p-8 max-w-6xl w-full mx-4 modal max-h-[95vh] overflow-y-auto"><div class="flex justify-between items-center mb-8"><h3 class="text-3xl font-bold neon">Produkt bearbeiten</h3><button onclick="closeEditModal()" class="text-4xl text-gray-400 hover:text-white">✕</button></div><div class="grid grid-cols-1 lg:grid-cols-2 gap-8"><div><div id="preview-image" class="bg-zinc-950 border border-white/10 rounded-3xl overflow-hidden h-96 flex items-center justify-center">${p.image ? `<img src="${p.image}" class="max-h-full w-full object-contain" loading="lazy">` : `<div class="text-center text-gray-500"><i class="fa-solid fa-image text-6xl mb-4"></i><br>Kein Bild</div>`}</div>${p.image ? `<button onclick="removeImageInEdit()" class="mt-4 w-full bg-red-600/80 hover:bg-red-600 text-white py-3 rounded-2xl text-sm font-medium flex items-center justify-center gap-2">Bild entfernen</button>` : ''}</div><div class="space-y-6"><input id="edit-name" value="${p.name}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4 text-lg"><div class="grid grid-cols-2 gap-4"><input id="edit-price" type="number" step="0.01" value="${p.price}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4"><input id="edit-original-price" type="number" step="0.01" value="${p.originalPrice||''}" placeholder="Alter Preis" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4"></div><input id="edit-stock" type="number" value="${p.stock}" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4"><select id="edit-category-select" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-2xl px-6 py-4"></select><div class="flex items-center gap-6"><div class="flex items-center gap-3"><input id="edit-new" type="checkbox" ${p.isNew?'checked':''}><label>Neue Sorte</label></div><div class="flex items-center gap-3"><input id="edit-unavailable" type="checkbox" ${p.available===false?'checked':''}><label>Nicht verfügbar</label></div><div class="flex items-center gap-3"><input id="edit-has-nicotine" type="checkbox" ${p.hasNicotine!==false?'checked':''}><label>Nikotin enthalten</label></div></div><div><label class="text-xs text-gray-400 block mb-2">Produktbeschreibung</label><textarea id="edit-description" rows="8" class="w-full bg-zinc-800 border border-cyan-400/30 rounded-3xl px-6 py-4">${p.description||''}</textarea></div><div id="edit-dropzone" class="border-2 border-dashed border-cyan-400/50 hover:border-cyan-400 rounded-3xl p-8 text-center cursor-pointer"><i class="fa-solid fa-cloud-arrow-up text-4xl mb-3 text-cyan-400"></i><p class="text-cyan-300">Neues Bild hochladen</p></div></div></div><div class="flex gap-4 mt-10"><button onclick="saveEdit()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-5 rounded-3xl font-bold">Speichern</button><button onclick="closeEditModal()" class="flex-1 bg-zinc-700 hover:bg-zinc-600 py-5 rounded-3xl">Abbrechen</button></div></div>`;
-    document.getElementById('edit-modal').innerHTML = html;
-    document.getElementById('edit-modal').classList.remove('hidden');
-    populateCategorySelects();
-    setTimeout(() => { const s = document.getElementById('edit-category-select'); if(s) s.value = p.category||''; }, 100);
-    document.getElementById('edit-dropzone').onclick = () => {
-        const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*';
-        input.onchange = e => { selectedFile = e.target.files[0]; removeCurrentImage = false; document.getElementById('preview-image').innerHTML = `<img src="${URL.createObjectURL(selectedFile)}" class="max-h-full w-full object-contain">`; };
-        input.click();
-    };
-}
-function removeImageInEdit() { removeCurrentImage = true; document.getElementById('preview-image').innerHTML = `<div class="text-center text-red-400"><i class="fa-solid fa-trash text-6xl mb-4"></i><br>Bild wird beim Speichern entfernt</div>`; }
-function closeEditModal() { document.getElementById('edit-modal').classList.add('hidden'); selectedFile = null; removeCurrentImage = false; }
-async function saveEdit() {
-    if (!currentEditId) return;
-    const name = document.getElementById('edit-name').value;
-    const price = parseFloat(document.getElementById('edit-price').value);
-    const originalPrice = parseFloat(document.getElementById('edit-original-price').value) || null;
-    const stock = parseInt(document.getElementById('edit-stock').value);
-    const description = document.getElementById('edit-description').value;
-    const isNew = document.getElementById('edit-new').checked;
-    const unavailable = document.getElementById('edit-unavailable').checked;
-    const hasNicotine = document.getElementById('edit-has-nicotine').checked;
-    const categorySelect = document.getElementById('edit-category-select');
-    const category = categorySelect && categorySelect.value ? categorySelect.value : (isNew ? "Neue Sorten" : "Normale Sorten");
-    let data = { name, price, originalPrice, stock, category, description: description || "", isNew, available: !unavailable, hasNicotine };
-    if (removeCurrentImage && !selectedFile) data.image = null;
-    else if (selectedFile) {
-        const formData = new FormData(); formData.append("file", selectedFile); formData.append("upload_preset", "wavevapes");
-        const res = await fetch("https://api.cloudinary.com/v1_1/dbbkmjsr5/image/upload", { method: "POST", body: formData });
-        const json = await res.json(); if (json.secure_url) data.image = json.secure_url;
-    }
-    await db.collection('products').doc(currentEditId).update(data);
-    await logAction("product_updated", currentEditId, { name, category });
-    closeEditModal(); showToast('✅ Produkt gespeichert!');
-}
+// [old modal-based openEditModal/saveEdit/closeEditModal removed — new Drawer versions below]
 
 document.getElementById('add-form').addEventListener('submit', async e => {
     e.preventDefault();
@@ -4411,6 +4352,9 @@ async function saveSettings() {
     cfgUpdateStatusPill();
     renderProductTable();
     checkStockWarnings();
+    // Push to live cache so admin panel reflects new values immediately
+    window._FREE_THRESHOLD = data.free_shipping_threshold;
+    window._SHIPPING_COST  = data.shipping_cost;
 }
 
 function getStatusClass(s) {
@@ -4421,17 +4365,23 @@ function getStatusClass(s) {
     }
 }
 async function awardLoyaltyIfProcessed(orderId) {
-    const doc=await db.collection('orders').doc(orderId).get();const order=doc.data();
-    if(!order||order.status!=="Wird bearbeitet"||order.loyaltyCredited===true)return;
-    const points=order.loyaltyEarned||0;if(points<=0)return;
-    await db.collection('users').doc(order.userId).update({totalBonusPoints:firebase.firestore.FieldValue.increment(points)});
-    await db.collection('orders').doc(orderId).update({loyaltyCredited:true});
-    showToast(`🎉 +${points} Loyalty-Punkte gutgeschrieben!`,'success');
+    const doc = await db.collection('orders').doc(orderId).get();
+    if (!doc.exists) return;
+    const order = doc.data();
+    if (!order || order.loyaltyCredited === true) return;
+    if (!order.userId) return; // safety guard
+    const points = order.loyaltyEarned || 0;
+    if (points <= 0) return;
+    await db.collection('users').doc(order.userId).update({
+        totalBonusPoints: firebase.firestore.FieldValue.increment(points)
+    });
+    await db.collection('orders').doc(orderId).update({ loyaltyCredited: true });
+    showToast(`🎉 +${points} Loyalty-Punkte gutgeschrieben!`, 'success');
 }
 async function handleStockOnStatusChange(orderId, newStatus) {
     const doc=await db.collection('orders').doc(orderId).get();const order=doc.data();const oldStatus=order.status||"Zahlung erwartet";
-    if(newStatus==="Wird bearbeitet"&&oldStatus!=="Wird bearbeitet"){for(let item of order.items){if(item.id===999)continue;await db.collection("products").doc(item.id).update({stock:firebase.firestore.FieldValue.increment(-item.qty),sold:firebase.firestore.FieldValue.increment(item.qty)});}showToast("✅ Lager aktualisiert","success");}
-    if(newStatus==="Storniert"&&oldStatus==="Wird bearbeitet"){for(let item of order.items){if(item.id===999)continue;await db.collection("products").doc(item.id).update({stock:firebase.firestore.FieldValue.increment(item.qty)});}showToast("✅ Lager wiederhergestellt","success");}
+    if(newStatus==="Wird bearbeitet"&&oldStatus!=="Wird bearbeitet"){for(let item of order.items){if(item.id==999)continue;await db.collection("products").doc(item.id).update({stock:firebase.firestore.FieldValue.increment(-item.qty),sold:firebase.firestore.FieldValue.increment(item.qty)});}showToast("✅ Lager aktualisiert","success");}
+    if(newStatus==="Storniert"&&oldStatus==="Wird bearbeitet"){for(let item of order.items){if(item.id==999)continue;await db.collection("products").doc(item.id).update({stock:firebase.firestore.FieldValue.increment(item.qty)});}showToast("✅ Lager wiederhergestellt","success");}
 }
 async function resetAllStatistics() {
     if (!confirm("⚠️ WIRKLICH ALLE STATISTIKEN ZURÜCKSETZEN?")) return;
@@ -4522,14 +4472,18 @@ function autoSortPriority(){const container=document.getElementById('sort-list')
 async function saveProductOrder(){const items=document.querySelectorAll('#sort-list .sortable-item');const newOrder=Array.from(items).map(item=>item.dataset.id);await db.collection('settings').doc('product_order').set({order:newOrder},{merge:true});showToast('✅ Sortierung gespeichert!','success');}
 
 function showToast(msg, type='success') {
-    const toast=document.createElement('div');
-    toast.className=`toast flex items-center gap-3 px-8 py-4 rounded-3xl shadow-2xl text-sm font-medium ${type==='error'?'bg-red-600':'bg-emerald-600'}`;
-    toast.innerHTML=`<i class="fa-solid ${type==='error'?'fa-xmark':'fa-check'}"></i> ${msg}`;
-    document.getElementById('toast-container').appendChild(toast);
-    setTimeout(()=>toast.remove(),3500);
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    const toast = document.createElement('div');
+    const bg = type === 'error' ? 'bg-red-600' : type === 'warning' ? 'bg-amber-600' : 'bg-emerald-600';
+    const icon = type === 'error' ? 'fa-xmark' : type === 'warning' ? 'fa-triangle-exclamation' : 'fa-check';
+    toast.className = `toast flex items-center gap-3 px-8 py-4 rounded-3xl shadow-2xl text-sm font-medium ${bg}`;
+    toast.innerHTML = `<i class="fa-solid ${icon}"></i> ${msg}`;
+    container.appendChild(toast);
+    setTimeout(() => toast.remove(), 3500);
 }
 
-async function logout(){try{await auth.signOut();showToast("👋 Ausgeloggt","success");setTimeout(()=>{window.location.href="index.html";},800);}catch(e){alert("Logout fehlgeschlagen: "+e.message);}}
+async function logout(){try{await auth.signOut();showToast("👋 Ausgeloggt","success");setTimeout(()=>{window.location.href="index.html";},800);}catch(e){showToast("Logout fehlgeschlagen: "+e.message,"error");}}
 
 // ═══════════════════════════════════════════════════════════════════
 //   ERWEITERTE BENUTZERVERWALTUNG v3 – Vollständige Implementierung
@@ -5340,22 +5294,26 @@ auth.onAuthStateChanged(async (user) => {
     const userDoc = await db.collection('users').doc(user.uid).get();
     if (!userDoc.exists || userDoc.data().role !== 'admin') { await logUnauthorizedAccess('not-admin',user.email); await auth.signOut(); showAccessDenied('not-admin'); return; }
     loadSettings();
+    // Load all data after admin check passes
+    loadProducts();
+    loadCategories();
+    loadCoupons();
+    loadUsers();
+    loadOrders();
+    setTimeout(() => { updateStats(); populateAdminCategoryFilter(); }, 500);
     switchTab(0);
     // New features
     requestNotifPermission();
     watchNewOrders();
-    // Pre-fetch users + orders for global search
-    db.collection('users').limit(200).onSnapshot(snap => { if(typeof _usrAllDocs!=='undefined') return; window._usrAllDocs=snap.docs; });
-    db.collection('orders').orderBy('date','desc').limit(200).onSnapshot(snap => { window._ordAllDocs=snap.docs; });
+    // Pre-fetch for global search (already loaded above, just keep reference synced)
+    db.collection('users').orderBy('email').limit(500).onSnapshot(snap => { window._usrAllDocs = snap.docs; });
+    db.collection('orders').orderBy('date','desc').limit(200).onSnapshot(snap => { window._ordAllDocs = snap.docs; });
 });
 
+// All data loading is triggered from auth.onAuthStateChanged after admin check
+// window.onload only handles UI init that doesn't need auth
 window.onload = () => {
-    loadProducts();
-    loadCategories();
-    loadCoupons();
-    loadOrders();
-    loadUsers();
-    setTimeout(() => { updateStats(); populateAdminCategoryFilter(); }, 500);
+    // Nothing here — data loading happens in auth callback after admin verification
 };
 </script>
 </body>

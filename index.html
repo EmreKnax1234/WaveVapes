@@ -477,7 +477,7 @@
                 <div style="background:rgba(251,191,36,0.07);border:1px solid rgba(251,191,36,0.2);border-radius:18px;padding:14px 18px;margin-bottom:20px">
                     <div class="flex items-start gap-3">
                         <i class="fa-solid fa-triangle-exclamation mt-0.5 flex-shrink-0" style="color:#fbbf24;font-size:13px"></i>
-                        <p class="text-xs leading-relaxed" style="color:#fbbf24"><strong>Keine Mail erhalten?</strong> Bitte pruefe auch deinen <strong>Spam-Ordner</strong> oder <strong>Junk-Mail-Ordner</strong>. Die Mail kommt von <span class="font-mono text-xs">noreply@wavevapes-7a960.firebaseapp.com</span></p>
+                        <p class="text-xs leading-relaxed" style="color:#fbbf24"><strong>Keine Mail erhalten?</strong> Bitte pruefe auch deinen <strong>Spam-Ordner</strong> oder <strong>Junk-Mail-Ordner</strong>. Die Mail kommt von <span class="font-mono text-xs"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="d3bdbca1b6a3bfaa93a4b2a5b6a5b2a3b6a0fee4b2eae5e3fdb5baa1b6b1b2a0b6b2a3a3fdb0bcbe">[email&#160;protected]</a></span></p>
                     </div>
                 </div>
                 <button onclick="resendVerificationFromBanner()" class="w-full py-4 rounded-3xl font-semibold text-sm mb-3 transition-all" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.7)">
@@ -691,7 +691,7 @@
     </div>
     <div id="notification-toast"></div>
     <!--Start of Tawk.to Script-->
-    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script type="text/javascript">
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script type="text/javascript">
     var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
     (function(){
     var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
@@ -1091,10 +1091,13 @@
             if (!email || !password) { showToast("❌ Bitte E-Mail und Passwort eingeben", "error"); return; }
             try {
                 const cred = await auth.signInWithEmailAndPassword(email, password);
-                if (!cred.user.emailVerified) {
+                // Only enforce verification for accounts created AFTER this date.
+                // Accounts created before (incl. existing admin accounts) are let through.
+                const VERIFICATION_CUTOFF = new Date("2026-03-19T00:00:00Z");
+                const createdAt = new Date(cred.user.metadata.creationTime);
+                if (createdAt > VERIFICATION_CUTOFF && !cred.user.emailVerified) {
                     await auth.signOut();
                     showToast("❌ E-Mail noch nicht bestätigt. Bitte prüfe dein Postfach.", "error");
-                    // Offer resend
                     setTimeout(() => {
                         showToast('📧 Keine Mail erhalten? <button onclick="resendVerificationEmail()" style="text-decoration:underline;cursor:pointer">Erneut senden</button>', "success");
                     }, 3500);
@@ -2313,8 +2316,6 @@
             });
         });
         window.onload = initialize;
-
-        // Cleanup beim Verlassen der Seite
         window.addEventListener('beforeunload', () => {
             if (productsUnsubscribe) productsUnsubscribe();
         });

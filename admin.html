@@ -3205,8 +3205,8 @@
                     <div class="sa-export-card">
                         <div class="sa-export-icon">📋</div><div class="sa-export-title">Admin-Logs</div>
                         <div class="sa-export-desc">Alle Admin-Aktionen der letzten 90 Tage für Audits.</div>
-                        <button class="sa-export-btn" onclick="saExport('adminLogs','json')"><i class="fa-solid fa-file-code"></i> JSON</button>
-                        <button class="sa-export-btn" onclick="saExport('adminLogs','csv')" style="background:rgba(167,139,250,.1);color:#a78bfa"><i class="fa-solid fa-file-csv"></i> CSV</button>
+                        <button class="sa-export-btn" onclick="saExport('admin_logs','json')"><i class="fa-solid fa-file-code"></i> JSON</button>
+                        <button class="sa-export-btn" onclick="saExport('admin_logs','csv')" style="background:rgba(167,139,250,.1);color:#a78bfa"><i class="fa-solid fa-file-csv"></i> CSV</button>
                     </div>
                     <div class="sa-export-card" style="border-color:rgba(251,191,36,.2)">
                         <div class="sa-export-icon">💾</div><div class="sa-export-title">Vollständiges Backup</div>
@@ -3231,7 +3231,7 @@
                     <div class="sa-section-title" style="margin:0;flex:1"><i class="fa-solid fa-scroll" style="color:#a78bfa"></i> Superadmin-Aktivitätslog</div>
                     <div style="display:flex;gap:8px">
                         <button onclick="saLoadActivityLog()" style="padding:8px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:rgba(255,255,255,.6);font-size:12px;cursor:pointer"><i class="fa-solid fa-rotate"></i></button>
-                        <button onclick="saExport('adminLogs','csv')" style="padding:8px 14px;border-radius:10px;border:1px solid rgba(167,139,250,.2);background:rgba(167,139,250,.07);color:#a78bfa;font-size:12px;cursor:pointer"><i class="fa-solid fa-download"></i> Export</button>
+                        <button onclick="saExport('admin_logs','csv')" style="padding:8px 14px;border-radius:10px;border:1px solid rgba(167,139,250,.2);background:rgba(167,139,250,.07);color:#a78bfa;font-size:12px;cursor:pointer"><i class="fa-solid fa-download"></i> Export</button>
                     </div>
                 </div>
                 <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px">
@@ -7183,7 +7183,7 @@ async function saLoadRecentSALog() {
     if (!el) return;
     try {
         const SA_ACTIONS = ['superadmin_zone_access','admin_added','admin_removed','admin_permissions_updated','ip_whitelist_updated','sa_danger_action','sa_export','sa_security_settings','sa_fullexport','danger_shop_close','danger_shop_open','danger_clear_banned_ips','danger_reject_reviews','danger_purge_logs','danger_reset_loyalty','danger_delete_orders'];
-        const snap = await db.collection('adminLogs').limit(200).get();
+        const snap = await db.collection('admin_logs').limit(200).get();
         const filtered = snap.docs
             .filter(d => SA_ACTIONS.includes(d.data().action))
             .sort((a,b) => {
@@ -7205,7 +7205,7 @@ async function saLoadActivityLog() {
     if (!el) return;
     el.innerHTML = '<div style="color:rgba(255,255,255,.2);font-size:12px;padding:12px"><i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>Lade...</div>';
     try {
-        const snap = await db.collection('adminLogs').limit(200).get();
+        const snap = await db.collection('admin_logs').limit(200).get();
         // Sort client-side — avoids Firestore composite index requirement
         _saLogAllDocs = snap.docs.slice().sort((a, b) => {
             const ta = a.data().timestamp?.toDate?.()?.getTime?.() || 0;
@@ -7401,7 +7401,7 @@ async function saExport(collection, format) {
 
 async function saExportFull() {
     showToast('⏳ Erstelle Vollbackup...');
-    const collections = ['products','orders','users','categories','coupons','reviews','adminLogs','settings'];
+    const collections = ['products','orders','users','categories','coupons','reviews','admin_logs','settings'];
     const backup = { exportedAt: new Date().toISOString(), wavevapesVersion: '2.0', collections: {} };
     for (const col of collections) {
         try {
@@ -7473,7 +7473,7 @@ async function saDangerRejectAllReviews() {
 async function saDangerPurgeLogs() {
     if (!confirm('Alle Admin-Logs älter als 90 Tage löschen?')) return;
     const cutoff = Date.now() - 90 * 24 * 60 * 60 * 1000;
-    const snap = await db.collection('adminLogs').limit(2000).get();
+    const snap = await db.collection('admin_logs').limit(2000).get();
     const old = snap.docs.filter(d => {
         const t = d.data().timestamp?.toDate?.()?.getTime?.() || 0;
         return t > 0 && t < cutoff;
@@ -7484,7 +7484,7 @@ async function saDangerPurgeLogs() {
         old.slice(i, i + 400).forEach(d => batch.delete(d.ref));
         await batch.commit();
     }
-    await logAction('danger_purge_logs', 'adminLogs', { count: old.length });
+    await logAction('danger_purge_logs', 'admin_logs', { count: old.length });
     showToast(`✅ ${old.length} alte Logs gelöscht`);
 }
 

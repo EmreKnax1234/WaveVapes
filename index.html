@@ -335,7 +335,7 @@
            On Android Chrome, 100vh includes the browser toolbar which 
            disappears on scroll — dvh adjusts dynamically. */
         @supports (height: 100dvh) {
-            #product-detail-modal .modal-inner { max-height: 94dvh !important; }
+            /* modal-inner hat kein max-height mehr – das Modal selbst scrollt */
             #auth-modal > div,
             #address-modal > div,
             #name-modal > div,
@@ -489,12 +489,16 @@
             #account-btn span { max-width: none; }
         }
         #product-detail-modal {
-            padding: 16px;
+            padding: 24px 16px;
             overflow-y: auto;
             overscroll-behavior: contain;
-            scrollbar-width: none;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(103,232,249,0.3) transparent;
         }
-        #product-detail-modal::-webkit-scrollbar { display: none; }
+        #product-detail-modal::-webkit-scrollbar { width: 6px; }
+        #product-detail-modal::-webkit-scrollbar-track { background: transparent; }
+        #product-detail-modal::-webkit-scrollbar-thumb { background: rgba(103,232,249,0.25); border-radius: 999px; }
+        #product-detail-modal::-webkit-scrollbar-thumb:hover { background: rgba(103,232,249,0.5); }
         #product-detail-modal .modal-inner {
             max-width: 960px;
             width: 100%;
@@ -961,7 +965,7 @@
             .cart-item .p-5       { padding: 10px 12px !important; }
 
             /* ── PRODUCT DETAIL MODAL (bottom sheet) ── */
-            #product-detail-modal { padding: 0 !important; align-items: flex-end !important; }
+            #product-detail-modal { padding: 0 !important; display: flex !important; flex-direction: column !important; justify-content: flex-end !important; }
             #product-detail-modal .modal-inner {
                 border-radius: 24px 24px 0 0 !important;
                 max-height: 94vh !important; overflow-y: auto !important;
@@ -1668,7 +1672,7 @@
         </div>
     </div>
     <!-- PRODUKT DETAIL MODAL -->
-    <div id="product-detail-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-[9999] p-4 overflow-y-auto">
+    <div id="product-detail-modal" class="hidden fixed inset-0 bg-black/90 z-[9999] overflow-y-auto">
         <div id="detail-content" class="w-full"></div>
     </div>
     <div id="notification-toast"></div>

@@ -2636,20 +2636,28 @@
                 btn.title = 'Einloggen um zu bewerten';
                 return;
             }
-            // Check if user has a qualifying order for this product
             try {
-                const ordSnap = await db.collection('orders')
-                    .where('userId', '==', currentUser.uid)
-                    .where('status', 'in', ['Wird bearbeitet', 'Versendet', 'Zugestellt'])
-                    .get();
-                const hasBought = ordSnap.docs.some(doc =>
-                    doc.data().items?.some(item => item.id === productId)
-                );
-                if (!hasBought) {
-                    btn.title = 'Nur Käufer können bewerten';
-                    btn.style.opacity = '0.4';
-                    btn.onclick = () => showToast('Nur verifizierte Käufer dieses Produkts können eine Bewertung abgeben.', 'error');
+                // Admins can always review
+                const userDoc = await db.collection('users').doc(currentUser.uid).get();
+                const isAdmin = userDoc.exists && userDoc.data().role === 'admin';
+
+                if (!isAdmin) {
+                    const ordSnap = await db.collection('orders')
+                        .where('userId', '==', currentUser.uid)
+                        .get();
+                    const hasBought = ordSnap.docs.some(doc => {
+                        const o = doc.data();
+                        const eligible = ['Wird bearbeitet', 'Versendet', 'Zugestellt'].includes(o.status);
+                        return eligible && o.items?.some(item => String(item.id) === String(productId));
+                    });
+                    if (!hasBought) {
+                        btn.title = 'Nur Käufer können bewerten';
+                        btn.style.opacity = '0.4';
+                        btn.onclick = () => showToast('Nur verifizierte Käufer dieses Produkts können eine Bewertung abgeben.', 'error');
+                        return;
+                    }
                 }
+
                 // Check if already reviewed
                 const existingSnap = await db.collection('reviews')
                     .where('productId', '==', productId)
@@ -2659,7 +2667,9 @@
                     btn.textContent = '✅ Bereits bewertet';
                     btn.disabled = true;
                 }
-            } catch(e) { /* non-blocking */ }
+            } catch(e) {
+                console.warn('rvCheckCanReview error:', e.message);
+            }
         }
 
         function rvToggleForm(productId) {
@@ -2685,19 +2695,27 @@
             if (btn) { btn.disabled = true; btn.textContent = 'Wird gespeichert...'; }
 
             try {
-                // Verify purchase
-                const ordSnap = await db.collection('orders')
-                    .where('userId', '==', currentUser.uid)
-                    .where('status', 'in', ['Wird bearbeitet', 'Versendet', 'Zugestellt'])
-                    .get();
-                const hasBought = ordSnap.docs.some(doc =>
-                    doc.data().items?.some(item => item.id === productId)
-                );
-                if (!hasBought) {
-                    showToast('Nur verifizierte Käufer können bewerten.', 'error');
-                    if (btn) { btn.disabled = false; btn.textContent = 'Abschicken'; }
-                    return;
+                // Check if admin — admins can always review
+                const userDoc = await db.collection('users').doc(currentUser.uid).get();
+                const isAdmin = userDoc.exists && userDoc.data().role === 'admin';
+
+                if (!isAdmin) {
+                    // Verify purchase — use loose comparison (item.id can be string or number)
+                    const ordSnap = await db.collection('orders')
+                        .where('userId', '==', currentUser.uid)
+                        .get();
+                    const hasBought = ordSnap.docs.some(doc => {
+                        const o = doc.data();
+                        const eligible = ['Wird bearbeitet', 'Versendet', 'Zugestellt'].includes(o.status);
+                        return eligible && o.items?.some(item => String(item.id) === String(productId));
+                    });
+                    if (!hasBought) {
+                        showToast('Nur verifizierte Käufer können bewerten.', 'error');
+                        if (btn) { btn.disabled = false; btn.textContent = 'Abschicken'; }
+                        return;
+                    }
                 }
+
                 // Check for duplicate
                 const dupSnap = await db.collection('reviews')
                     .where('productId', '==', productId)
@@ -2708,6 +2726,7 @@
                     if (btn) { btn.disabled = false; btn.textContent = 'Abschicken'; }
                     return;
                 }
+
                 await db.collection('reviews').add({
                     productId,
                     userId:    currentUser.uid,
@@ -2715,7 +2734,7 @@
                     username:  localStorage.getItem('wavevapes_username') || currentUser.email.split('@')[0],
                     rating,
                     text,
-                    approved:  false, // needs admin approval
+                    approved:  false,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 showToast('✅ Bewertung eingereicht! Sie wird nach Prüfung veröffentlicht.');
@@ -2723,6 +2742,7 @@
                 const writBtn = document.getElementById(`rv-write-btn-${productId}`);
                 if (writBtn) { writBtn.textContent = '✅ Bereits bewertet'; writBtn.disabled = true; }
             } catch(e) {
+                console.error('rvSubmit error:', e);
                 showToast('Fehler beim Speichern: ' + e.message, 'error');
                 if (btn) { btn.disabled = false; btn.textContent = 'Abschicken'; }
             }

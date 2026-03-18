@@ -1402,15 +1402,43 @@
         }
         function getProductTotal() {
             let subtotal = getSubtotal();
-            const tornadoQty = getTornadoQuantity();
-            const free = Math.floor(tornadoQty / 4);
-            // Use actual tornado price from cart (cheapest), not hardcoded 19.99
-            const tornadoItem = cart.find(i => {
-                const p = allProducts.find(pr => pr.id === i.id);
-                return p && p.category === "WaveVapes Tornado 30000";
-            });
-            const tornadoPrice = tornadoItem ? (tornadoItem.price || 19.99) : 19.99;
-            let total = Math.max(0, subtotal - free * tornadoPrice);
+
+            // Apply all active category offers
+            for (const [catName, offer] of Object.entries(_offerCats)) {
+                const catItems = cart.filter(i => {
+                    const p = allProducts.find(pr => pr.id === i.id);
+                    return p && p.category === catName;
+                });
+                if (!catItems.length) continue;
+
+                if (offer.offerType === 'nforn') {
+                    // X for N: buy offerN, pay offerM (cheapest ones free)
+                    const buyQty  = parseInt(offer.offerN) || 4;
+                    const payQty  = parseInt(offer.offerM) || 3;
+                    const totalCatQty = catItems.reduce((s,i) => s + i.qty, 0);
+                    const freeCount   = Math.floor(totalCatQty / buyQty) * (buyQty - payQty);
+                    if (freeCount > 0) {
+                        // Deduct cheapest items first
+                        const cheapestPrice = Math.min(...catItems.map(i => i.price || 0));
+                        subtotal -= freeCount * cheapestPrice;
+                    }
+                } else if (offer.offerType === 'percent') {
+                    // % off all items in category
+                    const pct = parseFloat(offer.offerN) || 0;
+                    catItems.forEach(i => {
+                        subtotal -= i.qty * (i.price || 0) * (pct / 100);
+                    });
+                } else if (offer.offerType === 'fixed') {
+                    // Fixed € off per item in category
+                    const disc = parseFloat(offer.offerN) || 0;
+                    catItems.forEach(i => {
+                        subtotal -= i.qty * disc;
+                    });
+                }
+                // 'badge' type: no price change, just visual
+            }
+
+            let total = Math.max(0, subtotal);
             if (appliedDiscount) {
                 if (appliedDiscount.type === "percent") {
                     total = Math.max(0, total - total * appliedDiscount.value / 100);
@@ -1435,6 +1463,9 @@
         }
         // ====================== PRODUCTS & CART ======================
         let productsUnsubscribe = null;
+
+        // Live cache of special-category offer configs, keyed by category name
+        let _offerCats = {}; // { "Category Name": { offerType, offerN, offerM, specialText } }
 
         function loadProducts() {
             const container = document.getElementById("products-grid");
@@ -1577,22 +1608,33 @@
             existing.qty = Math.max(0, existing.qty + delta);
             if (existing.qty === 0) cart = cart.filter(item => item.id !== id);
             manageMysteryVape();
-            const newTornadoQty = getTornadoQuantity();
-            if (newTornadoQty >= 4 && newTornadoQty % 4 === 0) showDealToast();
+            // Check all offer categories for deal threshold
+            for (const [catName, offer] of Object.entries(_offerCats)) {
+                if (offer.offerType === 'nforn') {
+                    const qty = getCategoryQuantity(catName);
+                    if (qty >= offer.offerN && qty % offer.offerN === 0) {
+                        showDealToast(offer.specialText || `${offer.offerN} FÜR ${offer.offerM}`);
+                    }
+                }
+            }
             saveUserCart();
             updateCartDisplay();
             renderProducts(); // re-render to update qty buttons
         }
         function getTornadoQuantity() {
+            // Legacy alias — kept for backward compat
+            return getCategoryQuantity("WaveVapes Tornado 30000");
+        }
+        function getCategoryQuantity(catName) {
             return cart.reduce((sum, item) => {
                 const prod = allProducts.find(p => p.id === item.id);
-                return (prod && prod.category === "WaveVapes Tornado 30000") ? sum + item.qty : sum;
+                return (prod && prod.category === catName) ? sum + item.qty : sum;
             }, 0);
         }
-        function showDealToast() {
+        function showDealToast(label) {
             const toast = document.getElementById('notification-toast');
             notificationCyclePaused = true;
-            toast.innerHTML = `⚡ <strong>4 FÜR 3 AKTION EINGELÖST!</strong>`;
+            toast.innerHTML = `⚡ <strong>${label || '4 FÜR 3'} EINGELÖST!</strong>`;
             toast.classList.add('visible');
             setTimeout(() => {
                 toast.classList.remove('visible');
@@ -1632,10 +1674,28 @@
                 addressDisplay.innerHTML = `<span class="text-red-400">Noch keine Adresse angegeben</span>`;
             }
             let itemsHTML = "";
-            const tornadoQty = getTornadoQuantity();
-            const free = Math.floor(tornadoQty / 4);
-            if (free > 0) {
-                itemsHTML += `<div class="bg-gradient-to-r from-amber-400 to-yellow-400 text-black p-6 rounded-3xl mb-6 text-center shadow-inner"><div class="flex items-center justify-center gap-3 text-2xl font-black">⚡ 4 FÜR 3 AKTION AKTIV!</div><p class="font-semibold text-base mt-2">Du bekommst <span class="underline">${free} Vape${free > 1 ? 's' : ''} gratis</span></p></div>`;
+            // Show offer banners for all active category deals
+            for (const [catName, offer] of Object.entries(_offerCats)) {
+                const catItems = cart.filter(i => {
+                    const p = allProducts.find(pr => pr.id === i.id);
+                    return p && p.category === catName;
+                });
+                if (!catItems.length) continue;
+                const totalCatQty = catItems.reduce((s,i) => s + i.qty, 0);
+                const badgeText = offer.specialText || `${offer.offerN} FÜR ${offer.offerM}`;
+
+                if (offer.offerType === 'nforn' && totalCatQty >= offer.offerN) {
+                    const freeCount = Math.floor(totalCatQty / offer.offerN) * (offer.offerN - offer.offerM);
+                    itemsHTML += `<div class="bg-gradient-to-r from-amber-400 to-yellow-400 text-black p-6 rounded-3xl mb-6 text-center shadow-inner"><div class="flex items-center justify-center gap-3 text-2xl font-black">⚡ ${badgeText} AKTION AKTIV!</div><p class="font-semibold text-base mt-2">Du bekommst <span class="underline">${freeCount} Artikel gratis</span></p></div>`;
+                } else if (offer.offerType === 'percent') {
+                    const saving = catItems.reduce((s,i) => s + i.qty*(i.price||0)*(offer.offerN/100), 0);
+                    itemsHTML += `<div class="bg-gradient-to-r from-cyan-400 to-purple-500 text-black p-4 rounded-3xl mb-4 text-center"><div class="font-black">⚡ -${offer.offerN}% auf ${catName}</div><p class="text-sm mt-1">Du sparst ${saving.toFixed(2).replace('.',',')} €</p></div>`;
+                } else if (offer.offerType === 'fixed') {
+                    const saving = catItems.reduce((s,i) => s + i.qty*offer.offerN, 0);
+                    itemsHTML += `<div class="bg-gradient-to-r from-emerald-400 to-cyan-400 text-black p-4 rounded-3xl mb-4 text-center"><div class="font-black">⚡ -${offer.offerN}€ pro Artikel in ${catName}</div><p class="text-sm mt-1">Du sparst ${saving.toFixed(2).replace('.',',')} €</p></div>`;
+                } else if (offer.offerType === 'badge') {
+                    itemsHTML += `<div class="bg-gradient-to-r from-amber-400 to-yellow-400 text-black p-4 rounded-3xl mb-4 text-center"><div class="font-black">⚡ ${badgeText}</div></div>`;
+                }
             }
             cart.forEach(item => {
                 const p = item.price || 7.99;
@@ -2013,6 +2073,19 @@
         }
         async function renderCategoryTabs() {
             const snap = await db.collection("categories").orderBy("order").get();
+            // Rebuild offer config cache
+            _offerCats = {};
+            snap.forEach(doc => {
+                const c = doc.data();
+                if (c.special && c.name) {
+                    _offerCats[c.name] = {
+                        offerType:   c.offerType   || 'nforn',
+                        offerN:      c.offerN      || 4,
+                        offerM:      c.offerM      || 3,
+                        specialText: c.specialText || null
+                    };
+                }
+            });
             let html = `<button onclick="setCategoryFilter('Alle')" class="px-5 py-2 transition ${currentCategoryFilter === 'Alle' ? 'tab-active' : ''}">Alle</button>`;
             snap.forEach(doc => {
                 const c = doc.data();

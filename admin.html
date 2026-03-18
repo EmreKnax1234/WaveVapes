@@ -3415,7 +3415,7 @@ dropzone.addEventListener('click', () => {
 
 async function exportProductsToCSV() {
     const snapshot = await db.collection("products").get();
-    if (snapshot.empty) return alert("Keine Produkte vorhanden!");
+    if (snapshot.empty) { showToast('Keine Produkte vorhanden', 'error'); return; }
     let csv = "id,name,price,originalPrice,stock,category,isNew,available,hasNicotine,description,image,sold\n";
     snapshot.forEach(doc => { const p = doc.data(); csv += [`"${doc.id}"`,`"${(p.name||"").replace(/"/g,'""')}"`,p.price||0,p.originalPrice||"",p.stock||0,`"${p.category||""}"`,p.isNew===true?"true":"false",p.available!==false?"true":"false",p.hasNicotine!==false?"true":"false",`"${(p.description||"").replace(/"/g,'""').replace(/\n/g,"\\n")}"`,`"${p.image||""}"`,p.sold||0].join(",") + "\n"; });
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
@@ -3439,7 +3439,7 @@ async function importProductsFromCSV(e) {
 
 async function exportOrdersToCSV() {
     const snapshot = await db.collection("orders").orderBy("date", "desc").get();
-    if (snapshot.empty) return alert("Keine Bestellungen vorhanden!");
+    if (snapshot.empty) { showToast('Keine Bestellungen vorhanden', 'error'); return; }
     let csv = "docId,orderNumber,datum,email,gesamt,status,items,address\n";
     snapshot.forEach(doc => {
         const o = doc.data(); const dateStr = o.date ? o.date.toDate().toISOString().slice(0,19).replace('T',' ') : '';
@@ -3466,7 +3466,7 @@ async function importOrdersFromCSV(e) {
 
 async function exportUsersToCSV() {
     const snapshot = await db.collection("users").get();
-    if (snapshot.empty) return alert("Keine Benutzer vorhanden!");
+    if (snapshot.empty) { showToast('Keine Benutzer vorhanden', 'error'); return; }
     let csv = "uid,email,username,referralCode,loyaltyPoints,freeShipping,disabled,referralCount\n";
     snapshot.forEach(doc => { const u = doc.data(); csv += [`"${doc.id}"`,`"${u.email||''}"`,`"${u.username||''}"`,`"${u.referralCode||''}"`,u.totalBonusPoints||0,u.freeShipping===true?"JA":"NEIN",u.disabled===true?"JA":"NEIN",u.referralCount||0].join(",") + "\n"; });
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
@@ -5434,7 +5434,7 @@ function euExportCSV(){
 
 function euShowTopCustomers(){
     const top5=[...euAllUsers].sort((a,b)=>(b.totalSpent||0)-(a.totalSpent||0)).slice(0,5);
-    alert('🏆 Top 5 Kunden nach Umsatz:\n\n'+top5.map((u,i)=>`${i+1}. ${u.email} — ${(u.totalSpent||0).toFixed(2)} €`).join('\n'));
+    showToast('🏆 Top 5: ' + top5.slice(0,3).map((u,i)=>`${i+1}. ${u.email.split('@')[0]} (${(u.totalSpent||0).toFixed(0)}€)`).join(' | '), 'success');
 }
 
 // ====================== SIDEBAR & TABS ======================
@@ -6002,12 +6002,25 @@ function rvAdminLoad(mode) {
 
     listEl.innerHTML = '<div class="rv-admin-empty"><i class="fa-solid fa-spinner fa-spin"></i></div>';
 
-    let query = db.collection('reviews').orderBy('createdAt', 'desc');
+    let query = db.collection('reviews');
     if (mode === 'pending')  query = query.where('approved','==',false);
     if (mode === 'approved') query = query.where('approved','==',true);
     if (mode === 'rejected') query = query.where('rejected','==',true);
 
     _rvAdminUnsub = query.limit(50).onSnapshot(snap => {
+        // Sort client-side by createdAt desc — avoids composite index requirement
+        const allDocs = snap.docs.map(d => ({id:d.id,...d.data()}));
+        // For pending mode: exclude rejected reviews (approved==false covers both)
+        const filteredDocs = mode === 'pending'
+            ? allDocs.filter(r => !r.rejected)
+            : allDocs;
+        const docs = filteredDocs
+            .slice()
+            .sort((a, b) => {
+                const ta = a.createdAt?.toDate?.() || new Date(0);
+                const tb = b.data().createdAt?.toDate?.() || new Date(0);
+                return tb - ta;
+            });
         if (snap.empty) {
             listEl.innerHTML = `<div class="rv-admin-empty"><i class="fa-solid fa-star"></i>${
                 mode==='pending' ? 'Keine ausstehenden Bewertungen' :

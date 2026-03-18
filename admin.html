@@ -736,6 +736,15 @@
         .cat-meta-row { display:flex; align-items:center; gap:7px; margin-top:4px; flex-wrap:wrap; }
         .cat-pill { font-size:9px; font-weight:700; padding:2px 8px; border-radius:6px; letter-spacing:.05em; }
         .cat-pill-special { background:rgba(251,191,36,.12); color:var(--cat-amber); border:1px solid rgba(251,191,36,.22); }
+        .cat-offer-box { margin-top:10px; padding:12px 14px; background:rgba(251,191,36,.06); border:1px solid rgba(251,191,36,.15); border-radius:12px; display:none; flex-direction:column; gap:10px; }
+        .cat-offer-box.open { display:flex; }
+        .cat-offer-type-row { display:flex; flex-wrap:wrap; gap:6px; }
+        .cat-offer-type-btn { padding:6px 12px; border-radius:8px; font-size:11px; font-weight:600; cursor:pointer; border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.04); color:rgba(255,255,255,.5); transition:all .15s; }
+        .cat-offer-type-btn.active { background:rgba(251,191,36,.18); border-color:rgba(251,191,36,.4); color:var(--cat-amber); }
+        .cat-offer-label { font-size:10px; color:rgba(255,255,255,.3); text-transform:uppercase; letter-spacing:.06em; font-weight:700; }
+        .cat-offer-input { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12); border-radius:8px; padding:7px 10px; color:#fff; font-size:12px; outline:none; width:100%; box-sizing:border-box; }
+        .cat-offer-input:focus { border-color:rgba(251,191,36,.4); }
+        .cat-offer-preview { font-size:10px; color:rgba(251,191,36,.7); padding:4px 8px; background:rgba(251,191,36,.08); border-radius:6px; display:inline-block; }
         .cat-pill-products { background:rgba(103,232,249,.08); color:var(--cat-cyan);  border:1px solid rgba(103,232,249,.15); font-family:'JetBrains Mono',monospace; }
         .cat-pill-order { background:rgba(255,255,255,.05); color:var(--cat-muted); border:1px solid rgba(255,255,255,.08); font-family:'JetBrains Mono',monospace; }
 
@@ -2041,14 +2050,35 @@
                         </div>
                         <div class="cat-toggle-row">
                             <div>
-                                <div class="cat-toggle-lbl">Special-Kategorie</div>
-                                <div class="cat-toggle-sub">Zeigt 4-für-3-Bolt im Shop</div>
+                                <div class="cat-toggle-lbl">Angebot aktiv</div>
+                                <div class="cat-toggle-sub">Zeigt Badge + Aktion im Shop</div>
                             </div>
                             <label class="cat-sw">
-                                <input type="checkbox" id="cat-special">
+                                <input type="checkbox" id="cat-special" onchange="catToggleOfferBox('cat-offer-box-add', this.checked)">
                                 <span class="cat-sw-sl"></span>
                             </label>
                         </div>
+                        <div class="cat-offer-box" id="cat-offer-box-add">
+                            <div class="cat-offer-label">Angebotstyp</div>
+                            <div class="cat-offer-type-row" id="cat-offer-type-row-add">
+                                <button type="button" class="cat-offer-type-btn active" data-type="nforn" onclick="catSelectOfferType('add',this)">X für N</button>
+                                <button type="button" class="cat-offer-type-btn" data-type="percent" onclick="catSelectOfferType('add',this)">% Rabatt</button>
+                                <button type="button" class="cat-offer-type-btn" data-type="fixed" onclick="catSelectOfferType('add',this)">Fester Rabatt €</button>
+                                <button type="button" class="cat-offer-type-btn" data-type="badge" onclick="catSelectOfferType('add',this)">Nur Badge-Text</button>
+                            </div>
+                            <div id="cat-offer-config-add">
+                                <div class="cat-offer-label" style="margin-top:6px">Konfiguration</div>
+                                <div id="cat-offer-fields-add" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px"></div>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+                                <div class="cat-offer-label">Badge-Text:</div>
+                                <input class="cat-offer-input" id="cat-badge-text-add" placeholder="z.B. 4 FÜR 3" style="flex:1">
+                            </div>
+                            <div id="cat-offer-preview-add" class="cat-offer-preview">Vorschau: –</div>
+                        </div>
+                        <input type="hidden" id="cat-offer-type-val-add" value="nforn">
+                        <input type="hidden" id="cat-offer-n-add" value="4">
+                        <input type="hidden" id="cat-offer-m-add" value="3">
                         <button type="submit" class="cat-submit">
                             <i class="fa-solid fa-tag"></i> Kategorie erstellen
                         </button>
@@ -2083,10 +2113,10 @@
                             </div>
                             <div class="cat-toggle-row" style="align-self:end">
                                 <div>
-                                    <div class="cat-toggle-lbl" style="font-size:11px">Special</div>
+                                    <div class="cat-toggle-lbl" style="font-size:11px">Angebot aktiv</div>
                                 </div>
                                 <label class="cat-sw">
-                                    <input type="checkbox" id="edit-cat-special">
+                                    <input type="checkbox" id="edit-cat-special" onchange="catToggleOfferBox('cat-offer-box-edit', this.checked)">
                                     <span class="cat-sw-sl"></span>
                                 </label>
                             </div>
@@ -2097,6 +2127,24 @@
                                 <button class="cat-edit-cancel" onclick="catCloseInlineEdit()">✕</button>
                             </div>
                         </div>
+                        <div class="cat-offer-box" id="cat-offer-box-edit" style="margin-top:8px">
+                            <div class="cat-offer-label">Angebotstyp</div>
+                            <div class="cat-offer-type-row" id="cat-offer-type-row-edit">
+                                <button type="button" class="cat-offer-type-btn active" data-type="nforn" onclick="catSelectOfferType('edit',this)">X für N</button>
+                                <button type="button" class="cat-offer-type-btn" data-type="percent" onclick="catSelectOfferType('edit',this)">% Rabatt</button>
+                                <button type="button" class="cat-offer-type-btn" data-type="fixed" onclick="catSelectOfferType('edit',this)">Fester Rabatt €</button>
+                                <button type="button" class="cat-offer-type-btn" data-type="badge" onclick="catSelectOfferType('edit',this)">Nur Badge-Text</button>
+                            </div>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px" id="cat-offer-fields-edit"></div>
+                            <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+                                <div class="cat-offer-label">Badge-Text:</div>
+                                <input class="cat-offer-input" id="cat-badge-text-edit" placeholder="z.B. 4 FÜR 3" style="flex:1">
+                            </div>
+                            <div id="cat-offer-preview-edit" class="cat-offer-preview">Vorschau: –</div>
+                        </div>
+                        <input type="hidden" id="cat-offer-type-val-edit" value="nforn">
+                        <input type="hidden" id="cat-offer-n-edit" value="4">
+                        <input type="hidden" id="cat-offer-m-edit" value="3">
                     </div>
 
                     <div class="cat-grid" id="cat-grid">
@@ -3373,6 +3421,117 @@ function parseCSVLine(line) { return line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/)
 // ====================== KATEGORIEN v2 ======================
 let _catEditId = null;
 
+
+// ═══════════════════════════════════════════════════
+//  CATEGORY OFFER CONFIGURATOR
+// ═══════════════════════════════════════════════════
+function catToggleOfferBox(boxId, show) {
+    const box = document.getElementById(boxId);
+    if (!box) return;
+    box.classList.toggle('open', show);
+    const ctx = boxId.includes('edit') ? 'edit' : 'add';
+    if (show) catRenderOfferFields(ctx, document.getElementById(`cat-offer-type-val-${ctx}`).value);
+}
+
+function catSelectOfferType(ctx, btn) {
+    const type = btn.dataset.type;
+    document.getElementById(`cat-offer-type-val-${ctx}`).value = type;
+    document.querySelectorAll(`#cat-offer-type-row-${ctx} .cat-offer-type-btn`).forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    catRenderOfferFields(ctx, type);
+    catUpdateOfferPreview(ctx);
+}
+
+function catRenderOfferFields(ctx, type) {
+    const container = document.getElementById(`cat-offer-fields-${ctx}`);
+    if (!container) return;
+    if (type === 'nforn') {
+        const n = document.getElementById(`cat-offer-n-${ctx}`)?.value || 4;
+        const m = document.getElementById(`cat-offer-m-${ctx}`)?.value || 3;
+        container.innerHTML = `
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                <label style="font-size:11px;color:rgba(255,255,255,.4)">Kaufe</label>
+                <input type="number" min="2" max="99" value="${n}" style="width:52px" class="cat-offer-input" oninput="document.getElementById('cat-offer-n-${ctx}').value=this.value;catUpdateOfferPreview('${ctx}')" placeholder="4">
+                <label style="font-size:11px;color:rgba(255,255,255,.4)">zahle</label>
+                <input type="number" min="1" max="98" value="${m}" style="width:52px" class="cat-offer-input" oninput="document.getElementById('cat-offer-m-${ctx}').value=this.value;catUpdateOfferPreview('${ctx}')" placeholder="3">
+            </div>`;
+    } else if (type === 'percent') {
+        const v = document.getElementById(`cat-offer-n-${ctx}`)?.value || 10;
+        container.innerHTML = `
+            <div style="display:flex;align-items:center;gap:6px">
+                <input type="number" min="1" max="99" value="${v}" style="width:70px" class="cat-offer-input" oninput="document.getElementById('cat-offer-n-${ctx}').value=this.value;catUpdateOfferPreview('${ctx}')" placeholder="10">
+                <label style="font-size:11px;color:rgba(255,255,255,.4)">% Rabatt auf alle Produkte</label>
+            </div>`;
+    } else if (type === 'fixed') {
+        const v = document.getElementById(`cat-offer-n-${ctx}`)?.value || 2;
+        container.innerHTML = `
+            <div style="display:flex;align-items:center;gap:6px">
+                <input type="number" min="0.01" step="0.01" value="${v}" style="width:80px" class="cat-offer-input" oninput="document.getElementById('cat-offer-n-${ctx}').value=this.value;catUpdateOfferPreview('${ctx}')" placeholder="2.00">
+                <label style="font-size:11px;color:rgba(255,255,255,.4)">€ Rabatt pro Produkt</label>
+            </div>`;
+    } else {
+        container.innerHTML = '<div style="font-size:11px;color:rgba(255,255,255,.3)">Nur Badge-Text wird angezeigt – keine Rabattlogik.</div>';
+    }
+    catUpdateOfferPreview(ctx);
+}
+
+function catUpdateOfferPreview(ctx) {
+    const type  = document.getElementById(`cat-offer-type-val-${ctx}`)?.value || 'nforn';
+    const n     = document.getElementById(`cat-offer-n-${ctx}`)?.value;
+    const m     = document.getElementById(`cat-offer-m-${ctx}`)?.value;
+    const badge = document.getElementById(`cat-badge-text-${ctx}`)?.value;
+    const prev  = document.getElementById(`cat-offer-preview-${ctx}`);
+    if (!prev) return;
+    let text = '';
+    if (type === 'nforn') text = badge || `${n} FÜR ${m}`;
+    else if (type === 'percent') text = badge || `-${n}%`;
+    else if (type === 'fixed') text = badge || `-${n}€`;
+    else text = badge || '–';
+    prev.textContent = `Vorschau Badge: ⚡ ${text}`;
+    // Also update badge text placeholder if empty
+    const bi = document.getElementById(`cat-badge-text-${ctx}`);
+    if (bi && !bi.value) {
+        if (type === 'nforn') bi.placeholder = `${n} FÜR ${m}`;
+        else if (type === 'percent') bi.placeholder = `-${n}%`;
+        else if (type === 'fixed') bi.placeholder = `-${n}€`;
+    }
+}
+
+function catGetOfferData(ctx) {
+    const special  = document.getElementById(`${ctx === 'edit' ? 'edit-' : ''}cat-special`)?.checked || false;
+    if (!special) return { special: false, offerType: null, offerN: null, offerM: null, specialText: null };
+    const offerType = document.getElementById(`cat-offer-type-val-${ctx}`)?.value || 'nforn';
+    const offerN    = parseFloat(document.getElementById(`cat-offer-n-${ctx}`)?.value) || (offerType === 'nforn' ? 4 : 10);
+    const offerM    = parseFloat(document.getElementById(`cat-offer-m-${ctx}`)?.value) || 3;
+    const badgeInput = document.getElementById(`cat-badge-text-${ctx}`)?.value.trim();
+    let specialText;
+    if (badgeInput) specialText = badgeInput;
+    else if (offerType === 'nforn') specialText = `${offerN} FÜR ${offerM}`;
+    else if (offerType === 'percent') specialText = `-${offerN}%`;
+    else if (offerType === 'fixed') specialText = `-${offerN}€`;
+    else specialText = 'SPECIAL';
+    return { special: true, offerType, offerN, offerM, specialText };
+}
+
+function catLoadOfferIntoForm(ctx, c) {
+    const isEdit = ctx === 'edit';
+    const specialCb = document.getElementById(`${isEdit ? 'edit-' : ''}cat-special`);
+    if (!specialCb) return;
+    specialCb.checked = !!c.special;
+    const boxId = `cat-offer-box-${ctx}`;
+    catToggleOfferBox(boxId, !!c.special);
+    if (!c.special) return;
+    const type = c.offerType || 'nforn';
+    document.getElementById(`cat-offer-type-val-${ctx}`).value = type;
+    document.querySelectorAll(`#cat-offer-type-row-${ctx} .cat-offer-type-btn`).forEach(b => {
+        b.classList.toggle('active', b.dataset.type === type);
+    });
+    if (c.offerN) document.getElementById(`cat-offer-n-${ctx}`).value = c.offerN;
+    if (c.offerM) document.getElementById(`cat-offer-m-${ctx}`).value = c.offerM;
+    if (c.specialText) document.getElementById(`cat-badge-text-${ctx}`).value = c.specialText;
+    catRenderOfferFields(ctx, type);
+}
+
 function catCloseInlineEdit() {
     _catEditId = null;
     document.getElementById('cat-edit-panel').classList.remove('open');
@@ -3382,21 +3541,21 @@ function catOpenInlineEdit(id) {
     const c = allCategories.find(x => x.id === id);
     if (!c) return;
     _catEditId = id;
-    document.getElementById('edit-cat-name').value    = c.name;
-    document.getElementById('edit-cat-order').value   = c.order;
-    document.getElementById('edit-cat-special').checked = !!c.special;
+    document.getElementById('edit-cat-name').value  = c.name;
+    document.getElementById('edit-cat-order').value = c.order;
+    catLoadOfferIntoForm('edit', c);
     document.getElementById('cat-edit-panel').classList.add('open');
     document.getElementById('edit-cat-name').focus();
 }
 
 async function catSaveInlineEdit() {
     if (!_catEditId) return;
-    const name   = document.getElementById('edit-cat-name').value.trim();
-    const order  = parseInt(document.getElementById('edit-cat-order').value) || 999;
-    const special= document.getElementById('edit-cat-special').checked;
+    const name      = document.getElementById('edit-cat-name').value.trim();
+    const order     = parseInt(document.getElementById('edit-cat-order').value) || 999;
+    const offerData = catGetOfferData('edit');
     if (!name) return showToast('Name erforderlich','error');
-    await db.collection('categories').doc(_catEditId).update({ name, order, special });
-    await logAction("category_updated", _catEditId, { name });
+    await db.collection('categories').doc(_catEditId).update({ name, order, ...offerData });
+    await logAction("category_updated", _catEditId, { name, ...offerData });
     catCloseInlineEdit();
     showToast('✅ Kategorie gespeichert!');
 }
@@ -3437,7 +3596,7 @@ function renderCategoryTable() {
             <div class="cat-info">
                 <div class="cat-name">${c.name}</div>
                 <div class="cat-meta-row">
-                    ${c.special ? `<span class="cat-pill cat-pill-special"><i class="fa-solid fa-bolt" style="margin-right:3px"></i>Special</span>` : ''}
+                    ${c.special ? `<span class="cat-pill cat-pill-special"><i class="fa-solid fa-bolt" style="margin-right:3px"></i>${c.specialText || (c.offerType === 'percent' ? c.offerN+'%' : c.offerType === 'fixed' ? '-'+c.offerN+'€' : (c.offerN||4)+' FÜR '+(c.offerM||3))}</span>` : ''}
                     <span class="cat-pill cat-pill-products">${pCount} Produkt${pCount!==1?'e':''}</span>
                 </div>
             </div>
@@ -3454,12 +3613,13 @@ document.getElementById('add-category-form').addEventListener('submit', async e 
     e.preventDefault();
     const name   = document.getElementById('cat-name').value.trim();
     const order  = parseInt(document.getElementById('cat-order').value) || 999;
-    const special= document.getElementById('cat-special').checked;
+    const offerData = catGetOfferData('add');
     if (!name) return showToast('Name erforderlich','error');
-    await db.collection('categories').add({ name, order, special });
-    await logAction("category_created", "", { name });
+    await db.collection('categories').add({ name, order, ...offerData });
+    await logAction("category_created", "", { name, ...offerData });
     e.target.reset();
     document.getElementById('cat-special').checked = false;
+    catToggleOfferBox('cat-offer-box-add', false);
     showToast('✅ Kategorie erstellt!');
 });
 

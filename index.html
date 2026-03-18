@@ -2586,60 +2586,63 @@
 
             listEl.innerHTML = '<div class="rv-empty"><i class="fa-solid fa-spinner fa-spin"></i></div>';
 
-            try {
-                // onSnapshot — updates live when admin approves/rejects
-                const unsub = db.collection('reviews')
-                    .where('productId', '==', productId)
-                    .where('approved',  '==', true)
-                    .orderBy('createdAt', 'desc')
-                    .limit(20)
-                    .onSnapshot(snap => {
-                        const reviews = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            // Only filter by productId — single-field queries need no composite index.
+            // approved filter and sorting done client-side.
+            const unsub = db.collection('reviews')
+                .where('productId', '==', productId)
+                .onSnapshot(snap => {
+                    // Filter approved and sort newest-first client-side
+                    const reviews = snap.docs
+                        .map(d => ({ id: d.id, ...d.data() }))
+                        .filter(r => r.approved === true)
+                        .sort((a, b) => {
+                            const ta = a.createdAt?.toMillis?.() || 0;
+                            const tb = b.createdAt?.toMillis?.() || 0;
+                            return tb - ta;
+                        })
+                        .slice(0, 20);
 
-                        // Average
-                        if (reviews.length > 0) {
-                            const avg = reviews.reduce((s,r) => s + (r.rating||0), 0) / reviews.length;
-                            if (avgEl) avgEl.innerHTML = `
-                                <div class="rv-avg-wrap">
-                                    <span class="rv-avg-num">${avg.toFixed(1)}</span>
-                                    <div>
-                                        <div class="rv-stars-row">${[1,2,3,4,5].map(n=>`<span class="rv-star ${n<=Math.round(avg)?'':'empty'}">★</span>`).join('')}</div>
-                                        <div class="rv-count">${reviews.length} Bewertung${reviews.length!==1?'en':''}</div>
-                                    </div>
-                                </div>`;
-                        } else {
-                            if (avgEl) avgEl.innerHTML = '';
-                        }
-
-                        // List
-                        if (reviews.length === 0) {
-                            listEl.innerHTML = '<div class="rv-empty">Noch keine Bewertungen. Sei der Erste!</div>';
-                            return;
-                        }
-                        listEl.innerHTML = reviews.map(r => {
-                            const stars = [1,2,3,4,5].map(n=>`<span class="rv-star ${n<=(r.rating||0)?'':'empty'}">★</span>`).join('');
-                            const date  = r.createdAt ? r.createdAt.toDate().toLocaleDateString('de-DE') : '';
-                            const name  = r.username || 'Anonym';
-                            return `<div class="rv-card">
-                                <div class="rv-card-header">
-                                    <div style="display:flex;align-items:center;gap:8px">
-                                        <div class="rv-stars-row">${stars}</div>
-                                        <span class="rv-card-user">${name}</span>
-                                    </div>
-                                    <span class="rv-card-date">${date}</span>
+                    // Average
+                    if (reviews.length > 0) {
+                        const avg = reviews.reduce((s,r) => s + (r.rating||0), 0) / reviews.length;
+                        if (avgEl) avgEl.innerHTML = `
+                            <div class="rv-avg-wrap">
+                                <span class="rv-avg-num">${avg.toFixed(1)}</span>
+                                <div>
+                                    <div class="rv-stars-row">${[1,2,3,4,5].map(n=>`<span class="rv-star ${n<=Math.round(avg)?'':'empty'}">★</span>`).join('')}</div>
+                                    <div class="rv-count">${reviews.length} Bewertung${reviews.length!==1?'en':''}</div>
                                 </div>
-                                ${r.text ? `<div class="rv-card-text">${r.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>` : ''}
                             </div>`;
-                        }).join('');
-                    }, err => {
-                        console.error('rvLoad snapshot error:', err);
-                        if (listEl) listEl.innerHTML = '<div class="rv-empty">Bewertungen konnten nicht geladen werden.</div>';
-                    });
+                    } else {
+                        if (avgEl) avgEl.innerHTML = '';
+                    }
 
-                _rvUnsubscribers[productId] = unsub;
-            } catch(e) {
-                if (listEl) listEl.innerHTML = '<div class="rv-empty">Fehler beim Laden.</div>';
-            }
+                    // List
+                    if (reviews.length === 0) {
+                        listEl.innerHTML = '<div class="rv-empty">Noch keine Bewertungen. Sei der Erste!</div>';
+                        return;
+                    }
+                    listEl.innerHTML = reviews.map(r => {
+                        const stars = [1,2,3,4,5].map(n=>`<span class="rv-star ${n<=(r.rating||0)?'':'empty'}">★</span>`).join('');
+                        const date  = r.createdAt ? r.createdAt.toDate().toLocaleDateString('de-DE') : '';
+                        const name  = r.username || 'Anonym';
+                        return `<div class="rv-card">
+                            <div class="rv-card-header">
+                                <div style="display:flex;align-items:center;gap:8px">
+                                    <div class="rv-stars-row">${stars}</div>
+                                    <span class="rv-card-user">${name}</span>
+                                </div>
+                                <span class="rv-card-date">${date}</span>
+                            </div>
+                            ${r.text ? `<div class="rv-card-text">${r.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>` : ''}
+                        </div>`;
+                    }).join('');
+                }, err => {
+                    console.error('rvLoad Fehler:', err.code, err.message);
+                    if (listEl) listEl.innerHTML = '<div class="rv-empty">Bewertungen konnten nicht geladen werden.</div>';
+                });
+
+            _rvUnsubscribers[productId] = unsub;
         }
 
         async function rvCheckCanReview(productId) {

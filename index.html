@@ -188,9 +188,9 @@
         .qty-btn:hover { background-color: #22d3ee; color: black; }
         @keyframes boltPulse { 0%, 100% { transform: scale(1) rotate(0deg); color: #fde047; } 50% { transform: scale(1.35) rotate(20deg); color: #facc15; } }
         .animate-bolt { animation: boltPulse 650ms infinite alternate ease-in-out; display: inline-block; text-shadow: 0 0 15px #facc15; }
-        #notification-toast { position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%); background: transparent; backdrop-filter: none; color: #67e8f9; padding: 12px 24px; border-radius: 9999px; font-size: 13px; opacity: 0; visibility: hidden; transition: opacity 0.6s cubic-bezier(0.34,1.56,0.64,1), transform 0.6s cubic-bezier(0.34,1.56,0.64,1), visibility 0s linear 0.6s; z-index: 1000; max-width: 92%; text-align: center; box-shadow: none; pointer-events: none; }
+        #notification-toast { position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); backdrop-filter: blur(12px); color: #67e8f9; padding: 12px 24px; border-radius: 9999px; font-size: 13px; opacity: 0; transition: all 0.6s cubic-bezier(0.34,1.56,0.64,1); z-index: 1000; max-width: 92%; text-align: center; box-shadow: none; pointer-events: none; }
         @media (max-width: 1023px) { #notification-toast { bottom: 15px !important; } }
-        #notification-toast.visible { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(-10px); background: rgba(0,0,0,0.85); backdrop-filter: blur(12px); box-shadow: 0 10px 30px -10px rgb(103 232 249); pointer-events: auto; transition: opacity 0.6s cubic-bezier(0.34,1.56,0.64,1), transform 0.6s cubic-bezier(0.34,1.56,0.64,1), visibility 0s linear 0s; }
+        #notification-toast.visible { opacity: 1; transform: translateX(-50%) translateY(-10px); box-shadow: 0 10px 30px -10px rgb(103 232 249); pointer-events: auto; }
         .price-row { display: flex; justify-content: center; align-items: baseline; gap: 8px; margin-bottom: 12px; }
         .discount-price { font-size: 1.35rem; text-decoration: line-through; color: #9ca3af; }
         .sale-price { font-size: 1.85rem; font-weight: 700; color: #ef4444; }
@@ -415,18 +415,16 @@
                 bottom: 80px !important;
                 left: 12px !important;
                 right: 12px !important;
-                transform: none !important;
+                transform: none !important;   /* reset left:50%+translateX(-50%) */
                 width: auto !important;
                 max-width: calc(100% - 24px) !important;
                 font-size: 0.85rem !important;
                 border-radius: 16px !important;
                 text-align: center !important;
-                visibility: hidden !important;
             }
             #notification-toast.visible {
                 opacity: 1 !important;
-                visibility: visible !important;
-                transform: translateY(-6px) !important;
+                transform: translateY(-6px) !important;  /* subtle lift, no X offset */
             }
 
             /* ── AGB / DATENSCHUTZ / IMPRESSUM MODALS ── */
@@ -1024,8 +1022,6 @@
         const EMAILJS_SERVICE_ID = "service_lzvte0x";
         const EMAILJS_PUBLIC_KEY = "t19pJAHgBpbKpZFGU";
         const EMAILJS_ORDER_TEMPLATE = "template_cgcu1m8";
-        const EMAILJS_ABANDONED_TEMPLATE = "template_abandoned"; // ← In EmailJS anlegen!
-        const ABANDONED_CART_DELAY_MS = 60 * 60 * 1000; // 1 Stunde
         // ====================== KONFIGURATION ======================
         const VALID_DISCOUNTS = {
             "LOYAL5": { type: "fixed", value: 5, points: 300 },
@@ -1278,8 +1274,6 @@
                 manageMysteryVape();
                 await saveUserCart();
                 updateCartDisplay();
-                // Check if user left items from a previous session
-                setTimeout(() => checkAbandonedCart(), 3000);
             } catch (e) {
                 console.error("Cart laden fehlgeschlagen", e);
                 cart = [];
@@ -1287,70 +1281,16 @@
         }
         // Debounced cart save — prevents rapid Firestore writes on fast +-clicks
         let _saveCartTimer = null;
-        let _abandonedCartTimer = null;
         function saveUserCart() {
             if (!currentUser) return;
             clearTimeout(_saveCartTimer);
             _saveCartTimer = setTimeout(async () => {
                 try {
-                    const updateData = { cart };
-                    if (cart.length > 0) {
-                        // Save timestamp when cart was last filled — used for abandoned cart detection
-                        updateData.cartSavedAt = firebase.firestore.FieldValue.serverTimestamp();
-                        updateData.cartReminderSent = false;
-                        // Schedule abandoned cart check in 1 hour
-                        clearTimeout(_abandonedCartTimer);
-                        _abandonedCartTimer = setTimeout(() => checkAbandonedCart(), ABANDONED_CART_DELAY_MS);
-                    } else {
-                        // Cart emptied — clear abandoned cart flags
-                        updateData.cartSavedAt = firebase.firestore.FieldValue.delete();
-                        updateData.cartReminderSent = firebase.firestore.FieldValue.delete();
-                        clearTimeout(_abandonedCartTimer);
-                    }
-                    await db.collection("users").doc(currentUser.uid).update(updateData);
+                    await db.collection("users").doc(currentUser.uid).update({ cart });
                 } catch(e) {
                     console.error("Cart speichern fehlgeschlagen:", e.message);
                 }
             }, 600);
-        }
-
-        async function checkAbandonedCart() {
-            if (!currentUser) return;
-            try {
-                const userDoc = await db.collection("users").doc(currentUser.uid).get();
-                if (!userDoc.exists) return;
-                const data = userDoc.data();
-
-                // Skip if cart is empty, reminder already sent, or no timestamp
-                if (!data.cart || data.cart.length === 0) return;
-                if (data.cartReminderSent === true) return;
-                if (!data.cartSavedAt) return;
-
-                // Check if enough time has passed
-                const savedAt = data.cartSavedAt.toMillis();
-                if (Date.now() - savedAt < ABANDONED_CART_DELAY_MS) return;
-
-                // Build item list for email
-                const itemLines = data.cart.map(item =>
-                    `${item.name}${item.nicotine ? ' (' + item.nicotine + ')' : ''} × ${item.qty} — ${(item.price * item.qty).toFixed(2).replace('.', ',')} €`
-                ).join('
-');
-                const cartTotal = data.cart.reduce((s, i) => s + (i.price * i.qty), 0).toFixed(2).replace('.', ',');
-
-                // Send email
-                await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_ABANDONED_TEMPLATE, {
-                    email:      data.email || currentUser.email,
-                    cart_items: itemLines,
-                    cart_total: cartTotal,
-                    shop_url:   "https://wavevapes.de"
-                });
-
-                // Mark as sent so we don't spam
-                await db.collection("users").doc(currentUser.uid).update({ cartReminderSent: true });
-                console.log("📧 Abandoned cart reminder sent to", currentUser.email);
-            } catch(e) {
-                console.warn("Abandoned cart check fehlgeschlagen:", e.message);
-            }
         }
         // ====================== AUTH + LOYALTY SYNC + LIVE BAN + IP-BAN ======================
         auth.onAuthStateChanged(async (user) => {
@@ -2248,14 +2188,6 @@
                 pendingNicotine = {};
                 document.getElementById("discount-status").innerHTML = "";
                 document.getElementById("discount-input").value = "";
-                // Clear abandoned cart flags — order was placed successfully
-                clearTimeout(_abandonedCartTimer);
-                try {
-                    await db.collection("users").doc(currentUser.uid).update({
-                        cartSavedAt: firebase.firestore.FieldValue.delete(),
-                        cartReminderSent: firebase.firestore.FieldValue.delete()
-                    });
-                } catch(e) { /* non-blocking */ }
                 await saveUserCart();
                 showSuccessModal(orderNumber, finalTotal, loyaltyEarned);
                 loadProducts();

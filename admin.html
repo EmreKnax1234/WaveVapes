@@ -142,7 +142,22 @@
             border-radius:99px; font-size:11px; font-weight:700;
         }
         .sa-role-badge.super { background:rgba(251,191,36,.15); color:#fbbf24; border:1px solid rgba(251,191,36,.3); }
+        .sa-role-badge.cosuper { background:rgba(251,146,60,.15); color:#fb923c; border:1px solid rgba(251,146,60,.3); }
         .sa-role-badge.regular { background:rgba(103,232,249,.1); color:#67e8f9; border:1px solid rgba(103,232,249,.2); }
+        .sa-admin-card.is-cosuper { border-color:rgba(251,146,60,.3); background:rgba(251,146,60,.02); }
+        .sa-admin-avatar.cosuper { background:linear-gradient(135deg,#fb923c,#f97316); }
+        .sa-btn-promote {
+            flex:1; padding:9px; border-radius:12px; border:none; cursor:pointer;
+            background:rgba(251,191,36,.12); color:#fbbf24;
+            font-size:12px; font-weight:600; transition:all .15s;
+        }
+        .sa-btn-promote:hover { background:rgba(251,191,36,.22); }
+        .sa-btn-demote {
+            padding:9px 14px; border-radius:12px; border:none; cursor:pointer;
+            background:rgba(251,146,60,.1); color:#fb923c;
+            font-size:12px; font-weight:600; transition:all .15s;
+        }
+        .sa-btn-demote:hover { background:rgba(251,146,60,.22); }
 
         /* Permission Toggles */
         .sa-perms-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:14px; }
@@ -6888,6 +6903,8 @@ let currentIP = '';
 let saAllAdmins = [];
 let saIPWhitelist = [];
 let saCurrentUserIsSuperadmin = false;
+let saIsPrimaryAdmin = false;        // true = original Superadmin (kann andere promoten/demoten)
+let saCoSuperadminUIDs = [];         // UIDs der Co-Superadmins
 
 // ── Fetch current IP ──────────────────────────────────
 async function saFetchIP() {
@@ -6992,8 +7009,13 @@ async function saSubmitReauth() {
                 allowedIPs: saIPWhitelist
             }, { merge: true });
             saCurrentUserIsSuperadmin = true;
+            saIsPrimaryAdmin = true;
         } else {
-            saCurrentUserIsSuperadmin = data.superadminUID === user.uid;
+            saCoSuperadminUIDs = data.coSuperadminUIDs || [];
+            const isPrimary = data.superadminUID === user.uid;
+            const isCoSuper = saCoSuperadminUIDs.includes(user.uid);
+            saCurrentUserIsSuperadmin = isPrimary || isCoSuper;
+            saIsPrimaryAdmin = isPrimary;
         }
 
         if (!saCurrentUserIsSuperadmin) {
@@ -7059,6 +7081,7 @@ async function saLoadAdmins() {
     const snap = await db.collection('users').where('role','==','admin').get();
     const superSnap = await db.collection('settings').doc('superadmin').get();
     const superUID = superSnap.exists ? superSnap.data().superadminUID : null;
+    saCoSuperadminUIDs = superSnap.exists ? (superSnap.data().coSuperadminUIDs || []) : [];
 
     saAllAdmins = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
@@ -7069,10 +7092,12 @@ async function saLoadAdmins() {
 
     grid.innerHTML = '';
     saAllAdmins.forEach(admin => {
-        const isSuper = admin.id === superUID;
+        const isPrimary = admin.id === superUID;
+        const isCoSuper = saCoSuperadminUIDs.includes(admin.id);
+        const isSuper   = isPrimary || isCoSuper;
         const perms = admin.adminPermissions || SA_PERMISSIONS.map(p => p.key); // default: all
         const card = document.createElement('div');
-        card.className = `sa-admin-card${isSuper ? ' is-super' : ''}`;
+        card.className = `sa-admin-card${isPrimary ? ' is-super' : isCoSuper ? ' is-cosuper' : ''}`;
         card.id = `sa-card-${admin.id}`;
 
         const initials = (admin.email || '?').substring(0,2).toUpperCase();
@@ -7086,31 +7111,82 @@ async function saLoadAdmins() {
                 <span>${p.label}</span>
             </div>`).join('');
 
+        // Badge-Text & Avatar-Klasse
+        const badgeClass = isPrimary ? 'super' : isCoSuper ? 'cosuper' : 'regular';
+        const badgeLabel = isPrimary
+            ? '<i class="fa-solid fa-crown"></i> Superadmin'
+            : isCoSuper
+                ? '<i class="fa-solid fa-shield-halved"></i> Co-Superadmin'
+                : '<i class="fa-solid fa-user-shield"></i> Admin';
+        const avatarClass = isPrimary ? '' : isCoSuper ? 'cosuper' : 'regular';
+
+        // Info-Banner
+        const infoBanner = isPrimary
+            ? `<div style="font-size:11px;color:rgba(251,191,36,.5);padding:8px 12px;border-radius:10px;background:rgba(251,191,36,.05);border:1px solid rgba(251,191,36,.1);margin-bottom:12px"><i class="fa-solid fa-crown" style="margin-right:6px"></i>Primärer Superadmin — kann nicht entfernt oder degradiert werden.</div>`
+            : isCoSuper
+                ? `<div style="font-size:11px;color:rgba(251,146,60,.5);padding:8px 12px;border-radius:10px;background:rgba(251,146,60,.05);border:1px solid rgba(251,146,60,.1);margin-bottom:12px"><i class="fa-solid fa-shield-halved" style="margin-right:6px"></i>Co-Superadmin — hat alle Rechte, kann aber den primären Superadmin nicht entfernen.</div>`
+                : '';
+
+        // Aktions-Buttons (nur sichtbar für primären Superadmin)
+        let actionsHTML = '';
+        if (saIsPrimaryAdmin) {
+            if (isPrimary) {
+                // Eigene Karte — keine Aktionen
+                actionsHTML = '';
+            } else if (isCoSuper) {
+                // Co-Superadmin degradieren
+                actionsHTML = `
+                <button class="sa-btn-demote" onclick="saDemoteSuperadmin('${admin.id}','${admin.email}')" title="Superadmin-Status entziehen">
+                    <i class="fa-solid fa-chevron-down"></i> Degradieren
+                </button>
+                <button class="sa-btn-remove" onclick="saRemoveAdmin('${admin.id}','${admin.email}')" title="Admin-Rechte entziehen">
+                    <i class="fa-solid fa-user-minus"></i>
+                </button>`;
+            } else {
+                // Regulären Admin promoten oder entfernen
+                actionsHTML = `
+                <button class="sa-btn-save" onclick="saSavePerms('${admin.id}')">
+                    <i class="fa-solid fa-floppy-disk"></i> Rechte speichern
+                </button>
+                <button class="sa-btn-promote" onclick="saPromoteToSuperadmin('${admin.id}','${admin.email}')" title="Zum Superadmin machen">
+                    <i class="fa-solid fa-crown"></i>
+                </button>
+                <button class="sa-btn-remove" onclick="saRemoveAdmin('${admin.id}','${admin.email}')" title="Admin-Rechte entziehen">
+                    <i class="fa-solid fa-user-minus"></i>
+                </button>`;
+            }
+        } else {
+            // Co-Superadmin sieht Buttons für reguläre Admins, aber NICHT für den primären
+            if (!isPrimary && !isCoSuper) {
+                actionsHTML = `
+                <button class="sa-btn-save" onclick="saSavePerms('${admin.id}')">
+                    <i class="fa-solid fa-floppy-disk"></i> Rechte speichern
+                </button>
+                <button class="sa-btn-remove" onclick="saRemoveAdmin('${admin.id}','${admin.email}')" title="Admin-Rechte entziehen">
+                    <i class="fa-solid fa-user-minus"></i>
+                </button>`;
+            }
+        }
+
         card.innerHTML = `
             <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px">
                 <div style="display:flex;align-items:center;gap:12px">
-                    <div class="sa-admin-avatar ${isSuper ? '' : 'regular'}">${initials}</div>
+                    <div class="sa-admin-avatar ${avatarClass}">${initials}</div>
                     <div>
                         <div class="sa-admin-email">${admin.email || admin.id}</div>
                         <div class="sa-admin-uid">${admin.id.substring(0,16)}...</div>
                         ${admin.username ? `<div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:2px">@${admin.username}</div>` : ''}
                     </div>
                 </div>
-                <div class="sa-role-badge ${isSuper ? 'super' : 'regular'}">
-                    ${isSuper ? '<i class="fa-solid fa-shield-halved"></i> Superadmin' : '<i class="fa-solid fa-user-shield"></i> Admin'}
+                <div class="sa-role-badge ${badgeClass}">
+                    ${badgeLabel}
                 </div>
             </div>
-            ${isSuper ? `<div style="font-size:11px;color:rgba(251,191,36,.5);padding:8px 12px;border-radius:10px;background:rgba(251,191,36,.05);border:1px solid rgba(251,191,36,.1);margin-bottom:12px"><i class="fa-solid fa-crown" style="margin-right:6px"></i>Superadmin hat immer alle Rechte — Berechtigungen gelten nur für reguläre Admins.</div>` : ''}
+            ${infoBanner}
             <div style="font-size:11px;color:rgba(255,255,255,.25);margin-bottom:8px;font-weight:600;letter-spacing:.05em">BERECHTIGUNGEN</div>
             <div class="sa-perms-grid${isSuper ? '" style="opacity:.35;pointer-events:none' : ''}">${permsHTML}</div>
             <div class="sa-card-actions" style="margin-top:16px">
-                ${!isSuper ? `
-                <button class="sa-btn-save" onclick="saSavePerms('${admin.id}')">
-                    <i class="fa-solid fa-floppy-disk"></i> Berechtigungen speichern
-                </button>
-                <button class="sa-btn-remove" onclick="saRemoveAdmin('${admin.id}','${admin.email}')" title="Admin-Rechte entziehen">
-                    <i class="fa-solid fa-user-minus"></i>
-                </button>` : ''}
+                ${actionsHTML}
             </div>`;
         grid.appendChild(card);
     });
@@ -7166,6 +7242,38 @@ async function saRemoveAdmin(uid, email) {
     });
     await logAction('admin_removed', uid, { email });
     showToast(`🚫 ${email} ist kein Admin mehr`);
+    saLoadAdmins();
+}
+
+// ── Promote Admin → Co-Superadmin ────────────────────
+async function saPromoteToSuperadmin(uid, email) {
+    if (!saIsPrimaryAdmin) { showToast('⛔ Nur der primäre Superadmin kann andere promoten', 'error'); return; }
+    if (!confirm(`${email} zum Co-Superadmin machen?\n\nDiese Person erhält vollen Zugang zur Superadmin Zone, kann dich aber nicht entfernen oder degradieren.`)) return;
+
+    const superSnap = await db.collection('settings').doc('superadmin').get();
+    const coUIDs = superSnap.exists ? (superSnap.data().coSuperadminUIDs || []) : [];
+    if (!coUIDs.includes(uid)) coUIDs.push(uid);
+
+    await db.collection('settings').doc('superadmin').set({ coSuperadminUIDs: coUIDs }, { merge: true });
+    await logAction('superadmin_promoted', uid, { email, promotedBy: auth.currentUser?.uid });
+    showToast(`👑 ${email} ist jetzt Co-Superadmin`);
+    saCoSuperadminUIDs = coUIDs;
+    saLoadAdmins();
+}
+
+// ── Demote Co-Superadmin → Admin ─────────────────────
+async function saDemoteSuperadmin(uid, email) {
+    if (!saIsPrimaryAdmin) { showToast('⛔ Nur der primäre Superadmin kann andere degradieren', 'error'); return; }
+    if (!confirm(`${email} vom Co-Superadmin zum normalen Admin degradieren?`)) return;
+
+    const superSnap = await db.collection('settings').doc('superadmin').get();
+    let coUIDs = superSnap.exists ? (superSnap.data().coSuperadminUIDs || []) : [];
+    coUIDs = coUIDs.filter(id => id !== uid);
+
+    await db.collection('settings').doc('superadmin').set({ coSuperadminUIDs: coUIDs }, { merge: true });
+    await logAction('superadmin_demoted', uid, { email, demotedBy: auth.currentUser?.uid });
+    showToast(`↩ ${email} ist wieder normaler Admin`);
+    saCoSuperadminUIDs = coUIDs;
     saLoadAdmins();
 }
 

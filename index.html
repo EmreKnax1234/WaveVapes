@@ -2578,7 +2578,6 @@
             const avgEl  = document.getElementById(`rv-avg-display-${productId}`);
             if (!listEl) return;
 
-            // Cancel any existing listener for this product
             if (_rvUnsubscribers[productId]) {
                 _rvUnsubscribers[productId]();
                 delete _rvUnsubscribers[productId];
@@ -2586,96 +2585,44 @@
 
             listEl.innerHTML = '<div class="rv-empty"><i class="fa-solid fa-spinner fa-spin"></i></div>';
 
-            // Only filter by productId — single-field queries need no composite index.
-            // approved filter and sorting done client-side.
-            const unsub = db.collection('reviews')
-                .where('productId', '==', productId)
-                .onSnapshot(snap => {
-                    // Filter approved and sort newest-first client-side
-                    const reviews = snap.docs
-                        .map(d => ({ id: d.id, ...d.data() }))
-                        .filter(r => r.approved === true)
-                        .sort((a, b) => {
-                            const ta = a.createdAt?.toMillis?.() || 0;
-                            const tb = b.createdAt?.toMillis?.() || 0;
-                            return tb - ta;
-                        })
-                        .slice(0, 20);
+            function renderReviews(docs) {
+                const reviews = docs
+                    .filter(r => r.approved === true)
+                    .sort((a,b) => (b.createdAt?.toMillis?.()||0) - (a.createdAt?.toMillis?.()||0))
+                    .slice(0, 20);
 
-                    // Average
-                    if (reviews.length > 0) {
-                        const avg = reviews.reduce((s,r) => s + (r.rating||0), 0) / reviews.length;
-                        if (avgEl) avgEl.innerHTML = `
-                            <div class="rv-avg-wrap">
-                                <span class="rv-avg-num">${avg.toFixed(1)}</span>
-                                <div>
-                                    <div class="rv-stars-row">${[1,2,3,4,5].map(n=>`<span class="rv-star ${n<=Math.round(avg)?'':'empty'}">★</span>`).join('')}</div>
-                                    <div class="rv-count">${reviews.length} Bewertung${reviews.length!==1?'en':''}</div>
-                                </div>
-                            </div>`;
-                    } else {
-                        if (avgEl) avgEl.innerHTML = '';
-                    }
-
-                    // List
-                    if (reviews.length === 0) {
-                        listEl.innerHTML = '<div class="rv-empty">Noch keine Bewertungen. Sei der Erste!</div>';
-                        return;
-                    }
-                    listEl.innerHTML = reviews.map(r => {
-                        const stars = [1,2,3,4,5].map(n=>`<span class="rv-star ${n<=(r.rating||0)?'':'empty'}">★</span>`).join('');
-                        const date  = r.createdAt ? r.createdAt.toDate().toLocaleDateString('de-DE') : '';
-                        const name  = r.username || 'Anonym';
-                        return `<div class="rv-card">
-                            <div class="rv-card-header">
-                                <div style="display:flex;align-items:center;gap:8px">
-                                    <div class="rv-stars-row">${stars}</div>
-                                    <span class="rv-card-user">${name}</span>
-                                </div>
-                                <span class="rv-card-date">${date}</span>
-                            </div>
-                            ${r.text ? `<div class="rv-card-text">${r.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>` : ''}
-                        </div>`;
-                    }).join('');
-                }, err => {
-                    console.error('rvLoad Fehler:', err.code, err.message);
-                    if (listEl) listEl.innerHTML = `<div class="rv-empty" style="color:#f87171">Fehler: ${err.code} – ${err.message}</div>`;
-                });
-
-            _rvUnsubscribers[productId] = unsub;
-
-            // Fallback: if onSnapshot doesn't fire within 3s, try get() instead
-            setTimeout(() => {
-                const el = document.getElementById(`rv-list-${productId}`);
-                if (el && el.querySelector('.fa-spinner')) {
-                    // Still spinning — try get() as fallback
-                    db.collection('reviews')
-                        .where('productId', '==', productId)
-                        .get()
-                        .then(snap => {
-                            const reviews = snap.docs
-                                .map(d => ({id: d.id, ...d.data()}))
-                                .filter(r => r.approved === true)
-                                .sort((a,b) => (b.createdAt?.toMillis?.()||0) - (a.createdAt?.toMillis?.()||0));
-                            if (reviews.length === 0) {
-                                el.innerHTML = '<div class="rv-empty">Noch keine Bewertungen. Sei der Erste!</div>';
-                            } else {
-                                el.innerHTML = reviews.map(r => {
-                                    const stars = [1,2,3,4,5].map(n=>`<span class="rv-star ${n<=(r.rating||0)?'':'empty'}">★</span>`).join('');
-                                    const date = r.createdAt ? r.createdAt.toDate().toLocaleDateString('de-DE') : '';
-                                    return `<div class="rv-card"><div class="rv-card-header"><div style="display:flex;align-items:center;gap:8px"><div class="rv-stars-row">${stars}</div><span class="rv-card-user">${r.username||'Anonym'}</span></div><span class="rv-card-date">${date}</span></div>${r.text?`<div class="rv-card-text">${r.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`:''}</div>`;
-                                }).join('');
-                                // Also update average
-                                const avg = reviews.reduce((s,r)=>s+(r.rating||0),0)/reviews.length;
-                                const avgEl = document.getElementById(`rv-avg-display-${productId}`);
-                                if (avgEl) avgEl.innerHTML = `<div class="rv-avg-wrap"><span class="rv-avg-num">${avg.toFixed(1)}</span><div><div class="rv-stars-row">${[1,2,3,4,5].map(n=>`<span class="rv-star ${n<=Math.round(avg)?'':'empty'}">★</span>`).join('')}</div><div class="rv-count">${reviews.length} Bewertung${reviews.length!==1?'en':''}</div></div></div>`;
-                            }
-                        })
-                        .catch(e => {
-                            if (el) el.innerHTML = `<div class="rv-empty" style="color:#f87171">Fehler: ${e.code} – ${e.message}</div>`;
-                        });
+                if (reviews.length === 0) {
+                    listEl.innerHTML = '<div class="rv-empty">Noch keine Bewertungen. Sei der Erste!</div>';
+                    if (avgEl) avgEl.innerHTML = '';
+                    return;
                 }
-            }, 3000);
+                const avg = reviews.reduce((s,r) => s+(r.rating||0), 0) / reviews.length;
+                if (avgEl) avgEl.innerHTML = `<div class="rv-avg-wrap"><span class="rv-avg-num">${avg.toFixed(1)}</span><div><div class="rv-stars-row">${[1,2,3,4,5].map(n=>`<span class="rv-star ${n<=Math.round(avg)?'':'empty'}">★</span>`).join('')}</div><div class="rv-count">${reviews.length} Bewertung${reviews.length!==1?'en':''}</div></div></div>`;
+                listEl.innerHTML = reviews.map(r => {
+                    const stars = [1,2,3,4,5].map(n=>`<span class="rv-star ${n<=(r.rating||0)?'':'empty'}">★</span>`).join('');
+                    const date  = r.createdAt ? r.createdAt.toDate().toLocaleDateString('de-DE') : '';
+                    return `<div class="rv-card"><div class="rv-card-header"><div style="display:flex;align-items:center;gap:8px"><div class="rv-stars-row">${stars}</div><span class="rv-card-user">${(r.username||'Anonym').replace(/</g,'&lt;')}</span></div><span class="rv-card-date">${date}</span></div>${r.text?`<div class="rv-card-text">${r.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`:''}</div>`;
+                }).join('');
+            }
+
+            // Try get() first (works even without real-time rules)
+            db.collection('reviews')
+                .where('productId', '==', productId)
+                .get()
+                .then(snap => {
+                    renderReviews(snap.docs.map(d => ({id:d.id,...d.data()})));
+                    // Then also attach live listener for real-time updates
+                    const unsub = db.collection('reviews')
+                        .where('productId', '==', productId)
+                        .onSnapshot(snap2 => {
+                            renderReviews(snap2.docs.map(d => ({id:d.id,...d.data()})));
+                        }, () => {}); // silent — get() already showed data
+                    _rvUnsubscribers[productId] = unsub;
+                })
+                .catch(err => {
+                    console.error('rvLoad error:', err.code, err.message);
+                    listEl.innerHTML = `<div class="rv-empty" style="color:#f87171;font-size:11px">Fehler ${err.code}: ${err.message}<br><br>Bitte firestore.rules deployen (reviews allow read: if true)</div>`;
+                });
         }
 
         async function rvCheckCanReview(productId) {

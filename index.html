@@ -2594,6 +2594,7 @@
                 const cursorClass = 'cursor-pointer';
                 html += `
                     <div ${clickHandler}
+                         data-product-id="${product.id}"
                          class="product-card bg-zinc-900 border border-white/10 rounded-3xl overflow-hidden ${unavailableClass} ${liquidClass} ${cursorClass}">
                         <div class="h-1.5 bg-gradient-to-r from-cyan-400 to-purple-500"></div>
                         <div class="p-5 flex flex-col h-full">
@@ -2606,7 +2607,7 @@
                             ${stockHTML}
                             <div class="flex-1"></div>
                             <div class="price-row"><span class="discount-price">${oldPrice}€</span> → <span class="sale-price">${salePrice}€</span></div>
-                            ${qtyHTML}
+                            <div class="qty-controls-wrap">${qtyHTML}</div>
                             ${nicotineHTML}
                         </div>
                     </div>`;
@@ -2649,8 +2650,36 @@
             }
             saveUserCart();
             updateCartDisplay();
-            renderProducts(); // re-render to update qty buttons
+            // Nur die betroffene Karte patchen – kein komplettes Re-Render, keine Bild-Flackerei
+            patchProductCardQty(id);
         }
+        // Aktualisiert nur Mengenanzeige + Buttons einer einzelnen Produktkarte im DOM
+        // → kein komplettes Grid-Re-Render, keine Bilder laden neu
+        function patchProductCardQty(id) {
+            const card = document.querySelector(`[data-product-id="${id}"]`);
+            if (!card) return; // Karte nicht sichtbar (z.B. gefiltert)
+
+            const product  = allProducts.find(p => p.id === id);
+            if (!product) return;
+
+            const cartItem = cart.find(i => i.id === id);
+            const qty      = cartItem ? cartItem.qty : 0;
+            const wrap     = card.querySelector('.qty-controls-wrap');
+            if (!wrap) return;
+
+            if (!product.available) {
+                wrap.innerHTML = '';
+                return;
+            }
+
+            wrap.innerHTML = `
+                <div class="flex items-center bg-zinc-800 rounded-3xl" onclick="event.stopImmediatePropagation()">
+                    <button onclick="changeQuantity('${id}', -1, event); event.stopImmediatePropagation()" class="qty-btn w-9 h-9 text-2xl text-cyan-300 flex-1 flex items-center justify-center">-</button>
+                    <div class="w-10 text-center font-bold text-xl flex items-center justify-center">${qty}</div>
+                    <button onclick="changeQuantity('${id}', 1, event); event.stopImmediatePropagation()" class="qty-btn w-9 h-9 text-2xl text-cyan-300 flex-1 flex items-center justify-center">+</button>
+                </div>`;
+        }
+
         function getTornadoQuantity() {
             // Legacy alias — kept for backward compat
             return getCategoryQuantity("WaveVapes Tornado 30000");

@@ -3773,11 +3773,35 @@ async function logAction(action, target = "", details = {}) {
 }
 
 // ====================== LAGERWARNUNG ======================
-// Tracks which product IDs have already triggered a stock alert this session
-// to avoid sending duplicate emails on every Firestore snapshot.
-const _stockAlertSent = new Set();
+// ── Stock Alert Deduplication ─────────────────────────────────────────────
+// Alerts are persisted in Firestore: settings/stockAlerts
+// Structure: { [productId]: { stock: N, sentAt: Timestamp } }
+// A new alert is only sent when the stock dropped BELOW the previously recorded level.
+// This survives page refreshes and multiple admin sessions.
 
-function checkStockWarnings() {
+let _stockAlertsCache = null; // local mirror of Firestore state
+
+async function _loadStockAlerts() {
+    if (_stockAlertsCache !== null) return _stockAlertsCache;
+    try {
+        const snap = await db.collection('settings').doc('stockAlerts').get();
+        _stockAlertsCache = snap.exists ? (snap.data().alerts || {}) : {};
+    } catch(e) {
+        _stockAlertsCache = {};
+    }
+    return _stockAlertsCache;
+}
+
+async function _saveStockAlerts(alerts) {
+    _stockAlertsCache = alerts;
+    try {
+        await db.collection('settings').doc('stockAlerts').set({ alerts }, { merge: false });
+    } catch(e) {
+        console.warn('stockAlerts speichern fehlgeschlagen:', e);
+    }
+}
+
+async function checkStockWarnings() {
     const critical = allProducts.filter(p => p.available !== false && (p.stock || 0) <= stockCriticalThreshold);
     const warning  = allProducts.filter(p => p.available !== false && (p.stock || 0) > stockCriticalThreshold && (p.stock || 0) <= stockWarningThreshold);
     const all = [...critical, ...warning];
@@ -3801,13 +3825,40 @@ function checkStockWarnings() {
         </div>`;
     }).join('');
 
-    // ── Notify for newly critical products ────────────────────────────────
-    const newlyCritical = critical.filter(p => !_stockAlertSent.has(p.id));
-    if (newlyCritical.length === 0) return;
+    // ── Notify only for genuinely new/worsened critical products ──────────
+    const alerts = await _loadStockAlerts();
+    const toAlert = [];
 
-    newlyCritical.forEach(p => {
-        _stockAlertSent.add(p.id);
+    for (const p of critical) {
+        const prev = alerts[p.id];
+        const currentStock = p.stock || 0;
+        // Send alert if: never alerted before, OR stock dropped further since last alert
+        if (!prev || currentStock < prev.stock) {
+            toAlert.push(p);
+        }
+    }
 
+    // Clean up alert records for products that recovered above critical threshold
+    let changed = false;
+    for (const id of Object.keys(alerts)) {
+        const p = allProducts.find(pr => pr.id === id);
+        if (!p || (p.stock || 0) > stockCriticalThreshold) {
+            delete alerts[id];
+            changed = true;
+        }
+    }
+
+    // Record new alerts and persist
+    for (const p of toAlert) {
+        alerts[p.id] = { stock: p.stock || 0, sentAt: Date.now() };
+        changed = true;
+    }
+    if (changed) await _saveStockAlerts(alerts);
+
+    if (toAlert.length === 0) return;
+
+    // Fire notifications only for genuinely new alerts
+    toAlert.forEach(p => {
         // In-app push notification
         pushNotification(
             'warning',
@@ -3830,13 +3881,6 @@ function checkStockWarnings() {
                 loyalty_earned: 0
             }
         ).catch(err => console.warn("Lagerwarnung E-Mail fehlgeschlagen:", err));
-    });
-
-    // Remove products from alert-sent set if stock was restocked above critical threshold
-    // so a future stock drop will trigger a new alert
-    _stockAlertSent.forEach(id => {
-        const p = allProducts.find(pr => pr.id === id);
-        if (!p || (p.stock || 0) > stockCriticalThreshold) _stockAlertSent.delete(id);
     });
 }
 

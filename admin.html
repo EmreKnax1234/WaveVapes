@@ -3948,7 +3948,14 @@ async function resetUserPoints(uid) { if (!confirm("Punkte auf 0 setzen?")) retu
 let anCurrentPeriod = 30;
 
 function anSetPeriod(days) {
+    anCustomFrom = null;
+    anCustomTo   = null;
     anCurrentPeriod = days;
+    // Reset date input highlights
+    const df = document.getElementById('an-date-from');
+    const dt = document.getElementById('an-date-to');
+    if (df) df.style.borderColor = '';
+    if (dt) dt.style.borderColor = '';
     document.querySelectorAll('.an-period-btn').forEach(b => b.classList.remove('active'));
     const btn = document.getElementById('an-btn-' + days);
     if (btn) btn.classList.add('active');
@@ -3977,9 +3984,22 @@ function anChartOpts(extra={}) {
 }
 
 async function loadAnalytics() {
-    const days = anCurrentPeriod;
-    const since = firebase.firestore.Timestamp.fromDate(new Date(Date.now() - days * 24 * 60 * 60 * 1000));
-    const ordersSnap = await db.collection("orders").where("date",">=",since).get();
+    // Support both fixed period (days) and custom date range
+    let since, until, days, labelDays;
+    if (anCustomFrom && anCustomTo) {
+        since = firebase.firestore.Timestamp.fromDate(anCustomFrom);
+        until = firebase.firestore.Timestamp.fromDate(anCustomTo);
+        days  = Math.max(1, Math.ceil((anCustomTo - anCustomFrom) / 86400000));
+        labelDays = days;
+    } else {
+        days  = anCurrentPeriod || 30;
+        labelDays = days;
+        since = firebase.firestore.Timestamp.fromDate(new Date(Date.now() - days * 24 * 60 * 60 * 1000));
+        until = null;
+    }
+    let query = db.collection("orders").where("date",">=",since);
+    if (until) query = query.where("date","<=",until);
+    const ordersSnap = await query.get();
 
     let dailyRevenue={}, dailyOrdersCount={}, totalRevenue=0, totalOrders=0;
     let productMap=new Map(), userMap=new Map(), statusMap=new Map();
@@ -4004,9 +4024,9 @@ async function loadAnalytics() {
     anm(['metric-avg',     totalOrders>0?(totalRevenue/totalOrders).toFixed(2)+' €':'0 €']);
 
     const labels = [];
-    const now = new Date();
-    for (let i=days-1;i>=0;i--) {
-        const d = new Date(now); d.setDate(d.getDate()-i);
+    const startDate = anCustomFrom ? new Date(anCustomFrom) : new Date(Date.now() - (labelDays-1)*86400000);
+    for (let i=0; i<labelDays; i++) {
+        const d = new Date(startDate); d.setDate(d.getDate()+i);
         labels.push(d.toISOString().slice(0,10));
     }
     const shortLabels = labels.map(l=>{ const p=l.slice(5).split('-'); return p[1]+'.'+p[0]; });
@@ -4751,12 +4771,46 @@ function euOpenBroadcast(){
     document.getElementById('eu-bc-modal').style.cssText='display:flex';
 }
 async function euExecuteBroadcast(){
-    const subject=document.getElementById('eu-bc-subject').value.trim(); const body=document.getElementById('eu-bc-body').value.trim();
-    if(!subject||!body){showToast('Betreff & Nachricht erforderlich','error');return;}
-    await logAction('broadcast_sent','',{subject,count:euFiltered.length});
-    showToast(`📢 Broadcast protokolliert (${euFiltered.length} User)!`,'success');
-    document.getElementById('eu-bc-modal').style.display='none';
-    document.getElementById('eu-bc-subject').value=''; document.getElementById('eu-bc-body').value='';
+    const subject = document.getElementById('eu-bc-subject').value.trim();
+    const body    = document.getElementById('eu-bc-body').value.trim();
+    if (!subject || !body) { showToast('Betreff & Nachricht erforderlich','error'); return; }
+
+    const recipients = euFiltered.filter(u => u.email && !u.disabled);
+    if (!recipients.length) { showToast('Keine aktiven Empfänger','error'); return; }
+
+    const btn = document.querySelector('[onclick="euExecuteBroadcast()"]');
+    if (btn) { btn.disabled = true; btn.textContent = `Sende (0/${recipients.length})...`; }
+
+    let sent = 0, failed = 0;
+    for (const u of recipients) {
+        try {
+            await emailjs.send(
+                "service_lzvte0x",
+                "template_cgcu1m8",   // reuse order template or create a broadcast template
+                {
+                    email:        u.email,
+                    order_id:     "BROADCAST",
+                    orders:       [{ name: body, units: 1, price: "—", image_url: "https://wavevapes.de/logo.png" }],
+                    cost:         { shipping: "—", tax: "—", total: subject },
+                    loyalty_earned: 0
+                }
+            );
+            sent++;
+        } catch(e) {
+            failed++;
+            console.warn("Broadcast an " + u.email + " fehlgeschlagen:", e);
+        }
+        if (btn) btn.textContent = `Sende (${sent}/${recipients.length})...`;
+        // Small delay to avoid rate limits
+        await new Promise(r => setTimeout(r, 120));
+    }
+
+    await logAction('broadcast_sent', '', { subject, sent, failed, total: recipients.length });
+    showToast(`📢 ${sent} E-Mails gesendet${failed>0?' ('+failed+' fehlgeschlagen)':''}`, sent>0?'success':'error');
+    if (btn) { btn.disabled = false; btn.textContent = 'Broadcast senden'; }
+    document.getElementById('eu-bc-modal').style.display = 'none';
+    document.getElementById('eu-bc-subject').value = '';
+    document.getElementById('eu-bc-body').value = '';
 }
 
 function euExportCSV(){
@@ -5088,10 +5142,17 @@ function anSetCustomRange() {
     const from = document.getElementById('an-date-from')?.value;
     const to   = document.getElementById('an-date-to')?.value;
     if (!from || !to) return;
+    if (new Date(from) > new Date(to)) {
+        showToast('Startdatum muss vor Enddatum liegen', 'error');
+        return;
+    }
     anCustomFrom = new Date(from);
     anCustomTo   = new Date(to); anCustomTo.setHours(23,59,59,999);
     anCurrentPeriod = null;
+    // Deactivate period buttons, highlight date inputs
     document.querySelectorAll('.an-period-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('an-date-from').style.borderColor = 'var(--an-cyan)';
+    document.getElementById('an-date-to').style.borderColor   = 'var(--an-cyan)';
     const badge = document.getElementById('an-rev-badge');
     if (badge) badge.textContent = `${from} – ${to}`;
     const lbl = document.getElementById('an-period-lbl');
@@ -5099,28 +5160,7 @@ function anSetCustomRange() {
     loadAnalytics();
 }
 
-// patch loadAnalytics to support custom range
-const _origAnSetPeriod = anSetPeriod;
-window.anSetPeriod = function(days) {
-    anCustomFrom = null; anCustomTo = null;
-    _origAnSetPeriod(days);
-};
-
-// patch the since timestamp inside loadAnalytics
-const _origLoadAnalytics = loadAnalytics;
-window.loadAnalytics = async function() {
-    let since;
-    if (anCustomFrom && anCustomTo) {
-        since = firebase.firestore.Timestamp.fromDate(anCustomFrom);
-    } else {
-        since = firebase.firestore.Timestamp.fromDate(new Date(Date.now() - (anCurrentPeriod||30)*24*60*60*1000));
-    }
-    // call original but patch the query
-    const days = anCurrentPeriod || Math.ceil((anCustomTo - anCustomFrom) / 86400000) || 30;
-    anCurrentPeriod = days; // temporarily set for label
-    await _origLoadAnalytics();
-    anCurrentPeriod = anCustomFrom ? null : days;
-};
+// Analytics custom date range now handled directly in loadAnalytics()
 
 // ═══════════════════════════════════════════════════════
 //  PRODUCT EDIT DRAWER (replaces old modal)

@@ -47,6 +47,53 @@
         @keyframes pulse-border { 0%,100%{border-color:rgba(239,68,68,0.5)} 50%{border-color:rgba(239,68,68,1)} }
         .warning-banner { animation: pulse-border 2s ease-in-out infinite; }
 
+
+        /* ═══════════════════════════════════════════
+           CUSTOM SELECT — replaces all native <select>
+           to fix white dropdown popup on Windows/Chrome
+        ═══════════════════════════════════════════ */
+        .cs-wrap { position:relative; display:inline-block; width:100%; }
+        .cs-wrap.open { z-index:9999; }
+        .cs-trigger {
+            display:flex; align-items:center; justify-content:space-between; gap:8px;
+            cursor:pointer; user-select:none; white-space:nowrap;
+        }
+        /* Inherit styling from whatever class the hidden select had */
+        .prd-add-input.cs-trigger, select.prd-add-input + .cs-wrap .cs-trigger {
+            background:rgba(255,255,255,.04); border:1px solid var(--prd-border);
+            border-radius:10px; padding:9px 12px; color:#fff; font-size:12px;
+        }
+        .prd-fsel.cs-trigger, .cs-wrap .prd-fsel.cs-trigger {
+            background:rgba(255,255,255,.04); border:1px solid var(--prd-border);
+            border-radius:40px; padding:8px 13px; color:#fff; font-size:11px;
+        }
+        .bke-input.cs-trigger {
+            background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1);
+            border-radius:10px; padding:10px 12px; color:#fff; font-size:13px;
+        }
+        .ped-input.cs-trigger {
+            background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1);
+            border-radius:10px; padding:10px 14px; color:#fff; font-size:13px;
+        }
+        .cs-trigger-arrow { flex-shrink:0; font-size:10px; opacity:.5; transition:transform .2s; pointer-events:none; }
+        .cs-wrap.open .cs-trigger-arrow { transform:rotate(180deg); opacity:1; }
+        .cs-dropdown {
+            display:none; position:absolute; top:calc(100% + 6px); left:0; min-width:100%;
+            background:#1a1a2e; border:1px solid rgba(103,232,249,.25);
+            border-radius:14px; overflow:hidden; z-index:9999;
+            box-shadow:0 16px 40px rgba(0,0,0,.7);
+            max-height:260px; overflow-y:auto;
+        }
+        .cs-wrap.open .cs-dropdown { display:block; animation:cs-pop .15s ease; }
+        @keyframes cs-pop { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
+        .cs-option {
+            padding:10px 14px; cursor:pointer; font-size:12px; color:rgba(255,255,255,.75);
+            transition:background .12s, color .12s;
+        }
+        .cs-option:hover { background:rgba(103,232,249,.1); color:#fff; }
+        .cs-option.selected { background:rgba(103,232,249,.15); color:var(--neon-cyan); font-weight:600; }
+        .cs-option.placeholder { color:rgba(255,255,255,.3); }
+
         /* ═══════════════════════════════════════════
            SIDEBAR v2
         ═══════════════════════════════════════════ */
@@ -2840,6 +2887,124 @@ let stockCriticalThreshold = 3;
 let stockWarningThreshold = 10;
 
 // ====================== LOG ACTION ======================
+
+// ═══════════════════════════════════════════════════════════
+//  CustomSelect — dark dropdown replacing native <select>
+//  Usage: initCustomSelect(id, options, value, onChange)
+//  getValue: document.getElementById(id)?.dataset.csValue
+// ═══════════════════════════════════════════════════════════
+function initCustomSelect(id, options, currentValue, onChange) {
+    const hidden = document.getElementById(id);
+    if (!hidden) return;
+
+    // Build wrapper around the hidden select
+    const parent = hidden.parentElement;
+    const triggerClass  = hidden.className || '';
+
+    // Get initial placeholder from first option or attribute
+    const placeholder = hidden.options[0]?.value === '' ? hidden.options[0].textContent : 'Wählen...';
+
+    // Remove existing custom select if re-initializing
+    const existing = parent.querySelector('.cs-wrap');
+    if (existing) existing.remove();
+
+    const wrap = document.createElement('div');
+    wrap.className = 'cs-wrap';
+
+    const trigger = document.createElement('div');
+    trigger.className = 'cs-trigger ' + triggerClass;
+    trigger.innerHTML = `<span class="cs-label">${placeholder}</span><i class="fa-solid fa-chevron-down cs-trigger-arrow"></i>`;
+
+    const dropdown = document.createElement('div');
+    dropdown.className = 'cs-dropdown';
+
+    let selectedValue = currentValue || '';
+
+    function renderOptions(opts) {
+        dropdown.innerHTML = '';
+        opts.forEach(opt => {
+            const div = document.createElement('div');
+            div.className = 'cs-option' + (opt.value === '' ? ' placeholder' : '') + (opt.value === selectedValue ? ' selected' : '');
+            div.textContent = opt.label;
+            div.dataset.value = opt.value;
+            div.addEventListener('click', e => {
+                e.stopPropagation();
+                selectedValue = opt.value;
+                hidden.value = selectedValue;
+                hidden.dataset.csValue = selectedValue;
+                trigger.querySelector('.cs-label').textContent = opt.value === '' ? placeholder : opt.label;
+                dropdown.querySelectorAll('.cs-option').forEach(o => o.classList.toggle('selected', o.dataset.value === selectedValue));
+                wrap.classList.remove('open');
+                if (onChange) onChange(selectedValue);
+            });
+            dropdown.appendChild(div);
+        });
+    }
+
+    renderOptions(options);
+
+    trigger.addEventListener('click', e => {
+        e.stopPropagation();
+        const wasOpen = wrap.classList.contains('open');
+        // Close all other open selects
+        document.querySelectorAll('.cs-wrap.open').forEach(w => w.classList.remove('open'));
+        if (!wasOpen) wrap.classList.add('open');
+    });
+
+    wrap.appendChild(trigger);
+    wrap.appendChild(dropdown);
+
+    // Hide native select but keep it in DOM for form compatibility
+    hidden.style.display = 'none';
+    parent.insertBefore(wrap, hidden);
+
+    // Set initial label if value present
+    if (currentValue) {
+        const found = options.find(o => o.value === currentValue);
+        if (found) trigger.querySelector('.cs-label').textContent = found.label;
+    }
+
+    // Expose update method on the wrap for re-rendering options
+    wrap._updateOptions = (newOpts, newVal) => {
+        options = newOpts;
+        if (newVal !== undefined) selectedValue = newVal;
+        renderOptions(options);
+        const found = options.find(o => o.value === selectedValue);
+        trigger.querySelector('.cs-label').textContent = found ? found.label : placeholder;
+    };
+    wrap._setValue = (val) => {
+        selectedValue = val;
+        hidden.value = val;
+        hidden.dataset.csValue = val;
+        const found = options.find(o => o.value === val);
+        trigger.querySelector('.cs-label').textContent = found ? found.label : placeholder;
+        dropdown.querySelectorAll('.cs-option').forEach(o => o.classList.toggle('selected', o.dataset.value === val));
+    };
+
+    return wrap;
+}
+
+// Close custom selects when clicking outside
+document.addEventListener('click', () => {
+    document.querySelectorAll('.cs-wrap.open').forEach(w => w.classList.remove('open'));
+});
+
+// Helper: get value from a custom-select-enhanced element
+function csGetValue(id) {
+    const el = document.getElementById(id);
+    return el ? (el.dataset.csValue ?? el.value) : '';
+}
+
+// Helper: set value
+function csSetValue(id, val) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.dataset.csValue = val;
+    el.value = val;
+    const wrap = el.parentElement?.querySelector('.cs-wrap');
+    if (wrap?._setValue) wrap._setValue(val);
+}
+
 async function logAction(action, target = "", details = {}) {
     if (!auth.currentUser) return;
     target = target || "";
@@ -2898,8 +3063,8 @@ function loadProducts() {
     });
 }
 function applyAdminFilters() {
-    adminCategoryFilter = document.getElementById('admin-category-filter').value;
-    adminStatusFilter   = document.getElementById('admin-status-filter').value;
+    adminCategoryFilter = csGetValue('admin-category-filter') || 'Alle';
+    adminStatusFilter   = csGetValue('admin-status-filter')   || '';
     renderProductTable();
 }
 function sortAdminTable(column) {
@@ -3304,28 +3469,34 @@ function seedDefaultCategories() {
 }
 
 function populateCategorySelects() {
-    document.querySelectorAll('#prod-category, #edit-category-select, #bulk-category').forEach(select => {
-        if (!select) return;
-        const cur = select.value;
-        select.innerHTML = '<option value="">Kategorie wählen...</option>';
-        allCategories.forEach(c => {
-            const o = document.createElement('option');
-            o.value = c.name; o.textContent = c.name;
-            select.appendChild(o);
-        });
-        if (cur) select.value = cur;
+    const opts = [{ value:'', label:'Kategorie wählen...' }, ...allCategories.map(c=>({ value:c.name, label:c.name }))];
+    ['prod-category', 'edit-category-select', 'bulk-category', 'ped-cat-select', 'bke-cat-select'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const cur = el.dataset.csValue || el.value || '';
+        const wrap = el.parentElement?.querySelector('.cs-wrap');
+        if (wrap?._updateOptions) {
+            wrap._updateOptions(opts, cur);
+        } else {
+            // First time init
+            el.innerHTML = '<option value="">Kategorie wählen...</option>';
+            allCategories.forEach(c => { const o=document.createElement('option'); o.value=c.name; o.textContent=c.name; el.appendChild(o); });
+            initCustomSelect(id, opts, cur, id === 'bulk-category' ? null : null);
+        }
     });
 }
 
 function populateAdminCategoryFilter() {
-    const select = document.getElementById('admin-category-filter');
-    if (!select) return;
-    select.innerHTML = '<option value="Alle">Alle Kategorien</option>';
-    allCategories.forEach(cat => {
-        const o = document.createElement('option');
-        o.value = cat.name; o.textContent = cat.name;
-        select.appendChild(o);
-    });
+    const opts = [{ value:'Alle', label:'Alle Kategorien' }, ...allCategories.map(c=>({ value:c.name, label:c.name }))];
+    const wrap = document.getElementById('admin-category-filter')?.parentElement?.querySelector('.cs-wrap');
+    if (wrap?._updateOptions) {
+        wrap._updateOptions(opts, adminCategoryFilter || 'Alle');
+    } else {
+        initCustomSelect('admin-category-filter', opts, adminCategoryFilter || 'Alle', val => {
+            adminCategoryFilter = val;
+            renderProductTable();
+        });
+    }
 }
 
 // ====================== GUTSCHEINE v2 ======================
@@ -5200,9 +5371,8 @@ async function openEditModal(id) {
 
     populateCategorySelects();
     setTimeout(() => {
-        const s = document.getElementById('edit-category-select');
-        if (s) s.value = p.category || '';
-    }, 80);
+        csSetValue('edit-category-select', p.category || '');
+    }, 100);
 
     // dropzone
     document.getElementById('ped-dropzone').onclick = () => {
@@ -5277,9 +5447,9 @@ function openBulkEditModal() {
     document.getElementById('bulk-price-pct').value= '';
     document.getElementById('bulk-stock').value    = '';
     document.getElementById('bke-count').textContent = selectedProductIds.length + ' Produkte';
-    populateCategorySelects();
-    const sel = document.getElementById('bulk-category');
-    if (sel) sel.innerHTML = '<option value="">Kategorie nicht ändern</option>' + sel.innerHTML;
+    // Re-init category custom select with "nicht ändern" as first option
+    const bkeCatOpts = [{ value:'', label:'Kategorie nicht ändern' }, ...allCategories.map(c=>({ value:c.name, label:c.name }))];
+    initCustomSelect('bulk-category', bkeCatOpts, '', null);
     document.getElementById('bke-overlay').classList.add('open');
     document.getElementById('bke-sheet').classList.add('open');
 }
@@ -5293,7 +5463,7 @@ async function executeBulkEdit() {
     const priceVal  = document.getElementById('bulk-price').value;
     const pctVal    = document.getElementById('bulk-price-pct').value;
     const stockVal  = document.getElementById('bulk-stock').value;
-    const category  = document.getElementById('bulk-category').value || null;
+    const category  = csGetValue('bulk-category') || null;
     const available = _bkePillState['available'] ?? null;
     const isNew     = _bkePillState['new']       ?? null;
     const hasNic    = _bkePillState['nicotine']   ?? null;
@@ -5330,11 +5500,24 @@ async function logUnauthorizedAccess(reason, email=null) {
 function showAccessDenied(reason) {
     document.body.innerHTML=`<div class="fixed inset-0 flex items-center justify-center z-[99999]" style="background:linear-gradient(135deg,#0a0a0a,#1e0a0a,#0a0a0a);"><div style="background:#18181b;border:1px solid rgba(239,68,68,0.4);border-radius:2rem;padding:3rem;max-width:480px;width:90%;text-align:center;animation:pop 0.4s cubic-bezier(0.34,1.56,0.64,1);"><style>@keyframes pop{from{transform:scale(0.8);opacity:0}to{transform:scale(1);opacity:1}}</style><div style="width:96px;height:96px;background:rgba(239,68,68,0.1);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1.5rem;font-size:3rem;">🚫</div><h1 style="font-family:'Orbitron',sans-serif;font-size:2rem;font-weight:700;color:#ef4444;text-shadow:0 0 20px #ef4444;margin-bottom:0.75rem;">ZUGRIFF VERWEIGERT</h1><p style="color:#fca5a5;font-size:1rem;margin-bottom:0.5rem;">${reason==='not-logged-in'?'Du bist nicht angemeldet.':'Kein Administrator-Account.'}</p><div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:1rem;padding:1rem;margin:1.5rem 0;font-size:0.75rem;color:#9ca3af;">Dieser Zugriffsversuch wurde protokolliert.</div><a href="index.html" style="display:inline-block;background:linear-gradient(135deg,#ef4444,#dc2626);color:white;font-weight:700;padding:0.9rem 2.5rem;border-radius:9999px;text-decoration:none;">← Zurück zum Shop</a></div></div>`;
 }
+
+// Init static custom selects (status filter — options don't change)
+function initStaticSelects() {
+    initCustomSelect('admin-status-filter', [
+        { value:'',            label:'Alle Produkte' },
+        { value:'available',   label:'Nur verfügbar' },
+        { value:'unavailable', label:'Nur nicht verfügbar' },
+        { value:'new',         label:'Nur neue Sorten' },
+        { value:'tornado',     label:'Nur Tornado 30000' },
+        { value:'lowstock',    label:'⚠ Niedriger Bestand' },
+    ], '', val => { adminStatusFilter = val; renderProductTable(); });
+}
 auth.onAuthStateChanged(async (user) => {
     if (!user) { await logUnauthorizedAccess('not-logged-in',null); showAccessDenied('not-logged-in'); return; }
     document.getElementById('admin-email').textContent = user.email;
     const userDoc = await db.collection('users').doc(user.uid).get();
     if (!userDoc.exists || userDoc.data().role !== 'admin') { await logUnauthorizedAccess('not-admin',user.email); await auth.signOut(); showAccessDenied('not-admin'); return; }
+    initStaticSelects();
     loadSettings();
     // Load all data after admin check passes
     loadProducts();

@@ -1137,6 +1137,12 @@
         .srt-pill-auto:hover { background:linear-gradient(135deg,rgba(103,232,249,.2),rgba(167,139,250,.2)); border-color:rgba(103,232,249,.5); color:var(--srt-cyan); }
 
         /* ── Drag list wrapper ── */
+        .srt-cat-bar { display:flex; flex-wrap:wrap; gap:8px; }
+        .srt-cat-pill { display:inline-flex; align-items:center; gap:7px; padding:7px 16px; border-radius:40px; font-size:12px; font-weight:600; cursor:pointer; border:1px solid var(--srt-border); background:rgba(255,255,255,.04); color:var(--srt-muted); transition:all .18s; white-space:nowrap; }
+        .srt-cat-pill:hover { color:#fff; border-color:rgba(255,255,255,.2); background:rgba(255,255,255,.08); }
+        .srt-cat-pill.active { background:rgba(103,232,249,.12); border-color:rgba(103,232,249,.4); color:var(--srt-cyan); }
+        .srt-cat-hint { margin:12px 6px 0; padding:10px 14px; border-radius:12px; background:rgba(103,232,249,.06); border:1px solid rgba(103,232,249,.15); font-size:11px; color:rgba(103,232,249,.7); display:flex; align-items:center; gap:8px; }
+        .srt-cat-hint.hidden { display:none; }
         .srt-list-wrap { background:var(--srt-card); border:1px solid var(--srt-border); border-radius:20px; padding:10px; min-height:420px; position:relative; }
         .srt-list-empty { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:80px 20px; color:var(--srt-muted); gap:12px; font-size:13px; }
         .srt-list-empty i { font-size:36px; opacity:.2; }
@@ -2556,9 +2562,20 @@
                 </button>
             </div>
 
+            <!-- Category filter bar -->
+            <div class="srt-cat-bar" id="srt-cat-bar">
+                <button class="srt-cat-pill active" data-cat="Alle" onclick="srtSetCat('Alle',this)">
+                    <i class="fa-solid fa-layer-group"></i> Alle
+                </button>
+            </div>
+
             <!-- Drag list -->
             <div class="srt-list-wrap">
                 <div id="sort-list"></div>
+                <div id="srt-cat-hint" class="srt-cat-hint hidden">
+                    <i class="fa-solid fa-info-circle"></i>
+                    Du sortierst nur innerhalb dieser Kategorie. Beim Speichern wird die neue Reihenfolge global übernommen.
+                </div>
             </div>
 
             <!-- Save -->
@@ -4583,8 +4600,42 @@ async function resetAllStatistics() {
 }
 
 async function loadProductOrder() {
-    const doc=await db.collection('settings').doc('product_order').get();
-    productOrder=doc.exists?(doc.data().order||[]):[];
+    const doc = await db.collection('settings').doc('product_order').get();
+    productOrder = doc.exists ? (doc.data().order || []) : [];
+    renderSrtCatBar();
+    renderSortList();
+}
+
+let srtCurrentCat = 'Alle';
+
+function renderSrtCatBar() {
+    const bar = document.getElementById('srt-cat-bar');
+    if (!bar) return;
+    // Collect unique categories from allProducts
+    const cats = ['Alle', ...new Set(allProducts.map(p => p.category).filter(Boolean))];
+    bar.innerHTML = cats.map(cat => `
+        <button class="srt-cat-pill ${cat === srtCurrentCat ? 'active' : ''}"
+                data-cat="${cat}"
+                onclick="srtSetCat('${cat.replace(/'/g,"\'")}', this)">
+            ${cat === 'Alle' ? '<i class="fa-solid fa-layer-group"></i>' : `<i class="fa-solid fa-tag"></i>`}
+            ${cat}
+            ${cat !== 'Alle' ? `<span style="font-size:10px;opacity:.5;font-weight:400">(${allProducts.filter(p=>p.category===cat).length})</span>` : ''}
+        </button>`).join('');
+}
+
+function srtSetCat(cat, btn) {
+    srtCurrentCat = cat;
+    // Update active pill
+    document.querySelectorAll('.srt-cat-pill').forEach(p => p.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    else {
+        document.querySelectorAll('.srt-cat-pill').forEach(p => {
+            if (p.dataset.cat === cat) p.classList.add('active');
+        });
+    }
+    // Show/hide hint
+    const hint = document.getElementById('srt-cat-hint');
+    if (hint) hint.classList.toggle('hidden', cat === 'Alle');
     renderSortList();
 }
 
@@ -4592,7 +4643,12 @@ function renderSortList() {
     const container = document.getElementById('sort-list');
     container.innerHTML = '';
 
-    const sorted = [...allProducts].sort((a,b) => {
+    // Apply category filter
+    const sourceProducts = srtCurrentCat === 'Alle'
+        ? allProducts
+        : allProducts.filter(p => p.category === srtCurrentCat);
+
+    const sorted = [...sourceProducts].sort((a,b) => {
         const idxA=productOrder.indexOf(a.id), idxB=productOrder.indexOf(b.id);
         if(idxA===-1&&idxB===-1) return a.name.localeCompare(b.name);
         if(idxA===-1) return 1; if(idxB===-1) return -1;
@@ -4601,10 +4657,12 @@ function renderSortList() {
 
     // Update count
     const cnt = document.getElementById('srt-count');
-    if (cnt) cnt.textContent = sorted.length + ' Produkte';
+    if (cnt) cnt.textContent = srtCurrentCat === 'Alle'
+        ? sorted.length + ' Produkte'
+        : `${sorted.length} in „${srtCurrentCat}"`;
 
     if (!sorted.length) {
-        container.innerHTML = `<div class="srt-list-empty"><i class="fa-solid fa-box-open"></i>Noch keine Produkte geladen.</div>`;
+        container.innerHTML = `<div class="srt-list-empty"><i class="fa-solid fa-box-open"></i>Keine Produkte in dieser Kategorie.</div>`;
         return;
     }
 
@@ -4660,9 +4718,60 @@ function renderSortList() {
 }
 async function toggleIsNew(id,e){e.stopImmediatePropagation();const doc=await db.collection('products').doc(id).get();const newVal=!(doc.data().isNew||false);await db.collection('products').doc(id).update({isNew:newVal});showToast(`NEW-Status → ${newVal?'aktiv':'deaktiviert'}`);renderSortList();}
 async function toggleAvailableInSort(id,e){e.stopImmediatePropagation();const doc=await db.collection('products').doc(id).get();const cur=doc.data().available!==false;await db.collection('products').doc(id).update({available:!cur});showToast(`Verfügbarkeit → ${!cur?'NICHT verfügbar':'verfügbar'}`);renderSortList();}
-function autoSort(mode){const container=document.getElementById('sort-list');let items=Array.from(container.children);items.sort((a,b)=>{const pA=allProducts.find(p=>p.id===a.dataset.id);const pB=allProducts.find(p=>p.id===b.dataset.id);if(!pA||!pB)return 0;switch(mode){case'alpha':return pA.name.localeCompare(pB.name);case'new':return(pB.isNew?1:0)-(pA.isNew?1:0);case'tornado':return((pA.category==="WaveVapes Tornado 30000")?0:1)-((pB.category==="WaveVapes Tornado 30000")?0:1);case'available':return((pB.available!==false)?0:1)-((pA.available!==false)?0:1);case'stock':return(pB.stock||0)-(pA.stock||0);default:return 0;}});items.forEach(item=>container.appendChild(item));showToast('✅ Liste sortiert!','success');}
+function autoSort(mode){const container=document.getElementById('sort-list');let items=Array.from(container.children).filter(i=>i.dataset.id);items.sort((a,b)=>{const pA=allProducts.find(p=>p.id===a.dataset.id);const pB=allProducts.find(p=>p.id===b.dataset.id);if(!pA||!pB)return 0;switch(mode){case'alpha':return pA.name.localeCompare(pB.name);case'new':return(pB.isNew?1:0)-(pA.isNew?1:0);case'tornado':return((pA.category==="WaveVapes Tornado 30000")?0:1)-((pB.category==="WaveVapes Tornado 30000")?0:1);case'available':return((pB.available!==false)?0:1)-((pA.available!==false)?0:1);case'stock':return(pB.stock||0)-(pA.stock||0);default:return 0;}});items.forEach(item=>container.appendChild(item));showToast('✅ Liste sortiert!','success');}
 function autoSortPriority(){const container=document.getElementById('sort-list');let items=Array.from(container.children);items.sort((a,b)=>{const pA=allProducts.find(p=>p.id===a.dataset.id);const pB=allProducts.find(p=>p.id===b.dataset.id);if(!pA||!pB)return 0;const getPriority=p=>{if(p.available===false||(p.stock||0)<=0)return 4;if(p.isNew===true)return 1;if(p.category!=="WaveVapes Tornado 30000")return 2;return 3;};const prioA=getPriority(pA),prioB=getPriority(pB);if(prioA!==prioB)return prioA-prioB;return pA.name.localeCompare(pB.name);});items.forEach(item=>container.appendChild(item));showToast('✅ Auto-Priorität angewendet!','success');}
-async function saveProductOrder(){const items=document.querySelectorAll('#sort-list .sortable-item');const newOrder=Array.from(items).map(item=>item.dataset.id);await db.collection('settings').doc('product_order').set({order:newOrder},{merge:true});showToast('✅ Sortierung gespeichert!','success');}
+async function saveProductOrder() {
+    const visibleItems = Array.from(document.querySelectorAll('#sort-list .sortable-item')).map(i => i.dataset.id);
+
+    if (srtCurrentCat === 'Alle') {
+        // Save full order directly
+        await db.collection('settings').doc('product_order').set({ order: visibleItems }, { merge: true });
+    } else {
+        // Merge: keep existing order for other categories, replace order for current category
+        const otherIds = productOrder.filter(id => {
+            const p = allProducts.find(p => p.id === id);
+            return p && p.category !== srtCurrentCat;
+        });
+        // Also include any products not yet in productOrder
+        const allOtherIds = allProducts
+            .filter(p => p.category !== srtCurrentCat)
+            .map(p => p.id)
+            .filter(id => !otherIds.includes(id));
+        const fullOtherIds = [...otherIds, ...allOtherIds];
+
+        // Build merged order: interleave keeping relative positions
+        // Strategy: insert the reordered category items back at their original slot positions
+        const merged = [...productOrder];
+        // Get original positions of current cat items
+        const catSlots = productOrder
+            .map((id, idx) => ({ id, idx }))
+            .filter(({ id }) => allProducts.find(p => p.id === id && p.category === srtCurrentCat))
+            .map(({ idx }) => idx);
+
+        // Remove old cat items from merged
+        const withoutCat = merged.filter(id => {
+            const p = allProducts.find(p => p.id === id);
+            return !p || p.category !== srtCurrentCat;
+        });
+
+        // Insert new order at original slots (or append if no previous position)
+        let result = [...withoutCat];
+        const insertPositions = catSlots.slice().sort((a,b)=>a-b);
+        visibleItems.forEach((id, i) => {
+            const pos = insertPositions[i] !== undefined ? insertPositions[i] : result.length + i;
+            result.splice(Math.min(pos, result.length), 0, id);
+        });
+
+        // Append any new products not yet tracked
+        allProducts.forEach(p => { if (!result.includes(p.id)) result.push(p.id); });
+
+        await db.collection('settings').doc('product_order').set({ order: result }, { merge: true });
+        productOrder = result;
+    }
+
+    showToast('Sortierung gespeichert!', 'success');
+    await logAction('product_order_saved', '', { category: srtCurrentCat });
+}
 
 function showToast(msg, type='success') {
     const container = document.getElementById('toast-container');

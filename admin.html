@@ -3884,15 +3884,46 @@ async function checkStockWarnings() {
     });
 }
 
-function updateStats() {
+async function updateStats() {
     const active = allProducts.filter(p => p.available !== false).length;
-    const soldTotal = allProducts.reduce((sum, p) => sum + (p.sold || 0), 0);
-    const revenue = allProducts.reduce((sum, p) => sum + (p.sold || 0) * (p.price || 0), 0);
     const top = [...allProducts].sort((a, b) => (b.sold || 0) - (a.sold || 0))[0];
+
+    // Active count & top seller zeigen sofort
     document.getElementById('active-products').textContent = active;
-    document.getElementById('total-sold').textContent = soldTotal;
-    document.getElementById('total-revenue').textContent = revenue.toFixed(0) + ' €';
     document.getElementById('top-seller').textContent = top ? `${top.name} (${top.sold || 0}×)` : '—';
+    document.getElementById('total-sold').textContent    = '…';
+    document.getElementById('total-revenue').textContent = '…';
+
+    // Umsatz & Verkaufte Einheiten aus Orders (gleiche Quelle wie Analytics-Tab)
+    // Stornierte Bestellungen werden nicht gezählt
+    try {
+        const snap = await db.collection('orders')
+            .where('status', '!=', 'Storniert')
+            .get();
+
+        let totalRevenue = 0;
+        let totalSold    = 0;
+        snap.forEach(doc => {
+            const o = doc.data();
+            totalRevenue += o.total || 0;
+            if (Array.isArray(o.items)) {
+                o.items.forEach(item => {
+                    if (item.id != 999) totalSold += item.qty || 0; // 999 = Mystery Vape
+                });
+            }
+        });
+
+        document.getElementById('total-sold').textContent    = totalSold.toLocaleString('de-DE');
+        document.getElementById('total-revenue').textContent = totalRevenue.toFixed(0) + ' €';
+    } catch(e) {
+        // Fallback auf Produktfelder wenn Orders-Query fehlschlägt
+        const soldTotal = allProducts.reduce((sum, p) => sum + (p.sold || 0), 0);
+        const revenue   = allProducts.reduce((sum, p) => sum + (p.sold || 0) * (p.price || 0), 0);
+        document.getElementById('total-sold').textContent    = soldTotal.toLocaleString('de-DE');
+        document.getElementById('total-revenue').textContent = revenue.toFixed(0) + ' €';
+        console.warn('updateStats: Orders-Query fehlgeschlagen, Fallback aktiv:', e);
+    }
+
     checkStockWarnings();
 }
 

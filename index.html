@@ -1022,6 +1022,8 @@
         const EMAILJS_SERVICE_ID = "service_lzvte0x";
         const EMAILJS_PUBLIC_KEY = "t19pJAHgBpbKpZFGU";
         const EMAILJS_ORDER_TEMPLATE = "template_cgcu1m8";
+        const EMAILJS_ABANDONED_TEMPLATE = "template_abandoned"; // ← In EmailJS anlegen!
+        const ABANDONED_CART_DELAY_MS = 60 * 60 * 1000; // 1 Stunde
         // ====================== KONFIGURATION ======================
         const VALID_DISCOUNTS = {
             "LOYAL5": { type: "fixed", value: 5, points: 300 },
@@ -1274,6 +1276,8 @@
                 manageMysteryVape();
                 await saveUserCart();
                 updateCartDisplay();
+                // Check if user left items from a previous session
+                setTimeout(() => checkAbandonedCart(), 3000);
             } catch (e) {
                 console.error("Cart laden fehlgeschlagen", e);
                 cart = [];
@@ -1281,16 +1285,70 @@
         }
         // Debounced cart save — prevents rapid Firestore writes on fast +-clicks
         let _saveCartTimer = null;
+        let _abandonedCartTimer = null;
         function saveUserCart() {
             if (!currentUser) return;
             clearTimeout(_saveCartTimer);
             _saveCartTimer = setTimeout(async () => {
                 try {
-                    await db.collection("users").doc(currentUser.uid).update({ cart });
+                    const updateData = { cart };
+                    if (cart.length > 0) {
+                        // Save timestamp when cart was last filled — used for abandoned cart detection
+                        updateData.cartSavedAt = firebase.firestore.FieldValue.serverTimestamp();
+                        updateData.cartReminderSent = false;
+                        // Schedule abandoned cart check in 1 hour
+                        clearTimeout(_abandonedCartTimer);
+                        _abandonedCartTimer = setTimeout(() => checkAbandonedCart(), ABANDONED_CART_DELAY_MS);
+                    } else {
+                        // Cart emptied — clear abandoned cart flags
+                        updateData.cartSavedAt = firebase.firestore.FieldValue.delete();
+                        updateData.cartReminderSent = firebase.firestore.FieldValue.delete();
+                        clearTimeout(_abandonedCartTimer);
+                    }
+                    await db.collection("users").doc(currentUser.uid).update(updateData);
                 } catch(e) {
                     console.error("Cart speichern fehlgeschlagen:", e.message);
                 }
             }, 600);
+        }
+
+        async function checkAbandonedCart() {
+            if (!currentUser) return;
+            try {
+                const userDoc = await db.collection("users").doc(currentUser.uid).get();
+                if (!userDoc.exists) return;
+                const data = userDoc.data();
+
+                // Skip if cart is empty, reminder already sent, or no timestamp
+                if (!data.cart || data.cart.length === 0) return;
+                if (data.cartReminderSent === true) return;
+                if (!data.cartSavedAt) return;
+
+                // Check if enough time has passed
+                const savedAt = data.cartSavedAt.toMillis();
+                if (Date.now() - savedAt < ABANDONED_CART_DELAY_MS) return;
+
+                // Build item list for email
+                const itemLines = data.cart.map(item =>
+                    `${item.name}${item.nicotine ? ' (' + item.nicotine + ')' : ''} × ${item.qty} — ${(item.price * item.qty).toFixed(2).replace('.', ',')} €`
+                ).join('
+');
+                const cartTotal = data.cart.reduce((s, i) => s + (i.price * i.qty), 0).toFixed(2).replace('.', ',');
+
+                // Send email
+                await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_ABANDONED_TEMPLATE, {
+                    email:      data.email || currentUser.email,
+                    cart_items: itemLines,
+                    cart_total: cartTotal,
+                    shop_url:   "https://wavevapes.de"
+                });
+
+                // Mark as sent so we don't spam
+                await db.collection("users").doc(currentUser.uid).update({ cartReminderSent: true });
+                console.log("📧 Abandoned cart reminder sent to", currentUser.email);
+            } catch(e) {
+                console.warn("Abandoned cart check fehlgeschlagen:", e.message);
+            }
         }
         // ====================== AUTH + LOYALTY SYNC + LIVE BAN + IP-BAN ======================
         auth.onAuthStateChanged(async (user) => {
@@ -2188,6 +2246,14 @@
                 pendingNicotine = {};
                 document.getElementById("discount-status").innerHTML = "";
                 document.getElementById("discount-input").value = "";
+                // Clear abandoned cart flags — order was placed successfully
+                clearTimeout(_abandonedCartTimer);
+                try {
+                    await db.collection("users").doc(currentUser.uid).update({
+                        cartSavedAt: firebase.firestore.FieldValue.delete(),
+                        cartReminderSent: firebase.firestore.FieldValue.delete()
+                    });
+                } catch(e) { /* non-blocking */ }
                 await saveUserCart();
                 showSuccessModal(orderNumber, finalTotal, loyaltyEarned);
                 loadProducts();

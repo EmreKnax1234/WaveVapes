@@ -47,6 +47,185 @@
         @keyframes pulse-border { 0%,100%{border-color:rgba(239,68,68,0.5)} 50%{border-color:rgba(239,68,68,1)} }
         .warning-banner { animation: pulse-border 2s ease-in-out infinite; }
 
+        /* ═══════════════════════════════════════════
+           SUPERADMIN ZONE
+        ═══════════════════════════════════════════ */
+        .sa-locked-btn {
+            display:flex; align-items:center; gap:10px;
+            padding:9px 14px; border-radius:12px; cursor:pointer;
+            border:1px solid rgba(251,191,36,.2);
+            background:rgba(251,191,36,.05);
+            color:rgba(251,191,36,.7);
+            font-size:13px; font-weight:600;
+            transition:all .2s; margin-top:6px;
+        }
+        .sa-locked-btn:hover { background:rgba(251,191,36,.12); border-color:rgba(251,191,36,.5); color:#fbbf24; }
+        .sa-locked-btn i { font-size:13px; }
+
+        /* Re-Auth Modal */
+        .sa-modal-overlay {
+            position:fixed; inset:0; background:rgba(0,0,0,.85);
+            backdrop-filter:blur(12px); z-index:99998;
+            display:flex; align-items:center; justify-content:center;
+            animation:fadeIn .2s ease;
+        }
+        @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+        .sa-modal {
+            background:linear-gradient(160deg,#0f0f1a,#1a1a2e);
+            border:1px solid rgba(251,191,36,.25);
+            border-radius:28px; padding:40px;
+            width:100%; max-width:420px;
+            box-shadow:0 0 80px rgba(251,191,36,.08), 0 30px 60px rgba(0,0,0,.6);
+            animation:modalPop .3s cubic-bezier(0.34,1.56,0.64,1);
+        }
+        .sa-modal-icon {
+            width:64px; height:64px; border-radius:20px;
+            background:linear-gradient(135deg,rgba(251,191,36,.15),rgba(251,191,36,.05));
+            border:1px solid rgba(251,191,36,.3);
+            display:flex; align-items:center; justify-content:center;
+            font-size:28px; margin:0 auto 24px; color:#fbbf24;
+        }
+        .sa-modal-title { font-family:'Orbitron',sans-serif; font-size:18px; font-weight:700; color:#fbbf24; text-align:center; margin-bottom:6px; text-shadow:0 0 20px rgba(251,191,36,.4); }
+        .sa-modal-sub { font-size:12px; color:rgba(255,255,255,.35); text-align:center; margin-bottom:28px; line-height:1.5; }
+        .sa-input {
+            width:100%; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1);
+            border-radius:14px; padding:13px 16px; color:#fff; font-size:14px;
+            outline:none; transition:border-color .2s; box-sizing:border-box; margin-bottom:12px;
+        }
+        .sa-input:focus { border-color:rgba(251,191,36,.5); box-shadow:0 0 0 3px rgba(251,191,36,.08); }
+        .sa-btn-primary {
+            width:100%; padding:14px; border-radius:14px; border:none; cursor:pointer;
+            background:linear-gradient(135deg,#fbbf24,#f59e0b);
+            color:#000; font-weight:700; font-size:14px; margin-top:4px;
+            transition:opacity .2s, transform .1s;
+        }
+        .sa-btn-primary:hover { opacity:.92; transform:translateY(-1px); }
+        .sa-btn-primary:disabled { opacity:.4; cursor:not-allowed; transform:none; }
+        .sa-ip-badge {
+            display:inline-flex; align-items:center; gap:6px;
+            background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08);
+            border-radius:99px; padding:3px 10px; font-size:11px;
+            color:rgba(255,255,255,.35); margin-bottom:20px; font-family:'JetBrains Mono',monospace;
+        }
+        .sa-error { color:#f87171; font-size:12px; text-align:center; margin-top:8px; min-height:18px; }
+
+        /* Superadmin Tab Content */
+        .sa-shell { display:flex; flex-direction:column; gap:20px; max-width:1100px; }
+        .sa-header {
+            display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;
+            padding:24px 28px; border-radius:24px;
+            background:linear-gradient(135deg,rgba(251,191,36,.08),rgba(251,191,36,.02));
+            border:1px solid rgba(251,191,36,.2);
+        }
+        .sa-header-title { font-family:'Orbitron',sans-serif; font-size:20px; font-weight:700; color:#fbbf24; display:flex; align-items:center; gap:12px; text-shadow:0 0 20px rgba(251,191,36,.3); }
+        .sa-header-meta { font-size:11px; color:rgba(255,255,255,.3); margin-top:4px; }
+
+        /* Admin Cards */
+        .sa-admin-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:16px; }
+        .sa-admin-card {
+            background:#0f0f1a; border:1px solid rgba(255,255,255,.07);
+            border-radius:22px; padding:22px; transition:all .2s; position:relative;
+        }
+        .sa-admin-card:hover { border-color:rgba(251,191,36,.2); background:rgba(251,191,36,.02); }
+        .sa-admin-card.is-super { border-color:rgba(251,191,36,.35); background:rgba(251,191,36,.03); }
+        .sa-admin-avatar {
+            width:44px; height:44px; border-radius:14px;
+            background:linear-gradient(135deg,#fbbf24,#f59e0b);
+            display:flex; align-items:center; justify-content:center;
+            font-size:16px; font-weight:700; color:#000; flex-shrink:0;
+        }
+        .sa-admin-avatar.regular { background:linear-gradient(135deg,#67e8f9,#a78bfa); }
+        .sa-admin-email { font-size:14px; font-weight:600; color:#fff; word-break:break-all; }
+        .sa-admin-uid { font-size:10px; color:rgba(255,255,255,.2); font-family:'JetBrains Mono',monospace; margin-top:2px; }
+        .sa-role-badge {
+            display:inline-flex; align-items:center; gap:5px; padding:3px 10px;
+            border-radius:99px; font-size:11px; font-weight:700;
+        }
+        .sa-role-badge.super { background:rgba(251,191,36,.15); color:#fbbf24; border:1px solid rgba(251,191,36,.3); }
+        .sa-role-badge.regular { background:rgba(103,232,249,.1); color:#67e8f9; border:1px solid rgba(103,232,249,.2); }
+
+        /* Permission Toggles */
+        .sa-perms-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:14px; }
+        .sa-perm-toggle {
+            display:flex; align-items:center; gap:8px; padding:7px 10px;
+            border-radius:10px; background:rgba(255,255,255,.03);
+            border:1px solid rgba(255,255,255,.06); cursor:pointer;
+            transition:all .15s; font-size:12px; color:rgba(255,255,255,.5);
+            user-select:none;
+        }
+        .sa-perm-toggle.active { background:rgba(103,232,249,.08); border-color:rgba(103,232,249,.25); color:#fff; }
+        .sa-perm-toggle .sa-perm-dot {
+            width:8px; height:8px; border-radius:50%; border:2px solid rgba(255,255,255,.2); flex-shrink:0; transition:all .15s;
+        }
+        .sa-perm-toggle.active .sa-perm-dot { background:#67e8f9; border-color:#67e8f9; box-shadow:0 0 6px #67e8f9; }
+        .sa-perm-toggle i { font-size:11px; width:12px; text-align:center; }
+
+        .sa-card-actions { display:flex; gap:8px; margin-top:16px; }
+        .sa-btn-save {
+            flex:1; padding:9px; border-radius:12px; border:none; cursor:pointer;
+            background:rgba(103,232,249,.12); color:#67e8f9;
+            font-size:12px; font-weight:600; transition:all .15s;
+        }
+        .sa-btn-save:hover { background:rgba(103,232,249,.22); }
+        .sa-btn-remove {
+            padding:9px 14px; border-radius:12px; border:none; cursor:pointer;
+            background:rgba(239,68,68,.1); color:#f87171;
+            font-size:12px; font-weight:600; transition:all .15s;
+        }
+        .sa-btn-remove:hover { background:rgba(239,68,68,.2); }
+
+        /* Add Admin Panel */
+        .sa-add-panel {
+            background:#0f0f1a; border:1px solid rgba(103,232,249,.15);
+            border-radius:22px; padding:24px;
+        }
+        .sa-add-title { font-size:14px; font-weight:700; color:#67e8f9; margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+        .sa-add-row { display:flex; gap:10px; flex-wrap:wrap; }
+        .sa-add-input {
+            flex:1; min-width:200px; background:rgba(255,255,255,.05);
+            border:1px solid rgba(255,255,255,.1); border-radius:12px;
+            padding:11px 16px; color:#fff; font-size:13px; outline:none;
+            transition:border-color .2s;
+        }
+        .sa-add-input:focus { border-color:rgba(103,232,249,.4); }
+        .sa-btn-add {
+            padding:11px 20px; border-radius:12px; border:none; cursor:pointer;
+            background:linear-gradient(135deg,#67e8f9,#a78bfa); color:#000;
+            font-weight:700; font-size:13px; white-space:nowrap; transition:opacity .15s;
+        }
+        .sa-btn-add:hover { opacity:.88; }
+
+        /* IP Whitelist */
+        .sa-ip-list { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+        .sa-ip-chip {
+            display:inline-flex; align-items:center; gap:8px;
+            background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1);
+            border-radius:99px; padding:5px 14px; font-family:'JetBrains Mono',monospace;
+            font-size:12px; color:rgba(255,255,255,.7);
+        }
+        .sa-ip-chip.current { border-color:rgba(52,211,153,.4); color:#34d399; background:rgba(52,211,153,.08); }
+        .sa-ip-chip-rm { cursor:pointer; color:rgba(255,255,255,.3); transition:color .15s; margin-left:2px; }
+        .sa-ip-chip-rm:hover { color:#f87171; }
+
+        /* Section titles */
+        .sa-section-title {
+            font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+            color:rgba(255,255,255,.25); margin-bottom:12px; display:flex; align-items:center; gap:8px;
+        }
+        .sa-section-title::after { content:''; flex:1; height:1px; background:rgba(255,255,255,.06); }
+
+        /* Sidebar locked item */
+        .sidebar-item-locked {
+            display:flex; align-items:center; gap:10px;
+            padding:9px 14px; border-radius:12px; cursor:pointer;
+            color:rgba(251,191,36,.55); font-size:13px; font-weight:600;
+            border:1px solid transparent; transition:all .2s; margin-bottom:4px; margin-top:2px;
+        }
+        .sidebar-item-locked:hover { color:#fbbf24; background:rgba(251,191,36,.07); border-color:rgba(251,191,36,.2); }
+        .sidebar-item-locked.tab-active { background:rgba(251,191,36,.1); color:#fbbf24; border-color:rgba(251,191,36,.3); }
+        .sidebar-item-locked i { font-size:13px; width:18px; text-align:center; }
+        .sidebar-item-disabled { opacity:.3; cursor:not-allowed !important; pointer-events:none; }
+
 
         /* ═══════════════════════════════════════════
            CUSTOM SELECT — replaces all native <select>
@@ -1644,6 +1823,13 @@
             <div onclick="switchTab(8)" id="sidebar-8" class="sidebar-item"><i class="fa-solid fa-arrows-up-down"></i><span>Sortierung</span></div>
             <div onclick="switchTab(10)" id="sidebar-10" class="sidebar-item"><i class="fa-solid fa-users-cog"></i><span>Erw. Benutzer</span></div>
             <div onclick="switchTab(11)" id="sidebar-11" class="sidebar-item"><i class="fa-solid fa-star"></i><span>Bewertungen</span><span class="sidebar-badge" id="sb-reviews-badge" style="display:none">0</span></div>
+
+            <div class="sidebar-section-label" style="margin-top:12px; border-top:1px solid rgba(251,191,36,.1); padding-top:12px;">Superadmin</div>
+            <div onclick="openSuperadminZone()" id="sidebar-12" class="sidebar-item-locked" title="Nur für Superadmin">
+                <i class="fa-solid fa-shield-halved"></i>
+                <span>Superadmin Zone</span>
+                <i class="fa-solid fa-lock" style="margin-left:auto;font-size:10px;opacity:.6"></i>
+            </div>
         </div>
     </div>
     <!-- MAIN CONTENT -->
@@ -2745,6 +2931,72 @@
 
             <div class="rv-admin-list" id="rv-admin-list">
                 <div class="rv-admin-empty"><i class="fa-solid fa-spinner fa-spin"></i>Lade Bewertungen...</div>
+            </div>
+
+        </div>
+        </div>
+
+        <!-- TAB 12: SUPERADMIN ZONE -->
+        <div id="tab-content-12" class="hidden">
+        <div class="sa-shell">
+
+            <!-- Header -->
+            <div class="sa-header">
+                <div>
+                    <div class="sa-header-title">
+                        <i class="fa-solid fa-shield-halved"></i>
+                        Superadmin Zone
+                    </div>
+                    <div class="sa-header-meta" id="sa-session-info">Sitzung aktiv • Zugriff verifiziert</div>
+                </div>
+                <div style="display:flex;gap:10px;align-items:center">
+                    <div class="sa-ip-badge">
+                        <i class="fa-solid fa-location-dot" style="color:#34d399"></i>
+                        <span id="sa-current-ip-display">Lade...</span>
+                    </div>
+                    <button onclick="saLockZone()" style="padding:8px 16px;border-radius:10px;border:1px solid rgba(251,191,36,.3);background:rgba(251,191,36,.08);color:#fbbf24;font-size:12px;font-weight:600;cursor:pointer">
+                        <i class="fa-solid fa-lock"></i> Zone sperren
+                    </button>
+                </div>
+            </div>
+
+            <!-- IP Whitelist -->
+            <div class="sa-add-panel">
+                <div class="sa-section-title"><i class="fa-solid fa-map-pin" style="color:#fbbf24"></i> IP-Whitelist (Zugang zur Superadmin Zone)</div>
+                <div class="sa-add-row" style="margin-bottom:14px">
+                    <input class="sa-add-input" id="sa-ip-input" placeholder="IP-Adresse eingeben (z.B. 123.45.67.89)" style="font-family:'JetBrains Mono',monospace">
+                    <button class="sa-btn-add" onclick="saAddIP()" style="background:linear-gradient(135deg,#fbbf24,#f59e0b)">
+                        <i class="fa-solid fa-plus"></i> Hinzufügen
+                    </button>
+                    <button onclick="saAddCurrentIP()" style="padding:11px 16px;border-radius:12px;border:1px solid rgba(52,211,153,.3);background:rgba(52,211,153,.08);color:#34d399;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">
+                        <i class="fa-solid fa-location-dot"></i> Meine IP
+                    </button>
+                </div>
+                <div class="sa-ip-list" id="sa-ip-list">
+                    <div style="color:rgba(255,255,255,.2);font-size:12px">Lade IP-Whitelist...</div>
+                </div>
+            </div>
+
+            <!-- Add Admin -->
+            <div class="sa-add-panel">
+                <div class="sa-section-title"><i class="fa-solid fa-user-plus" style="color:#67e8f9"></i> Neuen Admin hinzufügen</div>
+                <div class="sa-add-row">
+                    <input class="sa-add-input" id="sa-new-admin-email" placeholder="E-Mail-Adresse des Benutzers" type="email">
+                    <button class="sa-btn-add" onclick="saAddAdmin()">
+                        <i class="fa-solid fa-plus"></i> Admin ernennen
+                    </button>
+                </div>
+                <p style="font-size:11px;color:rgba(255,255,255,.2);margin-top:10px">Der Benutzer muss bereits im System registriert sein. Er erhält standardmäßig eingeschränkte Rechte.</p>
+            </div>
+
+            <!-- Admin List -->
+            <div>
+                <div class="sa-section-title"><i class="fa-solid fa-users-cog" style="color:#a78bfa"></i> Admin-Verwaltung & Berechtigungen</div>
+                <div class="sa-admin-grid" id="sa-admin-grid">
+                    <div style="color:rgba(255,255,255,.2);font-size:13px;padding:20px">
+                        <i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>Lade Admins...
+                    </div>
+                </div>
             </div>
 
         </div>
@@ -5444,11 +5696,25 @@ function euShowTopCustomers(){
 const TAB_NAMES = {
     0:'Produkte', 1:'Bestellungen', 2:'Benutzer', 3:'Kategorien',
     4:'Gutscheine', 5:'Analytics', 6:'Admin Logs', 7:'Settings',
-    8:'Sortierung', 9:'Live Online', 10:'Erw. Benutzer'
+    8:'Sortierung', 9:'Live Online', 10:'Erw. Benutzer', 11:'Bewertungen', 12:'Superadmin Zone'
 };
 
 function switchTab(n) {
-    document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('tab-active'));
+    // Block if no permission (non-superadmin)
+    if (!saCurrentUserIsSuperadmin && n !== 12) {
+        const perm = SA_PERMISSIONS.find(p => p.tab === n);
+        if (perm) {
+            const userDoc_perms = window._currentAdminPerms;
+            if (userDoc_perms && !userDoc_perms.includes(perm.key)) {
+                showToast('⛔ Keine Berechtigung für diesen Bereich', 'error');
+                return;
+            }
+        }
+    }
+    // Tab 12 requires unlock
+    if (n === 12) { openSuperadminZone(); return; }
+
+    document.querySelectorAll('.sidebar-item, .sidebar-item-locked').forEach(el => el.classList.remove('tab-active'));
     const si = document.getElementById('sidebar-'+n);
     if (si) si.classList.add('tab-active');
     document.querySelectorAll('[id^="tab-content-"]').forEach(el => el.classList.add('hidden'));
@@ -6088,6 +6354,19 @@ auth.onAuthStateChanged(async (user) => {
     document.getElementById('admin-email').textContent = user.email;
     const userDoc = await db.collection('users').doc(user.uid).get();
     if (!userDoc.exists || userDoc.data().role !== 'admin') { await logUnauthorizedAccess('not-admin',user.email); await auth.signOut(); showAccessDenied('not-admin'); return; }
+
+    // ── Load permissions ──
+    const userData = userDoc.data();
+    const superSnap = await db.collection('settings').doc('superadmin').get();
+    const superUID = superSnap.exists ? superSnap.data().superadminUID : null;
+    saCurrentUserIsSuperadmin = (superUID === user.uid) || (!superUID); // auto-super if first admin
+    window._currentAdminPerms = userData.adminPermissions || SA_PERMISSIONS.map(p => p.key);
+
+    if (!saCurrentUserIsSuperadmin) {
+        applyAdminPermissions(window._currentAdminPerms);
+    }
+    // ─────────────────────
+
     initStaticSelects();
     loadSettings();
     rvAdminLoadStats();
@@ -6112,6 +6391,424 @@ auth.onAuthStateChanged(async (user) => {
 window.onload = () => {
     // Nothing here — data loading happens in auth callback after admin verification
 };
+</script>
+<!-- ═══════════════════════════════════════════
+     SUPERADMIN RE-AUTH MODAL
+═══════════════════════════════════════════ -->
+<div id="sa-reauth-modal" style="display:none" class="sa-modal-overlay">
+    <div class="sa-modal">
+        <div class="sa-modal-icon">
+            <i class="fa-solid fa-shield-halved"></i>
+        </div>
+        <div class="sa-modal-title">Superadmin Zone</div>
+        <div class="sa-modal-sub">
+            Gesicherter Bereich. Bestätige deine Identität<br>und stelle sicher, dass du in der IP-Whitelist bist.
+        </div>
+        <div style="text-align:center;margin-bottom:20px">
+            <div class="sa-ip-badge">
+                <i class="fa-solid fa-location-dot" style="color:#34d399"></i>
+                <span id="sa-ip-display">Ermittle IP...</span>
+            </div>
+            <div id="sa-ip-status" style="font-size:11px;margin-top:6px;color:rgba(255,255,255,.3)"></div>
+        </div>
+        <input class="sa-input" type="password" id="sa-reauth-password" placeholder="Passwort zur Bestätigung eingeben"
+               onkeydown="if(event.key==='Enter')saSubmitReauth()">
+        <button class="sa-btn-primary" id="sa-reauth-btn" onclick="saSubmitReauth()">
+            <i class="fa-solid fa-unlock"></i> &nbsp;Zugang bestätigen
+        </button>
+        <div class="sa-error" id="sa-reauth-error"></div>
+        <button onclick="saCloseReauthModal()" style="width:100%;margin-top:14px;padding:10px;background:transparent;border:none;color:rgba(255,255,255,.25);font-size:12px;cursor:pointer;transition:color .15s" onmouseover="this.style.color='rgba(255,255,255,.5)'" onmouseout="this.style.color='rgba(255,255,255,.25)'">
+            Abbrechen
+        </button>
+    </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  SUPERADMIN ZONE — vollständiges System
+// ═══════════════════════════════════════════════════════
+
+// Permission definitions — which tabs each permission controls
+const SA_PERMISSIONS = [
+    { key:'products',    label:'Produkte',       icon:'fa-box',             tab:0  },
+    { key:'orders',      label:'Bestellungen',   icon:'fa-receipt',         tab:1  },
+    { key:'users',       label:'Benutzer',        icon:'fa-users',           tab:2  },
+    { key:'categories',  label:'Kategorien',      icon:'fa-tags',            tab:3  },
+    { key:'coupons',     label:'Gutscheine',      icon:'fa-ticket',          tab:4  },
+    { key:'analytics',   label:'Analytics',       icon:'fa-chart-line',      tab:5  },
+    { key:'logs',        label:'Admin Logs',      icon:'fa-list-check',      tab:6  },
+    { key:'settings',    label:'Settings',        icon:'fa-sliders',         tab:7  },
+    { key:'sorting',     label:'Sortierung',      icon:'fa-arrows-up-down',  tab:8  },
+    { key:'liveonline',  label:'Live Online',     icon:'fa-users-viewfinder',tab:9  },
+    { key:'extusers',    label:'Erw. Benutzer',   icon:'fa-users-cog',       tab:10 },
+    { key:'reviews',     label:'Bewertungen',     icon:'fa-star',            tab:11 },
+];
+
+let saUnlocked = false;
+let currentIP = '';
+let saAllAdmins = [];
+let saIPWhitelist = [];
+let saCurrentUserIsSuperadmin = false;
+
+// ── Fetch current IP ──────────────────────────────────
+async function saFetchIP() {
+    try {
+        const r = await fetch('https://api.ipify.org?format=json');
+        const d = await r.json();
+        currentIP = d.ip;
+        document.querySelectorAll('#sa-ip-display, #sa-current-ip-display').forEach(el => {
+            if (el) el.textContent = currentIP;
+        });
+        return currentIP;
+    } catch(e) {
+        document.querySelectorAll('#sa-ip-display, #sa-current-ip-display').forEach(el => {
+            if (el) el.textContent = 'Unbekannt';
+        });
+        return '';
+    }
+}
+
+// ── Open Re-Auth Modal ────────────────────────────────
+async function openSuperadminZone() {
+    // Always show modal first
+    document.getElementById('sa-reauth-modal').style.display = 'flex';
+    document.getElementById('sa-reauth-error').textContent = '';
+    document.getElementById('sa-reauth-password').value = '';
+    document.getElementById('sa-reauth-btn').disabled = false;
+
+    // Fetch IP & check whitelist
+    const ip = await saFetchIP();
+    await saCheckIPStatus(ip);
+
+    setTimeout(() => document.getElementById('sa-reauth-password').focus(), 100);
+}
+
+async function saCheckIPStatus(ip) {
+    const statusEl = document.getElementById('sa-ip-status');
+    if (!statusEl) return;
+    try {
+        const snap = await db.collection('settings').doc('superadmin').get();
+        const data = snap.exists ? snap.data() : {};
+        saIPWhitelist = data.allowedIPs || [];
+        const allowed = saIPWhitelist.includes(ip) || saIPWhitelist.length === 0;
+        if (allowed) {
+            statusEl.textContent = '✅ IP-Adresse ist in der Whitelist';
+            statusEl.style.color = '#34d399';
+        } else {
+            statusEl.textContent = '⛔ Diese IP ist NICHT in der Whitelist';
+            statusEl.style.color = '#f87171';
+        }
+        return allowed;
+    } catch(e) {
+        statusEl.textContent = 'Whitelist konnte nicht geladen werden';
+        return true; // fail open for initial setup
+    }
+}
+
+function saCloseReauthModal() {
+    document.getElementById('sa-reauth-modal').style.display = 'none';
+}
+
+// ── Submit Re-Auth ────────────────────────────────────
+async function saSubmitReauth() {
+    const pw = document.getElementById('sa-reauth-password').value;
+    const errEl = document.getElementById('sa-reauth-error');
+    const btn = document.getElementById('sa-reauth-btn');
+    errEl.textContent = '';
+
+    if (!pw) { errEl.textContent = 'Bitte Passwort eingeben.'; return; }
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> &nbsp;Prüfe...';
+
+    try {
+        // Check IP whitelist (if entries exist)
+        const snap = await db.collection('settings').doc('superadmin').get();
+        const data = snap.exists ? snap.data() : {};
+        saIPWhitelist = data.allowedIPs || [];
+        const ip = currentIP || await saFetchIP();
+
+        if (saIPWhitelist.length > 0 && !saIPWhitelist.includes(ip)) {
+            errEl.textContent = '⛔ Deine IP-Adresse ist nicht in der Whitelist.';
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-unlock"></i> &nbsp;Zugang bestätigen';
+            return;
+        }
+
+        // Re-authenticate with Firebase
+        const user = auth.currentUser;
+        const credential = firebase.auth.EmailAuthProvider.credential(user.email, pw);
+        await user.reauthenticateWithCredential(credential);
+
+        // Check superadmin flag in Firestore
+        const userDoc = await db.collection('users').doc(user.uid).get();
+        const userData = userDoc.data() || {};
+
+        // First-time setup: if no superadmin exists yet, promote current user
+        const anySuper = (data.superadminUID || null);
+        if (!anySuper) {
+            // First superadmin — auto-promote
+            await db.collection('settings').doc('superadmin').set({
+                superadminUID: user.uid,
+                allowedIPs: saIPWhitelist
+            }, { merge: true });
+            saCurrentUserIsSuperadmin = true;
+        } else {
+            saCurrentUserIsSuperadmin = data.superadminUID === user.uid;
+        }
+
+        if (!saCurrentUserIsSuperadmin) {
+            errEl.textContent = '⛔ Du bist kein Superadmin.';
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-unlock"></i> &nbsp;Zugang bestätigen';
+            return;
+        }
+
+        // Unlock!
+        saUnlocked = true;
+        saCloseReauthModal();
+        await logAction('superadmin_zone_access', user.uid, { ip });
+        saOpenTab();
+
+    } catch(e) {
+        if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') {
+            errEl.textContent = '❌ Falsches Passwort.';
+        } else if (e.code === 'auth/too-many-requests') {
+            errEl.textContent = '⏳ Zu viele Versuche. Bitte warte kurz.';
+        } else {
+            errEl.textContent = 'Fehler: ' + (e.message || e.code);
+        }
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-unlock"></i> &nbsp;Zugang bestätigen';
+    }
+}
+
+// ── Open Tab 12 ───────────────────────────────────────
+function saOpenTab() {
+    // Update TAB_NAMES
+    TAB_NAMES[12] = 'Superadmin Zone';
+
+    document.querySelectorAll('.sidebar-item, .sidebar-item-locked').forEach(el => el.classList.remove('tab-active'));
+    document.getElementById('sidebar-12').classList.add('tab-active');
+    document.querySelectorAll('[id^="tab-content-"]').forEach(el => el.classList.add('hidden'));
+    document.getElementById('tab-content-12').classList.remove('hidden');
+    const bc = document.getElementById('hdr-tab-name');
+    if (bc) bc.textContent = '🛡️ Superadmin Zone';
+
+    // Update session info
+    document.getElementById('sa-session-info').textContent =
+        `Sitzung aktiv • ${new Date().toLocaleTimeString('de-DE')} • ${auth.currentUser?.email}`;
+    document.getElementById('sa-current-ip-display').textContent = currentIP || '...';
+
+    saLoadAdmins();
+    saLoadIPWhitelist();
+}
+
+// ── Lock Zone ─────────────────────────────────────────
+function saLockZone() {
+    saUnlocked = false;
+    document.getElementById('sidebar-12').classList.remove('tab-active');
+    switchTab(0);
+    showToast('🔒 Superadmin Zone gesperrt');
+}
+
+// ── Load Admins ───────────────────────────────────────
+async function saLoadAdmins() {
+    const grid = document.getElementById('sa-admin-grid');
+    grid.innerHTML = '<div style="color:rgba(255,255,255,.2);font-size:13px;padding:20px"><i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>Lade Admins...</div>';
+
+    const snap = await db.collection('users').where('role','==','admin').get();
+    const superSnap = await db.collection('settings').doc('superadmin').get();
+    const superUID = superSnap.exists ? superSnap.data().superadminUID : null;
+
+    saAllAdmins = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    if (saAllAdmins.length === 0) {
+        grid.innerHTML = '<div style="color:rgba(255,255,255,.2);font-size:13px;padding:20px">Keine Admins gefunden.</div>';
+        return;
+    }
+
+    grid.innerHTML = '';
+    saAllAdmins.forEach(admin => {
+        const isSuper = admin.id === superUID;
+        const perms = admin.adminPermissions || SA_PERMISSIONS.map(p => p.key); // default: all
+        const card = document.createElement('div');
+        card.className = `sa-admin-card${isSuper ? ' is-super' : ''}`;
+        card.id = `sa-card-${admin.id}`;
+
+        const initials = (admin.email || '?').substring(0,2).toUpperCase();
+        const permsHTML = SA_PERMISSIONS.map(p => `
+            <div class="sa-perm-toggle ${perms.includes(p.key) ? 'active' : ''}"
+                 id="sap-${admin.id}-${p.key}"
+                 onclick="saTogglePerm('${admin.id}','${p.key}',this)"
+                 title="${p.label}">
+                <div class="sa-perm-dot"></div>
+                <i class="fa-solid ${p.icon}"></i>
+                <span>${p.label}</span>
+            </div>`).join('');
+
+        card.innerHTML = `
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px">
+                <div style="display:flex;align-items:center;gap:12px">
+                    <div class="sa-admin-avatar ${isSuper ? '' : 'regular'}">${initials}</div>
+                    <div>
+                        <div class="sa-admin-email">${admin.email || admin.id}</div>
+                        <div class="sa-admin-uid">${admin.id.substring(0,16)}...</div>
+                        ${admin.username ? `<div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:2px">@${admin.username}</div>` : ''}
+                    </div>
+                </div>
+                <div class="sa-role-badge ${isSuper ? 'super' : 'regular'}">
+                    ${isSuper ? '<i class="fa-solid fa-shield-halved"></i> Superadmin' : '<i class="fa-solid fa-user-shield"></i> Admin'}
+                </div>
+            </div>
+            ${isSuper ? `<div style="font-size:11px;color:rgba(251,191,36,.5);padding:8px 12px;border-radius:10px;background:rgba(251,191,36,.05);border:1px solid rgba(251,191,36,.1);margin-bottom:12px"><i class="fa-solid fa-crown" style="margin-right:6px"></i>Superadmin hat immer alle Rechte — Berechtigungen gelten nur für reguläre Admins.</div>` : ''}
+            <div style="font-size:11px;color:rgba(255,255,255,.25);margin-bottom:8px;font-weight:600;letter-spacing:.05em">BERECHTIGUNGEN</div>
+            <div class="sa-perms-grid${isSuper ? '" style="opacity:.35;pointer-events:none' : ''}">${permsHTML}</div>
+            <div class="sa-card-actions" style="margin-top:16px">
+                ${!isSuper ? `
+                <button class="sa-btn-save" onclick="saSavePerms('${admin.id}')">
+                    <i class="fa-solid fa-floppy-disk"></i> Berechtigungen speichern
+                </button>
+                <button class="sa-btn-remove" onclick="saRemoveAdmin('${admin.id}','${admin.email}')" title="Admin-Rechte entziehen">
+                    <i class="fa-solid fa-user-minus"></i>
+                </button>` : ''}
+            </div>`;
+        grid.appendChild(card);
+    });
+}
+
+// ── Toggle Permission ─────────────────────────────────
+function saTogglePerm(uid, key, el) {
+    el.classList.toggle('active');
+}
+
+// ── Save Permissions ──────────────────────────────────
+async function saSavePerms(uid) {
+    const perms = SA_PERMISSIONS
+        .filter(p => document.getElementById(`sap-${uid}-${p.key}`)?.classList.contains('active'))
+        .map(p => p.key);
+
+    await db.collection('users').doc(uid).update({ adminPermissions: perms });
+    await logAction('admin_permissions_updated', uid, { permissions: perms });
+    showToast('✅ Berechtigungen gespeichert');
+
+    // Refresh sidebar if it's the current user
+    if (auth.currentUser?.uid === uid) applyAdminPermissions(perms);
+}
+
+// ── Add Admin ────────────────────────────────────────
+async function saAddAdmin() {
+    const email = document.getElementById('sa-new-admin-email').value.trim();
+    if (!email) { showToast('Bitte E-Mail eingeben', 'error'); return; }
+
+    // Find user by email
+    const snap = await db.collection('users').where('email','==',email).limit(1).get();
+    if (snap.empty) { showToast('❌ Benutzer nicht gefunden', 'error'); return; }
+
+    const doc = snap.docs[0];
+    if (doc.data().role === 'admin') { showToast('Benutzer ist bereits Admin', 'warning'); return; }
+
+    await doc.ref.update({
+        role: 'admin',
+        adminPermissions: SA_PERMISSIONS.map(p => p.key) // all permissions by default
+    });
+    await logAction('admin_added', doc.id, { email });
+    showToast(`✅ ${email} ist jetzt Admin`);
+    document.getElementById('sa-new-admin-email').value = '';
+    saLoadAdmins();
+}
+
+// ── Remove Admin ─────────────────────────────────────
+async function saRemoveAdmin(uid, email) {
+    if (!confirm(`Admin-Rechte von ${email} wirklich entziehen?`)) return;
+    await db.collection('users').doc(uid).update({
+        role: firebase.firestore.FieldValue.delete(),
+        adminPermissions: firebase.firestore.FieldValue.delete()
+    });
+    await logAction('admin_removed', uid, { email });
+    showToast(`🚫 ${email} ist kein Admin mehr`);
+    saLoadAdmins();
+}
+
+// ── IP Whitelist ──────────────────────────────────────
+async function saLoadIPWhitelist() {
+    const snap = await db.collection('settings').doc('superadmin').get();
+    saIPWhitelist = snap.exists ? (snap.data().allowedIPs || []) : [];
+    renderIPList();
+}
+
+function renderIPList() {
+    const el = document.getElementById('sa-ip-list');
+    if (!el) return;
+    if (saIPWhitelist.length === 0) {
+        el.innerHTML = '<div style="font-size:12px;color:rgba(255,255,255,.2)"><i class="fa-solid fa-info-circle" style="margin-right:6px"></i>Keine IPs eingetragen — alle IPs haben Zugang (nur Passwort nötig)</div>';
+        return;
+    }
+    el.innerHTML = saIPWhitelist.map(ip => `
+        <div class="sa-ip-chip${ip === currentIP ? ' current' : ''}">
+            ${ip === currentIP ? '<i class="fa-solid fa-circle" style="font-size:7px;color:#34d399"></i>' : ''}
+            ${ip}
+            <i class="fa-solid fa-xmark sa-ip-chip-rm" onclick="saRemoveIP('${ip}')" title="Entfernen"></i>
+        </div>`).join('');
+}
+
+async function saAddIP() {
+    const ip = document.getElementById('sa-ip-input').value.trim();
+    const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
+    if (!ip || !ipRegex.test(ip)) { showToast('Ungültige IP-Adresse', 'error'); return; }
+    if (saIPWhitelist.includes(ip)) { showToast('IP bereits in der Liste', 'warning'); return; }
+    saIPWhitelist.push(ip);
+    await saUpdateIPWhitelist();
+    document.getElementById('sa-ip-input').value = '';
+    renderIPList();
+    showToast(`✅ IP ${ip} hinzugefügt`);
+}
+
+async function saAddCurrentIP() {
+    const ip = currentIP || await saFetchIP();
+    if (!ip) { showToast('IP konnte nicht ermittelt werden', 'error'); return; }
+    if (saIPWhitelist.includes(ip)) { showToast('Deine IP ist bereits in der Liste', 'warning'); return; }
+    saIPWhitelist.push(ip);
+    await saUpdateIPWhitelist();
+    renderIPList();
+    showToast(`✅ Deine IP ${ip} hinzugefügt`);
+}
+
+async function saRemoveIP(ip) {
+    if (!confirm(`IP ${ip} aus der Whitelist entfernen?`)) return;
+    saIPWhitelist = saIPWhitelist.filter(i => i !== ip);
+    await saUpdateIPWhitelist();
+    renderIPList();
+    showToast(`IP ${ip} entfernt`);
+}
+
+async function saUpdateIPWhitelist() {
+    await db.collection('settings').doc('superadmin').set(
+        { allowedIPs: saIPWhitelist },
+        { merge: true }
+    );
+    await logAction('ip_whitelist_updated', 'superadmin', { ips: saIPWhitelist });
+}
+
+// ── Apply permissions to sidebar ─────────────────────
+function applyAdminPermissions(perms) {
+    if (!perms || saCurrentUserIsSuperadmin) return; // Superadmin sieht alles
+    SA_PERMISSIONS.forEach(p => {
+        const sidebarEl = document.getElementById('sidebar-' + p.tab);
+        if (!sidebarEl) return;
+        if (perms.includes(p.key)) {
+            sidebarEl.classList.remove('sidebar-item-disabled');
+            sidebarEl.style.pointerEvents = '';
+            sidebarEl.style.opacity = '';
+        } else {
+            sidebarEl.classList.add('sidebar-item-disabled');
+            sidebarEl.title = '⛔ Keine Berechtigung';
+        }
+    });
+}
+
+// ── Init: fetch IP on load ────────────────────────────
+saFetchIP();
 </script>
 </body>
 </html>

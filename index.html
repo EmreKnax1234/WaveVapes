@@ -188,9 +188,9 @@
         .qty-btn:hover { background-color: #22d3ee; color: black; }
         @keyframes boltPulse { 0%, 100% { transform: scale(1) rotate(0deg); color: #fde047; } 50% { transform: scale(1.35) rotate(20deg); color: #facc15; } }
         .animate-bolt { animation: boltPulse 650ms infinite alternate ease-in-out; display: inline-block; text-shadow: 0 0 15px #facc15; }
-        #notification-toast { position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); backdrop-filter: blur(12px); color: #67e8f9; padding: 12px 24px; border-radius: 9999px; font-size: 13px; opacity: 0; transition: all 0.6s cubic-bezier(0.34,1.56,0.64,1); z-index: 1000; max-width: 92%; text-align: center; box-shadow: none; pointer-events: none; }
+        #notification-toast { position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%); background: transparent; backdrop-filter: none; color: #67e8f9; padding: 12px 24px; border-radius: 9999px; font-size: 13px; opacity: 0; visibility: hidden; transition: opacity 0.6s cubic-bezier(0.34,1.56,0.64,1), transform 0.6s cubic-bezier(0.34,1.56,0.64,1), visibility 0s linear 0.6s; z-index: 1000; max-width: 92%; text-align: center; box-shadow: none; pointer-events: none; }
         @media (max-width: 1023px) { #notification-toast { bottom: 15px !important; } }
-        #notification-toast.visible { opacity: 1; transform: translateX(-50%) translateY(-10px); box-shadow: 0 10px 30px -10px rgb(103 232 249); pointer-events: auto; }
+        #notification-toast.visible { opacity: 1; visibility: visible; background: rgba(0,0,0,0.85); backdrop-filter: blur(12px); transform: translateX(-50%) translateY(-10px); box-shadow: 0 10px 30px -10px rgb(103 232 249); pointer-events: auto; transition: opacity 0.6s cubic-bezier(0.34,1.56,0.64,1), transform 0.6s cubic-bezier(0.34,1.56,0.64,1), visibility 0s linear 0s; }
         .price-row { display: flex; justify-content: center; align-items: baseline; gap: 8px; margin-bottom: 12px; }
         .discount-price { font-size: 1.35rem; text-decoration: line-through; color: #9ca3af; }
         .sale-price { font-size: 1.85rem; font-weight: 700; color: #ef4444; }
@@ -599,21 +599,10 @@
         </div>
         <!-- TABS -->
         <div id="category-tabs" class="category-tabs flex overflow-x-auto gap-x-6 pb-4 border-b border-white/10 mb-8 text-base whitespace-nowrap" style="-webkit-overflow-scrolling:touch"></div>
-        <!-- SEARCH + SORT -->
-        <div class="flex gap-3 mb-8">
-            <div class="relative flex-1">
-                <i class="fa-solid fa-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-cyan-400"></i>
-                <input id="search-input" type="search" inputmode="search" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Flavor suchen..." onkeyup="filterProducts()" oninput="filterProducts()" class="w-full bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl pl-12 pr-6 py-4 text-base outline-none transition" autocomplete="off">
-            </div>
-            <div class="relative flex-shrink-0">
-                <i class="fa-solid fa-arrow-up-wide-short absolute left-4 top-1/2 -translate-y-1/2 text-cyan-400 pointer-events-none" style="z-index:1"></i>
-                <select id="sort-select" onchange="filterProducts()" class="h-full bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl pl-10 pr-5 py-4 text-sm outline-none transition appearance-none cursor-pointer text-white" style="color-scheme:dark">
-                    <option value="standard">Standard</option>
-                    <option value="price_asc">💰 Günstigste</option>
-                    <option value="price_desc">💎 Teuerste</option>
-                    <option value="popular">🔥 Beliebteste</option>
-                </select>
-            </div>
+        <!-- SEARCH -->
+        <div class="relative mb-8">
+            <i class="fa-solid fa-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-cyan-400"></i>
+            <input id="search-input" type="search" inputmode="search" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Flavor suchen..." onkeyup="filterProducts()" oninput="filterProducts()" class="w-full bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl pl-12 pr-6 py-4 text-base outline-none transition" autocomplete="off">
         </div>
         <!-- PRODUCTS GRID -->
         <div id="products-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6"></div>
@@ -1828,12 +1817,7 @@
                 const searchMatch = !searchTerm || p.name.toLowerCase().includes(searchTerm);
                 return catMatch && searchMatch;
             });
-            const sortMode = document.getElementById('sort-select')?.value || 'standard';
             filtered.sort((a, b) => {
-                if (sortMode === 'price_asc')  return a.price - b.price;
-                if (sortMode === 'price_desc') return b.price - a.price;
-                if (sortMode === 'popular')    return (b.sold || 0) - (a.sold || 0);
-                // standard: respect manual product order
                 const idxA = productOrder.indexOf(a.id);
                 const idxB = productOrder.indexOf(b.id);
                 if (idxA !== -1 && idxB !== -1) return idxA - idxB;
@@ -2577,8 +2561,8 @@
             modal.classList.remove("hidden");
             modal.classList.add("flex");
             // Load reviews after modal renders
-            rvLoad(product.id);
-            rvCheckCanReview(product.id);
+            rvLoad('${product.id}');
+            rvCheckCanReview('${product.id}');
         }
 
         // ====================== BEWERTUNGEN ======================
@@ -2622,18 +2606,23 @@
             }
 
             // Try get() first (works even without real-time rules)
-            const reviewQuery = db.collection('reviews')
+            db.collection('reviews')
                 .where('productId', '==', productId)
-                .where('approved', '==', true);
-
-            // Live listener — updates automatically when admin approves a review
-            const unsub = reviewQuery.onSnapshot(snap => {
-                renderReviews(snap.docs.map(d => ({id:d.id,...d.data()})));
-            }, err => {
-                console.error('rvLoad error:', err.code, err.message);
-                listEl.innerHTML = `<div class="rv-empty" style="color:#f87171;font-size:11px">Fehler ${err.code}: ${err.message}<br><br>Firestore Index fehlt – Link in der Konsole (F12) anklicken!</div>`;
-            });
-            _rvUnsubscribers[productId] = unsub;
+                .get()
+                .then(snap => {
+                    renderReviews(snap.docs.map(d => ({id:d.id,...d.data()})));
+                    // Then also attach live listener for real-time updates
+                    const unsub = db.collection('reviews')
+                        .where('productId', '==', productId)
+                        .onSnapshot(snap2 => {
+                            renderReviews(snap2.docs.map(d => ({id:d.id,...d.data()})));
+                        }, () => {}); // silent — get() already showed data
+                    _rvUnsubscribers[productId] = unsub;
+                })
+                .catch(err => {
+                    console.error('rvLoad error:', err.code, err.message);
+                    listEl.innerHTML = `<div class="rv-empty" style="color:#f87171;font-size:11px">Fehler ${err.code}: ${err.message}<br><br>Bitte firestore.rules deployen (reviews allow read: if true)</div>`;
+                });
         }
 
         async function rvCheckCanReview(productId) {

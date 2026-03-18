@@ -1968,7 +1968,7 @@
                     return;
                 }
                 // Store coupon ref — mark used only at order placement (not on apply, to avoid waste on abandoned carts)
-                appliedDiscount = { code: input, type: coupon.type, value: coupon.value, couponId: couponDocRef.id, needsFirestoreUpdate: true };
+                appliedDiscount = { code: input, type: coupon.type, value: coupon.value, couponId: couponDocRef.id };
                 const display = coupon.type === "percent" ? `${coupon.value}%` : `${coupon.value}€`;
                 status.innerHTML = `<span class="text-emerald-400">✓ ${input} (${display}) eingelöst!</span>`;
                 updateCartDisplay();
@@ -2489,32 +2489,124 @@
             _orderInProgress = true;
             const orderButton = document.querySelector('[onclick="placeOrder()"]');
             if (orderButton) { orderButton.disabled = true; orderButton.textContent = "Bestellung wird verarbeitet..."; }
-            const orderNumber = generateOrderNumber();
-            const finalTotal = calculateCartTotal();
-            const loyaltyEarned = Math.floor(getProductTotal());
+
             try {
-                // Mark coupon as used now that order is confirmed
-                if (appliedDiscount?.needsFirestoreUpdate && appliedDiscount?.couponId) {
-                    try {
-                        await db.collection("coupons").doc(appliedDiscount.couponId).update({
+                // ═══════════════════════════════════════════════════════
+                // SECURITY: Re-fetch all product prices from Firestore.
+                // This prevents a user from manipulating item.price in
+                // the client-side cart to get products for less.
+                // ═══════════════════════════════════════════════════════
+                const cartProductIds = [...new Set(
+                    cart.filter(i => i.id != MYSTERY_ID).map(i => String(i.id))
+                )];
+                const priceSnaps = await Promise.all(
+                    cartProductIds.map(id => db.collection("products").doc(id).get())
+                );
+                const serverPriceMap = {};
+                priceSnaps.forEach(snap => {
+                    if (snap.exists) serverPriceMap[snap.id] = snap.data().price || 0;
+                });
+                // Verify all products still exist and are available
+                for (const id of cartProductIds) {
+                    if (serverPriceMap[id] === undefined) {
+                        throw new Error("Ein Produkt im Warenkorb ist nicht mehr verfügbar.");
+                    }
+                }
+                // Build server-verified cart items (use Firestore price, not client price)
+                const verifiedItems = cart.map(item => ({
+                    id: item.id,
+                    name: item.name,
+                    qty: item.qty,
+                    price: item.id == MYSTERY_ID ? (item.price || 0) : serverPriceMap[String(item.id)],
+                    nicotine: item.nicotine || ""
+                }));
+                // Server-side subtotal (mystery vape excluded from subtotal)
+                let serverSubtotal = verifiedItems.reduce((sum, item) => {
+                    return item.id == MYSTERY_ID ? sum : sum + item.qty * item.price;
+                }, 0);
+
+                // ═══════════════════════════════════════════════════════
+                // SECURITY: Validate & apply discount server-side only.
+                // The client-side appliedDiscount object is NEVER trusted
+                // for discount type/value — only the couponId/code is
+                // used as a lookup key into Firestore or VALID_DISCOUNTS.
+                // ═══════════════════════════════════════════════════════
+                let verifiedDiscountAmount = 0;
+                let savedCouponInfo = null;
+
+                if (appliedDiscount?.couponId) {
+                    // --- Firestore coupon: validate + mark used in one atomic transaction ---
+                    const couponRef = db.collection("coupons").doc(appliedDiscount.couponId);
+                    await db.runTransaction(async (tx) => {
+                        const couponSnap = await tx.get(couponRef);
+                        if (!couponSnap.exists) throw new Error("Gutschein nicht mehr gültig.");
+                        const coupon = couponSnap.data();
+                        const now = new Date();
+                        if (coupon.active === false)
+                            throw new Error("Gutschein ist nicht aktiv.");
+                        if (coupon.expiresAt && coupon.expiresAt.toDate() < now)
+                            throw new Error("Gutschein ist abgelaufen.");
+                        if (coupon.oneTimeUse && coupon.usedBy?.includes(currentUser.uid))
+                            throw new Error("Gutschein wurde von dir bereits verwendet.");
+                        if (coupon.maxUsages && (coupon.totalUsages || 0) >= coupon.maxUsages)
+                            throw new Error("Gutschein ist vollständig aufgebraucht.");
+
+                        // SECURITY: Use real values from Firestore — ignore client appliedDiscount.value
+                        if (coupon.type === "percent") {
+                            verifiedDiscountAmount = serverSubtotal * (coupon.value / 100);
+                        } else {
+                            verifiedDiscountAmount = coupon.value || 0;
+                        }
+                        savedCouponInfo = { code: coupon.code, type: coupon.type, value: coupon.value, id: appliedDiscount.couponId };
+
+                        // Atomically mark coupon as used
+                        tx.update(couponRef, {
                             usedBy: firebase.firestore.FieldValue.arrayUnion(currentUser.uid),
                             totalUsages: firebase.firestore.FieldValue.increment(1)
                         });
-                    } catch(e) { console.warn("Coupon update fehlgeschlagen", e); }
+                    });
+
+                } else if (appliedDiscount?.code && appliedDiscount.code.startsWith("LOYAL")) {
+                    // --- Loyalty code: re-validate against live Firestore user doc ---
+                    const loyalDef = VALID_DISCOUNTS[appliedDiscount.code];
+                    if (!loyalDef) throw new Error("Ungültiger Loyalty-Code.");
+
+                    const freshUserDoc = await db.collection("users").doc(currentUser.uid).get();
+                    const redeemed = freshUserDoc.data()?.redeemedLoyaltyCodes || [];
+                    if (redeemed.includes(appliedDiscount.code))
+                        throw new Error("Dieser Loyalty-Code wurde bereits eingelöst.");
+
+                    // SECURITY: Use value from VALID_DISCOUNTS (server-of-record for loyalty),
+                    // never from appliedDiscount.value which could be manipulated in console.
+                    if (loyalDef.type === "percent") {
+                        verifiedDiscountAmount = serverSubtotal * (loyalDef.value / 100);
+                    } else {
+                        verifiedDiscountAmount = loyalDef.value || 0;
+                    }
+                    savedCouponInfo = { code: appliedDiscount.code, type: loyalDef.type, value: loyalDef.value };
+
+                } else if (appliedDiscount) {
+                    // appliedDiscount is set but has no valid couponId or LOYAL code —
+                    // this is either manipulation or an unknown code path. Block the order.
+                    throw new Error("Ungültiger Rabatt-Code. Bitte neu eingeben.");
                 }
 
-                await db.collection("orders").add({
+                // ═══════════════════════════════════════════════════════
+                // Calculate verified totals — entirely from Firestore data
+                // ═══════════════════════════════════════════════════════
+                const verifiedProductTotal = Math.max(0, serverSubtotal - verifiedDiscountAmount);
+                const shippingCost = getShippingCost(); // threshold check is non-critical
+                const verifiedTotal = Math.max(0, verifiedProductTotal + shippingCost);
+                const loyaltyEarned = Math.floor(verifiedProductTotal);
+                const orderNumber = generateOrderNumber();
+
+                // Save order with verified total and optional coupon info
+                const orderData = {
                     userId: currentUser.uid,
                     userEmail: currentUser.email,
                     orderNumber: orderNumber,
-                    items: cart.map(item => ({
-                        id: item.id,
-                        name: item.name,
-                        qty: item.qty,
-                        price: item.price || 7.99,
-                        nicotine: item.nicotine || ""
-                    })),
-                    total: finalTotal,
+                    items: verifiedItems,
+                    total: verifiedTotal,
                     address: userAddress,
                     date: firebase.firestore.Timestamp.now(),
                     status: "Zahlung erwartet",
@@ -2522,13 +2614,21 @@
                     carrier: null,
                     loyaltyEarned: loyaltyEarned,
                     loyaltyCredited: false
-                });
+                };
+                if (savedCouponInfo) {
+                    orderData.discountCode   = savedCouponInfo.code;
+                    orderData.discountType   = savedCouponInfo.type;
+                    orderData.discountValue  = savedCouponInfo.value;
+                    orderData.discountAmount = parseFloat(verifiedDiscountAmount.toFixed(2));
+                }
+                await db.collection("orders").add(orderData);
+
                 await sendOrderConfirmationEmail({
                     userEmail: currentUser.email,
                     orderNumber: orderNumber,
-                    total: finalTotal,
+                    total: verifiedTotal,
                     items: cart,
-                    shipping: getShippingCost(),
+                    shipping: shippingCost,
                     loyaltyEarned: loyaltyEarned
                 });
                 cart = [];
@@ -2537,13 +2637,13 @@
                 document.getElementById("discount-status").innerHTML = "";
                 document.getElementById("discount-input").value = "";
                 await saveUserCart();
-                showSuccessModal(orderNumber, finalTotal, loyaltyEarned);
+                showSuccessModal(orderNumber, verifiedTotal, loyaltyEarned);
                 loadProducts();
                 updateCartDisplay();
                 renderProducts();
                 toggleCart();
             } catch (e) {
-                showToast("❌ Fehler beim Speichern: " + e.message, "error");
+                showToast("❌ " + (e.message || "Fehler beim Speichern"), "error");
             } finally {
                 _orderInProgress = false;
                 const ob = document.querySelector('[onclick="placeOrder()"]');

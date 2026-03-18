@@ -825,7 +825,8 @@
                     referralCount: 0,
                     totalBonusPoints: 0,
                     redeemedLoyaltyCodes: [],
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    emailVerificationRequired: true   // nur neue Accounts müssen Verifikation bestätigen
                 });
                 if (refCode) {
                     addLoyaltyPoints(50);
@@ -1091,17 +1092,20 @@
             if (!email || !password) { showToast("❌ Bitte E-Mail und Passwort eingeben", "error"); return; }
             try {
                 const cred = await auth.signInWithEmailAndPassword(email, password);
-                // Only enforce verification for accounts created AFTER this date.
-                // Accounts created before (incl. existing admin accounts) are let through.
-                const VERIFICATION_CUTOFF = new Date("2026-03-19T00:00:00Z");
-                const createdAt = new Date(cred.user.metadata.creationTime);
-                if (createdAt > VERIFICATION_CUTOFF && !cred.user.emailVerified) {
-                    await auth.signOut();
-                    showToast("❌ E-Mail noch nicht bestätigt. Bitte prüfe dein Postfach.", "error");
-                    setTimeout(() => {
-                        showToast('📧 Keine Mail erhalten? <button onclick="resendVerificationEmail()" style="text-decoration:underline;cursor:pointer">Erneut senden</button>', "success");
-                    }, 3500);
-                    return;
+                if (!cred.user.emailVerified) {
+                    // Only block login if Firestore says this account requires verification.
+                    // Existing accounts don't have this flag → always let through.
+                    // New accounts (registered after verification was introduced) have flag = true.
+                    const userDoc = await db.collection("users").doc(cred.user.uid).get();
+                    const needsVerification = userDoc.exists && userDoc.data().emailVerificationRequired === true;
+                    if (needsVerification) {
+                        await auth.signOut();
+                        showToast("❌ E-Mail noch nicht bestätigt. Bitte prüfe dein Postfach.", "error");
+                        setTimeout(() => {
+                            showToast('📧 Keine Mail erhalten? <button onclick="resendVerificationEmail()" style="text-decoration:underline;cursor:pointer">Erneut senden</button>', "success");
+                        }, 3500);
+                        return;
+                    }
                 }
                 closeAuthModal();
                 showToast("✅ Erfolgreich eingeloggt!");

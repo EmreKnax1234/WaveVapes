@@ -2545,6 +2545,13 @@
                         }
                     }
                     renderRecentlyViewed();
+                    // Bug 4 fix: load wishlist from Firestore for cross-device sync
+                    if (Array.isArray(data.wishlist) && data.wishlist.length > 0) {
+                        wishlist = data.wishlist;
+                        localStorage.setItem("wavevapes_wishlist", JSON.stringify(wishlist));
+                        updateWishlistBadge();
+                        renderProducts();
+                    }
                 }).catch(() => {});
                 updatePresence();
                 // IP-Ban check using cached fetchIp()
@@ -3040,12 +3047,17 @@
             _renderProductsTimer = setTimeout(renderProducts, 50);
         }
 
-        db.collection('promotions').onSnapshot(snap => {
-            _activePromos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            renderProductsDebounced();
-            updateCartDisplay();
-            cdUpdatePromoBanner();
-        }, () => {});
+        // Opt 4: Moved from top-level into a function called by initialize().
+        // This prevents listeners from starting before the app (auth, age-gate,
+        // products) is ready — avoiding race conditions on first page load.
+        function _subscribePromotions() {
+            db.collection('promotions').onSnapshot(snap => {
+                _activePromos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                renderProductsDebounced();
+                updateCartDisplay();
+                cdUpdatePromoBanner();
+            }, () => {});
+        }
 
         function loadProducts() {
             const container = document.getElementById("products-grid");
@@ -3217,6 +3229,7 @@
             pendingNicotine[id] = value;
             let item = cart.find(i => i.id === id);
             if (item) item.nicotine = value;
+            saveUserCart(); // Opt 2 fix: persist nicotine choice to Firestore
             updateCartDisplay();
         }
         // OPT 1: Gemeinsame Cart-Hilfsfunktion — vermeidet duplizierte Logik in
@@ -3646,8 +3659,13 @@
         }
         function generateOrderNumber() {
             const now = new Date();
-            const dateStr = now.getFullYear().toString().slice(2) + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0');
-            return `WV-${dateStr}-${Math.floor(1000 + Math.random() * 9000)}`;
+            const dateStr = now.getFullYear().toString().slice(2)
+                + String(now.getMonth()+1).padStart(2,'0')
+                + String(now.getDate()).padStart(2,'0');
+            // Opt 1: 6-digit random + last 3 ms digits → collision probability near zero
+            const rand = Math.floor(100000 + Math.random() * 900000);
+            const ms   = String(now.getMilliseconds()).padStart(3,'0');
+            return `WV-${dateStr}-${rand}${ms}`;
         }
         let _orderInProgress = false;
         async function placeOrder() {
@@ -4008,13 +4026,22 @@
                                     Überweisungsdaten anzeigen
                                 </button>
                                 ${['Wird bearbeitet','Versendet','Zugestellt'].includes(status) ? `
-                                <button onclick="rvOpenFromOrder(${JSON.stringify(order.items.filter(i=>i.id!=999))})"
-                                        class="w-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 py-3 rounded-2xl text-sm font-medium transition-all flex items-center justify-center gap-2">
+                                <button class="rv-open-btn w-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 py-3 rounded-2xl text-sm font-medium transition-all flex items-center justify-center gap-2"
+                                        data-review-items="${encodeURIComponent(JSON.stringify(order.items.filter(i=>i.id!=999)))}">
                                     <i class="fa-solid fa-star"></i> Produkte bewerten
                                 </button>` : ''}
                             </div>
                         `;
                         container.appendChild(card);
+                    });
+                    // Bug 2 fix: delegated listener for review buttons — avoids JSON in onclick attribute (XSS risk)
+                    container.querySelectorAll('.rv-open-btn').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            try {
+                                const items = JSON.parse(decodeURIComponent(btn.dataset.reviewItems || '[]'));
+                                rvOpenFromOrder(items);
+                            } catch(e) { console.warn('rv-open-btn parse error', e); }
+                        });
                     });
                 });
         }
@@ -4086,15 +4113,18 @@
         }
 
         let _lastCatHash = ''; // OPT 2: cache — only re-render tabs if categories actually changed
+        let _cachedCategorySnap = null; // Bug 5 fix: cache Firestore snap so tab clicks don't re-fetch
+
+        // Fetches category data from Firestore and rebuilds offer config + tab DOM.
+        // Only makes a Firestore request — setCategoryFilter() calls _renderCategoryTabsDOM() directly.
         async function renderCategoryTabs() {
             const snap = await db.collection("categories").orderBy("order").get();
-            // OPT 2: Build a cheap hash of category names+specials — skip full DOM rebuild if unchanged
-            const catHash = snap.docs.map(d => {
-                const c = d.data();
-                return `${c.name}|${c.special}|${c.offerType}|${c.offerN}|${c.offerM}|${c.specialText}`;
-            }).join(';;') + '::' + currentCategoryFilter;
-            const tabsEl = document.getElementById("category-tabs");
-            // Rebuild offer config cache (always — needed for price calculations)
+            _cachedCategorySnap = snap;
+            _rebuildOfferCats(snap);
+            _renderCategoryTabsDOM(snap);
+        }
+
+        function _rebuildOfferCats(snap) {
             _offerCats = {};
             _offerCatsReady = false;
             snap.forEach(doc => {
@@ -4109,7 +4139,14 @@
                 }
             });
             _offerCatsReady = true;
-            // Skip DOM update if nothing changed
+        }
+
+        function _renderCategoryTabsDOM(snap) {
+            // OPT 2: Build a cheap hash — skip full DOM rebuild if nothing changed
+            const catHash = snap.docs.map(d => {
+                const c = d.data();
+                return `${c.name}|${c.special}|${c.offerType}|${c.offerN}|${c.offerM}|${c.specialText}`;
+            }).join(';;') + '::' + currentCategoryFilter;
             if (catHash === _lastCatHash) return;
             _lastCatHash = catHash;
             let html = `<button onclick="setCategoryFilter('Alle')" class="px-5 py-2 transition ${currentCategoryFilter === 'Alle' ? 'tab-active' : ''}">Alle</button>`;
@@ -4123,11 +4160,17 @@
                 }
                 html += `<button onclick="setCategoryFilter('${c.name}')" class="px-5 py-2 transition ${active}">${c.name}${extra}</button>`;
             });
-            tabsEl.innerHTML = html;
+            document.getElementById("category-tabs").innerHTML = html;
         }
         function setCategoryFilter(cat) {
             currentCategoryFilter = cat;
-            renderCategoryTabs();
+            // Bug 5 fix: re-render tabs from cached snap — no Firestore request on every click
+            if (_cachedCategorySnap) {
+                _lastCatHash = ''; // force DOM update (active tab changed)
+                _renderCategoryTabsDOM(_cachedCategorySnap);
+            } else {
+                renderCategoryTabs(); // first load — snap not yet cached
+            }
             renderProducts();
         }
         function showImpressumModal() {
@@ -4172,15 +4215,16 @@
         // ── LEADERBOARD ─────────────────────────────────────────────────────────
         function lbAvatar(name, email, size) {
             const str = name || email || '?';
-            const initials = str.slice(0, 2).toUpperCase();
+            const initials = str.replace(/</g,'').slice(0, 2).toUpperCase(); // Bug 1 fix: strip tags before slicing
             const hue = str.split('').reduce((h, c) => h + c.charCodeAt(0), 0) % 360;
             return { initials, bg: `hsl(${hue},50%,28%)`, color: `hsl(${hue},75%,72%)` };
         }
 
         function lbMaskName(name, email) {
             const str = name || email || 'Anonym';
-            if (str.length <= 3) return str + '***';
-            return str.slice(0, 3) + '***';
+            const masked = str.length <= 3 ? str + '***' : str.slice(0, 3) + '***';
+            // Bug 1 fix: escape HTML so a username like <script> can't run JS in the leaderboard
+            return masked.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
         }
 
         function loadLeaderboard() {
@@ -4300,6 +4344,11 @@
         // ── WISHLIST ────────────────────────────────────────────────────────────
         function saveWishlist() {
             localStorage.setItem("wavevapes_wishlist", JSON.stringify(wishlist));
+            // Bug 4 fix: sync to Firestore so wishlist persists across devices
+            if (currentUser) {
+                db.collection("users").doc(currentUser.uid)
+                  .update({ wishlist }).catch(() => {});
+            }
             updateWishlistBadge();
         }
 
@@ -4359,7 +4408,7 @@
         let _sdFocusIdx = -1;
 
         function onSearchInput() {
-            renderProducts();
+            renderProductsDebounced(); // Bug 3 fix: was renderProducts() — caused full grid rebuild on every keystroke
             renderSearchDropdown();
         }
 
@@ -4383,7 +4432,7 @@
             } else if (e.key === "Escape") {
                 closeSearchDropdown();
             } else {
-                renderProducts();
+                renderProductsDebounced(); // Bug 3 fix: debounced
                 renderSearchDropdown();
             }
         }
@@ -5147,34 +5196,40 @@
             _cdInterval = setInterval(tick, 1000);
         }
 
-        db.collection("settings").doc("main").onSnapshot(doc => {
-            if (!doc.exists) return;
-            const s = doc.data();
-            if (s.bank_owner) window._BANK_OWNER = s.bank_owner;
-            if (s.iban)       window._BANK_IBAN  = s.iban;
-            else if (s.bank_iban) window._BANK_IBAN = s.bank_iban;
-            if (s.bic)        window._BANK_BIC   = s.bic;
-            if (typeof s.shipping_cost !== 'undefined')           window._SHIPPING_COST = s.shipping_cost;
-            if (typeof s.free_shipping_threshold !== 'undefined') {
-                window._FREE_THRESHOLD = s.free_shipping_threshold;
-                document.querySelectorAll('.wv-free-threshold').forEach(el => {
-                    el.textContent = s.free_shipping_threshold + ' €';
-                });
-            }
-            if (s.shop_closed === true) {
-                showMaintenanceOverlay();
-            } else {
-                hideMaintenanceOverlay();
-            }
-            cdUpdate(s.countdown_active, s.countdown_label, s.countdown_end);
-        });
+        // Opt 4: All three global listeners are now started from initialize()
+        // via subscribeGlobalListeners() — not on script parse.
+        function subscribeGlobalListeners() {
+            _subscribePromotions();
 
-        db.collection('settings').doc('product_order').onSnapshot(doc => {
-            if (doc.exists) {
-                productOrder = doc.data().order || [];
-                renderProductsDebounced(); // BUG 6 FIX: was renderProducts() — bypassed the debounce
-            }
-        });
+            db.collection("settings").doc("main").onSnapshot(doc => {
+                if (!doc.exists) return;
+                const s = doc.data();
+                if (s.bank_owner) window._BANK_OWNER = s.bank_owner;
+                if (s.iban)       window._BANK_IBAN  = s.iban;
+                else if (s.bank_iban) window._BANK_IBAN = s.bank_iban;
+                if (s.bic)        window._BANK_BIC   = s.bic;
+                if (typeof s.shipping_cost !== 'undefined')           window._SHIPPING_COST = s.shipping_cost;
+                if (typeof s.free_shipping_threshold !== 'undefined') {
+                    window._FREE_THRESHOLD = s.free_shipping_threshold;
+                    document.querySelectorAll('.wv-free-threshold').forEach(el => {
+                        el.textContent = s.free_shipping_threshold + ' €';
+                    });
+                }
+                if (s.shop_closed === true) {
+                    showMaintenanceOverlay();
+                } else {
+                    hideMaintenanceOverlay();
+                }
+                cdUpdate(s.countdown_active, s.countdown_label, s.countdown_end);
+            });
+
+            db.collection('settings').doc('product_order').onSnapshot(doc => {
+                if (doc.exists) {
+                    productOrder = doc.data().order || [];
+                    renderProductsDebounced();
+                }
+            });
+        }
         function clearDiscountField() {
             const field = document.getElementById("discount-input");
             if (field) field.value = "";
@@ -5288,6 +5343,7 @@
             updateWishlistBadge();
             renderRecentlyViewed();
             loadLeaderboard();
+            subscribeGlobalListeners(); // Opt 4: start Firestore listeners after app is ready
         }
 
 

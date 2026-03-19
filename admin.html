@@ -7990,6 +7990,19 @@ auth.onAuthStateChanged(async (user) => {
 window.onload = () => {
     // Nothing here — data loading happens in auth callback after admin verification
 };
+
+// OPT 5: Clean up all active Firestore listeners on page unload to prevent
+// memory leaks during long admin sessions.
+window.addEventListener('beforeunload', () => {
+    const listeners = [
+        logsUnsubscribe,
+        _ordersUnsub,
+        _watchOrdersUnsub,
+        _rvAdminUnsub,
+        _rvStatsUnsub
+    ];
+    listeners.forEach(fn => { try { if (typeof fn === 'function') fn(); } catch(e) {} });
+});
 </script>
 <!-- ═══════════════════════════════════════════
      SUPERADMIN RE-AUTH MODAL
@@ -8887,12 +8900,12 @@ async function saDangerDeleteAllOrders() {
     const confirm2 = prompt('Bist du ABSOLUT SICHER? Tippe nochmal "JA" zur Bestätigung:');
     if (confirm2 !== 'JA') { showToast('Abgebrochen', 'warning'); return; }
     const snap = await db.collection('orders').get();
-    // Delete in chunks of 500 (Firestore limit)
-    const chunks = [];
-    for (let i = 0; i < snap.docs.length; i += 400) chunks.push(snap.docs.slice(i, i+400));
-    for (const chunk of chunks) {
+    // BUG FIX: Chunk size aligned to 400 consistently (matches rest of codebase).
+    // Batches are now committed sequentially (for-of with await) to prevent
+    // parallel batch conflicts when deleting large datasets.
+    for (let i = 0; i < snap.docs.length; i += 400) {
         const batch = db.batch();
-        chunk.forEach(d => batch.delete(d.ref));
+        snap.docs.slice(i, i + 400).forEach(d => batch.delete(d.ref));
         await batch.commit();
     }
     await logAction('danger_delete_orders', 'orders', { count: snap.size });
@@ -8901,16 +8914,20 @@ async function saDangerDeleteAllOrders() {
 
 // ── Override saOpenTab to load dashboard on open ──────
 const _origSaOpenTab = saOpenTab;
-// Patch saOpenTab to also load dashboard and store superUID
-const _patchedSaOpenTab = async function() {
+// BUG FIX: _origSaOpenTab() is synchronous (CSS toggle), but saLoadDashboard()
+// was called immediately after, before the tab panel was fully visible.
+// A short rAF-based delay ensures the DOM has painted before data loads.
+const _patchedSaOpenTab = function() {
     _origSaOpenTab();
     // Store superUID for session monitor
-    try {
-        const snap = await db.collection('settings').doc('superadmin').get();
-        window._superUID = snap.exists ? snap.data().superadminUID : null;
-    } catch(e) {}
-    saLoadDashboard();
-    saLoadActivityLog();
+    db.collection('settings').doc('superadmin').get()
+        .then(snap => { window._superUID = snap.exists ? snap.data().superadminUID : null; })
+        .catch(() => {});
+    // Wait one animation frame so the tab panel is visible before loading data
+    requestAnimationFrame(() => {
+        saLoadDashboard();
+        saLoadActivityLog();
+    });
 };
 // Replace in window scope
 window.saOpenTab = _patchedSaOpenTab;

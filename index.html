@@ -394,6 +394,15 @@
         .similar-card-info { padding: 8px 10px 10px; }
         .similar-card-name { font-size: 10px; font-weight: 600; color: rgba(255,255,255,.8); line-height: 1.3; margin-bottom: 3px; }
         .similar-card-price{ font-size: 11px; font-weight: 800; color: #67e8f9; }
+
+        /* Desktop: bigger similar cards */
+        @media (min-width: 768px) {
+            .similar-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
+            .similar-card-info { padding: 10px 14px 14px; }
+            .similar-card-name { font-size: 13px; margin-bottom: 5px; }
+            .similar-card-price { font-size: 14px; }
+            .similar-card img { padding: 12px; }
+        }
         html, body { touch-action: manipulation !important; -webkit-text-size-adjust: 100% !important; -webkit-tap-highlight-color: transparent !important; overscroll-behavior-y: none; }
         * { touch-action: manipulation !important; -webkit-tap-highlight-color: transparent !important; }
         input, select, button, textarea, .qty-btn, .product-card, .nicotine-select { touch-action: manipulation !important; }
@@ -528,13 +537,18 @@
             box-shadow: 0 25px 50px -12px rgb(103 232 249 / 0.5);
             background: #1f2937;
         }
+        /* Desktop: container gets fixed height, image fills it */
         @media (min-width: 768px) {
-            #product-detail-modal img {
-                max-height: none;
-                height: 420px;
-                width: 100%;
-                object-fit: contain;
-                margin: 0 auto;
+            #product-detail-modal .modal-img-col {
+                height: 520px;
+            }
+            #product-detail-modal .modal-img-col img {
+                width: 100% !important;
+                height: 100% !important;
+                max-height: none !important;
+                object-fit: contain !important;
+                margin: 0 !important;
+                border-radius: 20px !important;
             }
         }
         #product-detail-modal h2 {
@@ -1003,6 +1017,7 @@
             #product-detail-modal .modal-inner > .flex.justify-end { padding: 6px 16px 10px !important; }
             #product-detail-modal .p-6.sm\:p-10 { padding: 12px 16px 32px !important; }
             #product-detail-modal .grid.grid-cols-1 { gap: 12px !important; }
+            #product-detail-modal .modal-img-col { height: auto !important; }
             #product-detail-modal img { max-height: 200px !important; object-fit: contain !important; }
             #product-detail-modal h2 { font-size: 1.35rem !important; }
             #product-detail-modal .sale-price { font-size: 2rem !important; }
@@ -3419,7 +3434,7 @@
                     </div>
                     <div class="p-6 sm:p-10">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
-                            <div class="flex justify-center items-center bg-black/30 rounded-3xl p-6">
+                            <div class="modal-img-col flex justify-center items-center bg-black/30 rounded-3xl p-6">
                                 ${product.image
                                     ? `<img src="${product.image}" alt="${product.name}" loading="eager">`
                                     : `<div class="text-8xl">🧪</div>`}

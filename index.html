@@ -2289,11 +2289,13 @@
             showToast("📧 E-Mail wird gesendet...", "success");
             try {
                 const orderItems = orderData.items.map(item => {
-                    const prod = _productMap.get(item.id);
+                    const prod      = _productMap.get(item.id);
+                    const promoP    = prod ? getPromoPrice(prod) : null;
+                    const effPrice  = promoP !== null ? promoP : item.price;
                     return {
                         name: item.name,
                         units: item.qty,
-                        price: (item.price * item.qty).toFixed(2),
+                        price: (effPrice * item.qty).toFixed(2),
                         image_url: prod && prod.image ? prod.image : "https://wavevapes.de/logo.png"
                     };
                 });
@@ -3486,13 +3488,20 @@
                 }
             }
             cart.forEach(item => {
-                const p = item.price || 7.99;
                 const prod = _productMap.get(item.id);
                 const nicDisplay = (item.nicotine && prod && prod.hasNicotine) ? ` (${item.nicotine})` : '';
                 if (item.id == MYSTERY_ID) {
                     itemsHTML += `<div class="mystery-item cart-item flex justify-between items-center rounded-3xl p-5"><div class="flex items-center gap-3"><i class="fa-solid fa-gift text-3xl"></i><div><div class="font-medium">${item.name}</div><div class="text-xs bg-white/30 px-3 py-0.5 rounded-full inline-block">GRATIS AB 100€</div></div></div><div class="text-right"><div class="font-bold text-xl text-emerald-900 whitespace-nowrap">0,00 €</div></div></div>`;
                 } else {
-                    itemsHTML += `<div class="cart-item flex justify-between items-center bg-zinc-900 border border-white/10 rounded-3xl p-5"><div><div class="font-medium">${item.name}${nicDisplay}</div><div class="text-xs text-gray-400 whitespace-nowrap">${item.qty} × ${p.toFixed(2).replace('.', ',')} €</div></div><div class="flex items-center gap-6"><div class="font-bold text-xl whitespace-nowrap">${(item.qty * p).toFixed(2).replace('.', ',')} €</div><button onclick="removeCartItem('${item.id}'); event.stopImmediatePropagation()" class="text-red-400"><i class="fa-solid fa-trash"></i></button></div></div>`;
+                    const origPrice  = item.price || 7.99;
+                    const promoPrice = prod ? getPromoPrice(prod) : null;
+                    const effPrice   = promoPrice !== null ? promoPrice : origPrice;
+                    const hasPromo   = promoPrice !== null;
+                    const priceSubline = hasPromo
+                        ? `${item.qty} × <span style="text-decoration:line-through;color:#6b7280">${origPrice.toFixed(2).replace('.', ',')} €</span> <span style="color:#ef4444;font-weight:700">${effPrice.toFixed(2).replace('.', ',')} €</span>`
+                        : `${item.qty} × ${origPrice.toFixed(2).replace('.', ',')} €`;
+                    const totalColor = hasPromo ? 'color:#ef4444' : '';
+                    itemsHTML += `<div class="cart-item flex justify-between items-center bg-zinc-900 border border-white/10 rounded-3xl p-5"><div><div class="font-medium">${item.name}${nicDisplay}</div><div class="text-xs text-gray-400 whitespace-nowrap">${priceSubline}</div></div><div class="flex items-center gap-6"><div class="font-bold text-xl whitespace-nowrap" style="${totalColor}">${(item.qty * effPrice).toFixed(2).replace('.', ',')} €</div><button onclick="removeCartItem('${item.id}'); event.stopImmediatePropagation()" class="text-red-400"><i class="fa-solid fa-trash"></i></button></div></div>`;
                 }
             });
             const shippingCost = getShippingCost();

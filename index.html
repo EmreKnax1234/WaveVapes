@@ -4021,6 +4021,11 @@
                             ${trackingHTML}
                             <div class="flex flex-col gap-3 mt-6">
                                 ${trackButton}
+                                <button class="reorder-btn w-full py-3 rounded-2xl text-sm font-semibold transition-all flex items-center justify-center gap-2"
+                                        style="background:linear-gradient(135deg,rgba(103,232,249,0.12),rgba(167,139,250,0.12));border:1px solid rgba(103,232,249,0.25);color:#67e8f9;"
+                                        data-reorder-items="${encodeURIComponent(JSON.stringify(order.items))}">
+                                    <i class="fa-solid fa-cart-plus"></i> Nochmal bestellen
+                                </button>
                                 <button onclick="showPaymentInfo('${order.orderNumber}', ${order.total})"
                                         class="w-full bg-zinc-800 hover:bg-zinc-700 text-cyan-300 py-3 rounded-2xl text-sm font-medium transition-all">
                                     Überweisungsdaten anzeigen
@@ -4043,6 +4048,15 @@
                             } catch(e) { console.warn('rv-open-btn parse error', e); }
                         });
                     });
+                    // Delegated listener for reorder buttons
+                    container.querySelectorAll('.reorder-btn').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            try {
+                                const items = JSON.parse(decodeURIComponent(btn.dataset.reorderItems || '[]'));
+                                reorderItems(items, btn);
+                            } catch(e) { console.warn('reorder-btn parse error', e); }
+                        });
+                    });
                 });
         }
         function showOrderHistory() {
@@ -4063,6 +4077,61 @@
             if (ordersUnsubscribe) {
                 ordersUnsubscribe();
                 ordersUnsubscribe = null;
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        //  NOCHMAL BESTELLEN – legt alle Artikel einer alten Bestellung
+        //  wieder in den Warenkorb und öffnet ihn direkt.
+        // ═══════════════════════════════════════════════════════════════
+        async function reorderItems(items, btn) {
+            if (!items || items.length === 0) return;
+
+            // Button-Feedback
+            const originalHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Wird geladen…';
+
+            let addedCount = 0;
+            let skippedCount = 0;
+
+            for (const item of items) {
+                // Mystery-Vape (id 999) und sonstige Sonderpositionen überspringen
+                if (!item.id || item.id === 999) { skippedCount++; continue; }
+
+                try {
+                    // Aktuellen Produktstatus aus Firestore prüfen
+                    const snap = await db.collection('products').doc(String(item.id)).get();
+                    if (!snap.exists) { skippedCount++; continue; }
+                    const prod = snap.data();
+                    if (!prod.available && prod.available !== undefined) { skippedCount++; continue; }
+
+                    // Menge dem Warenkorb hinzufügen (qty-fach addToCart aufrufen)
+                    const qty = item.qty || 1;
+                    for (let q = 0; q < qty; q++) {
+                        addToCart(Number(item.id), item.nicotine || null);
+                    }
+                    addedCount++;
+                } catch(e) {
+                    console.warn('reorderItems: Fehler bei Produkt', item.id, e);
+                    skippedCount++;
+                }
+            }
+
+            // Button zurücksetzen
+            btn.disabled = false;
+            btn.innerHTML = originalHTML;
+
+            // Feedback & Warenkorb öffnen
+            if (addedCount === 0) {
+                showToast('⚠️ Keine Artikel verfügbar – möglicherweise nicht mehr im Sortiment.', 'warning');
+            } else {
+                const msg = skippedCount > 0
+                    ? `🛒 ${addedCount} Artikel hinzugefügt (${skippedCount} nicht mehr verfügbar)`
+                    : `🛒 Alle ${addedCount} Artikel wieder im Warenkorb!`;
+                showToast(msg, 'success');
+                closeHistoryModal();
+                openCart();
             }
         }
         function showPaymentInfo(orderNumber, total) {
@@ -5038,10 +5107,40 @@
             if (!first) return;
             setTimeout(() => {
                 showProductDetail(first.id);
+                // Warten bis Modal gerendert ist, dann Review-Formular öffnen & hinscrollen
                 setTimeout(() => {
-                    const form = document.getElementById(`rv-form-${first.id}`);
-                    if (form) form.classList.add('open');
-                }, 400);
+                    const form    = document.getElementById(`rv-form-${first.id}`);
+                    const section = document.getElementById(`rv-section-${first.id}`);
+                    if (!form) return;
+
+                    // Formular aufklappen
+                    form.classList.add('open');
+
+                    // Zum Review-Bereich scrollen — auf Mobile im .modal-inner-Container,
+                    // auf Desktop im Seiten-Scroll (product-detail-modal ist overflow-y:auto)
+                    setTimeout(() => {
+                        const isMobile = window.innerWidth < 640;
+                        if (isMobile) {
+                            // Mobile: Bottom-Sheet hat eigenen Scroll-Container
+                            const inner = document.querySelector('#product-detail-modal .modal-inner');
+                            if (inner && section) {
+                                const offsetTop = section.getBoundingClientRect().top
+                                    - inner.getBoundingClientRect().top
+                                    + inner.scrollTop;
+                                inner.scrollTo({ top: offsetTop - 16, behavior: 'smooth' });
+                            }
+                        } else {
+                            // Desktop: Modal selbst ist der Scroll-Container
+                            const modal = document.getElementById('product-detail-modal');
+                            if (modal && section) {
+                                const offsetTop = section.getBoundingClientRect().top
+                                    - modal.getBoundingClientRect().top
+                                    + modal.scrollTop;
+                                modal.scrollTo({ top: offsetTop - 24, behavior: 'smooth' });
+                            }
+                        }
+                    }, 80); // kurz nach dem Aufklappen, damit display:flex schon gilt
+                }, 420);
             }, 300);
         }
         function closeProductDetail() {

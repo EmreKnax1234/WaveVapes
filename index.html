@@ -4084,7 +4084,7 @@
         //  NOCHMAL BESTELLEN – legt alle Artikel einer alten Bestellung
         //  wieder in den Warenkorb und öffnet ihn direkt.
         // ═══════════════════════════════════════════════════════════════
-        async function reorderItems(items, btn) {
+        function reorderItems(items, btn) {
             if (!items || items.length === 0) return;
 
             // Button-Feedback
@@ -4099,39 +4099,43 @@
                 // Mystery-Vape (id 999) und sonstige Sonderpositionen überspringen
                 if (!item.id || item.id === 999) { skippedCount++; continue; }
 
-                try {
-                    // Aktuellen Produktstatus aus Firestore prüfen
-                    const snap = await db.collection('products').doc(String(item.id)).get();
-                    if (!snap.exists) { skippedCount++; continue; }
-                    const prod = snap.data();
-                    if (!prod.available && prod.available !== undefined) { skippedCount++; continue; }
+                const productId = Number(item.id);
+                const product   = _productMap.get(productId);
 
-                    // Menge dem Warenkorb hinzufügen (qty-fach addToCart aufrufen)
-                    const qty = item.qty || 1;
-                    for (let q = 0; q < qty; q++) {
-                        addToCart(Number(item.id), item.nicotine || null);
-                    }
-                    addedCount++;
-                } catch(e) {
-                    console.warn('reorderItems: Fehler bei Produkt', item.id, e);
-                    skippedCount++;
-                }
+                // Produkt unbekannt oder nicht verfügbar → überspringen
+                if (!product || !product.available) { skippedCount++; continue; }
+
+                // _addToCart(id, delta, nicotine) — direkt mit der gesamten Menge
+                const qty      = item.qty || 1;
+                const nicotine = product.hasNicotine ? (item.nicotine || '20 mg') : null;
+                const ok = _addToCart(productId, qty, nicotine);
+                if (ok) { addedCount++; } else { skippedCount++; }
             }
 
             // Button zurücksetzen
             btn.disabled = false;
             btn.innerHTML = originalHTML;
 
-            // Feedback & Warenkorb öffnen
             if (addedCount === 0) {
                 showToast('⚠️ Keine Artikel verfügbar – möglicherweise nicht mehr im Sortiment.', 'warning');
-            } else {
-                const msg = skippedCount > 0
-                    ? `🛒 ${addedCount} Artikel hinzugefügt (${skippedCount} nicht mehr verfügbar)`
-                    : `🛒 Alle ${addedCount} Artikel wieder im Warenkorb!`;
-                showToast(msg, 'success');
-                closeHistoryModal();
-                openCart();
+                return;
+            }
+
+            // Mystery-Vape-Schwelle prüfen, Warenkorb aktualisieren & speichern
+            manageMysteryVape();
+            saveUserCart();
+            updateCartDisplay();
+
+            const msg = skippedCount > 0
+                ? `🛒 ${addedCount} Artikel hinzugefügt (${skippedCount} nicht mehr verfügbar)`
+                : `🛒 Alle ${addedCount} Artikel wieder im Warenkorb!`;
+            showToast(msg, 'success');
+
+            // History-Modal schließen & Warenkorb öffnen (nur wenn noch zu)
+            closeHistoryModal();
+            const sidebar = document.getElementById('cart-sidebar');
+            if (sidebar && sidebar.classList.contains('translate-x-full')) {
+                toggleCart();
             }
         }
         function showPaymentInfo(orderNumber, total) {

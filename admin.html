@@ -3630,6 +3630,8 @@ let dailyOrdersChart = null;
 let topProductsChart = null;
 let referralChart = null;
 let logsUnsubscribe = null;
+let _ordersUnsub = null;
+let _watchOrdersUnsub = null;
 let allProducts = [];
 let productOrder = [];
 let sortableInstance = null;
@@ -4175,11 +4177,28 @@ async function importProductsFromCSV(e) {
     if (!confirm("⚠️ WARNUNG!\n\nAlle aktuellen Produkte werden GELÖSCHT und durch die CSV ersetzt.\n\nWirklich fortfahren?")) { e.target.value=""; return; }
     const reader = new FileReader();
     reader.onload = async function(event) {
-        const text = event.target.result; const rows = text.trim().split("\n");
-        const deleteSnapshot = await db.collection("products").get(); const batchDelete = db.batch(); deleteSnapshot.forEach(doc => batchDelete.delete(doc.ref)); await batchDelete.commit();
-        const batch = db.batch();
-        for (let i = 1; i < rows.length; i++) { if (!rows[i].trim()) continue; const v = parseCSVLine(rows[i]); batch.set(db.collection("products").doc(v[0]), { name:v[1], price:parseFloat(v[2]), originalPrice:v[3]?parseFloat(v[3]):null, stock:parseInt(v[4]), category:v[5], isNew:v[6]==="true", available:v[7]==="true", hasNicotine:v[8]==="true", description:v[9], image:v[10]||null, sold:parseInt(v[11])||0 }); }
-        await batch.commit(); showToast("✅ Alle Produkte wiederhergestellt!", "success"); loadProducts();
+        try {
+            const text = event.target.result; const rows = text.trim().split("\n");
+            // Delete existing in chunks of 499
+            const deleteSnapshot = await db.collection("products").get();
+            const deleteDocs = deleteSnapshot.docs;
+            for (let i = 0; i < deleteDocs.length; i += 499) {
+                const b = db.batch();
+                deleteDocs.slice(i, i + 499).forEach(doc => b.delete(doc.ref));
+                await b.commit();
+            }
+            // Import in chunks of 499
+            let batch = db.batch(); let count = 0;
+            for (let i = 1; i < rows.length; i++) {
+                if (!rows[i].trim()) continue;
+                const v = parseCSVLine(rows[i]);
+                batch.set(db.collection("products").doc(v[0]), { name:v[1], price:parseFloat(v[2]), originalPrice:v[3]?parseFloat(v[3]):null, stock:parseInt(v[4]), category:v[5], isNew:v[6]==="true", available:v[7]==="true", hasNicotine:v[8]==="true", description:v[9], image:v[10]||null, sold:parseInt(v[11])||0 });
+                count++;
+                if (count % 499 === 0) { await batch.commit(); batch = db.batch(); }
+            }
+            if (count % 499 !== 0) await batch.commit();
+            showToast(`✅ ${count} Produkte wiederhergestellt!`, "success"); loadProducts();
+        } catch(err) { showToast("❌ Import fehlgeschlagen: " + err.message, "error"); }
     };
     reader.readAsText(file); e.target.value = "";
 }
@@ -4204,9 +4223,19 @@ async function importOrdersFromCSV(e) {
     if (!confirm("⚠️ Bestellungen werden ZUSÄTZLICH hinzugefügt. Fortfahren?")) { e.target.value=""; return; }
     const reader = new FileReader();
     reader.onload = async function(event) {
-        const rows = event.target.result.trim().split("\n"); const batch = db.batch();
-        for (let i = 1; i < rows.length; i++) { if (!rows[i].trim()) continue; const v = parseCSVLine(rows[i]); batch.set(db.collection("orders").doc(v[0]), { orderNumber:v[1], date:firebase.firestore.Timestamp.fromDate(new Date(v[2])), userEmail:v[3], total:parseFloat(v[4]), status:v[5], items:v[6].split(' | ').map(item=>{const p=item.match(/(.*?) x(\d+)(?:\s*\((.*)\))?/);return p?{name:p[1].trim(),qty:parseInt(p[2]),nicotine:p[3]||""}:{}}).filter(Boolean), address:{street:v[7].split(',')[0]||"",zip:v[7].split(',')[1]?v[7].split(',')[1].trim().split(' ')[0]:"",city:v[7].split(',')[1]?v[7].split(',')[1].trim().split(' ').slice(1).join(' '):""} }); }
-        await batch.commit(); showToast("✅ Bestellungen importiert!", "success"); loadOrders();
+        try {
+            const rows = event.target.result.trim().split("\n");
+            let batch = db.batch(); let count = 0;
+            for (let i = 1; i < rows.length; i++) {
+                if (!rows[i].trim()) continue;
+                const v = parseCSVLine(rows[i]);
+                batch.set(db.collection("orders").doc(v[0]), { orderNumber:v[1], date:firebase.firestore.Timestamp.fromDate(new Date(v[2])), userEmail:v[3], total:parseFloat(v[4]), status:v[5], items:v[6].split(' | ').map(item=>{const p=item.match(/(.*?) x(\d+)(?:\s*\((.*)\))?/);return p?{name:p[1].trim(),qty:parseInt(p[2]),nicotine:p[3]||""}:{}}).filter(Boolean), address:{street:v[7].split(',')[0]||"",zip:v[7].split(',')[1]?v[7].split(',')[1].trim().split(' ')[0]:"",city:v[7].split(',')[1]?v[7].split(',')[1].trim().split(' ').slice(1).join(' '):""} });
+                count++;
+                if (count % 499 === 0) { await batch.commit(); batch = db.batch(); }
+            }
+            if (count % 499 !== 0) await batch.commit();
+            showToast(`✅ ${count} Bestellungen importiert!`, "success"); loadOrders();
+        } catch(err) { showToast("❌ Import fehlgeschlagen: " + err.message, "error"); }
     };
     reader.readAsText(file); e.target.value = "";
 }
@@ -4226,9 +4255,19 @@ async function importUsersFromCSV(e) {
     if (!confirm("⚠️ Benutzer werden ZUSÄTZLICH hinzugefügt. Fortfahren?")) { e.target.value=""; return; }
     const reader = new FileReader();
     reader.onload = async function(event) {
-        const rows = event.target.result.trim().split("\n"); const batch = db.batch();
-        for (let i = 1; i < rows.length; i++) { if (!rows[i].trim()) continue; const v = parseCSVLine(rows[i]); batch.set(db.collection("users").doc(v[0]), { email:v[1], username:v[2], referralCode:v[3], totalBonusPoints:parseInt(v[4]), freeShipping:v[5]==="JA", disabled:v[6]==="JA", referralCount:parseInt(v[7])||0 }); }
-        await batch.commit(); showToast("✅ Benutzer importiert!", "success"); loadUsers();
+        try {
+            const rows = event.target.result.trim().split("\n");
+            let batch = db.batch(); let count = 0;
+            for (let i = 1; i < rows.length; i++) {
+                if (!rows[i].trim()) continue;
+                const v = parseCSVLine(rows[i]);
+                batch.set(db.collection("users").doc(v[0]), { email:v[1], username:v[2], referralCode:v[3], totalBonusPoints:parseInt(v[4]), freeShipping:v[5]==="JA", disabled:v[6]==="JA", referralCount:parseInt(v[7])||0 });
+                count++;
+                if (count % 499 === 0) { await batch.commit(); batch = db.batch(); }
+            }
+            if (count % 499 !== 0) await batch.commit();
+            showToast(`✅ ${count} Benutzer importiert!`, "success"); loadUsers();
+        } catch(err) { showToast("❌ Import fehlgeschlagen: " + err.message, "error"); }
     };
     reader.readAsText(file); e.target.value = "";
 }
@@ -4755,7 +4794,8 @@ function ordRenderTable() {
 }
 
 function loadOrders() {
-    db.collection('orders').orderBy('date','desc').onSnapshot(snap => {
+    if (_ordersUnsub) { _ordersUnsub(); _ordersUnsub = null; }
+    _ordersUnsub = db.collection('orders').orderBy('date','desc').onSnapshot(snap => {
         _ordAllDocs = snap.docs;
         ordRenderTable();
     });
@@ -4767,6 +4807,7 @@ async function quickStatus(id, status) {
     await handleStockOnStatusChange(id, status);
     await db.collection('orders').doc(id).update({ status });
     if (status === "Wird bearbeitet") await awardLoyaltyIfProcessed(id);
+    if (status === "Storniert") await reverseLoyaltyIfCredited(id);
     await logAction("order_status_changed", id, { status });
     showToast(`Status auf „${status}" gesetzt`);
 }
@@ -4841,6 +4882,7 @@ async function saveOrderChanges() {
     updateData.internalNotes = internalNotes || firebase.firestore.FieldValue.delete();
     await db.collection('orders').doc(currentOrderId).update(updateData);
     if (status === "Wird bearbeitet") await awardLoyaltyIfProcessed(currentOrderId);
+    if (status === "Storniert") await reverseLoyaltyIfCredited(currentOrderId);
     await logAction("order_updated", currentOrderId, { status });
     showToast('✅ Bestellung aktualisiert');
     closeOrderModal();
@@ -5196,9 +5238,21 @@ async function deleteUser(uid, email) {
     }
 }
 async function resetAllLoyaltyPoints() {
-    if (!confirm("⚠️ WIRKLICH ALLE Loyalty-Punkte auf 0?")) return; if (!confirm("LETZTE WARNUNG!")) return;
-    const snapshot = await db.collection("users").get(); const batch = db.batch(); snapshot.forEach(doc=>batch.update(doc.ref,{totalBonusPoints:0})); await batch.commit();
-    showToast("✅ Alle Punkte auf 0 gesetzt!","success"); await logAction("all_loyalty_reset"); loadUsers();
+    if (!saUnlocked) { showToast('⛔ Nur Superadmin kann alle Punkte zurücksetzen.', 'error'); return; }
+    if (!confirm("⚠️ WIRKLICH ALLE Loyalty-Punkte auf 0?")) return;
+    if (!confirm("LETZTE WARNUNG! Diese Aktion kann nicht rückgängig gemacht werden!")) return;
+    try {
+        const snapshot = await db.collection("users").get();
+        const docs = snapshot.docs;
+        for (let i = 0; i < docs.length; i += 499) {
+            const batch = db.batch();
+            docs.slice(i, i + 499).forEach(doc => batch.update(doc.ref, { totalBonusPoints: 0 }));
+            await batch.commit();
+        }
+        showToast(`✅ Alle Punkte (${docs.length} Nutzer) auf 0 gesetzt!`, "success");
+        await logAction("all_loyalty_reset");
+        loadUsers();
+    } catch(err) { showToast("❌ Fehler: " + err.message, "error"); }
 }
 async function resetUserPoints(uid) { if (!confirm("Punkte auf 0 setzen?")) return; await db.collection("users").doc(uid).update({totalBonusPoints:0}); showToast("✅ Punkte auf 0 gesetzt"); await logAction("user_loyalty_reset",uid); }
 
@@ -5659,6 +5713,20 @@ async function awardLoyaltyIfProcessed(orderId) {
     });
     await db.collection('orders').doc(orderId).update({ loyaltyCredited: true });
     showToast(`🎉 +${points} Loyalty-Punkte gutgeschrieben!`, 'success');
+}
+async function reverseLoyaltyIfCredited(orderId) {
+    const doc = await db.collection('orders').doc(orderId).get();
+    if (!doc.exists) return;
+    const order = doc.data();
+    if (!order || order.loyaltyCredited !== true) return;
+    if (!order.userId) return;
+    const points = order.loyaltyEarned || 0;
+    if (points <= 0) return;
+    await db.collection('users').doc(order.userId).update({
+        totalBonusPoints: firebase.firestore.FieldValue.increment(-points)
+    });
+    await db.collection('orders').doc(orderId).update({ loyaltyCredited: false });
+    showToast(`↩ ${points} Loyalty-Punkte zurückgebucht (Storno)`, 'success');
 }
 async function handleStockOnStatusChange(orderId, newStatus) {
     const doc = await db.collection('orders').doc(orderId).get();
@@ -6435,8 +6503,9 @@ function requestNotifPermission() {
 
 // Watch for new orders
 function watchNewOrders() {
+    if (_watchOrdersUnsub) { _watchOrdersUnsub(); _watchOrdersUnsub = null; }
     let firstLoad = true;
-    db.collection('orders').orderBy('date','desc').limit(50).onSnapshot(snap => {
+    _watchOrdersUnsub = db.collection('orders').orderBy('date','desc').limit(50).onSnapshot(snap => {
         if (firstLoad) { _orderNotifPrevCount = snap.size; firstLoad = false; return; }
         const newOrders = snap.docChanges().filter(c => c.type === 'added');
         newOrders.forEach(change => {
@@ -6910,9 +6979,9 @@ auth.onAuthStateChanged(async (user) => {
     // New features
     requestNotifPermission();
     watchNewOrders();
-    // Pre-fetch for global search (already loaded above, just keep reference synced)
+    // Pre-fetch users for global search
     db.collection('users').orderBy('email').limit(500).onSnapshot(snap => { window._usrAllDocs = snap.docs; });
-    db.collection('orders').orderBy('date','desc').limit(200).onSnapshot(snap => { window._ordAllDocs = snap.docs; });
+    // Note: _ordAllDocs is already kept in sync by loadOrders() above — no duplicate listener needed
 });
 
 // All data loading is triggered from auth.onAuthStateChanged after admin check
@@ -7075,16 +7144,13 @@ async function saSubmitReauth() {
         const userDoc = await db.collection('users').doc(user.uid).get();
         const userData = userDoc.data() || {};
 
-        // First-time setup: if no superadmin exists yet, promote current user
+        // Superadmin must be set manually in Firestore — no auto-promote
         const anySuper = (data.superadminUID || null);
         if (!anySuper) {
-            // First superadmin — auto-promote
-            await db.collection('settings').doc('superadmin').set({
-                superadminUID: user.uid,
-                allowedIPs: saIPWhitelist
-            }, { merge: true });
-            saCurrentUserIsSuperadmin = true;
-            saIsPrimaryAdmin = true;
+            errEl.textContent = '⛔ Kein Superadmin konfiguriert. Bitte superadminUID manuell in Firestore setzen.';
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-unlock"></i> &nbsp;Zugang bestätigen';
+            return;
         } else {
             saCoSuperadminUIDs = data.coSuperadminUIDs || [];
             const isPrimary = data.superadminUID === user.uid;

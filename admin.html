@@ -3577,24 +3577,73 @@
 </div>
 
 <!-- BROADCAST MODAL -->
-<div id="eu-bc-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:99999;align-items:center;justify-content:center">
-    <div style="background:#13131f;border:1px solid rgba(103,232,249,.15);border-radius:22px;padding:28px;max-width:500px;width:90%;animation:modalPop .3s cubic-bezier(.34,1.56,.64,1)">
+<div id="eu-bc-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:99999;align-items:center;justify-content:center;padding:16px">
+    <div style="background:#13131f;border:1px solid rgba(103,232,249,.15);border-radius:22px;padding:28px;max-width:580px;width:100%;max-height:90vh;overflow-y:auto;animation:modalPop .3s cubic-bezier(.34,1.56,.64,1)">
+
+        <!-- Header -->
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
             <h3 style="font-size:18px;font-weight:700;color:var(--eu-amber)"><i class="fa-solid fa-bullhorn" style="margin-right:8px"></i>Broadcast-Nachricht</h3>
-            <button onclick="document.getElementById('eu-bc-modal').style.display='none'" style="background:none;border:none;color:var(--eu-muted);font-size:20px;cursor:pointer">✕</button>
+            <button onclick="euCloseBroadcast()" style="background:none;border:none;color:var(--eu-muted);font-size:20px;cursor:pointer">✕</button>
         </div>
-        <div class="eu-note"><i class="fa-solid fa-triangle-exclamation" style="margin-right:5px"></i>Wird an <span id="eu-bc-count" style="font-weight:700">alle</span> sichtbaren User protokolliert.</div>
+
+        <!-- Empfänger-Modus Toggle -->
+        <div style="margin-bottom:16px">
+            <label style="font-size:10px;color:var(--eu-muted);font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin-bottom:8px;display:block">Empfänger</label>
+            <div style="display:flex;gap:8px;margin-bottom:12px">
+                <button id="bc-mode-all" onclick="bcSetMode('all')"
+                    style="flex:1;padding:10px;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid rgba(103,232,249,.5);background:rgba(103,232,249,.12);color:#67e8f9;transition:all .15s">
+                    <i class="fa-solid fa-users"></i> Alle Nutzer
+                </button>
+                <button id="bc-mode-select" onclick="bcSetMode('select')"
+                    style="flex:1;padding:10px;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:rgba(255,255,255,.5);transition:all .15s">
+                    <i class="fa-solid fa-user-check"></i> Ausgewählte
+                </button>
+            </div>
+
+            <!-- Alle-Modus Info -->
+            <div id="bc-all-info" style="background:rgba(103,232,249,.06);border:1px solid rgba(103,232,249,.15);border-radius:12px;padding:10px 14px;font-size:12px;color:rgba(255,255,255,.5)">
+                <i class="fa-solid fa-circle-info" style="color:#67e8f9;margin-right:6px"></i>
+                Nachricht wird an <strong id="eu-bc-count" style="color:#67e8f9">alle</strong> aktiven Nutzer gesendet.
+            </div>
+
+            <!-- Auswahl-Modus -->
+            <div id="bc-select-panel" style="display:none">
+                <div style="position:relative;margin-bottom:8px">
+                    <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,.3);font-size:12px"></i>
+                    <input id="bc-search" type="text" placeholder="Nutzer suchen..." oninput="bcFilterList()"
+                        style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 12px 9px 34px;color:#fff;font-size:13px;outline:none;box-sizing:border-box"
+                        onfocus="this.style.borderColor='rgba(103,232,249,.4)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;padding:0 2px">
+                    <span id="bc-selected-count" style="font-size:11px;color:rgba(255,255,255,.4)">0 ausgewählt</span>
+                    <div style="display:flex;gap:10px">
+                        <button onclick="bcSelectAll()" style="font-size:11px;color:#67e8f9;background:none;border:none;cursor:pointer">Alle wählen</button>
+                        <button onclick="bcDeselectAll()" style="font-size:11px;color:rgba(255,255,255,.4);background:none;border:none;cursor:pointer">Keine</button>
+                    </div>
+                </div>
+                <div id="bc-user-list" style="max-height:200px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;scrollbar-width:thin;scrollbar-color:rgba(103,232,249,.3) transparent">
+                </div>
+            </div>
+        </div>
+
+        <!-- Betreff -->
         <div style="margin-bottom:12px">
             <label style="font-size:10px;color:var(--eu-muted);font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin-bottom:5px;display:block">Betreff</label>
             <input class="eu-input" id="eu-bc-subject" placeholder="Betreff der Nachricht">
         </div>
+
+        <!-- Nachricht -->
         <div style="margin-bottom:18px">
             <label style="font-size:10px;color:var(--eu-muted);font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin-bottom:5px;display:block">Nachricht</label>
             <textarea class="eu-input eu-textarea" id="eu-bc-body" rows="4" placeholder="Deine Nachricht..."></textarea>
         </div>
+
+        <!-- Buttons -->
         <div style="display:flex;gap:10px">
-            <button onclick="euExecuteBroadcast()" style="flex:1;padding:13px;background:linear-gradient(135deg,var(--eu-amber),#f97316);border:none;border-radius:13px;font-weight:700;font-size:13px;color:#000;cursor:pointer"><i class="fa-solid fa-paper-plane"></i> Jetzt senden</button>
-            <button onclick="document.getElementById('eu-bc-modal').style.display='none'" style="padding:13px 18px;background:rgba(255,255,255,.04);border:1px solid var(--eu-border);border-radius:13px;color:var(--eu-muted);cursor:pointer">Abbrechen</button>
+            <button id="bc-send-btn" onclick="euExecuteBroadcast()" style="flex:1;padding:13px;background:linear-gradient(135deg,var(--eu-amber),#f97316);border:none;border-radius:13px;font-weight:700;font-size:13px;color:#000;cursor:pointer">
+                <i class="fa-solid fa-paper-plane"></i> <span id="bc-send-label">Jetzt senden</span>
+            </button>
+            <button onclick="euCloseBroadcast()" style="padding:13px 18px;background:rgba(255,255,255,.04);border:1px solid var(--eu-border);border-radius:13px;color:var(--eu-muted);cursor:pointer">Abbrechen</button>
         </div>
     </div>
 </div>
@@ -6341,32 +6390,136 @@ async function euSaveDrawer(){
     euCloseDrawer();
 }
 
-function euOpenBroadcast(){
-    document.getElementById('eu-bc-count').textContent=euFiltered.length;
-    document.getElementById('eu-bc-modal').style.cssText='display:flex';
+let _bcMode = 'all';         // 'all' | 'select'
+let _bcSelected = new Set(); // UIDs der ausgewählten Nutzer
+let _bcListFiltered = [];    // aktuell angezeigte Nutzer in der Liste
+
+function euOpenBroadcast() {
+    _bcMode = 'all';
+    _bcSelected = new Set();
+    _bcListFiltered = [];
+    document.getElementById('eu-bc-subject').value = '';
+    document.getElementById('eu-bc-body').value = '';
+    document.getElementById('bc-search').value = '';
+    bcSetMode('all');
+    document.getElementById('eu-bc-modal').style.cssText = 'display:flex';
 }
-async function euExecuteBroadcast(){
+
+function euCloseBroadcast() {
+    document.getElementById('eu-bc-modal').style.display = 'none';
+}
+
+function bcSetMode(mode) {
+    _bcMode = mode;
+    const allBtn    = document.getElementById('bc-mode-all');
+    const selBtn    = document.getElementById('bc-mode-select');
+    const allInfo   = document.getElementById('bc-all-info');
+    const selPanel  = document.getElementById('bc-select-panel');
+
+    if (mode === 'all') {
+        allBtn.style.cssText = 'flex:1;padding:10px;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid rgba(103,232,249,.5);background:rgba(103,232,249,.12);color:#67e8f9;transition:all .15s';
+        selBtn.style.cssText = 'flex:1;padding:10px;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:rgba(255,255,255,.5);transition:all .15s';
+        allInfo.style.display = 'block';
+        selPanel.style.display = 'none';
+        const count = euAllUsers.filter(u => u.email && !u.disabled).length;
+        document.getElementById('eu-bc-count').textContent = count + ' Nutzern';
+        document.getElementById('bc-send-label').textContent = `An ${count} senden`;
+    } else {
+        selBtn.style.cssText = 'flex:1;padding:10px;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid rgba(250,191,36,.5);background:rgba(250,191,36,.12);color:#fbbf24;transition:all .15s';
+        allBtn.style.cssText = 'flex:1;padding:10px;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:rgba(255,255,255,.5);transition:all .15s';
+        allInfo.style.display = 'none';
+        selPanel.style.display = 'block';
+        bcRenderList();
+    }
+}
+
+function bcRenderList() {
+    const query = (document.getElementById('bc-search')?.value || '').toLowerCase();
+    _bcListFiltered = euAllUsers.filter(u =>
+        u.email && !u.disabled &&
+        (!query || u.email.toLowerCase().includes(query) || (u.username||'').toLowerCase().includes(query))
+    );
+    const container = document.getElementById('bc-user-list');
+    if (!_bcListFiltered.length) {
+        container.innerHTML = `<div style="text-align:center;padding:16px;font-size:12px;color:rgba(255,255,255,.3)">Keine Nutzer gefunden</div>`;
+        return;
+    }
+    container.innerHTML = _bcListFiltered.map(u => {
+        const checked = _bcSelected.has(u.id);
+        const initials = ((u.username || u.email || '?').slice(0,2)).toUpperCase();
+        return `<label style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;cursor:pointer;border:1px solid ${checked ? 'rgba(250,191,36,.3)' : 'rgba(255,255,255,.06)'};background:${checked ? 'rgba(250,191,36,.08)' : 'rgba(255,255,255,.03)'};transition:all .12s" id="bc-row-${u.id}">
+            <input type="checkbox" ${checked ? 'checked' : ''} onchange="bcToggleUser('${u.id}', this.checked)" style="accent-color:#fbbf24;width:15px;height:15px;flex-shrink:0">
+            <div style="width:30px;height:30px;border-radius:8px;background:rgba(103,232,249,.15);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#67e8f9;flex-shrink:0">${initials}</div>
+            <div style="flex:1;min-width:0">
+                <div style="font-size:12px;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.email}</div>
+                <div style="font-size:10px;color:rgba(255,255,255,.35)">${u.username || 'kein Username'}</div>
+            </div>
+        </label>`;
+    }).join('');
+    bcUpdateSelectedCount();
+}
+
+function bcFilterList() { bcRenderList(); }
+
+function bcToggleUser(uid, checked) {
+    if (checked) _bcSelected.add(uid);
+    else _bcSelected.delete(uid);
+    // Update row style
+    const row = document.getElementById(`bc-row-${uid}`);
+    if (row) {
+        row.style.border = checked ? '1px solid rgba(250,191,36,.3)' : '1px solid rgba(255,255,255,.06)';
+        row.style.background = checked ? 'rgba(250,191,36,.08)' : 'rgba(255,255,255,.03)';
+    }
+    bcUpdateSelectedCount();
+}
+
+function bcUpdateSelectedCount() {
+    const n = _bcSelected.size;
+    document.getElementById('bc-selected-count').textContent = `${n} ausgewählt`;
+    document.getElementById('bc-send-label').textContent = n > 0 ? `An ${n} senden` : 'Auswählen...';
+}
+
+function bcSelectAll() {
+    _bcListFiltered.forEach(u => _bcSelected.add(u.id));
+    bcRenderList();
+}
+
+function bcDeselectAll() {
+    _bcListFiltered.forEach(u => _bcSelected.delete(u.id));
+    bcRenderList();
+}
+
+async function euExecuteBroadcast() {
     const subject = document.getElementById('eu-bc-subject').value.trim();
     const body    = document.getElementById('eu-bc-body').value.trim();
-    if (!subject || !body) { showToast('Betreff & Nachricht erforderlich','error'); return; }
+    if (!subject || !body) { showToast('Betreff & Nachricht erforderlich', 'error'); return; }
 
-    const recipients = euFiltered.filter(u => u.email && !u.disabled);
-    if (!recipients.length) { showToast('Keine aktiven Empfänger','error'); return; }
+    let recipients;
+    if (_bcMode === 'all') {
+        recipients = euAllUsers.filter(u => u.email && !u.disabled);
+    } else {
+        if (_bcSelected.size === 0) { showToast('Bitte mindestens einen Nutzer auswählen', 'error'); return; }
+        recipients = euAllUsers.filter(u => _bcSelected.has(u.id) && u.email);
+    }
+    if (!recipients.length) { showToast('Keine aktiven Empfänger', 'error'); return; }
 
-    const btn = document.querySelector('[onclick="euExecuteBroadcast()"]');
-    if (btn) { btn.disabled = true; btn.textContent = `Sende (0/${recipients.length})...`; }
+    if (!confirm(`Broadcast an ${recipients.length} Nutzer senden?`)) return;
+
+    const btn = document.getElementById('bc-send-btn');
+    if (btn) { btn.disabled = true; }
+    document.getElementById('bc-send-label').textContent = `Sende (0/${recipients.length})...`;
 
     let sent = 0, failed = 0;
     for (const u of recipients) {
         try {
             await emailjs.send(
                 "service_lzvte0x",
-                "template_cgcu1m8",   // reuse order template or create a broadcast template
+                "template_cgcu1m8",
                 {
-                    email:        u.email,
-                    order_id:     "BROADCAST",
-                    orders:       [{ name: body, units: 1, price: "—", image_url: "https://wavevapes.de/logo.png" }],
-                    cost:         { shipping: "—", tax: "—", total: subject },
+                    email:          u.email,
+                    order_id:       "BROADCAST",
+                    orders:         [{ name: body, units: 1, price: "—", image_url: "https://wavevapes.de/logo.png" }],
+                    cost:           { shipping: "—", tax: "—", total: subject },
                     loyalty_earned: 0
                 }
             );
@@ -6375,17 +6528,14 @@ async function euExecuteBroadcast(){
             failed++;
             console.warn("Broadcast an " + u.email + " fehlgeschlagen:", e);
         }
-        if (btn) btn.textContent = `Sende (${sent}/${recipients.length})...`;
-        // Small delay to avoid rate limits
+        document.getElementById('bc-send-label').textContent = `Sende (${sent}/${recipients.length})...`;
         await new Promise(r => setTimeout(r, 120));
     }
 
-    await logAction('broadcast_sent', '', { subject, sent, failed, total: recipients.length });
-    showToast(`📢 ${sent} E-Mails gesendet${failed>0?' ('+failed+' fehlgeschlagen)':''}`, sent>0?'success':'error');
-    if (btn) { btn.disabled = false; btn.textContent = 'Broadcast senden'; }
-    document.getElementById('eu-bc-modal').style.display = 'none';
-    document.getElementById('eu-bc-subject').value = '';
-    document.getElementById('eu-bc-body').value = '';
+    await logAction('broadcast_sent', '', { subject, sent, failed, total: recipients.length, mode: _bcMode });
+    showToast(`📢 ${sent} E-Mail${sent !== 1 ? 's' : ''} gesendet${failed > 0 ? ' (' + failed + ' fehlgeschlagen)' : ''}`, sent > 0 ? 'success' : 'error');
+    if (btn) { btn.disabled = false; }
+    euCloseBroadcast();
 }
 
 function euExportCSV(){

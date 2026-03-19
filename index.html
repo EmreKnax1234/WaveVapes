@@ -492,6 +492,29 @@
         .promo-sale-price { font-size: 1.85rem; font-weight: 900; color: #ef4444; line-height: 1; }
         .price-row-promo  { display:flex; flex-direction:column; align-items:center; gap:2px; margin-bottom:10px; }
 
+        /* ── PROMO BANNER (Hero) ── */
+        #promo-hero-banner { display: none; margin-bottom: 16px; }
+        #promo-hero-banner.visible { display: flex; justify-content: center; }
+        .promo-hero-inner {
+            width: 100%;
+            display: flex; align-items: center; justify-content: center;
+            flex-wrap: wrap; gap: 10px 24px;
+            background: linear-gradient(135deg, rgba(239,68,68,.12), rgba(249,115,22,.08));
+            border: 1px solid rgba(239,68,68,.35);
+            border-radius: 20px; padding: 14px 24px;
+            position: relative; overflow: hidden;
+            animation: promoBannerIn .4s cubic-bezier(0.34,1.56,0.64,1);
+        }
+        @keyframes promoBannerIn { from{transform:scaleY(0.6);opacity:0} to{transform:scaleY(1);opacity:1} }
+        .promo-hero-inner::before { content:''; position:absolute; inset:0; background:linear-gradient(90deg,transparent,rgba(239,68,68,.06),transparent); animation:cd-shine 3s infinite; }
+        .promo-hero-label { font-size:14px; font-weight:800; color:#fff; display:flex; align-items:center; gap:8px; }
+        .promo-hero-label span.tag { background:linear-gradient(135deg,#ef4444,#f97316); color:#fff; font-size:11px; font-weight:900; padding:3px 10px; border-radius:99px; letter-spacing:.04em; }
+        .promo-hero-cd { display:flex; align-items:center; gap:6px; }
+        .promo-hero-block { display:flex; flex-direction:column; align-items:center; background:rgba(0,0,0,.35); border:1px solid rgba(239,68,68,.25); border-radius:10px; padding:6px 12px; min-width:48px; }
+        .promo-hero-num { font-family:'JetBrains Mono','Orbitron',monospace; font-size:20px; font-weight:800; color:#fff; line-height:1; }
+        .promo-hero-unit { font-size:8px; font-weight:700; letter-spacing:.1em; color:rgba(255,255,255,.4); text-transform:uppercase; margin-top:3px; }
+        .promo-hero-sep { font-size:18px; font-weight:800; color:rgba(239,68,68,.5); margin-bottom:12px; }
+
         /* ── COUNTDOWN BANNER ── */
         #countdown-banner { display: none; margin-bottom: 20px; }
         #countdown-banner.visible { display: flex; }
@@ -1425,16 +1448,29 @@
     <main id="main-content" class="max-w-7xl mx-auto px-4 sm:px-6 pt-8 pb-20">
         <!-- HERO -->
         <section class="text-center mb-12" aria-label="WaveVapes Angebote und Aktionen">
-            <!-- COUNTDOWN BANNER -->
+            <!-- PROMO + COUNTDOWN BANNER -->
             <div id="countdown-banner" role="timer" aria-live="polite">
                 <div class="cd-banner">
-                    <div class="cd-label" id="cd-label">🔥 Angebot endet in</div>
-                    <div class="cd-digits" id="cd-digits">
-                        <div class="cd-block"><div class="cd-num" id="cd-h">00</div><div class="cd-unit">Std</div></div>
-                        <div class="cd-sep">:</div>
-                        <div class="cd-block"><div class="cd-num" id="cd-m">00</div><div class="cd-unit">Min</div></div>
-                        <div class="cd-sep">:</div>
-                        <div class="cd-block"><div class="cd-num" id="cd-s">00</div><div class="cd-unit">Sek</div></div>
+                    <!-- Promo-Info (nur sichtbar wenn Aktion aktiv) -->
+                    <div id="cd-promo-info" style="display:none;align-items:center;gap:10px;padding:4px 16px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);border-radius:99px">
+                        <span style="font-size:18px">⚡</span>
+                        <div style="text-align:left">
+                            <div id="cd-promo-name" style="font-size:13px;font-weight:800;color:#fff"></div>
+                            <div id="cd-promo-detail" style="font-size:11px;color:rgba(255,255,255,.5)"></div>
+                        </div>
+                    </div>
+                    <!-- Trennlinie (nur wenn beides aktiv) -->
+                    <div id="cd-divider" style="display:none;width:1px;height:36px;background:rgba(255,255,255,.1)"></div>
+                    <!-- Timer -->
+                    <div id="cd-timer-wrap" style="display:flex;align-items:center;gap:14px">
+                        <div class="cd-label" id="cd-label">🔥 Angebot endet in</div>
+                        <div class="cd-digits" id="cd-digits">
+                            <div class="cd-block"><div class="cd-num" id="cd-h">00</div><div class="cd-unit">Std</div></div>
+                            <div class="cd-sep">:</div>
+                            <div class="cd-block"><div class="cd-num" id="cd-m">00</div><div class="cd-unit">Min</div></div>
+                            <div class="cd-sep">:</div>
+                            <div class="cd-block"><div class="cd-num" id="cd-s">00</div><div class="cd-unit">Sek</div></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2899,6 +2935,7 @@
             _activePromos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             renderProducts();
             updateCartDisplay();
+            cdUpdatePromoBanner();
         }, () => {});
 
         function loadProducts() {
@@ -4516,29 +4553,86 @@
         // ── COUNTDOWN TIMER ─────────────────────────────────────────────────────
         let _cdInterval = null;
 
+        function cdUpdatePromoBanner() {
+            const banner    = document.getElementById('countdown-banner');
+            const promoInfo = document.getElementById('cd-promo-info');
+            const divider   = document.getElementById('cd-divider');
+            const timerWrap = document.getElementById('cd-timer-wrap');
+            if (!banner || !promoInfo) return;
+
+            const active = _activePromos.filter(p => p.active);
+            if (!active.length) {
+                promoInfo.style.display = 'none';
+                if (divider) divider.style.display = 'none';
+                // Banner bleibt sichtbar falls Timer noch läuft
+                return;
+            }
+
+            // Zeige die erste aktive Aktion
+            const promo = active[0];
+            const catLabel = promo.category === 'Alle' ? 'Alle Produkte' : promo.category;
+            const discLabel = promo.type === 'percent'
+                ? `${promo.value}% Rabatt`
+                : `${parseFloat(promo.value).toFixed(2).replace('.', ',')} € Rabatt`;
+
+            document.getElementById('cd-promo-name').textContent   = promo.name || discLabel;
+            document.getElementById('cd-promo-detail').textContent = `${discLabel} auf ${catLabel}`;
+            promoInfo.style.display = 'flex';
+
+            // Trennlinie nur wenn auch Timer aktiv
+            const timerVisible = timerWrap && timerWrap.style.display !== 'none';
+            if (divider) divider.style.display = timerVisible ? 'block' : 'none';
+
+            // Banner immer einblenden wenn Promo aktiv
+            banner.classList.add('visible');
+
+            // Mehrere Promos → Badge in Label
+            if (active.length > 1) {
+                document.getElementById('cd-promo-name').textContent = `${active.length} Aktionen aktiv`;
+                document.getElementById('cd-promo-detail').textContent =
+                    active.map(p => p.name || p.category).join(' · ');
+            }
+        }
+
         function cdUpdate(active, label, endStr) {
-            const banner = document.getElementById('countdown-banner');
-            if (!banner) return;
+            const banner    = document.getElementById('countdown-banner');
+            const timerWrap = document.getElementById('cd-timer-wrap');
+            const divider   = document.getElementById('cd-divider');
+            if (!banner || !timerWrap) return;
+
+            const hasPromo = _activePromos && _activePromos.some(p => p.active);
+
             if (!active || !endStr) {
-                banner.classList.remove('visible');
+                timerWrap.style.display = 'none';
+                if (divider) divider.style.display = 'none';
                 if (_cdInterval) { clearInterval(_cdInterval); _cdInterval = null; }
+                // Banner nur ausblenden wenn auch kein Promo aktiv
+                if (!hasPromo) banner.classList.remove('visible');
                 return;
             }
             const endMs = new Date(endStr).getTime();
             if (isNaN(endMs) || endMs <= Date.now()) {
-                banner.classList.remove('visible');
+                timerWrap.style.display = 'none';
+                if (divider) divider.style.display = 'none';
                 if (_cdInterval) { clearInterval(_cdInterval); _cdInterval = null; }
+                if (!hasPromo) banner.classList.remove('visible');
                 return;
             }
+
             const labelEl = document.getElementById('cd-label');
             if (labelEl) labelEl.textContent = label || '🔥 Angebot endet in';
+            timerWrap.style.display = 'flex';
+            if (divider) divider.style.display = hasPromo ? 'block' : 'none';
             banner.classList.add('visible');
             if (_cdInterval) clearInterval(_cdInterval);
+
             function tick() {
                 const diff = endMs - Date.now();
                 if (diff <= 0) {
-                    banner.classList.remove('visible');
+                    timerWrap.style.display = 'none';
+                    if (divider) divider.style.display = 'none';
                     clearInterval(_cdInterval);
+                    if (!_activePromos?.some(p => p.active)) banner.classList.remove('visible');
                     return;
                 }
                 const h = Math.floor(diff / 3600000);
@@ -4549,8 +4643,7 @@
                 const mEl = document.getElementById('cd-m');
                 const sEl = document.getElementById('cd-s');
                 if (h >= 24) {
-                    const d = Math.floor(h / 24);
-                    const rh = h % 24;
+                    const d = Math.floor(h / 24); const rh = h % 24;
                     if (hEl) { hEl.closest('.cd-block').querySelector('.cd-unit').textContent = 'Tage'; hEl.textContent = pad(d); }
                     if (mEl) { mEl.closest('.cd-block').querySelector('.cd-unit').textContent = 'Std';  mEl.textContent = pad(rh); }
                     if (sEl) { sEl.closest('.cd-block').querySelector('.cd-unit').textContent = 'Min';  sEl.textContent = pad(m); }

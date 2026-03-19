@@ -2376,7 +2376,7 @@
                     updateCartDisplay();
                 } catch (err) {
                     console.error(err);
-                    status.innerHTML = `<span class="text-red-400">Fehler: ${err.message}</span>`;
+                    status.textContent = `Fehler: ${err.message}`;
                 }
             } else {
                 appliedDiscount = { code: input, type: d.type, value: d.value };
@@ -2450,8 +2450,8 @@
         function getProductTotal() {
             let subtotal = getSubtotal();
 
-            // Apply all active category offers
-            for (const [catName, offer] of Object.entries(_offerCats)) {
+            // Apply all active category offers (only when loaded)
+            if (_offerCatsReady) for (const [catName, offer] of Object.entries(_offerCats)) {
                 const catItems = cart.filter(i => {
                     const p = allProducts.find(pr => pr.id === i.id);
                     return p && p.category === catName;
@@ -2513,6 +2513,7 @@
 
         // Live cache of special-category offer configs, keyed by category name
         let _offerCats = {}; // { "Category Name": { offerType, offerN, offerM, specialText } }
+        let _offerCatsReady = false;
 
         function loadProducts() {
             const container = document.getElementById("products-grid");
@@ -2674,8 +2675,8 @@
             if (delta > 0 && ev) flyToCart(ev, product);
 
             manageMysteryVape();
-            // Check all offer categories for deal threshold
-            for (const [catName, offer] of Object.entries(_offerCats)) {
+            // Check all offer categories for deal threshold (only when loaded)
+            if (_offerCatsReady) for (const [catName, offer] of Object.entries(_offerCats)) {
                 if (offer.offerType === 'nforn') {
                     const qty = getCategoryQuantity(catName);
                     if (qty >= offer.offerN && qty % offer.offerN === 0) {
@@ -2765,8 +2766,8 @@
                 addressDisplay.innerHTML = `<span class="text-red-400">Noch keine Adresse angegeben</span>`;
             }
             let itemsHTML = "";
-            // Show offer banners for all active category deals
-            for (const [catName, offer] of Object.entries(_offerCats)) {
+            // Show offer banners for all active category deals (only when loaded)
+            if (_offerCatsReady) for (const [catName, offer] of Object.entries(_offerCats)) {
                 const catItems = cart.filter(i => {
                     const p = allProducts.find(pr => pr.id === i.id);
                     return p && p.category === catName;
@@ -2819,9 +2820,9 @@
             }
         }
         function removeCartItem(id) {
-            // id comes as string from HTML onclick — coerce for comparison
-            if (id == MYSTERY_ID) return;
-            cart = cart.filter(item => item.id !== id);
+            // id comes as string from HTML onclick — normalize both sides
+            if (String(id) == String(MYSTERY_ID)) return;
+            cart = cart.filter(item => String(item.id) !== String(id));
             delete pendingNicotine[id];
             manageMysteryVape();
             saveUserCart();
@@ -3212,7 +3213,7 @@
                             ${trackingHTML}
                             <div class="flex flex-col gap-3 mt-6">
                                 ${trackButton}
-                                <button onclick="showPaymentInfo('${order.orderNumber}')"
+                                <button onclick="showPaymentInfo('${order.orderNumber}', ${order.total})"
                                         class="w-full bg-zinc-800 hover:bg-zinc-700 text-cyan-300 py-3 rounded-2xl text-sm font-medium transition-all">
                                     Überweisungsdaten anzeigen
                                 </button>
@@ -3247,14 +3248,17 @@
                 ordersUnsubscribe = null;
             }
         }
-        function showPaymentInfo(orderNumber) {
+        function showPaymentInfo(orderNumber, total) {
+            const totalFormatted = total !== undefined
+                ? parseFloat(total).toFixed(2).replace('.', ',') + ' €'
+                : document.getElementById("cart-total-price").textContent;
             const infoHTML = `
                 <div class="space-y-4 text-sm">
                     <div><strong>Bank:</strong> ${BANK_NAME}</div>
                     <div><strong>Empfänger:</strong> ${BANK_OWNER}</div>
                     <div><strong>IBAN:</strong> <span class="font-mono break-all">${BANK_IBAN}</span></div>
                     ${BANK_BIC ? `<div><strong>BIC:</strong> ${BANK_BIC}</div>` : ''}
-                    <div><strong>Betrag:</strong> <span class="font-bold text-xl">${document.getElementById("cart-total-price").textContent}</span></div>
+                    <div><strong>Betrag:</strong> <span class="font-bold text-xl">${totalFormatted}</span></div>
                     <div class="pt-4 border-t border-white/20">
                         <div class="text-amber-300 text-xs tracking-wider">VERWENDUNGSZWECK</div>
                         <div class="font-mono bg-zinc-900 p-3 rounded-xl text-center text-base mt-1">${orderNumber}</div>
@@ -3286,6 +3290,7 @@
             const snap = await db.collection("categories").orderBy("order").get();
             // Rebuild offer config cache
             _offerCats = {};
+            _offerCatsReady = false;
             snap.forEach(doc => {
                 const c = doc.data();
                 if (c.special && c.name) {
@@ -3297,6 +3302,7 @@
                     };
                 }
             });
+            _offerCatsReady = true;
             let html = `<button onclick="setCategoryFilter('Alle')" class="px-5 py-2 transition ${currentCategoryFilter === 'Alle' ? 'tab-active' : ''}">Alle</button>`;
             snap.forEach(doc => {
                 const c = doc.data();
@@ -3488,7 +3494,7 @@
             // Load similar products
             renderSimilarProducts(product.id, product.category);
             // Swipe-down-to-close on mobile
-            initSwipeToClose(product.id);
+            initSwipeToClose();
         }
 
         function initSwipeToClose() {
@@ -3613,7 +3619,12 @@
                 })
                 .catch(err => {
                     console.error('rvLoad error:', err.code, err.message);
-                    listEl.innerHTML = `<div class="rv-empty" style="color:#f87171;font-size:11px">Fehler ${err.code}: ${err.message}<br><br>Bitte firestore.rules deployen (reviews allow read: if true)</div>`;
+                    const safe = document.createElement('div');
+                    safe.className = 'rv-empty';
+                    safe.style.cssText = 'color:#f87171;font-size:11px';
+                    safe.textContent = `Fehler ${err.code}: ${err.message}`;
+                    listEl.innerHTML = '';
+                    listEl.appendChild(safe);
                 });
         }
 
@@ -3955,14 +3966,7 @@
             tryOpen();
         }
 
-        // Handle browser back/forward button
-        window.addEventListener('popstate', function(e) {
-            if (e.state && e.state.productId) {
-                showProductDetail(e.state.productId);
-            } else {
-                closeProductDetail();
-            }
-        });
+        // Back/forward navigation is handled by initAndroidBack() below (single handler for all modals + product detail)
         // Close modals on Escape key
         document.addEventListener('keydown', function(e) {
             if (e.key !== 'Escape') return;

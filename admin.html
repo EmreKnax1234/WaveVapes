@@ -3018,29 +3018,6 @@
                     </div>
                 </div>
 
-                <!-- ── Shop-Status ── -->
-                <div class="cfg-section">
-                    <div class="cfg-section-hdr">
-                        <div class="cfg-section-icon" style="background:rgba(248,113,113,.1);color:var(--cfg-red)"><i class="fa-solid fa-power-off"></i></div>
-                        <div class="cfg-section-title">Shop-Status</div>
-                    </div>
-                    <div class="cfg-section-body">
-                        <div class="cfg-toggle-row">
-                            <div>
-                                <div class="cfg-toggle-lbl">Shop geschlossen (Wartung)</div>
-                                <div class="cfg-toggle-sub">Kunden sehen eine Wartungsseite</div>
-                            </div>
-                            <label class="cfg-switch">
-                                <input type="checkbox" id="set-closed" onchange="cfgUpdateStatusPill()">
-                                <span class="cfg-switch-sl"></span>
-                            </label>
-                        </div>
-                        <p style="font-size:10px;color:rgba(255,255,255,.2);line-height:1.5">
-                            Wenn aktiviert, können keine neuen Bestellungen aufgegeben werden. Admins haben weiterhin vollen Zugriff.
-                        </p>
-                    </div>
-                </div>
-
                 <!-- ── E-Mail Template (full width) ── -->
                 <div class="cfg-section cfg-col-full">
                     <div class="cfg-section-hdr">
@@ -6121,16 +6098,18 @@ async function unbanByIp(ip) {
 
 // ── Settings helpers ──
 function cfgUpdateStatusPill() {
-    const closed = document.getElementById('set-closed')?.checked;
     const pill = document.getElementById('cfg-shop-status-pill');
     if (!pill) return;
-    if (closed) {
-        pill.className = 'cfg-status-pill cfg-status-closed';
-        pill.innerHTML = '<i class="fa-solid fa-circle" style="font-size:6px"></i> Shop geschlossen';
-    } else {
-        pill.className = 'cfg-status-pill cfg-status-live';
-        pill.innerHTML = '<i class="fa-solid fa-circle" style="font-size:6px"></i> Shop online';
-    }
+    db.collection('settings').doc('main').get().then(doc => {
+        const closed = doc.exists && doc.data().shop_closed;
+        if (closed) {
+            pill.className = 'cfg-status-pill cfg-status-closed';
+            pill.innerHTML = '<i class="fa-solid fa-circle" style="font-size:6px"></i> Shop geschlossen';
+        } else {
+            pill.className = 'cfg-status-pill cfg-status-live';
+            pill.innerHTML = '<i class="fa-solid fa-circle" style="font-size:6px"></i> Shop online';
+        }
+    }).catch(() => {});
 }
 function cfgUpdatePreviews() {
     const c = document.getElementById('set-stock-critical')?.value || '3';
@@ -6143,14 +6122,13 @@ function cfgUpdatePreviews() {
 
 async function loadSettings() {
     const doc = await db.collection("settings").doc("main").get();
-    let data = doc.exists ? doc.data() : { bank_owner:"Jakob David Hellrung", iban:"DE38360200300003395812", bic:"NBAGDE3EXXX", shipping_cost:4.99, free_shipping_threshold:100, shop_closed:false, email_template:"Deine Bestellung wurde bestätigt...", stock_critical:3, stock_warning:10 };
+    let data = doc.exists ? doc.data() : { bank_owner:"Jakob David Hellrung", iban:"DE38360200300003395812", bic:"NBAGDE3EXXX", shipping_cost:4.99, free_shipping_threshold:100, email_template:"Deine Bestellung wurde bestätigt...", stock_critical:3, stock_warning:10 };
     if (!doc.exists) await db.collection("settings").doc("main").set(data);
     document.getElementById("set-bank-owner").value = data.bank_owner||"";
     document.getElementById("set-iban").value = data.iban||"";
     document.getElementById("set-bic").value = data.bic||"";
     document.getElementById("set-shipping").value = data.shipping_cost||4.99;
     document.getElementById("set-free-threshold").value = data.free_shipping_threshold||100;
-    document.getElementById("set-closed").checked = data.shop_closed||false;
     document.getElementById("set-email-template").value = data.email_template||"";
     document.getElementById("set-stock-critical").value = data.stock_critical !== undefined ? data.stock_critical : 3;
     document.getElementById("set-stock-warning").value  = data.stock_warning  !== undefined ? data.stock_warning  : 10;
@@ -6172,7 +6150,6 @@ async function saveSettings() {
         bic:                     document.getElementById("set-bic").value,
         shipping_cost:           parseFloat(document.getElementById("set-shipping").value),
         free_shipping_threshold: parseFloat(document.getElementById("set-free-threshold").value),
-        shop_closed:             document.getElementById("set-closed").checked,
         email_template:          document.getElementById("set-email-template").value,
         stock_critical:          parseInt(document.getElementById("set-stock-critical").value) || 3,
         stock_warning:           parseInt(document.getElementById("set-stock-warning").value)  || 10,
@@ -8841,9 +8818,7 @@ function saDownload(filename, content, mime) {
 async function saDangerShopClose() {
     if (!confirm('Shop wirklich SOFORT für alle Kunden schließen?')) return;
     await db.collection('settings').doc('main').set({ shop_closed: true }, { merge: true });
-    // Sync Settings tab checkbox if visible
-    const cb = document.getElementById('set-closed');
-    if (cb) { cb.checked = true; cfgUpdateStatusPill && cfgUpdateStatusPill(); }
+    cfgUpdateStatusPill();
     await logAction('danger_shop_close', 'main');
     showToast('🔴 Shop ist jetzt geschlossen — Kunden sehen die Wartungsseite');
 }
@@ -8851,9 +8826,7 @@ async function saDangerShopClose() {
 async function saDangerShopOpen() {
     if (!confirm('Shop für alle Kunden wieder öffnen?')) return;
     await db.collection('settings').doc('main').set({ shop_closed: false }, { merge: true });
-    // Sync Settings tab checkbox if visible
-    const cb = document.getElementById('set-closed');
-    if (cb) { cb.checked = false; cfgUpdateStatusPill && cfgUpdateStatusPill(); }
+    cfgUpdateStatusPill();
     await logAction('danger_shop_open', 'main');
     showToast('🟢 Shop ist jetzt wieder geöffnet');
 }

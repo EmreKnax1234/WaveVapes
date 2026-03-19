@@ -381,6 +381,69 @@
 
         /* ── SIMILAR PRODUCTS ───────────────────────────────────── */
         .similar-section { margin-top: 32px; padding-top: 28px; border-top: 1px solid rgba(255,255,255,.08); }
+
+        /* ── ZULETZT ANGESEHEN ── */
+        #recently-viewed-section {
+            margin-top: 40px;
+            display: none;
+        }
+        #recently-viewed-section.visible { display: block; }
+        .rv-section-title {
+            display: flex; align-items: center; gap: 10px;
+            font-size: 13px; font-weight: 700; letter-spacing: 0.12em;
+            color: rgba(255,255,255,0.4); text-transform: uppercase;
+            margin-bottom: 14px;
+        }
+        .rv-section-title i { color: #67e8f9; font-size: 12px; }
+        .rv-scroll-track {
+            display: flex; gap: 12px;
+            overflow-x: auto; overflow-y: visible;
+            padding-bottom: 8px;
+            scrollbar-width: none;
+            -webkit-overflow-scrolling: touch;
+        }
+        .rv-scroll-track::-webkit-scrollbar { display: none; }
+        .rv-mini-card {
+            flex-shrink: 0;
+            width: 130px;
+            background: #18181b;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 20px;
+            padding: 12px 10px 10px;
+            cursor: pointer;
+            transition: transform 0.22s cubic-bezier(0.34,1.56,0.64,1), border-color 0.2s, box-shadow 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+        .rv-mini-card::before {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0; height: 2px;
+            background: linear-gradient(90deg, #67e8f9, #a78bfa);
+            border-radius: 20px 20px 0 0;
+        }
+        .rv-mini-card:hover {
+            transform: translateY(-5px) scale(1.03);
+            border-color: rgba(103,232,249,0.3);
+            box-shadow: 0 12px 30px -8px rgba(103,232,249,0.2);
+        }
+        .rv-mini-img {
+            width: 100%; aspect-ratio: 1;
+            object-fit: contain; border-radius: 12px;
+            background: #27272a; display: block; margin-bottom: 8px;
+        }
+        .rv-mini-placeholder {
+            width: 100%; aspect-ratio: 1;
+            border-radius: 12px; background: #27272a;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 28px; margin-bottom: 8px;
+        }
+        .rv-mini-name {
+            font-size: 11px; font-weight: 600; color: #e4e4e7;
+            line-height: 1.3;
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+            margin-bottom: 4px;
+        }
+        .rv-mini-price { font-size: 12px; font-weight: 700; color: #ef4444; }
         .similar-title { font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: rgba(255,255,255,.4); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
         .similar-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
         .similar-card {
@@ -448,7 +511,7 @@
 
         /* ── WISHLIST HEART BUTTON ── */
         .wish-btn {
-            position: absolute; top: 10px; right: 10px;
+            position: absolute; top: 16px; right: 10px;
             width: 34px; height: 34px; min-height: 34px !important; border-radius: 50%;
             background: rgba(0,0,0,0.55); backdrop-filter: blur(6px);
             border: 1px solid rgba(255,255,255,0.12);
@@ -1317,6 +1380,15 @@
         <section aria-label="Produkte" id="products-section">
             <div id="products-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6"></div>
         </section>
+
+        <!-- ZULETZT ANGESEHEN -->
+        <section id="recently-viewed-section" aria-label="Zuletzt angesehen">
+            <div class="rv-section-title">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+                Zuletzt angesehen
+            </div>
+            <div id="recently-viewed-track" class="rv-scroll-track"></div>
+        </section>
         <!-- REVIEWS -->
         <section class="mt-24 border-t border-white/10 pt-16" aria-label="Kundenbewertungen WaveVapes" itemscope itemtype="https://schema.org/AggregateRating">
             <meta itemprop="ratingValue" content="4.92">
@@ -1888,6 +1960,7 @@
         let currentPriceSort   = "default"; // "default" | "price-asc" | "price-desc"
         let wishlist = JSON.parse(localStorage.getItem("wavevapes_wishlist")) || [];
         let showWishlistOnly = false;
+        let recentlyViewed = JSON.parse(localStorage.getItem("wavevapes_recently")) || [];
 
         let appliedDiscount = null;
         let ordersUnsubscribe = null;
@@ -2725,9 +2798,10 @@
                 html += `
                     <div ${clickHandler}
                          data-product-id="${product.id}"
+                         style="position:relative"
                          class="product-card bg-zinc-900 border border-white/10 rounded-3xl ${unavailableClass} ${liquidClass} ${cursorClass}">
                         <div class="h-1.5 bg-gradient-to-r from-cyan-400 to-purple-500 rounded-t-3xl"></div>
-                        <div class="p-5 flex flex-col h-full" style="position:relative">
+                        <div class="p-5 flex flex-col h-full">
                             <button class="wish-btn${isWished?' wished':''}" onclick="toggleWishlist('${product.id}',event)" aria-label="Zu Favoriten hinzufügen" title="Favorit">
                                 <i class="fa-${isWished?'solid':'regular'} fa-heart"></i>
                             </button>
@@ -3457,6 +3531,36 @@
             renderProducts();
         }
 
+        // ── ZULETZT ANGESEHEN ───────────────────────────────────────────────────
+        function renderRecentlyViewed() {
+            const section = document.getElementById("recently-viewed-section");
+            const track   = document.getElementById("recently-viewed-track");
+            if (!section || !track) return;
+
+            // Filter to IDs that still exist in allProducts, skip current open product
+            const items = recentlyViewed
+                .map(id => allProducts.find(p => p.id === id))
+                .filter(Boolean);
+
+            if (items.length === 0) {
+                section.classList.remove("visible");
+                return;
+            }
+
+            section.classList.add("visible");
+            track.innerHTML = items.map(p => {
+                const price = p.price.toFixed(2).replace('.', ',') + ' €';
+                const imgHTML = p.image
+                    ? `<img class="rv-mini-img" src="${p.image}" alt="${p.name}" loading="lazy">`
+                    : `<div class="rv-mini-placeholder">🧪</div>`;
+                return `<div class="rv-mini-card" onclick="showProductDetail('${p.id}')" title="${p.name}">
+                    ${imgHTML}
+                    <div class="rv-mini-name">${p.name}</div>
+                    <div class="rv-mini-price">${price}</div>
+                </div>`;
+            }).join('');
+        }
+
         // ── WISHLIST ────────────────────────────────────────────────────────────
         function saveWishlist() {
             localStorage.setItem("wavevapes_wishlist", JSON.stringify(wishlist));
@@ -3610,6 +3714,12 @@
         function showProductDetail(id) {
             const product = allProducts.find(p => p.id === id);
             if (!product) return;
+            // Track recently viewed
+            recentlyViewed = recentlyViewed.filter(i => i !== id);
+            recentlyViewed.unshift(id);
+            if (recentlyViewed.length > 6) recentlyViewed = recentlyViewed.slice(0, 6);
+            localStorage.setItem("wavevapes_recently", JSON.stringify(recentlyViewed));
+            renderRecentlyViewed();
             // Hintergrund-Scroll sperren (gleiche Logik wie Cart)
             _modalScrollY = window.scrollY;
             document.body.style.top = `-${_modalScrollY}px`;
@@ -4174,6 +4284,7 @@
             setInterval(updatePresence, 30000);
             checkProductUrl();
             updateWishlistBadge();
+            renderRecentlyViewed();
         }
 
 

@@ -620,7 +620,14 @@
             #product-detail-modal .similar-card-ph { font-size: 42px !important; }
         }
         html, body { touch-action: manipulation !important; -webkit-text-size-adjust: 100% !important; -webkit-tap-highlight-color: transparent !important; overscroll-behavior-y: none; }
-        * { touch-action: manipulation !important; -webkit-tap-highlight-color: transparent !important; }
+        /* OPT 7: Removed touch-action: manipulation from * — applying it to ALL elements
+           breaks native scroll momentum on Android Chrome for scrollable containers.
+           Only interactive/tappable elements actually need this rule. */
+        a, button, [onclick], label,
+        input, select, textarea,
+        .qty-btn, .product-card, .filter-pill, .nicotine-select,
+        .similar-card, .rv-mini-card, .wish-btn, .category-tabs button,
+        .auth-tab, .social-icon { touch-action: manipulation !important; -webkit-tap-highlight-color: transparent !important; }
         input, select, button, textarea, .qty-btn, .product-card, .nicotine-select { touch-action: manipulation !important; }
         /* Force dark dropdown menu on all selects */
         select { color-scheme: dark; background-color: #18181b; color: #fff; }
@@ -2159,6 +2166,7 @@
             { points: 5000, code: "LOYAL50", discount: 50, text: "50 € Gutschein" }
         ];
         let allProducts = [];
+        let _productMap = new Map(); // OPT 2: O(1) product lookup — rebuilt whenever allProducts changes
         let cart = [];
         let currentUser = null;
         let userAddress = JSON.parse(localStorage.getItem("wavevapes_address")) || {};
@@ -2206,7 +2214,7 @@
             showToast("📧 E-Mail wird gesendet...", "success");
             try {
                 const orderItems = orderData.items.map(item => {
-                    const prod = allProducts.find(p => p.id === item.id);
+                    const prod = _productMap.get(item.id);
                     return {
                         name: item.name,
                         units: item.qty,
@@ -2795,6 +2803,8 @@
         }
         function showLoyaltyPrompt(r) {
             const toast = document.getElementById('notification-toast');
+            // BUG FIX: Cancel any running showToast timeout before overriding the toast.
+            clearTimeout(_toastTimer);
             toast.style.background = "rgba(16, 185, 129, 0.9)";
             toast.style.color = "#fff";
             toast.innerHTML = `🎉 <strong>${r.text} verfügbar!</strong> &nbsp;<button onclick="redeemLoyaltyCode('${r.code}')" style="background:#fff;color:#000;padding:4px 12px;border-radius:999px;font-weight:700;font-size:12px;margin-left:8px">Einlösen</button> <button onclick="dismissLoyaltyPrompt()" style="color:rgba(255,255,255,.6);margin-left:8px;font-size:12px">Später</button>`;
@@ -2839,7 +2849,7 @@
         function getSubtotal() {
             return cart.reduce((sum, item) => {
                 if (item.id == MYSTERY_ID) return sum;
-                const product = allProducts.find(p => p.id === item.id);
+                const product = _productMap.get(item.id);
                 const effPrice = product ? (getPromoPrice(product) ?? item.price) : item.price;
                 return sum + item.qty * (effPrice || 7.99);
             }, 0);
@@ -2850,7 +2860,7 @@
             // Apply all active category offers (only when loaded)
             if (_offerCatsReady) for (const [catName, offer] of Object.entries(_offerCats)) {
                 const catItems = cart.filter(i => {
-                    const p = allProducts.find(pr => pr.id === i.id);
+                    const p = _productMap.get(i.id);
                     return p && p.category === catName;
                 });
                 if (!catItems.length) continue;
@@ -2866,7 +2876,7 @@
                         // BUG FIX: Use effective promo price, not i.price (cart price), to avoid
                         // over-deducting when a product has an active promotion running.
                         const cheapestPrice = Math.min(...catItems.map(i => {
-                            const p = allProducts.find(pr => pr.id === i.id);
+                            const p = _productMap.get(i.id);
                             return p ? (getPromoPrice(p) ?? i.price ?? 0) : (i.price || 0);
                         }));
                         subtotal -= freeCount * cheapestPrice;
@@ -2934,9 +2944,17 @@
             return null;
         }
 
+        // OPT 1: Debounced renderProducts — prevents multiple simultaneous Firestore
+        // snapshots (products + promotions + cart) from triggering redundant grid rebuilds.
+        let _renderProductsTimer = null;
+        function renderProductsDebounced() {
+            clearTimeout(_renderProductsTimer);
+            _renderProductsTimer = setTimeout(renderProducts, 50);
+        }
+
         db.collection('promotions').onSnapshot(snap => {
             _activePromos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            renderProducts();
+            renderProductsDebounced();
             updateCartDisplay();
             cdUpdatePromoBanner();
         }, () => {});
@@ -2965,7 +2983,9 @@
                         hasNicotine: data.hasNicotine !== false
                     });
                 });
-                renderProducts();
+                // OPT 2: Rebuild map for O(1) lookups throughout cart/price calculations
+                _productMap = new Map(allProducts.map(p => [p.id, p]));
+                renderProductsDebounced();
             }, err => {
                 console.error("Produkte laden:", err);
                 document.getElementById("products-grid").innerHTML =
@@ -3107,7 +3127,7 @@
             updateCartDisplay();
         }
         function changeQuantity(id, delta, ev) {
-            const product = allProducts.find(p => p.id === id);
+            const product = _productMap.get(id);
             if (!product) return;
             if (!product.available) {
                 showToast("❌ Dieses Produkt ist momentan nicht verfügbar", "error");
@@ -3145,7 +3165,7 @@
             const card = document.querySelector(`[data-product-id="${id}"]`);
             if (!card) return; // Karte nicht sichtbar (z.B. gefiltert)
 
-            const product  = allProducts.find(p => p.id === id);
+            const product  = _productMap.get(id);
             if (!product) return;
 
             const cartItem = cart.find(i => i.id === id);
@@ -3172,7 +3192,7 @@
         }
         function getCategoryQuantity(catName) {
             return cart.reduce((sum, item) => {
-                const prod = allProducts.find(p => p.id === item.id);
+                const prod = _productMap.get(item.id);
                 return (prod && prod.category === catName) ? sum + item.qty : sum;
             }, 0);
         }
@@ -3219,7 +3239,7 @@
             // Show offer banners for all active category deals (only when loaded)
             if (_offerCatsReady) for (const [catName, offer] of Object.entries(_offerCats)) {
                 const catItems = cart.filter(i => {
-                    const p = allProducts.find(pr => pr.id === i.id);
+                    const p = _productMap.get(i.id);
                     return p && p.category === catName;
                 });
                 if (!catItems.length) continue;
@@ -3241,7 +3261,7 @@
             }
             cart.forEach(item => {
                 const p = item.price || 7.99;
-                const prod = allProducts.find(pr => pr.id === item.id);
+                const prod = _productMap.get(item.id);
                 const nicDisplay = (item.nicotine && prod && prod.hasNicotine) ? ` (${item.nicotine})` : '';
                 if (item.id == MYSTERY_ID) {
                     itemsHTML += `<div class="mystery-item cart-item flex justify-between items-center rounded-3xl p-5"><div class="flex items-center gap-3"><i class="fa-solid fa-gift text-3xl"></i><div><div class="font-medium">${item.name}</div><div class="text-xs bg-white/30 px-3 py-0.5 rounded-full inline-block">GRATIS AB 100€</div></div></div><div class="text-right"><div class="font-bold text-xl text-emerald-900 whitespace-nowrap">0,00 €</div></div></div>`;
@@ -3606,15 +3626,19 @@
             const modal = document.getElementById("success-modal");
             modal.classList.add("hidden"); modal.classList.remove("flex");
         }
+        let _ordersLoading = false; // OPT 8: prevents double-listener from rapid double-tap on history button
         function loadUserOrders() {
             if (!currentUser) return;
+            if (_ordersLoading) return; // already setting up — ignore second call
+            _ordersLoading = true;
             const container = document.getElementById("history-list");
             container.innerHTML = '<p class="text-center text-gray-400 py-8">Lade Bestellungen live...</p>';
-            if (ordersUnsubscribe) ordersUnsubscribe();
+            if (ordersUnsubscribe) { ordersUnsubscribe(); ordersUnsubscribe = null; }
             ordersUnsubscribe = db.collection("orders")
                 .where("userId", "==", currentUser.uid)
                 .orderBy("date", "desc")
                 .onSnapshot((snap) => {
+                    _ordersLoading = false; // OPT 8: release lock once listener is established
                     container.innerHTML = "";
                     if (snap.empty) {
                         document.getElementById("no-history").classList.remove("hidden");
@@ -3728,16 +3752,21 @@
             const modal = document.getElementById("payment-info-modal");
             modal.classList.add("hidden"); modal.classList.remove("flex");
         }
+        // BUG FIX: Central toast timer so showToast() and showLoyaltyPrompt()
+        // don't race against each other on the same DOM node.
+        let _toastTimer = null;
         function showToast(msg, type = "success") {
             const toast = document.getElementById('notification-toast');
+            clearTimeout(_toastTimer);
             if (type === "error") {
                 toast.style.background = "rgba(185, 28, 28, 0.85)";
             } else {
                 toast.style.background = "rgba(0,0,0,0.85)";
             }
+            toast.style.color = "";
             toast.innerHTML = msg;
             toast.classList.add('visible');
-            setTimeout(() => toast.classList.remove('visible'), 4000);
+            _toastTimer = setTimeout(() => toast.classList.remove('visible'), 4000);
         }
 
         async function renderCategoryTabs() {
@@ -3920,7 +3949,7 @@
 
             // Filter to IDs that still exist in allProducts, skip current open product
             const items = recentlyViewed
-                .map(id => allProducts.find(p => p.id === id))
+                .map(id => _productMap.get(id))
                 .filter(Boolean);
 
             if (items.length === 0) {
@@ -4103,7 +4132,7 @@
         }
 
         function showProductDetail(id) {
-            const product = allProducts.find(p => p.id === id);
+            const product = _productMap.get(id);
             if (!product) return;
             // Track recently viewed
             recentlyViewed = recentlyViewed.filter(i => i !== id);
@@ -4281,17 +4310,28 @@
             }, { passive: true });
         }
 
+        // BUG FIX: Stable shuffle seeded by currentId so similar products don't
+        // re-order on every cart update / re-render call.
+        function _seededShuffle(arr, seed) {
+            let s = seed;
+            return arr.slice().sort(() => {
+                s = (s * 16807 + 0) % 2147483647;
+                return (s % 3) - 1;
+            });
+        }
         function renderSimilarProducts(currentId, category) {
             const grid = document.getElementById('similar-grid-' + currentId);
             if (!grid) return;
-            // Find products in same category, exclude current, max 8, shuffle slightly
+            // Find products in same category, exclude current, available only
             let similar = allProducts.filter(p =>
                 p.id !== currentId &&
                 p.category === category &&
                 p.available !== false
             );
-            // Shuffle and cap at 6
-            similar = similar.sort(() => Math.random() - 0.5).slice(0, 6);
+            // BUG FIX: Use stable seed instead of Math.random() to prevent
+            // similar products from re-shuffling on every cart update.
+            const seed = String(currentId).split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+            similar = _seededShuffle(similar, seed).slice(0, 6);
             if (similar.length === 0) {
                 grid.closest('.similar-section').style.display = 'none';
                 return;
@@ -4299,17 +4339,28 @@
             grid.closest('.similar-section').style.display = '';
             grid.innerHTML = similar.map(p => {
                 const price = (p.price || 0).toFixed(2).replace('.', ',');
+                const safeName = p.name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
                 const img = p.image
-                    ? `<img src="${p.image}" alt="${p.name}" loading="lazy">`
+                    ? `<img src="${p.image}" alt="${safeName}" loading="lazy">`
                     : `<div class="similar-card-ph">🧪</div>`;
-                return `<div class="similar-card" onclick="closeProductDetail();setTimeout(()=>showProductDetail('${p.id}'),80)">
+                // OPT 3: Use data-id instead of inline onclick — prevents XSS if a product
+                // name contains quotes that would break the onclick attribute string.
+                return `<div class="similar-card" data-similar-id="${p.id}">
                     ${img}
                     <div class="similar-card-info">
-                        <div class="similar-card-name">${p.name.replace(/</g,'&lt;')}</div>
+                        <div class="similar-card-name">${safeName}</div>
                         <div class="similar-card-price">${price} €</div>
                     </div>
                 </div>`;
             }).join('');
+            // Delegated click handler — one listener on the grid instead of N inline handlers
+            grid.onclick = e => {
+                const card = e.target.closest('[data-similar-id]');
+                if (!card) return;
+                const id = card.dataset.similarId;
+                closeProductDetail();
+                setTimeout(() => showProductDetail(id), 80);
+            };
         }
 
         // ====================== BEWERTUNGEN ======================
@@ -4352,24 +4403,15 @@
                 }).join('');
             }
 
-            // Try get() first (works even without real-time rules)
-            db.collection('reviews')
+            // BUG FIX: Use onSnapshot directly instead of get() followed by onSnapshot.
+            // The previous pattern caused two renders on every modal open: once from get()
+            // and once immediately from the onSnapshot firing, wasting a Firestore read.
+            const unsub = db.collection('reviews')
                 .where('productId', '==', productId)
                 .where('approved', '==', true)
-                .get()
-                .then(snap => {
+                .onSnapshot(snap => {
                     renderReviews(snap.docs.map(d => ({id:d.id,...d.data()})));
-                    const unsub = db.collection('reviews')
-                        .where('productId', '==', productId)
-                        .where('approved', '==', true)
-                        .onSnapshot(snap2 => {
-                            renderReviews(snap2.docs.map(d => ({id:d.id,...d.data()})));
-                        }, err => {
-                            console.error('rvLoad error:', err.code, err.message);
-                        });
-                    _rvUnsubscribers[productId] = unsub;
-                })
-                .catch(err => {
+                }, err => {
                     console.error('rvLoad error:', err.code, err.message);
                     const safe = document.createElement('div');
                     safe.className = 'rv-empty';
@@ -4378,6 +4420,7 @@
                     listEl.innerHTML = '';
                     listEl.appendChild(safe);
                 });
+            _rvUnsubscribers[productId] = unsub;
         }
 
         async function rvCheckCanReview(productId) {
@@ -4504,7 +4547,7 @@
             closeHistoryModal();
             if (!items?.length) return;
             // Find first item that exists in allProducts
-            const first = items.find(i => allProducts.find(p => p.id === i.id));
+            const first = items.find(i => _productMap.get(i.id));
             if (!first) return;
             setTimeout(() => {
                 showProductDetail(first.id);
@@ -4528,13 +4571,20 @@
             Object.values(_rvUnsubscribers).forEach(unsub => unsub());
             _rvUnsubscribers = {};
             // Restore URL
+            // BUG FIX: Parse URLSearchParams only once and build the clean URL from
+            // that single parsed object. The old code called new URLSearchParams()
+            // twice, which could produce a malformed URL when both ?product= and
+            // ?ref= were present at the same time.
             if (window.location.search.includes('product=')) {
-                history.pushState({}, 'WaveVapes', window.location.pathname + (new URLSearchParams(window.location.search).get('ref') ? '?ref=' + new URLSearchParams(window.location.search).get('ref') : ''));
+                const params = new URLSearchParams(window.location.search);
+                const ref = params.get('ref');
+                const cleanUrl = window.location.pathname + (ref ? '?ref=' + encodeURIComponent(ref) : '');
+                history.pushState({}, 'WaveVapes', cleanUrl);
                 document.title = 'WaveVapes – Disposable Vapes & Premium Liquids';
             }
         }
         function addFromDetail(id) {
-            const product = allProducts.find(p => p.id === id);
+            const product = _productMap.get(id);
             if (!product || !product.available) return;
             let existing = cart.find(item => item.id === id);
             const select = document.getElementById("modal-nicotine");

@@ -4431,32 +4431,6 @@
             showToast(`✅ ${product.name}${nicLabel} zum Warenkorb hinzugefügt!`);
         }
         // ====================== SETTINGS SYNC ======================
-        db.collection("settings").doc("main").onSnapshot(doc => {
-            if (!doc.exists) return;
-            const s = doc.data();
-            // Sync live shop settings
-            if (s.bank_owner) window._BANK_OWNER = s.bank_owner;
-            if (s.iban)       window._BANK_IBAN  = s.iban;
-            else if (s.bank_iban) window._BANK_IBAN = s.bank_iban;
-            if (s.bic)        window._BANK_BIC   = s.bic;
-            if (typeof s.shipping_cost !== 'undefined')           window._SHIPPING_COST = s.shipping_cost;
-            if (typeof s.free_shipping_threshold !== 'undefined') {
-                window._FREE_THRESHOLD = s.free_shipping_threshold;
-                document.querySelectorAll('.wv-free-threshold').forEach(el => {
-                    el.textContent = s.free_shipping_threshold + ' €';
-                });
-            }
-            // ── Shop-Status Echtzeit-Handling ──
-            if (s.shop_closed === true) {
-                showMaintenanceOverlay();
-            } else {
-                hideMaintenanceOverlay();
-            }
-            // ── Countdown-Timer ──
-            cdUpdate(s.countdown_active, s.countdown_label, s.countdown_end);
-        });
-        db.collection('settings').doc('product_order').onSnapshot(doc => {
-
         // ── COUNTDOWN TIMER ─────────────────────────────────────────────────────
         let _cdInterval = null;
 
@@ -4474,13 +4448,10 @@
                 if (_cdInterval) { clearInterval(_cdInterval); _cdInterval = null; }
                 return;
             }
-            // Set label text
             const labelEl = document.getElementById('cd-label');
             if (labelEl) labelEl.textContent = label || '🔥 Angebot endet in';
-
             banner.classList.add('visible');
             if (_cdInterval) clearInterval(_cdInterval);
-
             function tick() {
                 const diff = endMs - Date.now();
                 if (diff <= 0) {
@@ -4495,14 +4466,12 @@
                 const hEl = document.getElementById('cd-h');
                 const mEl = document.getElementById('cd-m');
                 const sEl = document.getElementById('cd-s');
-                // Show days if >= 24h
                 if (h >= 24) {
                     const d = Math.floor(h / 24);
                     const rh = h % 24;
-                    if (hEl) hEl.closest('.cd-block').querySelector('.cd-unit').textContent = 'Tage';
-                    if (hEl) hEl.textContent = pad(d);
-                    if (mEl) { mEl.closest('.cd-block').querySelector('.cd-unit').textContent = 'Std'; mEl.textContent = pad(rh); }
-                    if (sEl) { sEl.closest('.cd-block').querySelector('.cd-unit').textContent = 'Min'; sEl.textContent = pad(m); }
+                    if (hEl) { hEl.closest('.cd-block').querySelector('.cd-unit').textContent = 'Tage'; hEl.textContent = pad(d); }
+                    if (mEl) { mEl.closest('.cd-block').querySelector('.cd-unit').textContent = 'Std';  mEl.textContent = pad(rh); }
+                    if (sEl) { sEl.closest('.cd-block').querySelector('.cd-unit').textContent = 'Min';  sEl.textContent = pad(m); }
                 } else {
                     if (hEl) { hEl.closest('.cd-block').querySelector('.cd-unit').textContent = 'Std'; hEl.textContent = pad(h); }
                     if (mEl) { mEl.closest('.cd-block').querySelector('.cd-unit').textContent = 'Min'; mEl.textContent = pad(m); }
@@ -4512,6 +4481,30 @@
             tick();
             _cdInterval = setInterval(tick, 1000);
         }
+
+        db.collection("settings").doc("main").onSnapshot(doc => {
+            if (!doc.exists) return;
+            const s = doc.data();
+            if (s.bank_owner) window._BANK_OWNER = s.bank_owner;
+            if (s.iban)       window._BANK_IBAN  = s.iban;
+            else if (s.bank_iban) window._BANK_IBAN = s.bank_iban;
+            if (s.bic)        window._BANK_BIC   = s.bic;
+            if (typeof s.shipping_cost !== 'undefined')           window._SHIPPING_COST = s.shipping_cost;
+            if (typeof s.free_shipping_threshold !== 'undefined') {
+                window._FREE_THRESHOLD = s.free_shipping_threshold;
+                document.querySelectorAll('.wv-free-threshold').forEach(el => {
+                    el.textContent = s.free_shipping_threshold + ' €';
+                });
+            }
+            if (s.shop_closed === true) {
+                showMaintenanceOverlay();
+            } else {
+                hideMaintenanceOverlay();
+            }
+            cdUpdate(s.countdown_active, s.countdown_label, s.countdown_end);
+        });
+
+        db.collection('settings').doc('product_order').onSnapshot(doc => {
             if (doc.exists) {
                 productOrder = doc.data().order || [];
                 renderProducts();

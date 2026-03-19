@@ -3831,6 +3831,10 @@
             showWishlistOnly = !showWishlistOnly;
             const pill = document.getElementById("wishlist-filter-pill");
             if (pill) pill.classList.toggle("active", showWishlistOnly);
+            // Sort-Pills deaktivieren wenn Favoriten aktiv
+            document.querySelectorAll('[data-filter-sort]').forEach(el => {
+                el.classList.toggle('active', !showWishlistOnly && el.dataset.filterSort === currentPriceSort);
+            });
             renderProducts();
         }
 
@@ -3916,6 +3920,12 @@
 
         function setPriceSort(val) {
             currentPriceSort = val;
+            // Wishlist-Filter automatisch deaktivieren
+            if (showWishlistOnly) {
+                showWishlistOnly = false;
+                const pill = document.getElementById("wishlist-filter-pill");
+                if (pill) pill.classList.remove("active");
+            }
             document.querySelectorAll('[data-filter-sort]').forEach(el => {
                 el.classList.toggle('active', el.dataset.filterSort === val);
             });

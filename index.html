@@ -981,6 +981,11 @@
             will-change: transform, opacity;
         }
         /* Cart-Badge Bounce wenn Artikel landet */
+        /* Timeline aktiver-Schritt Puls-Dot */
+        @keyframes tlPulse {
+            0%,100% { opacity:1; transform:scale(1); }
+            50%     { opacity:0.4; transform:scale(0.6); }
+        }
         @keyframes badge-bounce {
             0%   { transform: scale(1); }
             30%  { transform: scale(1.7); }
@@ -1744,6 +1749,30 @@
             <button onclick="toggleCart()" class="text-3xl text-gray-400 hover:text-white leading-none">✕</button>
         </div>
 
+        <!-- ── GRATIS-VERSAND FORTSCHRITTSBALKEN ── -->
+        <div id="cart-shipping-progress" class="flex-shrink-0 px-6 pt-3 pb-0" style="display:none">
+            <div id="cart-sp-inner" class="rounded-2xl px-4 py-3" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);transition:all .4s ease">
+                <div class="flex items-center justify-between mb-2">
+                    <span id="cart-sp-label" class="text-xs font-semibold" style="color:rgba(255,255,255,0.7)"></span>
+                    <span id="cart-sp-badge" class="text-xs font-bold px-2 py-0.5 rounded-full" style="background:rgba(103,232,249,0.12);color:#67e8f9"></span>
+                </div>
+                <div class="w-full rounded-full overflow-hidden" style="height:6px;background:rgba(255,255,255,0.08)">
+                    <div id="cart-sp-bar" style="height:6px;border-radius:9999px;width:0%;transition:width .6s cubic-bezier(0.34,1.56,0.64,1);background:linear-gradient(90deg,#67e8f9,#a78bfa)"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── CROSS-SELL / UPSELL BANNER ── -->
+        <div id="cart-upsell-banner" class="flex-shrink-0 px-6 pt-3 pb-0" style="display:none">
+            <div class="rounded-2xl overflow-hidden" style="background:linear-gradient(135deg,rgba(103,232,249,0.07),rgba(167,139,250,0.07));border:1px solid rgba(103,232,249,0.18)">
+                <div class="px-4 pt-3 pb-2 flex items-center justify-between">
+                    <span id="cart-upsell-title" class="text-xs font-bold tracking-wide" style="color:#67e8f9"></span>
+                    <button onclick="document.getElementById('cart-upsell-banner').style.display='none'" class="text-gray-500 hover:text-white transition text-base leading-none" style="font-size:14px">✕</button>
+                </div>
+                <div id="cart-upsell-products" class="flex gap-3 px-4 pb-4 overflow-x-auto" style="scrollbar-width:none;-webkit-overflow-scrolling:touch"></div>
+            </div>
+        </div>
+
         <!-- ── ITEMS (scrollable) ── -->
         <div id="cart-items-list" class="flex-1 overflow-y-auto px-6 py-5 space-y-4 min-h-0"></div>
 
@@ -1772,9 +1801,18 @@
 
             <!-- Total row -->
             <div id="cart-total-section" style="display:none">
-                <div class="flex justify-between items-center py-2 border-t border-white/10">
-                    <span class="text-sm text-gray-400">Gesamt inkl. Versand</span>
-                    <span id="cart-total-price" class="text-lg font-bold text-cyan-300 whitespace-nowrap">0,00 €</span>
+                <div class="border-t border-white/10 pt-2">
+                    <!-- Shipping savings line — only shown when free shipping is active -->
+                    <div id="cart-shipping-saving-row" class="hidden flex justify-between items-center py-1">
+                        <span class="text-xs text-emerald-400 flex items-center gap-1.5">
+                            <i class="fa-solid fa-truck text-emerald-400"></i> Gratis Versand
+                        </span>
+                        <span id="cart-shipping-saving-amount" class="text-xs font-bold text-emerald-400 whitespace-nowrap"></span>
+                    </div>
+                    <div class="flex justify-between items-center py-2">
+                        <span class="text-sm text-gray-400">Gesamt inkl. Versand</span>
+                        <span id="cart-total-price" class="text-lg font-bold text-cyan-300 whitespace-nowrap">0,00 €</span>
+                    </div>
                 </div>
                 <p id="cart-payment-info" class="text-xs text-gray-500 mb-1"></p>
                 <p id="loyalty-cart-info" class="text-emerald-400 text-xs flex items-center gap-2 font-medium mb-3"></p>
@@ -3204,6 +3242,91 @@
                 toast.classList.remove('visible');
             }, 5000);
         }
+        // ── CROSS-SELL / UPSELL BANNER ─────────────────────────────────────
+        const VAPE_CAT = 'WaveVapes Tornado 30000';
+
+        function updateUpsellBanner() {
+            const banner   = document.getElementById('cart-upsell-banner');
+            const titleEl  = document.getElementById('cart-upsell-title');
+            const listEl   = document.getElementById('cart-upsell-products');
+            if (!banner || !listEl) return;
+
+            // Welche Kategorien sind aktuell im Cart?
+            const cartProductIds = cart.filter(i => i.id != MYSTERY_ID).map(i => i.id);
+            if (cartProductIds.length === 0) { banner.style.display = 'none'; return; }
+
+            const hasVape   = cartProductIds.some(id => { const p = _productMap.get(id); return p && p.category === VAPE_CAT; });
+            const hasLiquid = cartProductIds.some(id => { const p = _productMap.get(id); return p && p.category !== VAPE_CAT; });
+
+            // Nur anzeigen wenn ausschließlich eine Gruppe vorhanden ist
+            let suggestVapes   = hasLiquid && !hasVape;
+            let suggestLiquids = hasVape   && !hasLiquid;
+            if (!suggestVapes && !suggestLiquids) { banner.style.display = 'none'; return; }
+
+            // Kandidaten: nicht im Cart, verfügbar, zufällig aber stabil gemixt
+            const cartSet = new Set(cartProductIds.map(String));
+            let candidates = allProducts.filter(p =>
+                p.available &&
+                p.stock > 0 &&
+                !cartSet.has(String(p.id)) &&
+                (suggestVapes ? p.category === VAPE_CAT : p.category !== VAPE_CAT)
+            );
+
+            // Stabiler Shuffle (seed = Summe Cart-IDs)
+            const seed = cartProductIds.reduce((s, id) => s + String(id).charCodeAt(0), 0);
+            candidates = _seededShuffle(candidates, seed).slice(0, 4);
+            if (candidates.length === 0) { banner.style.display = 'none'; return; }
+
+            titleEl.textContent = suggestVapes
+                ? '💨 Passende Vapes dazu'
+                : '🧪 Passende Liquids dazu';
+
+            listEl.innerHTML = candidates.map(p => {
+                const price     = (p.price || 0).toFixed(2).replace('.', ',');
+                const promoP    = getPromoPrice(p);
+                const dispPrice = promoP !== null ? promoP.toFixed(2).replace('.', ',') : price;
+                const isPromo   = promoP !== null;
+                const safeName  = p.name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+                const imgHTML   = p.image
+                    ? `<img src="${p.image}" alt="${safeName}" style="width:100%;aspect-ratio:1;object-fit:contain;border-radius:10px;background:#27272a;display:block;margin-bottom:7px">`
+                    : `<div style="width:100%;aspect-ratio:1;border-radius:10px;background:#27272a;display:flex;align-items:center;justify-content:center;font-size:26px;margin-bottom:7px">🧪</div>`;
+                return `<div data-upsell-id="${p.id}" style="flex-shrink:0;width:112px;background:#18181b;border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:10px;cursor:pointer;transition:border-color .18s" onmouseenter="this.style.borderColor='rgba(103,232,249,0.4)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.08)'">
+                    ${imgHTML}
+                    <div style="font-size:10px;font-weight:600;color:#e4e4e7;line-height:1.3;margin-bottom:5px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${safeName}</div>
+                    <div style="font-size:12px;font-weight:800;color:${isPromo ? '#ef4444' : '#67e8f9'}">${dispPrice} €${isPromo ? `<span style="font-size:9px;text-decoration:line-through;color:#6b7280;margin-left:4px">${price}</span>` : ''}</div>
+                    <button onclick="event.stopPropagation();upsellAddToCart('${p.id}')" style="margin-top:7px;width:100%;background:rgba(103,232,249,0.12);border:1px solid rgba(103,232,249,0.25);color:#67e8f9;border-radius:8px;padding:5px 0;font-size:11px;font-weight:700;cursor:pointer;transition:background .15s" onmouseenter="this.style.background='rgba(103,232,249,0.22)'" onmouseleave="this.style.background='rgba(103,232,249,0.12)'">+ Hinzufügen</button>
+                </div>`;
+            }).join('');
+
+            // Klick auf Karte → Produkt-Detail öffnen
+            listEl.onclick = e => {
+                const card = e.target.closest('[data-upsell-id]');
+                if (!card || e.target.tagName === 'BUTTON') return;
+                showProductDetail(card.dataset.upsellId);
+            };
+
+            banner.style.display = 'block';
+        }
+
+        function upsellAddToCart(id) {
+            const product = _productMap.get(id);
+            if (!product || !product.available) return;
+            let existing = cart.find(i => i.id === id);
+            if (!existing) {
+                existing = { id, name: product.name, qty: 0, price: product.price,
+                             nicotine: product.hasNicotine ? (pendingNicotine[id] || '20 mg') : '' };
+                cart.push(existing);
+            }
+            existing.qty++;
+            manageMysteryVape();
+            saveUserCart();
+            updateCartDisplay();
+            patchProductCardQty(id);
+            const nicLabel = product.hasNicotine ? ` (${pendingNicotine[id] || '20 mg'})` : '';
+            showToast(`✅ ${product.name}${nicLabel} hinzugefügt!`);
+        }
+        // ───────────────────────────────────────────────────────────────────
+
         function updateCartDisplay() {
             const countEl = document.getElementById("cart-count-badge");
             const totalEl = document.getElementById("cart-total-price");
@@ -3215,14 +3338,77 @@
             // Don't count mystery vape in badge (it's always qty 1 and free)
             const totalItems = cart.filter(i => i.id != 999).reduce((sum, item) => sum + item.qty, 0);
             countEl.textContent = totalItems;
+
+            // ── Gratis-Versand Fortschrittsbalken ──────────────────────────
+            const spWrap  = document.getElementById('cart-shipping-progress');
+            const spInner = document.getElementById('cart-sp-inner');
+            const spLabel = document.getElementById('cart-sp-label');
+            const spBadge = document.getElementById('cart-sp-badge');
+            const spBar   = document.getElementById('cart-sp-bar');
+            const _threshold  = window._FREE_THRESHOLD !== undefined ? window._FREE_THRESHOLD : FREE_SHIPPING_THRESHOLD;
+            const _shipRate   = window._SHIPPING_COST   !== undefined ? window._SHIPPING_COST   : SHIPPING_COST;
+            const rawSubtotal = cart.filter(i => i.id != MYSTERY_ID)
+                .reduce((s, i) => {
+                    const p = _productMap.get(i.id);
+                    return s + i.qty * (p ? (getPromoPrice(p) ?? i.price) : i.price);
+                }, 0);
+
+            if (cart.length === 0 || userHasFreeShipping) {
+                spWrap.style.display = 'none';
+            } else if (rawSubtotal >= _threshold) {
+                // Gratisversand erreicht → grüner Zustand, kurz zeigen dann ausblenden
+                spWrap.style.display = 'block';
+                spBar.style.width = '100%';
+                spBar.style.background = 'linear-gradient(90deg,#34d399,#10b981)';
+                spInner.style.borderColor = 'rgba(52,211,153,0.35)';
+                spInner.style.background  = 'rgba(52,211,153,0.07)';
+                spLabel.style.color = '#34d399';
+                spLabel.textContent = '🎉 Gratisversand aktiviert!';
+                spBadge.style.background = 'rgba(52,211,153,0.15)';
+                spBadge.style.color = '#34d399';
+                spBadge.textContent = `− ${_shipRate.toFixed(2).replace('.',',')} € gespart`;
+            } else {
+                // Noch nicht erreicht → zeige Fortschritt
+                const missing = _threshold - rawSubtotal;
+                const pct     = Math.min(100, Math.round((rawSubtotal / _threshold) * 100));
+                spWrap.style.display = 'block';
+                spBar.style.width = pct + '%';
+                spBar.style.background = 'linear-gradient(90deg,#67e8f9,#a78bfa)';
+                spInner.style.borderColor = 'rgba(255,255,255,0.08)';
+                spInner.style.background  = 'rgba(255,255,255,0.04)';
+                spLabel.style.color = 'rgba(255,255,255,0.7)';
+                spLabel.textContent = `🚚 Noch ${missing.toFixed(2).replace('.',',')} € bis zum Gratisversand`;
+                spBadge.style.background = 'rgba(103,232,249,0.12)';
+                spBadge.style.color = '#67e8f9';
+                spBadge.textContent = `${pct} %`;
+            }
+            // ───────────────────────────────────────────────────────────────
+
             if (cart.length === 0) {
                 listEl.innerHTML = `<p class="text-center py-16 text-gray-400">Dein Warenkorb ist leer</p>`;
                 totalSection.style.display = "none";
+                document.getElementById('cart-upsell-banner').style.display = 'none';
                 return;
             }
             totalSection.style.display = "block";
             const grandTotal = calculateCartTotal();
             totalEl.textContent = `${grandTotal.toFixed(2).replace('.', ',')} €`;
+
+            // Shipping savings row: show "- X,XX € Versand gespart" when free shipping is active
+            const savingRow = document.getElementById('cart-shipping-saving-row');
+            const savingAmt = document.getElementById('cart-shipping-saving-amount');
+            const shippingRate = window._SHIPPING_COST !== undefined ? window._SHIPPING_COST : SHIPPING_COST;
+            if (getShippingCost() === 0 && !userHasFreeShipping && shippingRate > 0) {
+                // Only show when free shipping is triggered by cart value (not by admin gift)
+                // so the customer sees the actual saving
+                savingAmt.textContent = `− ${shippingRate.toFixed(2).replace('.', ',')} € Versand gespart`;
+                savingRow.classList.remove('hidden');
+            } else if (getShippingCost() === 0 && userHasFreeShipping) {
+                savingAmt.textContent = `− ${shippingRate.toFixed(2).replace('.', ',')} € Versand geschenkt`;
+                savingRow.classList.remove('hidden');
+            } else {
+                savingRow.classList.add('hidden');
+            }
             const productTotal = getProductTotal();
             if (productTotal > 0) {
                 const pointsEarned = Math.floor(productTotal);
@@ -3288,6 +3474,7 @@
             } else {
                 paymentInfoEl.innerHTML = `Zahlung per Überweisung • Versand nach Zahlungseingang`;
             }
+            updateUpsellBanner();
         }
         function removeCartItem(id) {
             // id comes as string from HTML onclick — normalize both sides
@@ -3649,7 +3836,53 @@
                         const order = doc.data();
                         const dateStr = order.date ? order.date.toDate().toLocaleDateString('de-DE') : '—';
                         const status = order.status || "Zahlung erwartet";
-                        const statusClass = getStatusClass(status);
+
+                        // ── Status-Timeline ────────────────────────────────────
+                        const STEPS = [
+                            { key: 'Zahlung erwartet', icon: '💳', label: 'Zahlung' },
+                            { key: 'Wird bearbeitet',  icon: '📦', label: 'Bearbeitung' },
+                            { key: 'Versendet',        icon: '🚚', label: 'Versendet' },
+                            { key: 'Zugestellt',       icon: '✅', label: 'Zugestellt' },
+                        ];
+                        const isCancelled = status === 'Storniert';
+                        const activeIdx = isCancelled ? -1 : STEPS.findIndex(s => s.key === status);
+
+                        const timelineHTML = isCancelled
+                            ? `<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:14px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);margin-bottom:18px">
+                                   <span style="font-size:16px">❌</span>
+                                   <span style="font-size:13px;font-weight:600;color:#ef4444">Bestellung storniert</span>
+                               </div>`
+                            : `<div style="margin-bottom:20px;padding:14px 16px;border-radius:16px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
+                                   <div style="display:flex;align-items:flex-start;position:relative">
+                                       ${STEPS.map((step, i) => {
+                                           const done    = i < activeIdx;
+                                           const current = i === activeIdx;
+                                           const future  = i > activeIdx;
+                                           const isLast  = i === STEPS.length - 1;
+
+                                           const circleColor  = done    ? '#34d399'
+                                                              : current ? '#67e8f9'
+                                                              : 'rgba(255,255,255,0.12)';
+                                           const circleBorder = done    ? '#34d399'
+                                                              : current ? '#67e8f9'
+                                                              : 'rgba(255,255,255,0.15)';
+                                           const iconColor    = future ? 'rgba(255,255,255,0.25)' : '#fff';
+                                           const labelColor   = done    ? '#34d399'
+                                                              : current ? '#67e8f9'
+                                                              : 'rgba(255,255,255,0.3)';
+                                           const labelWeight  = current ? '700' : '500';
+                                           const lineColor    = done ? '#34d399' : 'rgba(255,255,255,0.1)';
+                                           const glowStyle    = current ? 'box-shadow:0 0 0 4px rgba(103,232,249,0.15)' : '';
+
+                                           return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;position:relative">
+                                               ${!isLast ? `<div style="position:absolute;top:14px;left:50%;width:100%;height:2px;background:${lineColor};border-radius:1px;z-index:0"></div>` : ''}
+                                               <div style="width:28px;height:28px;border-radius:50%;background:${circleColor};border:2px solid ${circleBorder};display:flex;align-items:center;justify-content:center;font-size:12px;position:relative;z-index:1;${glowStyle};transition:all .3s">${done ? '✓' : step.icon}</div>
+                                               <div style="margin-top:6px;font-size:10px;font-weight:${labelWeight};color:${labelColor};text-align:center;line-height:1.3;white-space:nowrap">${step.label}${current ? `<div style="width:5px;height:5px;border-radius:50%;background:#67e8f9;margin:3px auto 0;animation:tlPulse 1.4s ease-in-out infinite"></div>` : ''}</div>
+                                           </div>`;
+                                       }).join('')}
+                                   </div>
+                               </div>`;
+
                         let itemsHTML = order.items.map(item =>
                             `<div class="flex justify-between text-sm"><span>${item.name} × ${item.qty}</span><span>${item.nicotine ? '(' + item.nicotine + ')' : ''}</span></div>`
                         ).join('');
@@ -3671,22 +3904,20 @@
                         const card = document.createElement("div");
                         card.className = "bg-zinc-900 border border-white/10 rounded-3xl p-6";
                         card.innerHTML = `
-                            <div class="flex justify-between items-start mb-4">
+                            <div class="flex justify-between items-start mb-5">
                                 <div>
                                     <div class="font-mono text-xl text-cyan-300">${order.orderNumber}</div>
                                     <div class="text-sm text-gray-400 mt-1">${dateStr}</div>
                                 </div>
-                                <span class="status-badge ${statusClass}">${status}</span>
+                                <div class="text-right">
+                                    <p class="text-xs text-gray-400">Gesamt</p>
+                                    <p class="text-xl font-bold">${order.total.toFixed(2).replace('.', ',')} €</p>
+                                </div>
                             </div>
+                            ${timelineHTML}
                             <div class="mb-5">
                                 <p class="text-xs uppercase text-gray-400 mb-2">Artikel</p>
                                 <div class="space-y-1 text-gray-200">${itemsHTML}</div>
-                            </div>
-                            <div class="flex justify-between items-end mb-6">
-                                <div>
-                                    <p class="text-xs text-gray-400">Gesamt</p>
-                                    <p class="text-2xl font-bold">${order.total.toFixed(2).replace('.', ',')} €</p>
-                                </div>
                             </div>
                             ${trackingHTML}
                             <div class="flex flex-col gap-3 mt-6">

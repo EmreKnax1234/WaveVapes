@@ -3663,9 +3663,10 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 
 // EmailJS — same service/key as shop frontend
-const ADMIN_EMAILJS_SERVICE  = "service_lzvte0x";
-const ADMIN_EMAILJS_PUBLIC   = "t19pJAHgBpbKpZFGU";
-const ADMIN_EMAILJS_TEMPLATE = "template_cgcu1m8";
+const ADMIN_EMAILJS_SERVICE    = "service_lzvte0x";
+const ADMIN_EMAILJS_PUBLIC     = "t19pJAHgBpbKpZFGU";
+const ADMIN_EMAILJS_TEMPLATE   = "template_cgcu1m8";   // Bestellbestätigung
+const ADMIN_BROADCAST_TEMPLATE = "template_broadcast"; // Broadcast (eigenes Template)
 emailjs.init(ADMIN_EMAILJS_PUBLIC);
 
 // ====================== GLOBALE VARIABLEN ======================
@@ -6513,14 +6514,13 @@ async function euExecuteBroadcast() {
     for (const u of recipients) {
         try {
             await emailjs.send(
-                "service_lzvte0x",
-                "template_cgcu1m8",
+                ADMIN_EMAILJS_SERVICE,
+                ADMIN_BROADCAST_TEMPLATE,
                 {
-                    email:          u.email,
-                    order_id:       "BROADCAST",
-                    orders:         [{ name: body, units: 1, price: "—", image_url: "https://wavevapes.de/logo.png" }],
-                    cost:           { shipping: "—", tax: "—", total: subject },
-                    loyalty_earned: 0
+                    to_email:  u.email,
+                    to_name:   u.username || u.email.split('@')[0],
+                    subject:   subject,
+                    message:   body
                 }
             );
             sent++;

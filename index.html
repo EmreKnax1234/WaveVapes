@@ -2081,7 +2081,7 @@
         let currentPriceSort   = "default"; // "default" | "price-asc" | "price-desc"
         let wishlist = JSON.parse(localStorage.getItem("wavevapes_wishlist")) || [];
         let showWishlistOnly = false;
-        let recentlyViewed = JSON.parse(localStorage.getItem("wavevapes_recently")) || [];
+        let recentlyViewed = [];
 
         let appliedDiscount = null;
         let ordersUnsubscribe = null;
@@ -2351,6 +2351,23 @@
                 await createOrUpdateUserProfile();
                 await loadUserCart();
                 loadUserOrders();
+                // Zuletzt angesehen aus Firestore laden
+                db.collection("users").doc(user.uid).get().then(doc => {
+                    if (!doc.exists) return;
+                    const data = doc.data();
+                    if (data.recentlyViewed && data.recentlyViewed.length > 0) {
+                        recentlyViewed = data.recentlyViewed;
+                    } else {
+                        // Migration: falls noch was in localStorage liegt, einmalig hochladen
+                        const local = JSON.parse(localStorage.getItem("wavevapes_recently") || "[]");
+                        if (local.length > 0) {
+                            recentlyViewed = local;
+                            db.collection("users").doc(user.uid).update({ recentlyViewed: local }).catch(() => {});
+                            localStorage.removeItem("wavevapes_recently");
+                        }
+                    }
+                    renderRecentlyViewed();
+                }).catch(() => {});
                 updatePresence();
                 // IP-Ban check using cached fetchIp()
                 try {
@@ -2367,8 +2384,10 @@
                 }
             } else {
                 cart = [];
+                recentlyViewed = JSON.parse(localStorage.getItem("wavevapes_recently") || "[]");
                 if (userSnapshotUnsubscribe) userSnapshotUnsubscribe();
                 updateCartDisplay();
+                renderRecentlyViewed();
             }
         });
         function updateAuthUI() {
@@ -3947,7 +3966,11 @@
             recentlyViewed = recentlyViewed.filter(i => i !== id);
             recentlyViewed.unshift(id);
             if (recentlyViewed.length > 6) recentlyViewed = recentlyViewed.slice(0, 6);
-            localStorage.setItem("wavevapes_recently", JSON.stringify(recentlyViewed));
+            if (currentUser) {
+                db.collection("users").doc(currentUser.uid).update({ recentlyViewed }).catch(() => {});
+            } else {
+                localStorage.setItem("wavevapes_recently", JSON.stringify(recentlyViewed));
+            }
             renderRecentlyViewed();
             // Hintergrund-Scroll sperren (gleiche Logik wie Cart)
             _modalScrollY = window.scrollY;

@@ -2863,7 +2863,12 @@
                     const freeCount   = Math.floor(totalCatQty / buyQty) * (buyQty - payQty);
                     if (freeCount > 0) {
                         // Deduct cheapest items first
-                        const cheapestPrice = Math.min(...catItems.map(i => i.price || 0));
+                        // BUG FIX: Use effective promo price, not i.price (cart price), to avoid
+                        // over-deducting when a product has an active promotion running.
+                        const cheapestPrice = Math.min(...catItems.map(i => {
+                            const p = allProducts.find(pr => pr.id === i.id);
+                            return p ? (getPromoPrice(p) ?? i.price ?? 0) : (i.price || 0);
+                        }));
                         subtotal -= freeCount * cheapestPrice;
                     }
                 } else if (offer.offerType === 'percent') {
@@ -2894,15 +2899,13 @@
         }
         function getShippingCost() {
             if (userHasFreeShipping) return 0;
-            const rawSubtotal = cart.reduce((sum, item) => {
-                if (item.id == MYSTERY_ID) return sum;
-                const product = allProducts.find(p => p.id === item.id);
-                const effPrice = product ? (getPromoPrice(product) ?? item.price) : item.price;
-                return sum + item.qty * (effPrice || 7.99);
-            }, 0);
+            // BUG FIX: Use getProductTotal() (includes discounts + category offers)
+            // instead of the raw promo-only subtotal so that coupon codes are
+            // correctly reflected in the free-shipping threshold check.
+            const effectiveSubtotal = getProductTotal();
             const threshold = window._FREE_THRESHOLD !== undefined ? window._FREE_THRESHOLD : FREE_SHIPPING_THRESHOLD;
             const cost      = window._SHIPPING_COST   !== undefined ? window._SHIPPING_COST   : SHIPPING_COST;
-            return rawSubtotal >= threshold ? 0 : cost;
+            return effectiveSubtotal >= threshold ? 0 : cost;
         }
         function calculateCartTotal() {
             return getProductTotal() + getShippingCost();
@@ -3517,7 +3520,11 @@
                 // Calculate verified totals — entirely from Firestore data
                 // ═══════════════════════════════════════════════════════
                 const verifiedProductTotal = Math.max(0, serverSubtotal - verifiedDiscountAmount);
-                const shippingCost = getShippingCost(); // threshold check is non-critical
+                // BUG FIX: Calculate shipping from server-verified product total,
+                // not from client-side getShippingCost() which could be manipulated.
+                const _threshold = window._FREE_THRESHOLD !== undefined ? window._FREE_THRESHOLD : FREE_SHIPPING_THRESHOLD;
+                const _shippingRate = window._SHIPPING_COST !== undefined ? window._SHIPPING_COST : SHIPPING_COST;
+                const shippingCost = userHasFreeShipping || verifiedProductTotal >= _threshold ? 0 : _shippingRate;
                 const verifiedTotal = Math.max(0, verifiedProductTotal + shippingCost);
                 const loyaltyEarned = Math.floor(verifiedProductTotal);
                 const orderNumber = generateOrderNumber();

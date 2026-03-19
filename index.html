@@ -1133,6 +1133,19 @@
         body.cart-open #cart-sidebar {
             touch-action: pan-y;
         }
+        /* Scrollbereich der Artikel: explizit pan-y damit Finger-Scroll
+           nie von den touch-action:manipulation-Regeln der Kinder geblockt wird */
+        #cart-items-list {
+            touch-action: pan-y !important;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+        }
+        /* Alle interaktiven Elemente innerhalb der Liste dürfen pan-y nicht blocken */
+        #cart-items-list button,
+        #cart-items-list .qty-btn,
+        #cart-items-list [onclick] {
+            touch-action: manipulation;
+        }
         /* Produkt-Modal: Hintergrund-Scroll sperren */
         body.modal-open {
             overflow: hidden;
@@ -1271,7 +1284,7 @@
 
             /* ── CART SIDEBAR — mobile compact ── */
             #cart-sidebar         { width: 100% !important; border-radius: 0 !important; }
-            #cart-items-list      { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 10px 12px !important; gap: 8px !important; }
+            #cart-items-list      { -webkit-overflow-scrolling: touch !important; overscroll-behavior: contain !important; touch-action: pan-y !important; overflow-y: auto !important; padding: 10px 12px !important; gap: 8px !important; }
             #cart-checkout-panel  {
                 box-shadow: 0 -12px 28px rgba(0,0,0,.65);
                 padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)) !important;
@@ -1798,7 +1811,7 @@
         </div>
 
         <!-- ── ITEMS (scrollable) ── -->
-        <div id="cart-items-list" class="flex-1 overflow-y-auto px-6 py-5 space-y-4 min-h-0"></div>
+        <div id="cart-items-list" class="flex-1 overflow-y-auto px-6 py-5 space-y-4 min-h-0" style="-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y"></div>
 
         <!-- ── CHECKOUT FOOTER ── -->
         <div id="cart-checkout-panel" class="flex-shrink-0 border-t border-white/10 bg-zinc-950 px-6 pt-4 pb-6">

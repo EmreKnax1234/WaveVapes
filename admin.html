@@ -2380,13 +2380,14 @@
                                 <th style="text-align:left;padding-left:18px">Benutzer</th>
                                 <th style="text-align:center">Referral</th>
                                 <th style="text-align:center">Punkte</th>
+                                <th style="text-align:center">IP-Adresse</th>
                                 <th style="text-align:center">Gratis&shy;versand</th>
                                 <th style="text-align:center">Status</th>
                                 <th style="text-align:right;padding-right:18px">Aktionen</th>
                             </tr>
                         </thead>
                         <tbody id="users-tbody">
-                            <tr><td colspan="6"><div class="usr-empty"><span class="eu-spinner"></span><br><br>Lade Benutzer...</div></td></tr>
+                            <tr><td colspan="7"><div class="usr-empty"><span class="eu-spinner"></span><br><br>Lade Benutzer...</div></td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -4971,7 +4972,7 @@ function usrRenderTable() {
 
     if (!docs.length) {
         document.getElementById('users-tbody').innerHTML =
-            `<tr><td colspan="6"><div class="usr-empty"><i class="fa-solid fa-users-slash"></i>Keine Benutzer gefunden</div></td></tr>`;
+            `<tr><td colspan="7"><div class="usr-empty"><i class="fa-solid fa-users-slash"></i>Keine Benutzer gefunden</div></td></tr>`;
         return;
     }
 
@@ -4984,10 +4985,20 @@ function usrRenderTable() {
         const points      = u.totalBonusPoints || 0;
         const disabled    = u.disabled === true;
         const freeShipping= u.freeShipping === true;
+        const lastIp      = u.lastIp || null;
         const [avBg, avColor] = usrAvColor(email);
         const initials    = ((username || email).slice(0,2)).toUpperCase();
         const pct         = Math.min(100, Math.round(points / maxPts * 100));
         const isAdmin     = u.role === 'admin';
+
+        const ipCell = lastIp
+            ? `<div style="display:flex;align-items:center;justify-content:center;gap:6px">
+                 <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,.7);background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:2px 8px">${lastIp}</span>
+                 <button onclick="quickBanIp('${lastIp}','${email}')" title="IP bannen" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);color:#f87171;border-radius:6px;padding:2px 6px;cursor:pointer;font-size:10px;font-weight:700" onmouseover="this.style.background='rgba(239,68,68,.3)'" onmouseout="this.style.background='rgba(239,68,68,.15)'">
+                   <i class="fa-solid fa-ban"></i>
+                 </button>
+               </div>`
+            : `<span style="font-size:11px;color:rgba(255,255,255,.2)">—</span>`;
 
         html += `<tr class="${disabled ? 'usr-row-blocked' : ''}">
             <td style="padding-left:18px;min-width:220px">
@@ -5008,6 +5019,7 @@ function usrRenderTable() {
                     <div class="usr-pts-bar-bg"><div class="usr-pts-bar" style="width:${pct}%"></div></div>
                 </div>
             </td>
+            <td style="text-align:center">${ipCell}</td>
             <td style="text-align:center">
                 <label class="usr-ship-label" title="${freeShipping ? 'Gratisversand aktiv' : 'Kein Gratisversand'}">
                     <input type="checkbox" ${freeShipping ? 'checked' : ''} onchange="toggleFreeShipping('${doc.id}',this.checked)">
@@ -5587,37 +5599,142 @@ async function loadBannedIPs() {
         const snap = await db.collection('banned_ips').orderBy('bannedAt','desc').get();
         const badge = document.getElementById('lg-ban-badge');
         if (badge) badge.textContent = snap.size + ' IPs';
-        if (snap.empty) { container.innerHTML=`<div class="lg-empty"><i class="fa-solid fa-shield-check"></i>Keine gebannten IPs.</div>`; return; }
-        const now = new Date(); let html = '';
-        snap.forEach(doc => {
-            const b = doc.data();
-            const bannedAt = b.bannedAt ? lgRelTime(b.bannedAt.toDate()) : '—';
-            const isExpired = !b.permanent && b.bannedUntil && b.bannedUntil.toDate() < now;
-            const untilText = b.permanent
-                ? `<span class="lg-ip-badge lg-ip-badge-perm">PERMANENT</span>`
-                : isExpired
-                    ? `<span class="lg-ip-badge lg-ip-badge-expired">ABGELAUFEN</span>`
-                    : `<span class="lg-ip-badge lg-ip-badge-active">AKTIV · bis ${b.bannedUntil?b.bannedUntil.toDate().toLocaleDateString('de-DE'):'?'}</span>`;
-            html += `<div class="lg-ip-entry${isExpired?' expired':''}">
-                <div class="lg-ip-icon"><i class="fa-solid fa-ban"></i></div>
-                <div class="lg-ip-body">
-                    <div class="lg-ip-addr">
-                        <span>${b.ip}</span>
-                        ${untilText}
-                    </div>
-                    <div class="lg-ip-meta">
-                        Grund: <span style="color:rgba(255,255,255,.5)">${b.reason}</span>
-                        &nbsp;·&nbsp; ${bannedAt}
-                        &nbsp;·&nbsp; von <span style="color:var(--lg-cyan)">${b.bannedBy||'Admin'}</span>
-                    </div>
-                </div>
-                <button class="lg-unban-btn" onclick="unbanIP('${doc.id}','${b.ip}')">
-                    <i class="fa-solid fa-unlock"></i> Entbannen
-                </button>
-            </div>`;
+
+        // ── Manuell bannen + Gäste-IPs Sektion ──
+        const presenceSnap = await db.collection('presence').get();
+        const guestEntries = [];
+        presenceSnap.forEach(doc => {
+            const p = doc.data();
+            if (p.ip) {
+                guestEntries.push({
+                    ip: p.ip,
+                    username: p.username || 'Gast',
+                    email: p.email || null,
+                    isGuest: p.isGuest !== false,
+                    lastSeen: p.lastSeen,
+                    docId: doc.id
+                });
+            }
         });
+        // Deduplizieren nach IP
+        const seenIps = new Set(snap.docs.map(d => d.data().ip));
+        const uniqueGuests = [];
+        const ipSeen = new Set();
+        guestEntries.forEach(g => {
+            if (!ipSeen.has(g.ip)) { ipSeen.add(g.ip); uniqueGuests.push(g); }
+        });
+
+        let html = `
+        <div style="padding:14px 16px 10px;border-bottom:1px solid rgba(255,255,255,.07)">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:10px">IP manuell bannen</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start">
+                <input id="manual-ban-ip" type="text" placeholder="z.B. 1.2.3.4" style="flex:1;min-width:140px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:8px 12px;color:#fff;font-size:13px;font-family:'JetBrains Mono',monospace;outline:none" onfocus="this.style.borderColor='rgba(239,68,68,.5)'" onblur="this.style.borderColor='rgba(255,255,255,.12)'">
+                <input id="manual-ban-reason" type="text" placeholder="Grund (optional)" style="flex:2;min-width:160px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:8px 12px;color:#fff;font-size:13px;outline:none" onfocus="this.style.borderColor='rgba(239,68,68,.5)'" onblur="this.style.borderColor='rgba(255,255,255,.12)'">
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,.5);cursor:pointer;white-space:nowrap">
+                    <input type="checkbox" id="manual-ban-perm" checked> Permanent
+                </label>
+                <button onclick="manualBanIp()" style="background:rgba(239,68,68,.2);border:1px solid rgba(239,68,68,.4);color:#f87171;border-radius:10px;padding:8px 16px;cursor:pointer;font-size:12px;font-weight:700;white-space:nowrap" onmouseover="this.style.background='rgba(239,68,68,.35)'" onmouseout="this.style.background='rgba(239,68,68,.2)'">
+                    <i class="fa-solid fa-ban"></i> Bannen
+                </button>
+            </div>
+        </div>`;
+
+        // ── Aktuelle Besucher IPs (aus Presence) ──
+        if (uniqueGuests.length > 0) {
+            html += `<div style="padding:12px 16px 6px;border-bottom:1px solid rgba(255,255,255,.07)">
+                <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:8px">Bekannte IPs (aktuelle & frühere Besucher)</div>
+                <div style="display:flex;flex-direction:column;gap:6px">`;
+            uniqueGuests.forEach(g => {
+                const isBanned = seenIps.has(g.ip);
+                const lastSeenStr = g.lastSeen ? g.lastSeen.toDate().toLocaleDateString('de-DE') : '—';
+                html += `<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:10px">
+                    <i class="fa-solid fa-${g.isGuest ? 'user-secret' : 'user'}" style="color:${g.isGuest ? 'rgba(255,255,255,.3)' : '#67e8f9'};font-size:13px;flex-shrink:0"></i>
+                    <div style="flex:1;min-width:0">
+                        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:rgba(255,255,255,.8)">${g.ip}${isBanned ? ' <span style="font-size:9px;background:rgba(239,68,68,.2);color:#f87171;padding:1px 6px;border-radius:4px;font-weight:700">GEBANNT</span>' : ''}</div>
+                        <div style="font-size:10px;color:rgba(255,255,255,.3);margin-top:1px">${g.email || g.username} · ${g.isGuest ? 'Gast' : 'Registriert'} · zuletzt ${lastSeenStr}</div>
+                    </div>
+                    ${!isBanned ? `<button onclick="quickBanIp('${g.ip}','${g.email || g.username}')" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);color:#f87171;border-radius:7px;padding:4px 10px;cursor:pointer;font-size:11px;font-weight:700;flex-shrink:0" onmouseover="this.style.background='rgba(239,68,68,.25)'" onmouseout="this.style.background='rgba(239,68,68,.12)'"><i class="fa-solid fa-ban"></i> Ban</button>`
+                    : `<button onclick="unbanByIp('${g.ip}')" style="background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.25);color:#34d399;border-radius:7px;padding:4px 10px;cursor:pointer;font-size:11px;font-weight:700;flex-shrink:0" onmouseover="this.style.background='rgba(52,211,153,.2)'" onmouseout="this.style.background='rgba(52,211,153,.1)'"><i class="fa-solid fa-unlock"></i> Entban</button>`}
+                </div>`;
+            });
+            html += `</div></div>`;
+        }
+
+        // ── Gebannte IPs Liste ──
+        if (snap.empty) {
+            html += `<div class="lg-empty"><i class="fa-solid fa-shield-check"></i>Keine gebannten IPs.</div>`;
+        } else {
+            const now = new Date();
+            html += `<div style="padding:12px 16px 6px"><div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:8px">Gebannte IPs (${snap.size})</div>`;
+            snap.forEach(doc => {
+                const b = doc.data();
+                const bannedAt = b.bannedAt ? lgRelTime(b.bannedAt.toDate()) : '—';
+                const isExpired = !b.permanent && b.bannedUntil && b.bannedUntil.toDate() < now;
+                const untilText = b.permanent
+                    ? `<span class="lg-ip-badge lg-ip-badge-perm">PERMANENT</span>`
+                    : isExpired
+                        ? `<span class="lg-ip-badge lg-ip-badge-expired">ABGELAUFEN</span>`
+                        : `<span class="lg-ip-badge lg-ip-badge-active">AKTIV · bis ${b.bannedUntil?b.bannedUntil.toDate().toLocaleDateString('de-DE'):'?'}</span>`;
+                html += `<div class="lg-ip-entry${isExpired?' expired':''}">
+                    <div class="lg-ip-icon"><i class="fa-solid fa-ban"></i></div>
+                    <div class="lg-ip-body">
+                        <div class="lg-ip-addr"><span>${b.ip}</span>${untilText}</div>
+                        <div class="lg-ip-meta">Grund: <span style="color:rgba(255,255,255,.5)">${b.reason}</span> &nbsp;·&nbsp; ${bannedAt} &nbsp;·&nbsp; von <span style="color:var(--lg-cyan)">${b.bannedBy||'Admin'}</span></div>
+                    </div>
+                    <button class="lg-unban-btn" onclick="unbanIP('${doc.id}','${b.ip}')"><i class="fa-solid fa-unlock"></i> Entbannen</button>
+                </div>`;
+            });
+            html += `</div>`;
+        }
         container.innerHTML = html;
     } catch(e) { container.innerHTML=`<div class="lg-empty" style="color:var(--lg-red)"><i class="fa-solid fa-circle-exclamation"></i>Fehler: ${e.message}</div>`; }
+}
+
+async function manualBanIp() {
+    const ip = document.getElementById('manual-ban-ip')?.value.trim();
+    const reason = document.getElementById('manual-ban-reason')?.value.trim() || 'Manuell gebannt via Admin';
+    const permanent = document.getElementById('manual-ban-perm')?.checked !== false;
+    if (!ip || !/^[\d\.\:a-fA-F]+$/.test(ip)) { showToast('❌ Bitte gültige IP eingeben', 'error'); return; }
+    const existing = await db.collection('banned_ips').where('ip','==',ip).limit(1).get();
+    if (!existing.empty) { showToast(`⚠️ IP ${ip} ist bereits gebannt`, 'error'); return; }
+    await db.collection('banned_ips').add({
+        ip, reason, permanent,
+        bannedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        bannedBy: auth.currentUser?.email || 'Admin',
+        bannedUntil: permanent ? null : firebase.firestore.Timestamp.fromDate(new Date(Date.now() + 30*24*60*60*1000))
+    });
+    await logAction('ip_banned_manual', ip, { reason, permanent });
+    showToast(`🚫 IP ${ip} gebannt!`, 'success');
+    document.getElementById('manual-ban-ip').value = '';
+    document.getElementById('manual-ban-reason').value = '';
+    loadBannedIPs();
+}
+
+async function quickBanIp(ip, label) {
+    if (!confirm(`IP ${ip} (${label}) permanent bannen?`)) return;
+    const existing = await db.collection('banned_ips').where('ip','==',ip).limit(1).get();
+    if (!existing.empty) { showToast(`⚠️ IP ${ip} ist bereits gebannt`, 'error'); return; }
+    await db.collection('banned_ips').add({
+        ip, reason: `Schnell-Ban: ${label}`, permanent: true,
+        bannedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        bannedBy: auth.currentUser?.email || 'Admin',
+        bannedUntil: null
+    });
+    await logAction('ip_banned_quick', ip, { label });
+    showToast(`🚫 ${ip} gebannt!`, 'success');
+    loadBannedIPs();
+    usrRenderTable();
+}
+
+async function unbanByIp(ip) {
+    const snap = await db.collection('banned_ips').where('ip','==',ip).get();
+    if (snap.empty) { showToast('IP nicht in der Bannliste', 'error'); return; }
+    const batch = db.batch();
+    snap.forEach(doc => batch.delete(doc.ref));
+    await batch.commit();
+    await logAction('ip_unbanned', ip);
+    showToast(`✅ IP ${ip} entbannt`, 'success');
+    loadBannedIPs();
 }
 
 // ── Settings helpers ──

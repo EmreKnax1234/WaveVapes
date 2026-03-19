@@ -1765,23 +1765,9 @@
 
             <!-- Total row -->
             <div id="cart-total-section" style="display:none">
-                <div class="border-t border-white/10 pt-2">
-                    <div class="flex justify-between items-center py-1">
-                        <span class="text-sm text-gray-400">Zwischensumme</span>
-                        <span id="cart-subtotal-price" class="text-sm text-gray-300 whitespace-nowrap">0,00 €</span>
-                    </div>
-                    <div id="cart-shipping-row" class="flex justify-between items-center py-1">
-                        <span class="text-sm text-gray-400">Versand</span>
-                        <span id="cart-shipping-price" class="text-sm text-gray-300 whitespace-nowrap">0,00 €</span>
-                    </div>
-                    <div id="cart-shipping-saving-row" class="flex justify-between items-center py-1" style="display:none!important">
-                        <span class="text-sm text-emerald-400">🎉 Versandkostenersparnis</span>
-                        <span id="cart-shipping-saving" class="text-sm font-bold text-emerald-400 whitespace-nowrap">- 0,00 €</span>
-                    </div>
-                    <div class="flex justify-between items-center py-2 mt-1 border-t border-white/10">
-                        <span class="text-sm font-semibold text-white">Gesamt</span>
-                        <span id="cart-total-price" class="text-lg font-bold text-cyan-300 whitespace-nowrap">0,00 €</span>
-                    </div>
+                <div class="flex justify-between items-center py-2 border-t border-white/10">
+                    <span class="text-sm text-gray-400">Gesamt inkl. Versand</span>
+                    <span id="cart-total-price" class="text-lg font-bold text-cyan-300 whitespace-nowrap">0,00 €</span>
                 </div>
                 <p id="cart-payment-info" class="text-xs text-gray-500 mb-1"></p>
                 <p id="loyalty-cart-info" class="text-emerald-400 text-xs flex items-center gap-2 font-medium mb-3"></p>
@@ -3214,33 +3200,6 @@
             totalSection.style.display = "block";
             const grandTotal = calculateCartTotal();
             totalEl.textContent = `${grandTotal.toFixed(2).replace('.', ',')} €`;
-
-            // Zwischensumme + Versand aufschlüsseln
-            const subtotal = getSubtotal();
-            const shippingCost = getShippingCost();
-            const normalShipping = window._SHIPPING_COST !== undefined ? window._SHIPPING_COST : 4.99;
-            const isFreeShipping = shippingCost === 0;
-            const fmt = v => v.toFixed(2).replace('.', ',') + ' €';
-
-            const subtotalEl = document.getElementById('cart-subtotal-price');
-            if (subtotalEl) subtotalEl.textContent = fmt(subtotal);
-
-            const shippingPriceEl = document.getElementById('cart-shipping-price');
-            const shippingRow    = document.getElementById('cart-shipping-row');
-            const savingRow      = document.getElementById('cart-shipping-saving-row');
-            const savingEl       = document.getElementById('cart-shipping-saving');
-
-            if (isFreeShipping) {
-                if (shippingPriceEl) shippingPriceEl.textContent = fmt(shippingCost);
-                if (shippingRow)    shippingRow.style.display = 'none';
-                if (savingRow)      { savingRow.style.display = 'flex'; savingRow.style.setProperty('display','flex','important'); }
-                if (savingEl)       savingEl.textContent = `- ${fmt(normalShipping)}`;
-            } else {
-                if (shippingPriceEl) shippingPriceEl.textContent = fmt(shippingCost);
-                if (shippingRow)    shippingRow.style.display = 'flex';
-                if (savingRow)      savingRow.style.setProperty('display','none','important');
-            }
-
             const productTotal = getProductTotal();
             if (productTotal > 0) {
                 const pointsEarned = Math.floor(productTotal);
@@ -3289,19 +3248,14 @@
             });
             const shippingCost = getShippingCost();
             const isFree = shippingCost === 0;
-            const normalCost = (window._SHIPPING_COST !== undefined ? window._SHIPPING_COST : 4.99).toFixed(2).replace('.', ',');
             const shippingHTML = `
                 <div class="cart-item flex justify-between items-center bg-zinc-900 border ${isFree ? 'border-emerald-400/30' : 'border-white/10'} rounded-3xl p-5 mt-3">
                     <div>
-                        <div class="font-medium">${isFree ? '🚚 Gratis Versand' : 'Versand (DHL)'}</div>
-                        ${isFree ? `<div class="text-xs text-emerald-400">Du sparst ${normalCost} € Versandkosten</div>` : `<div class="text-xs text-gray-500">per DHL</div>`}
+                        <div class="font-medium">${isFree ? 'Gratis Versand' : 'Versand (DHL)'}</div>
+                        ${isFree ? `<div class="text-xs text-emerald-400">ab 100 € Warenwert oder für dich aktiviert</div>` : ''}
                     </div>
-                    <div class="text-right">
-                        ${isFree
-                            ? `<div class="text-sm text-gray-500 line-through">${normalCost} €</div>
-                               <div class="font-bold text-emerald-400 whitespace-nowrap">- ${normalCost} €</div>`
-                            : `<div class="font-bold text-xl whitespace-nowrap">${shippingCost.toFixed(2).replace('.', ',')} €</div>`
-                        }
+                    <div class="font-bold text-xl ${isFree ? 'text-emerald-400' : ''} whitespace-nowrap">
+                        ${isFree ? '0,00' : shippingCost.toFixed(2).replace('.', ',')} €
                     </div>
                 </div>`;
             itemsHTML += shippingHTML;

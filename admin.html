@@ -2065,6 +2065,7 @@
             <div onclick="switchTab(10)" id="sidebar-10" class="sidebar-item"><i class="fa-solid fa-users-cog"></i><span>Erw. Benutzer</span></div>
             <div onclick="switchTab(11)" id="sidebar-11" class="sidebar-item"><i class="fa-solid fa-star"></i><span>Bewertungen</span><span class="sidebar-badge" id="sb-reviews-badge" style="display:none">0</span></div>
             <div onclick="switchTab(13)" id="sidebar-13" class="sidebar-item"><i class="fa-solid fa-crown"></i><span>Kunden-Übersicht</span></div>
+            <div onclick="switchTab(14)" id="sidebar-14" class="sidebar-item"><i class="fa-solid fa-bolt"></i><span>Aktionen</span><span class="sidebar-badge" id="sb-promos-badge" style="display:none">0</span></div>
 
             <div class="sidebar-section-label" style="margin-top:12px; border-top:1px solid rgba(251,191,36,.1); padding-top:12px;">Superadmin</div>
             <div onclick="openSuperadminZone()" id="sidebar-12" class="sidebar-item-locked" title="Nur für Superadmin">
@@ -3252,6 +3253,100 @@
         </div>
 
         <!-- TAB 12: SUPERADMIN ZONE -->
+        <!-- TAB 14: AKTIONEN / PROMOTIONS -->
+        <div id="tab-content-14" class="hidden">
+        <div style="display:flex;flex-direction:column;gap:20px">
+
+            <!-- Header -->
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+                <div>
+                    <div style="font-family:'Orbitron',sans-serif;font-size:1.3rem;font-weight:700;display:flex;align-items:center;gap:10px">
+                        <div style="width:38px;height:38px;border-radius:11px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);display:flex;align-items:center;justify-content:center;color:#ef4444">⚡</div>
+                        Live Aktionen
+                    </div>
+                    <div style="font-size:11px;color:rgba(255,255,255,.3);margin-top:4px">Rabatte die sofort im Shop sichtbar sind — auf Produktkarten, im Modal und im Warenkorb</div>
+                </div>
+                <button onclick="promoOpenCreate()" style="display:flex;align-items:center;gap:8px;padding:10px 20px;border-radius:14px;background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;font-size:13px;font-weight:700;border:none;cursor:pointer">
+                    <i class="fa-solid fa-plus"></i> Neue Aktion
+                </button>
+            </div>
+
+            <!-- KPI -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px">
+                <div class="metric-card card" style="padding:18px 20px">
+                    <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.3)">Aktionen Gesamt</div>
+                    <div style="font-size:28px;font-weight:800;margin-top:4px" id="promo-kpi-total">—</div>
+                </div>
+                <div class="metric-card card" style="padding:18px 20px">
+                    <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.3)">Aktiv</div>
+                    <div style="font-size:28px;font-weight:800;margin-top:4px;color:#34d399" id="promo-kpi-active">—</div>
+                </div>
+                <div class="metric-card card" style="padding:18px 20px">
+                    <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.3)">Betroffene Kategorie</div>
+                    <div style="font-size:14px;font-weight:700;margin-top:6px;color:#67e8f9" id="promo-kpi-cats">—</div>
+                </div>
+            </div>
+
+            <!-- Promo List -->
+            <div class="card" style="overflow:hidden">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid #27272a">
+                    <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.35)"><i class="fa-solid fa-bolt" style="color:#ef4444;margin-right:6px"></i>Alle Aktionen</div>
+                </div>
+                <div id="promo-list" style="min-height:80px">
+                    <div style="padding:32px;text-align:center;color:rgba(255,255,255,.25);font-size:13px"><i class="fa-solid fa-spinner fa-spin"></i> Lade...</div>
+                </div>
+            </div>
+
+            <!-- Create/Edit Form (hidden by default) -->
+            <div id="promo-form-card" class="card" style="display:none;padding:24px">
+                <div style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:20px" id="promo-form-title">Neue Aktion erstellen</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+                    <div style="display:flex;flex-direction:column;gap:6px">
+                        <label style="font-size:11px;font-weight:600;color:rgba(255,255,255,.4)">Name der Aktion</label>
+                        <input id="promo-f-name" class="cfg-input" placeholder="z.B. Summer Sale" style="width:100%;box-sizing:border-box">
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:6px">
+                        <label style="font-size:11px;font-weight:600;color:rgba(255,255,255,.4)">Badge-Text im Shop</label>
+                        <input id="promo-f-label" class="cfg-input" placeholder="z.B. -10% SALE" style="width:100%;box-sizing:border-box">
+                        <span style="font-size:10px;color:rgba(255,255,255,.25)">Erscheint als Aufkleber auf der Produktkarte</span>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:6px">
+                        <label style="font-size:11px;font-weight:600;color:rgba(255,255,255,.4)">Kategorie</label>
+                        <select id="promo-f-category" class="cfg-input" style="width:100%;box-sizing:border-box">
+                            <option value="Alle">Alle Produkte</option>
+                        </select>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:6px">
+                        <label style="font-size:11px;font-weight:600;color:rgba(255,255,255,.4)">Rabatt-Typ</label>
+                        <select id="promo-f-type" class="cfg-input" style="width:100%;box-sizing:border-box" onchange="promoTypeChange()">
+                            <option value="percent">Prozent (%) Rabatt</option>
+                            <option value="fixed">Fester Betrag (€) Rabatt</option>
+                        </select>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:6px">
+                        <label style="font-size:11px;font-weight:600;color:rgba(255,255,255,.4)" id="promo-f-value-label">Rabatt in %</label>
+                        <div style="display:flex;align-items:center;gap:8px">
+                            <input id="promo-f-value" type="number" min="1" max="99" step="0.5" class="cfg-input" placeholder="10" style="flex:1;box-sizing:border-box">
+                            <span id="promo-f-unit" style="font-size:18px;font-weight:800;color:rgba(255,255,255,.4);flex-shrink:0">%</span>
+                        </div>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:6px">
+                        <label style="font-size:11px;font-weight:600;color:rgba(255,255,255,.4)">Sofort aktiv schalten?</label>
+                        <label class="cfg-switch" style="margin-top:4px">
+                            <input type="checkbox" id="promo-f-active" checked>
+                            <span class="cfg-switch-sl"></span>
+                        </label>
+                    </div>
+                </div>
+                <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end">
+                    <button onclick="promoCloseForm()" style="padding:10px 20px;border-radius:12px;background:rgba(255,255,255,.07);color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.1);font-size:13px;font-weight:600;cursor:pointer">Abbrechen</button>
+                    <button onclick="promoSave()" style="padding:10px 24px;border-radius:12px;background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;border:none;font-size:13px;font-weight:700;cursor:pointer"><i class="fa-solid fa-check" style="margin-right:6px"></i>Speichern & Live schalten</button>
+                </div>
+            </div>
+
+        </div><!-- /shell -->
+        </div>
+
         <!-- TAB 13: KUNDEN-ÜBERSICHT -->
         <div id="tab-content-13" class="hidden">
         <div class="cu-shell">
@@ -6798,7 +6893,7 @@ const TAB_NAMES = {
     0:'Produkte', 1:'Bestellungen', 2:'Benutzer', 3:'Kategorien',
     4:'Gutscheine', 5:'Analytics', 6:'Admin Logs', 7:'Settings',
     8:'Sortierung', 9:'Live Online', 10:'Erw. Benutzer', 11:'Bewertungen', 12:'Superadmin Zone',
-    13:'Kunden-Übersicht'
+    13:'Kunden-Übersicht', 14:'Aktionen'
 };
 
 function switchTab(n) {
@@ -6840,10 +6935,178 @@ function switchTab(n) {
     }
     if(n===10)loadExtendedUsers();
     if(n===13)loadCustomerOverview();
+    if(n===14)loadPromos();
 }
 function toggleSidebar(){
     const s=document.getElementById('sidebar');
     s.style.transform=s.style.transform==='translateX(-100%)'?'':'translateX(-100%)';
+}
+
+
+// ═══════════════════════════════════════════════════════
+//  AKTIONEN / PROMOTIONS (Tab 14)
+// ═══════════════════════════════════════════════════════
+let _promos = [];
+let _promoEditId = null;
+
+function loadPromos() {
+    db.collection('promotions').onSnapshot(snap => {
+        _promos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        promoRenderList();
+        promoRenderKPIs();
+        promoFillCategorySelect();
+        const active = _promos.filter(p => p.active).length;
+        const badge = document.getElementById('sb-promos-badge');
+        if (badge) { badge.textContent = active; badge.style.display = active > 0 ? 'inline-flex' : 'none'; }
+    }, () => {});
+}
+
+function promoRenderKPIs() {
+    const total  = _promos.length;
+    const active = _promos.filter(p => p.active).length;
+    const cats   = [...new Set(_promos.filter(p=>p.active).map(p=>p.category))].join(', ') || '—';
+    const set = (id, v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
+    set('promo-kpi-total',  total || '—');
+    set('promo-kpi-active', active || '—');
+    set('promo-kpi-cats',   cats);
+}
+
+function promoRenderList() {
+    const el = document.getElementById('promo-list');
+    if (!el) return;
+    if (!_promos.length) {
+        el.innerHTML = `<div style="padding:32px;text-align:center;color:rgba(255,255,255,.2);font-size:13px">
+            <div style="font-size:32px;margin-bottom:12px">⚡</div>
+            Noch keine Aktionen angelegt. Klick auf „Neue Aktion" um loszulegen.
+        </div>`;
+        return;
+    }
+    el.innerHTML = _promos.map(p => {
+        const typeLabel = p.type === 'percent' ? `${p.value}% Rabatt` : `${parseFloat(p.value).toFixed(2).replace('.',',')} € Rabatt`;
+        const statusBg  = p.active ? 'rgba(52,211,153,.12)' : 'rgba(255,255,255,.06)';
+        const statusCol = p.active ? '#34d399' : 'rgba(255,255,255,.3)';
+        return `<div style="display:flex;align-items:center;gap:14px;padding:14px 20px;border-bottom:1px solid rgba(255,255,255,.05)" onmouseover="this.style.background='rgba(255,255,255,.02)'" onmouseout="this.style.background=''">
+            <div style="width:42px;height:42px;border-radius:13px;background:${p.active?'linear-gradient(135deg,rgba(239,68,68,.2),rgba(249,115,22,.1))':'rgba(255,255,255,.05)'};border:1px solid ${p.active?'rgba(239,68,68,.3)':'rgba(255,255,255,.1)'};display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${p.type==='percent'?'％':'€'}</div>
+            <div style="flex:1;min-width:0">
+                <div style="font-size:13px;font-weight:700;color:#e4e4e7">${p.name||'—'}</div>
+                <div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:2px">${typeLabel} · Kategorie: <span style="color:#67e8f9">${p.category||'Alle'}</span>${p.label?` · Badge: <span style="color:#fbbf24">${p.label}</span>`:''}</div>
+            </div>
+            <label class="cfg-switch" title="${p.active?'Deaktivieren':'Aktivieren'}">
+                <input type="checkbox" ${p.active?'checked':''} onchange="promoToggleActive('${p.id}',this.checked)">
+                <span class="cfg-switch-sl"></span>
+            </label>
+            <span style="font-size:10px;font-weight:800;padding:3px 10px;border-radius:99px;background:${statusBg};color:${statusCol};min-width:60px;text-align:center">${p.active?'AKTIV':'INAKTIV'}</span>
+            <button onclick="promoOpenEdit('${p.id}')" style="width:32px;height:32px;border-radius:9px;background:rgba(103,232,249,.1);border:1px solid rgba(103,232,249,.2);color:#67e8f9;cursor:pointer;font-size:13px"><i class="fa-solid fa-pen"></i></button>
+            <button onclick="promoDelete('${p.id}')" style="width:32px;height:32px;border-radius:9px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:#f87171;cursor:pointer;font-size:13px"><i class="fa-solid fa-trash"></i></button>
+        </div>`;
+    }).join('');
+}
+
+async function promoFillCategorySelect() {
+    const sel = document.getElementById('promo-f-category');
+    if (!sel) return;
+    const snap = await db.collection('categories').get();
+    const current = sel.value;
+    sel.innerHTML = `<option value="Alle">🌐 Alle Produkte</option>` +
+        snap.docs.map(d => d.data().name).filter(Boolean).map(c=>`<option value="${c}">${c}</option>`).join('');
+    if (current) sel.value = current;
+}
+
+function promoTypeChange() {
+    const type = document.getElementById('promo-f-type')?.value;
+    const label = document.getElementById('promo-f-value-label');
+    const unit  = document.getElementById('promo-f-unit');
+    const inp   = document.getElementById('promo-f-value');
+    if (type === 'percent') {
+        if (label) label.textContent = 'Rabatt in %';
+        if (unit)  unit.textContent  = '%';
+        if (inp)   { inp.max = '99'; inp.placeholder = '10'; }
+    } else {
+        if (label) label.textContent = 'Rabatt in €';
+        if (unit)  unit.textContent  = '€';
+        if (inp)   { inp.max = '9999'; inp.placeholder = '2.00'; }
+    }
+}
+
+function promoOpenCreate() {
+    _promoEditId = null;
+    document.getElementById('promo-form-title').textContent = 'Neue Aktion erstellen';
+    document.getElementById('promo-f-name').value    = '';
+    document.getElementById('promo-f-label').value   = '';
+    document.getElementById('promo-f-value').value   = '';
+    document.getElementById('promo-f-type').value    = 'percent';
+    document.getElementById('promo-f-active').checked = true;
+    promoTypeChange();
+    promoFillCategorySelect();
+    document.getElementById('promo-form-card').style.display = 'block';
+    document.getElementById('promo-form-card').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+function promoOpenEdit(id) {
+    const p = _promos.find(x => x.id === id);
+    if (!p) return;
+    _promoEditId = id;
+    document.getElementById('promo-form-title').textContent = 'Aktion bearbeiten';
+    document.getElementById('promo-f-name').value    = p.name    || '';
+    document.getElementById('promo-f-label').value   = p.label   || '';
+    document.getElementById('promo-f-value').value   = p.value   || '';
+    document.getElementById('promo-f-type').value    = p.type    || 'percent';
+    document.getElementById('promo-f-active').checked = p.active !== false;
+    promoTypeChange();
+    promoFillCategorySelect().then(() => {
+        const sel = document.getElementById('promo-f-category');
+        if (sel) sel.value = p.category || 'Alle';
+    });
+    document.getElementById('promo-form-card').style.display = 'block';
+    document.getElementById('promo-form-card').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+function promoCloseForm() {
+    document.getElementById('promo-form-card').style.display = 'none';
+    _promoEditId = null;
+}
+
+async function promoSave() {
+    const name     = document.getElementById('promo-f-name').value.trim();
+    const label    = document.getElementById('promo-f-label').value.trim();
+    const type     = document.getElementById('promo-f-type').value;
+    const value    = parseFloat(document.getElementById('promo-f-value').value);
+    const category = document.getElementById('promo-f-category').value;
+    const active   = document.getElementById('promo-f-active').checked;
+    if (!name)                      return showToast('❌ Name eingeben', 'error');
+    if (isNaN(value) || value <= 0) return showToast('❌ Gültigen Rabattwert eingeben', 'error');
+    if (type === 'percent' && value >= 100) return showToast('❌ Max. 99%', 'error');
+    const data = { name, label, type, value, category, active, updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+    try {
+        if (_promoEditId) {
+            await db.collection('promotions').doc(_promoEditId).update(data);
+            showToast('✅ Aktion aktualisiert!', 'success');
+        } else {
+            data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+            await db.collection('promotions').add(data);
+            showToast(`✅ Aktion live! ${category === 'Alle' ? 'Alle Produkte' : category} — ${type==='percent'?value+'%':value+'€'} Rabatt`, 'success');
+        }
+        promoCloseForm();
+        await logAction(_promoEditId ? 'promo_updated' : 'promo_created', name);
+    } catch(e) { showToast('❌ Fehler: ' + e.message, 'error'); }
+}
+
+async function promoToggleActive(id, active) {
+    try {
+        await db.collection('promotions').doc(id).update({ active });
+        showToast(active ? '✅ Aktion aktiviert — Rabatt ist jetzt live!' : '⏸ Aktion deaktiviert');
+        await logAction('promo_toggled', id + ' → ' + (active ? 'aktiv' : 'inaktiv'));
+    } catch(e) { showToast('❌ Fehler: ' + e.message, 'error'); }
+}
+
+async function promoDelete(id) {
+    const p = _promos.find(x => x.id === id);
+    if (!confirm(`Aktion "${p?.name||id}" wirklich löschen?`)) return;
+    try {
+        await db.collection('promotions').doc(id).delete();
+        showToast('🗑 Aktion gelöscht');
+        await logAction('promo_deleted', id);
+    } catch(e) { showToast('❌ Fehler: ' + e.message, 'error'); }
 }
 
 // ═══════════════════════════════════════════════════════

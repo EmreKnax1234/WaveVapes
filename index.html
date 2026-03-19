@@ -475,6 +475,27 @@
         .lb-empty { padding: 32px; text-align: center; color: rgba(255,255,255,.25); font-size: 13px; }
         @keyframes lb-shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
         .lb-skeleton { background: linear-gradient(90deg, rgba(255,255,255,.06) 25%, rgba(255,255,255,.1) 50%, rgba(255,255,255,.06) 75%); background-size: 200% 100%; animation: lb-shimmer 1.4s infinite; border-radius: 8px; }
+
+        /* ── COUNTDOWN BANNER ── */
+        #countdown-banner { display: none; margin-bottom: 20px; }
+        #countdown-banner.visible { display: flex; }
+        .cd-banner {
+            width: 100%; display: flex; align-items: center; justify-content: center;
+            flex-wrap: wrap; gap: 10px 20px;
+            background: linear-gradient(135deg, rgba(251,191,36,.08), rgba(239,68,68,.08));
+            border: 1px solid rgba(251,191,36,.3); border-radius: 20px;
+            padding: 14px 24px; position: relative; overflow: hidden;
+        }
+        .cd-banner::before { content:''; position:absolute; inset:0; background:linear-gradient(90deg,transparent,rgba(251,191,36,.04),transparent); animation:cd-shine 3s infinite; }
+        @keyframes cd-shine { 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }
+        .cd-label { font-size: 14px; font-weight: 700; color: #fbbf24; display: flex; align-items: center; gap: 8px; }
+        .cd-digits { display: flex; align-items: center; gap: 6px; }
+        .cd-block { display:flex; flex-direction:column; align-items:center; background:rgba(0,0,0,.35); border:1px solid rgba(251,191,36,.2); border-radius:12px; padding:8px 14px; min-width:56px; }
+        .cd-num { font-family:'JetBrains Mono','Orbitron',monospace; font-size:22px; font-weight:800; color:#fff; line-height:1; letter-spacing:.03em; }
+        .cd-unit { font-size:9px; font-weight:700; letter-spacing:.1em; color:rgba(255,255,255,.35); text-transform:uppercase; margin-top:3px; }
+        .cd-sep { font-size:20px; font-weight:800; color:rgba(251,191,36,.5); margin-bottom:14px; }
+        .cd-expired { font-size:13px; font-weight:700; color:#ef4444; }
+
         #recently-viewed-section {
             margin-top: 40px;
             display: none;
@@ -1388,6 +1409,19 @@
     <main id="main-content" class="max-w-7xl mx-auto px-4 sm:px-6 pt-8 pb-20">
         <!-- HERO -->
         <section class="text-center mb-12" aria-label="WaveVapes Angebote und Aktionen">
+            <!-- COUNTDOWN BANNER -->
+            <div id="countdown-banner" role="timer" aria-live="polite">
+                <div class="cd-banner">
+                    <div class="cd-label" id="cd-label">🔥 Angebot endet in</div>
+                    <div class="cd-digits" id="cd-digits">
+                        <div class="cd-block"><div class="cd-num" id="cd-h">00</div><div class="cd-unit">Std</div></div>
+                        <div class="cd-sep">:</div>
+                        <div class="cd-block"><div class="cd-num" id="cd-m">00</div><div class="cd-unit">Min</div></div>
+                        <div class="cd-sep">:</div>
+                        <div class="cd-block"><div class="cd-num" id="cd-s">00</div><div class="cd-unit">Sek</div></div>
+                    </div>
+                </div>
+            </div>
             <div class="inline-flex items-center gap-2 bg-white/10 px-5 py-1.5 rounded-3xl text-xs mb-6 backdrop-blur-md">
                 <div class="w-2.5 h-2.5 bg-emerald-400 rounded-full animate-ping"></div>
                 International • Versand per DHL
@@ -4418,8 +4452,66 @@
             } else {
                 hideMaintenanceOverlay();
             }
+            // ── Countdown-Timer ──
+            cdUpdate(s.countdown_active, s.countdown_label, s.countdown_end);
         });
         db.collection('settings').doc('product_order').onSnapshot(doc => {
+
+        // ── COUNTDOWN TIMER ─────────────────────────────────────────────────────
+        let _cdInterval = null;
+
+        function cdUpdate(active, label, endStr) {
+            const banner = document.getElementById('countdown-banner');
+            if (!banner) return;
+            if (!active || !endStr) {
+                banner.classList.remove('visible');
+                if (_cdInterval) { clearInterval(_cdInterval); _cdInterval = null; }
+                return;
+            }
+            const endMs = new Date(endStr).getTime();
+            if (isNaN(endMs) || endMs <= Date.now()) {
+                banner.classList.remove('visible');
+                if (_cdInterval) { clearInterval(_cdInterval); _cdInterval = null; }
+                return;
+            }
+            // Set label text
+            const labelEl = document.getElementById('cd-label');
+            if (labelEl) labelEl.textContent = label || '🔥 Angebot endet in';
+
+            banner.classList.add('visible');
+            if (_cdInterval) clearInterval(_cdInterval);
+
+            function tick() {
+                const diff = endMs - Date.now();
+                if (diff <= 0) {
+                    banner.classList.remove('visible');
+                    clearInterval(_cdInterval);
+                    return;
+                }
+                const h = Math.floor(diff / 3600000);
+                const m = Math.floor((diff % 3600000) / 60000);
+                const s = Math.floor((diff % 60000) / 1000);
+                const pad = n => String(n).padStart(2, '0');
+                const hEl = document.getElementById('cd-h');
+                const mEl = document.getElementById('cd-m');
+                const sEl = document.getElementById('cd-s');
+                // Show days if >= 24h
+                if (h >= 24) {
+                    const d = Math.floor(h / 24);
+                    const rh = h % 24;
+                    if (hEl) hEl.closest('.cd-block').querySelector('.cd-unit').textContent = 'Tage';
+                    if (hEl) hEl.textContent = pad(d);
+                    if (mEl) { mEl.closest('.cd-block').querySelector('.cd-unit').textContent = 'Std'; mEl.textContent = pad(rh); }
+                    if (sEl) { sEl.closest('.cd-block').querySelector('.cd-unit').textContent = 'Min'; sEl.textContent = pad(m); }
+                } else {
+                    if (hEl) { hEl.closest('.cd-block').querySelector('.cd-unit').textContent = 'Std'; hEl.textContent = pad(h); }
+                    if (mEl) { mEl.closest('.cd-block').querySelector('.cd-unit').textContent = 'Min'; mEl.textContent = pad(m); }
+                    if (sEl) { sEl.closest('.cd-block').querySelector('.cd-unit').textContent = 'Sek'; sEl.textContent = pad(s); }
+                }
+            }
+            tick();
+            _cdInterval = setInterval(tick, 1000);
+        }
             if (doc.exists) {
                 productOrder = doc.data().order || [];
                 renderProducts();

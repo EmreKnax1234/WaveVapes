@@ -476,6 +476,22 @@
         @keyframes lb-shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
         .lb-skeleton { background: linear-gradient(90deg, rgba(255,255,255,.06) 25%, rgba(255,255,255,.1) 50%, rgba(255,255,255,.06) 75%); background-size: 200% 100%; animation: lb-shimmer 1.4s infinite; border-radius: 8px; }
 
+        /* ── PROMO BADGE auf Produktkarten ── */
+        .promo-badge {
+            position: absolute; top: 16px; left: 10px;
+            background: linear-gradient(135deg, #ef4444, #f97316);
+            color: #fff; font-size: 10px; font-weight: 900;
+            letter-spacing: .04em; padding: 3px 9px;
+            border-radius: 99px; z-index: 10;
+            box-shadow: 0 4px 12px rgba(239,68,68,.4);
+            animation: promoPop 0.3s cubic-bezier(0.34,1.56,0.64,1);
+            white-space: nowrap;
+        }
+        @keyframes promoPop { from{transform:scale(0.6);opacity:0} to{transform:scale(1);opacity:1} }
+        .promo-orig-price { font-size: 0.95rem; text-decoration: line-through; color: #6b7280; }
+        .promo-sale-price { font-size: 1.85rem; font-weight: 900; color: #ef4444; line-height: 1; }
+        .price-row-promo  { display:flex; flex-direction:column; align-items:center; gap:2px; margin-bottom:10px; }
+
         /* ── COUNTDOWN BANNER ── */
         #countdown-banner { display: none; margin-bottom: 20px; }
         #countdown-banner.visible { display: flex; }
@@ -2785,7 +2801,12 @@
             showToast("✅ Adresse gespeichert!");
         }
         function getSubtotal() {
-            return cart.reduce((sum, item) => item.id == MYSTERY_ID ? sum : sum + item.qty * (item.price || 7.99), 0);
+            return cart.reduce((sum, item) => {
+                if (item.id == MYSTERY_ID) return sum;
+                const product = allProducts.find(p => p.id === item.id);
+                const effPrice = product ? (getPromoPrice(product) ?? item.price) : item.price;
+                return sum + item.qty * (effPrice || 7.99);
+            }, 0);
         }
         function getProductTotal() {
             let subtotal = getSubtotal();
@@ -2839,7 +2860,9 @@
             if (userHasFreeShipping) return 0;
             const rawSubtotal = cart.reduce((sum, item) => {
                 if (item.id == MYSTERY_ID) return sum;
-                return sum + item.qty * (item.price || 7.99);
+                const product = allProducts.find(p => p.id === item.id);
+                const effPrice = product ? (getPromoPrice(product) ?? item.price) : item.price;
+                return sum + item.qty * (effPrice || 7.99);
             }, 0);
             const threshold = window._FREE_THRESHOLD !== undefined ? window._FREE_THRESHOLD : FREE_SHIPPING_THRESHOLD;
             const cost      = window._SHIPPING_COST   !== undefined ? window._SHIPPING_COST   : SHIPPING_COST;
@@ -2854,6 +2877,29 @@
         // Live cache of special-category offer configs, keyed by category name
         let _offerCats = {}; // { "Category Name": { offerType, offerN, offerM, specialText } }
         let _offerCatsReady = false;
+
+        // ── Live Aktionen / Promotions ───────────────────────────────────────────
+        let _activePromos = []; // [{ id, name, category, type:'percent'|'fixed', value, label, active }]
+
+        function getPromoForProduct(product) {
+            return _activePromos.find(p =>
+                p.active && (p.category === 'Alle' || p.category === product.category)
+            ) || null;
+        }
+
+        function getPromoPrice(product) {
+            const promo = getPromoForProduct(product);
+            if (!promo) return null;
+            if (promo.type === 'percent') return Math.max(0, product.price * (1 - promo.value / 100));
+            if (promo.type === 'fixed')   return Math.max(0, product.price - promo.value);
+            return null;
+        }
+
+        db.collection('promotions').onSnapshot(snap => {
+            _activePromos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            renderProducts();
+            updateCartDisplay();
+        }, () => {});
 
         function loadProducts() {
             const container = document.getElementById("products-grid");
@@ -2969,13 +3015,32 @@
                 const clickHandler = `onclick="showProductDetail('${product.id}')"`;
                 const cursorClass = 'cursor-pointer';
                 const isWished = wishlist.includes(product.id);
+
+                // Promo-Logik
+                const promo      = getPromoForProduct(product);
+                const promoPrice = promo ? getPromoPrice(product) : null;
+                const promoLabel = promo ? (promo.label || (promo.type === 'percent' ? `-${promo.value}%` : `-${promo.value}€`)) : null;
+                const displayPrice = promoPrice !== null ? promoPrice : product.price;
+
+                const promoBadgeHTML = promo
+                    ? `<div class="promo-badge">🔥 ${promoLabel}</div>`
+                    : '';
+
+                const priceRowHTML = promoPrice !== null
+                    ? `<div class="price-row-promo">
+                           <span class="promo-orig-price">${product.price.toFixed(2).replace('.', ',')}€</span>
+                           <span class="promo-sale-price">${promoPrice.toFixed(2).replace('.', ',')}€</span>
+                       </div>`
+                    : `<div class="price-row"><span class="discount-price">${oldPrice}€</span> → <span class="sale-price">${salePrice}€</span></div>`;
+
                 html += `
                     <div ${clickHandler}
                          data-product-id="${product.id}"
                          style="position:relative"
                          class="product-card bg-zinc-900 border border-white/10 rounded-3xl ${unavailableClass} ${liquidClass} ${cursorClass}">
-                        <div class="h-1.5 bg-gradient-to-r from-cyan-400 to-purple-500 rounded-t-3xl"></div>
+                        <div class="h-1.5 bg-gradient-to-r ${promo ? 'from-red-500 to-orange-400' : 'from-cyan-400 to-purple-500'} rounded-t-3xl"></div>
                         <div class="p-5 flex flex-col h-full">
+                            ${promoBadgeHTML}
                             <button class="wish-btn${isWished?' wished':''}" onclick="toggleWishlist('${product.id}',event)" aria-label="Zu Favoriten hinzufügen" title="Favorit">
                                 <i class="fa-${isWished?'solid':'regular'} fa-heart"></i>
                             </button>
@@ -2987,7 +3052,7 @@
                             ${unavailableTagHTML}
                             ${stockHTML}
                             <div class="flex-1"></div>
-                            <div class="price-row"><span class="discount-price">${oldPrice}€</span> → <span class="sale-price">${salePrice}€</span></div>
+                            ${priceRowHTML}
                             <div class="qty-controls-wrap">${qtyHTML}</div>
                             ${nicotineHTML}
                         </div>
@@ -4034,6 +4099,26 @@
             const oldPriceDisplay = product.originalPrice
                 ? product.originalPrice.toFixed(2).replace('.', ',') + ' €'
                 : (isVape ? '35,99 €' : '10,99 €');
+
+            // Promo im Modal
+            const modalPromo      = getPromoForProduct(product);
+            const modalPromoPrice = modalPromo ? getPromoPrice(product) : null;
+            const modalPromoBadge = modalPromo
+                ? `<span style="background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;font-size:11px;font-weight:900;padding:4px 12px;border-radius:99px;letter-spacing:.04em;box-shadow:0 4px 12px rgba(239,68,68,.4)">🔥 ${modalPromo.label || (modalPromo.type==='percent'?`-${modalPromo.value}%`:`-${modalPromo.value}€`)}</span>`
+                : '';
+            const modalPriceHTML = modalPromoPrice !== null
+                ? `<div class="mt-8 flex flex-col gap-1">
+                       <div class="flex items-center gap-3">${modalPromoBadge}</div>
+                       <div class="flex items-baseline gap-4 mt-2">
+                           <span class="text-2xl line-through text-gray-500">${product.price.toFixed(2).replace('.', ',')} €</span>
+                           <span class="sale-price text-5xl font-black text-red-500">${modalPromoPrice.toFixed(2).replace('.', ',')} €</span>
+                       </div>
+                       <div class="text-emerald-400 text-sm font-semibold mt-1">Du sparst ${(product.price - modalPromoPrice).toFixed(2).replace('.', ',')} €</div>
+                   </div>`
+                : `<div class="mt-8 price-row flex items-baseline gap-4">
+                       <span class="discount-price text-2xl line-through">${oldPriceDisplay}</span>
+                       <span class="sale-price text-5xl font-black text-red-500">${product.price.toFixed(2).replace('.', ',')} €</span>
+                   </div>`;
             const html = `
                 <div class="modal-inner bg-zinc-900 rounded-3xl">
                     <div class="flex justify-end p-4 sm:p-6 border-b border-white/10">
@@ -4058,10 +4143,7 @@
                             .replace(/\n/g,'<br>')
                         : 'Premium Liquid von ELFLIQ – intensiver Geschmack, lange Haltbarkeit.'}
                                 </div>
-                                <div class="mt-8 price-row flex items-baseline gap-4">
-                                    <span class="discount-price text-2xl line-through">${oldPriceDisplay}</span>
-                                    <span class="sale-price text-5xl font-black text-red-500">${product.price.toFixed(2).replace('.', ',')} €</span>
-                                </div>
+                                ${modalPriceHTML}
                                 ${stockHTML}
                                 ${nicotineHTML}
                                 <div class="mt-auto pt-8 flex flex-col gap-4">

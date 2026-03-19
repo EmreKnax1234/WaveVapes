@@ -828,6 +828,30 @@
                 border-radius: 20px !important;
             }
         }
+        /* ── PRODUKT-GALERIE ───────────────────────────────────────────── */
+        .pg-wrap { position:relative; width:100%; display:flex; flex-direction:column; gap:12px; }
+        .pg-stage { position:relative; overflow:hidden; border-radius:20px; background:rgba(0,0,0,0.3); aspect-ratio:1/1; cursor:grab; user-select:none; }
+        .pg-stage:active { cursor:grabbing; }
+        .pg-track { display:flex; height:100%; transition:transform .35s cubic-bezier(0.25,1,0.5,1); will-change:transform; }
+        .pg-slide { flex:0 0 100%; display:flex; align-items:center; justify-content:center; padding:16px; }
+        .pg-slide img { max-width:100%; max-height:100%; object-fit:contain; border-radius:12px; pointer-events:none; user-select:none; -webkit-user-drag:none; }
+        .pg-slide-ph { font-size:5rem; display:flex; align-items:center; justify-content:center; width:100%; height:100%; }
+        .pg-dots { display:flex; justify-content:center; gap:6px; }
+        .pg-dot { width:7px; height:7px; border-radius:50%; background:rgba(255,255,255,0.2); transition:all .25s; cursor:pointer; border:none; padding:0; }
+        .pg-dot.active { background:#67e8f9; width:20px; border-radius:4px; }
+        .pg-thumbs { display:flex; gap:8px; overflow-x:auto; scrollbar-width:none; padding-bottom:2px; }
+        .pg-thumbs::-webkit-scrollbar { display:none; }
+        .pg-thumb { flex-shrink:0; width:58px; height:58px; border-radius:12px; border:2px solid rgba(255,255,255,0.1); overflow:hidden; cursor:pointer; transition:border-color .2s,transform .2s; background:rgba(0,0,0,0.3); display:flex; align-items:center; justify-content:center; }
+        .pg-thumb:hover { border-color:rgba(103,232,249,0.5); transform:scale(1.05); }
+        .pg-thumb.active { border-color:#67e8f9; box-shadow:0 0 0 2px rgba(103,232,249,0.25); }
+        .pg-thumb img { width:100%; height:100%; object-fit:contain; pointer-events:none; }
+        .pg-thumb-ph { font-size:22px; }
+        .pg-arrow { position:absolute; top:50%; transform:translateY(-50%); width:36px; height:36px; border-radius:50%; background:rgba(0,0,0,0.55); border:1px solid rgba(255,255,255,0.15); color:#fff; font-size:14px; display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:5; transition:background .2s,opacity .2s; opacity:0; }
+        .pg-wrap:hover .pg-arrow { opacity:1; }
+        .pg-arrow:hover { background:rgba(103,232,249,0.25); }
+        .pg-arrow.left { left:10px; }
+        .pg-arrow.right { right:10px; }
+        @media (max-width:639px) { .pg-arrow { display:none; } }
         #product-detail-modal h2 {
             font-size: 2rem;
             line-height: 1.2;
@@ -3016,6 +3040,9 @@
                         price: data.price || 7.99,
                         originalPrice: data.originalPrice || null,
                         image: data.image || null,
+                        images: Array.isArray(data.images) && data.images.length > 0
+                            ? data.images
+                            : (data.image ? [data.image] : []),
                         stock: data.stock || 0,
                         description: data.description || "",
                         hasNicotine: data.hasNicotine !== false
@@ -4362,6 +4389,117 @@
                 .replace(/^-|-$/g, '');
         }
 
+        // ── PRODUKT-GALERIE ─────────────────────────────────────────────────
+        function buildGalleryHTML(images, productName) {
+            if (!images || images.length === 0) {
+                return `<div class="pg-wrap"><div class="pg-stage"><div class="pg-slide"><div class="pg-slide-ph">🧪</div></div></div></div>`;
+            }
+            const slides = images.map((src, i) =>
+                `<div class="pg-slide"><img src="${src}" alt="${productName.replace(/"/g,'&quot;')} – Bild ${i+1}" loading="${i===0?'eager':'lazy'}"></div>`
+            ).join('');
+            const multi = images.length > 1;
+            const useThumbs = images.length >= 4;
+            const dotsOrThumbs = !multi ? '' : useThumbs
+                ? `<div class="pg-thumbs" id="pg-thumbs">${images.map((src,i) =>
+                    `<div class="pg-thumb${i===0?' active':''}" data-pg-thumb="${i}"><img src="${src}" alt="Bild ${i+1}"></div>`
+                  ).join('')}</div>`
+                : `<div class="pg-dots" id="pg-dots">${images.map((_,i) =>
+                    `<button class="pg-dot${i===0?' active':''}" data-pg-dot="${i}" aria-label="Bild ${i+1}"></button>`
+                  ).join('')}</div>`;
+            const arrows = multi
+                ? `<button class="pg-arrow left" id="pg-prev" aria-label="Vorheriges Bild">&#8249;</button>
+                   <button class="pg-arrow right" id="pg-next" aria-label="Nächstes Bild">&#8250;</button>`
+                : '';
+            return `<div class="pg-wrap" id="pg-wrap">
+                        <div class="pg-stage" id="pg-stage">
+                            ${arrows}
+                            <div class="pg-track" id="pg-track">${slides}</div>
+                        </div>
+                        ${dotsOrThumbs}
+                    </div>`;
+        }
+
+        function initGallery(images) {
+            const stage   = document.getElementById('pg-stage');
+            const track   = document.getElementById('pg-track');
+            if (!stage || !track || !images || images.length <= 1) return;
+
+            let current = 0;
+            const total = images.length;
+            const useThumbs = total >= 4;
+
+            function goTo(idx, animate = true) {
+                current = (idx + total) % total;
+                if (!animate) track.style.transition = 'none';
+                track.style.transform = `translateX(-${current * 100}%)`;
+                if (!animate) requestAnimationFrame(() => { track.style.transition = ''; });
+
+                if (useThumbs) {
+                    document.querySelectorAll('[data-pg-thumb]').forEach(t => {
+                        t.classList.toggle('active', +t.dataset.pgThumb === current);
+                    });
+                    const activeThumb = document.querySelector(`[data-pg-thumb="${current}"]`);
+                    activeThumb?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                } else {
+                    document.querySelectorAll('[data-pg-dot]').forEach(d => {
+                        d.classList.toggle('active', +d.dataset.pgDot === current);
+                    });
+                }
+            }
+
+            // Arrow buttons
+            document.getElementById('pg-prev')?.addEventListener('click', e => { e.stopPropagation(); goTo(current - 1); });
+            document.getElementById('pg-next')?.addEventListener('click', e => { e.stopPropagation(); goTo(current + 1); });
+
+            // Thumbnail / dot clicks
+            document.querySelectorAll('[data-pg-thumb]').forEach(t =>
+                t.addEventListener('click', () => goTo(+t.dataset.pgThumb))
+            );
+            document.querySelectorAll('[data-pg-dot]').forEach(d =>
+                d.addEventListener('click', () => goTo(+d.dataset.pgDot))
+            );
+
+            // Touch / Mouse swipe
+            let startX = 0, startY = 0, dragging = false, moved = false;
+            const SWIPE_MIN = 40, VERT_MAX = 80;
+
+            function onDown(x, y) { startX = x; startY = y; dragging = true; moved = false; }
+            function onMove(x, y) {
+                if (!dragging) return;
+                const dx = x - startX, dy = Math.abs(y - startY);
+                if (Math.abs(dx) > 8 || dy > 8) moved = true;
+            }
+            function onUp(x) {
+                if (!dragging) return;
+                dragging = false;
+                const dx = x - startX;
+                if (moved && Math.abs(dx) >= SWIPE_MIN) goTo(dx < 0 ? current + 1 : current - 1);
+            }
+
+            stage.addEventListener('touchstart', e => { onDown(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
+            stage.addEventListener('touchmove',  e => { onMove(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
+            stage.addEventListener('touchend',   e => { onUp(e.changedTouches[0].clientX); });
+            stage.addEventListener('mousedown',  e => { onDown(e.clientX, e.clientY); });
+            stage.addEventListener('mousemove',  e => { if (dragging) onMove(e.clientX, e.clientY); });
+            stage.addEventListener('mouseup',    e => { onUp(e.clientX); });
+            stage.addEventListener('mouseleave', e => { if (dragging) onUp(e.clientX); });
+
+            // Keyboard (when modal is open)
+            function onKey(e) {
+                if (!document.getElementById('pg-stage')) return;
+                if (e.key === 'ArrowLeft')  goTo(current - 1);
+                if (e.key === 'ArrowRight') goTo(current + 1);
+            }
+            document.addEventListener('keydown', onKey);
+            // Clean up when modal closes
+            const origClose = window._pgCleanup;
+            window._pgCleanup = () => {
+                document.removeEventListener('keydown', onKey);
+                if (origClose) origClose();
+            };
+        }
+        // ────────────────────────────────────────────────────────────────────
+
         function showProductDetail(id) {
             const product = _productMap.get(id);
             if (!product) return;
@@ -4430,10 +4568,8 @@
                     </div>
                     <div class="p-6 sm:p-10">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
-                            <div class="modal-img-col flex justify-center items-center bg-black/30 rounded-3xl p-6">
-                                ${product.image
-                                    ? `<img src="${product.image}" alt="${product.name}" loading="eager">`
-                                    : `<div class="text-8xl">🧪</div>`}
+                            <div class="modal-img-col flex flex-col justify-center bg-black/30 rounded-3xl p-4 sm:p-6">
+                                ${buildGalleryHTML(product.images, product.name)}
                             </div>
                             <div class="flex flex-col">
                                 <div class="flex items-center justify-between">
@@ -4500,6 +4636,9 @@
             const modal = document.getElementById("product-detail-modal");
             modal.classList.remove("hidden");
             modal.classList.add("flex");
+            // Init gallery (swipe, arrows, thumbnails)
+            window._pgCleanup = null;
+            initGallery(product.images);
             // Load reviews after modal renders
             rvLoad(product.id);
             rvCheckCanReview(product.id);
@@ -4792,6 +4931,8 @@
             const modal = document.getElementById("product-detail-modal");
             modal.classList.add("hidden");
             modal.classList.remove("flex");
+            // Clean up gallery keyboard listener
+            if (window._pgCleanup) { window._pgCleanup(); window._pgCleanup = null; }
             // Hintergrund-Scroll wiederherstellen
             document.body.classList.remove("modal-open");
             document.body.style.position = "";

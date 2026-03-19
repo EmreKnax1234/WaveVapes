@@ -1,10 +1,31 @@
-{
-  "hosting": {
-    "public": ".",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ]
+<script type="module">
+  import { getAuth, sendEmailVerification } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+  const auth = getAuth();
+
+  async function verifyUserEmail() {
+    const user = auth.currentUser;
+
+    if (!user) {
+      alert("Kein User eingeloggt");
+      return;
+    }
+
+    try {
+      await sendEmailVerification(user, {
+        url: "https://wavevapes.de",
+        handleCodeInApp: false
+      });
+
+      alert("Verifizierungs-E-Mail wurde gesendet!");
+    } catch (error) {
+      console.error(error);
+      alert("Fehler beim Senden: " + error.message);
+    }
   }
-}
+
+  // Beispiel Button
+  window.verifyUserEmail = verifyUserEmail;
+</script>
+
+<button onclick="verifyUserEmail()">E-Mail bestätigen</button>

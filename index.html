@@ -445,6 +445,55 @@
         .rv-submit-btn:disabled { opacity:.5; cursor:not-allowed; }
         .rv-login-hint { font-size:12px; color:rgba(255,255,255,.3); text-align:center; padding:12px; }
         .neon-text { text-shadow: 0 0 15px var(--neon-cyan), 0 0 30px var(--neon-cyan); }
+
+        /* ── WISHLIST HEART BUTTON ── */
+        .wish-btn {
+            position: absolute; top: 10px; right: 10px;
+            width: 34px; height: 34px; min-height: 34px !important; border-radius: 50%;
+            background: rgba(0,0,0,0.55); backdrop-filter: blur(6px);
+            border: 1px solid rgba(255,255,255,0.12);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; font-size: 16px;
+            transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1), background 0.2s, border-color 0.2s;
+            z-index: 10; line-height: 1;
+        }
+        .wish-btn:hover { transform: scale(1.2); background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.4); }
+        .wish-btn.wished { background: rgba(239,68,68,0.18); border-color: rgba(239,68,68,0.5); }
+        .wish-btn.wished i { color: #ef4444; }
+        .wish-btn i { color: rgba(255,255,255,0.4); transition: color 0.2s; font-size: 14px; }
+        @keyframes heartPop { 0%{transform:scale(1)} 40%{transform:scale(1.5)} 70%{transform:scale(0.9)} 100%{transform:scale(1)} }
+        .wish-btn.pop { animation: heartPop 0.35s cubic-bezier(0.34,1.56,0.64,1); }
+
+        /* ── WISHLIST FILTER PILL BADGE ── */
+        #wishlist-filter-pill { position: relative; }
+        #wishlist-count-badge {
+            position: absolute; top: -5px; right: -5px;
+            background: #ef4444; color: #fff; font-size: 9px; font-weight: 800;
+            width: 16px; height: 16px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; pointer-events: none;
+        }
+
+        /* ── SEARCH DROPDOWN ── */
+        #search-dropdown {
+            position: absolute; top: calc(100% + 6px); left: 0; right: 0;
+            background: #18181b; border: 1px solid rgba(103,232,249,0.25);
+            border-radius: 20px; overflow: hidden; z-index: 200;
+            box-shadow: 0 20px 40px -10px rgba(0,0,0,0.7); display: none;
+        }
+        #search-dropdown.open { display: block; }
+        .sd-item {
+            display: flex; align-items: center; gap: 12px; padding: 11px 18px;
+            cursor: pointer; transition: background 0.15s;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+        .sd-item:last-child { border-bottom: none; }
+        .sd-item:hover, .sd-item.focused { background: rgba(103,232,249,0.07); }
+        .sd-img { width: 38px; height: 38px; border-radius: 10px; object-fit: contain; background: #27272a; flex-shrink: 0; }
+        .sd-placeholder { width: 38px; height: 38px; border-radius: 10px; background: #27272a; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+        .sd-name { font-size: 13px; font-weight: 600; color: #fff; flex: 1; }
+        .sd-name mark { background: none; color: #67e8f9; font-weight: 700; }
+        .sd-price { font-size: 12px; color: #ef4444; font-weight: 700; flex-shrink: 0; }
+        .sd-empty { padding: 16px 18px; color: rgba(255,255,255,0.3); font-size: 13px; text-align: center; }
         .product-card { transition: all 0.3s ease; display: flex; flex-direction: column; height: 100%; }
         .product-card:hover { transform: translateY(-12px) scale(1.04); box-shadow: 0 25px 50px -12px rgb(103 232 249); }
         /* tornado-image wird nur noch im Produkt-Detail-Modal verwendet */
@@ -1244,10 +1293,11 @@
         <!-- TABS -->
         <nav id="category-tabs" class="category-tabs flex overflow-x-auto gap-x-6 pb-4 border-b border-white/10 mb-8 text-base whitespace-nowrap" style="-webkit-overflow-scrolling:touch" aria-label="Produktkategorien"></nav>
         <!-- SEARCH -->
-        <div class="relative mb-8" role="search">
+        <div class="relative mb-8" role="search" id="search-wrapper">
             <label for="search-input" class="sr-only">Produkte suchen</label>
             <i class="fa-solid fa-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-cyan-400" aria-hidden="true"></i>
-            <input id="search-input" type="search" inputmode="search" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Flavor suchen..." onkeyup="filterProducts()" oninput="filterProducts()" class="w-full bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl pl-12 pr-6 py-4 text-base outline-none transition" autocomplete="off" aria-label="Produkte und Geschmacksrichtungen suchen">
+            <input id="search-input" type="search" inputmode="search" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Flavor suchen..." onkeyup="onSearchKey(event)" oninput="onSearchInput()" class="w-full bg-zinc-900 border border-white/10 focus:border-cyan-400 rounded-3xl pl-12 pr-6 py-4 text-base outline-none transition" autocomplete="off" aria-label="Produkte und Geschmacksrichtungen suchen">
+            <div id="search-dropdown" role="listbox" aria-label="Suchvorschläge"></div>
         </div>
         <!-- FILTER BAR -->
         <div id="product-filter-bar" role="group" aria-label="Produktfilter">
@@ -1257,6 +1307,11 @@
             <button class="filter-pill active" data-filter-sort="default"   onclick="setPriceSort('default')"  >Standard</button>
             <button class="filter-pill"        data-filter-sort="price-asc" onclick="setPriceSort('price-asc')"><i class="fa-solid fa-arrow-up" style="font-size:9px"></i> Günstigste</button>
             <button class="filter-pill"        data-filter-sort="price-desc"onclick="setPriceSort('price-desc')"><i class="fa-solid fa-arrow-down" style="font-size:9px"></i> Teuerste</button>
+            <div class="filter-divider"></div>
+            <button id="wishlist-filter-pill" class="filter-pill" onclick="toggleWishlistFilter()">
+                <i class="fa-solid fa-heart" style="color:#ef4444;margin-right:5px;font-size:11px"></i>Favoriten
+                <span id="wishlist-count-badge" style="display:none">0</span>
+            </button>
         </div>
         <!-- PRODUCTS GRID -->
         <section aria-label="Produkte" id="products-section">
@@ -1831,6 +1886,8 @@
         let loyaltyPoints = 0;
         let currentCategoryFilter = "Alle";
         let currentPriceSort   = "default"; // "default" | "price-asc" | "price-desc"
+        let wishlist = JSON.parse(localStorage.getItem("wavevapes_wishlist")) || [];
+        let showWishlistOnly = false;
 
         let appliedDiscount = null;
         let ordersUnsubscribe = null;
@@ -2596,8 +2653,8 @@
             let filtered = allProducts.filter(p => {
                 const catMatch  = currentCategoryFilter === "Alle" || p.category === currentCategoryFilter;
                 const searchMatch = !searchTerm || p.name.toLowerCase().includes(searchTerm);
-
-                return catMatch && searchMatch;
+                const wishMatch = !showWishlistOnly || wishlist.includes(p.id);
+                return catMatch && searchMatch && wishMatch;
             });
             if (currentPriceSort === "price-asc") {
                 filtered.sort((a, b) => (a.price || 0) - (b.price || 0));
@@ -2664,12 +2721,16 @@
                 }
                 const clickHandler = `onclick="showProductDetail('${product.id}')"`;
                 const cursorClass = 'cursor-pointer';
+                const isWished = wishlist.includes(product.id);
                 html += `
                     <div ${clickHandler}
                          data-product-id="${product.id}"
-                         class="product-card bg-zinc-900 border border-white/10 rounded-3xl overflow-hidden ${unavailableClass} ${liquidClass} ${cursorClass}">
-                        <div class="h-1.5 bg-gradient-to-r from-cyan-400 to-purple-500"></div>
-                        <div class="p-5 flex flex-col h-full">
+                         class="product-card bg-zinc-900 border border-white/10 rounded-3xl ${unavailableClass} ${liquidClass} ${cursorClass}">
+                        <div class="h-1.5 bg-gradient-to-r from-cyan-400 to-purple-500 rounded-t-3xl"></div>
+                        <div class="p-5 flex flex-col h-full" style="position:relative">
+                            <button class="wish-btn${isWished?' wished':''}" onclick="toggleWishlist('${product.id}',event)" aria-label="Zu Favoriten hinzufügen" title="Favorit">
+                                <i class="fa-${isWished?'solid':'regular'} fa-heart"></i>
+                            </button>
                             ${imageHTML}
                             <div class="flex items-start justify-between mb-3">
                                 <h4 class="font-semibold text-lg leading-tight flex-1">${product.name}</h4>
@@ -3395,6 +3456,139 @@
         function filterProducts() {
             renderProducts();
         }
+
+        // ── WISHLIST ────────────────────────────────────────────────────────────
+        function saveWishlist() {
+            localStorage.setItem("wavevapes_wishlist", JSON.stringify(wishlist));
+            updateWishlistBadge();
+        }
+
+        function updateWishlistBadge() {
+            const badge = document.getElementById("wishlist-count-badge");
+            const pill  = document.getElementById("wishlist-filter-pill");
+            if (!badge) return;
+            if (wishlist.length > 0) {
+                badge.textContent = wishlist.length;
+                badge.style.display = "flex";
+            } else {
+                badge.style.display = "none";
+                // Auto-exit wishlist filter if no items left
+                if (showWishlistOnly) toggleWishlistFilter();
+            }
+            if (pill) pill.classList.toggle("active", showWishlistOnly);
+        }
+
+        function toggleWishlist(id, event) {
+            event.stopImmediatePropagation();
+            const idx = wishlist.indexOf(id);
+            if (idx === -1) {
+                wishlist.push(id);
+                showToast("❤️ Zu Favoriten hinzugefügt");
+            } else {
+                wishlist.splice(idx, 1);
+                showToast("🤍 Aus Favoriten entfernt");
+            }
+            saveWishlist();
+            // Patch only the heart button, no full re-render
+            const card = document.querySelector(`[data-product-id="${id}"]`);
+            if (card) {
+                const btn = card.querySelector(".wish-btn");
+                if (btn) {
+                    const wished = wishlist.includes(id);
+                    btn.classList.toggle("wished", wished);
+                    btn.innerHTML = `<i class="fa-${wished?'solid':'regular'} fa-heart"></i>`;
+                    btn.classList.add("pop");
+                    btn.addEventListener("animationend", () => btn.classList.remove("pop"), { once: true });
+                }
+            }
+            if (showWishlistOnly) renderProducts();
+        }
+
+        function toggleWishlistFilter() {
+            showWishlistOnly = !showWishlistOnly;
+            const pill = document.getElementById("wishlist-filter-pill");
+            if (pill) pill.classList.toggle("active", showWishlistOnly);
+            renderProducts();
+        }
+
+        // ── LIVE SEARCH DROPDOWN ────────────────────────────────────────────────
+        let _sdFocusIdx = -1;
+
+        function onSearchInput() {
+            renderProducts();
+            renderSearchDropdown();
+        }
+
+        function onSearchKey(e) {
+            const dd = document.getElementById("search-dropdown");
+            const items = dd ? dd.querySelectorAll(".sd-item") : [];
+            if (e.key === "ArrowDown") {
+                e.preventDefault();
+                _sdFocusIdx = Math.min(_sdFocusIdx + 1, items.length - 1);
+                items.forEach((el, i) => el.classList.toggle("focused", i === _sdFocusIdx));
+            } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                _sdFocusIdx = Math.max(_sdFocusIdx - 1, 0);
+                items.forEach((el, i) => el.classList.toggle("focused", i === _sdFocusIdx));
+            } else if (e.key === "Enter") {
+                if (_sdFocusIdx >= 0 && items[_sdFocusIdx]) {
+                    items[_sdFocusIdx].click();
+                } else {
+                    closeSearchDropdown();
+                }
+            } else if (e.key === "Escape") {
+                closeSearchDropdown();
+            } else {
+                renderProducts();
+                renderSearchDropdown();
+            }
+        }
+
+        function renderSearchDropdown() {
+            const dd    = document.getElementById("search-dropdown");
+            const input = document.getElementById("search-input");
+            if (!dd || !input) return;
+            const term = input.value.trim().toLowerCase();
+            if (!term) { closeSearchDropdown(); return; }
+
+            const MAX = 6;
+            const matches = allProducts
+                .filter(p => p.name.toLowerCase().includes(term))
+                .slice(0, MAX);
+
+            if (matches.length === 0) {
+                dd.innerHTML = `<div class="sd-empty">Keine Produkte gefunden</div>`;
+            } else {
+                _sdFocusIdx = -1;
+                dd.innerHTML = matches.map(p => {
+                    const imgHTML = p.image
+                        ? `<img class="sd-img" src="${p.image}" alt="${p.name}" loading="lazy">`
+                        : `<div class="sd-placeholder">🧪</div>`;
+                    // Highlight matching part
+                    const rx = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi');
+                    const highlighted = p.name.replace(rx, '<mark>$1</mark>');
+                    const price = p.price.toFixed(2).replace('.', ',') + ' €';
+                    return `<div class="sd-item" role="option" onclick="closeSearchDropdown();showProductDetail('${p.id}')">
+                        ${imgHTML}
+                        <span class="sd-name">${highlighted}</span>
+                        <span class="sd-price">${price}</span>
+                    </div>`;
+                }).join('');
+            }
+            dd.classList.add("open");
+        }
+
+        function closeSearchDropdown() {
+            const dd = document.getElementById("search-dropdown");
+            if (dd) { dd.classList.remove("open"); dd.innerHTML = ''; }
+            _sdFocusIdx = -1;
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener("click", (e) => {
+            const wrapper = document.getElementById("search-wrapper");
+            if (wrapper && !wrapper.contains(e.target)) closeSearchDropdown();
+        });
         // ── PRODUCT FILTERS ────────────────────────────────────────────────────
 
         function setPriceSort(val) {
@@ -3979,6 +4173,7 @@
             updatePresence();
             setInterval(updatePresence, 30000);
             checkProductUrl();
+            updateWishlistBadge();
         }
 
 

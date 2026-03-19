@@ -2066,14 +2066,15 @@
                 await loadUserCart();
                 loadUserOrders();
                 updatePresence();
+                // IP-Ban check using cached fetchIp()
                 try {
-                    const ipRes = await fetch('https://api.ipify.org?format=json');
-                    const { ip } = await ipRes.json();
-                    await userRef.set({ lastIp: ip }, { merge: true });
-                    const bannedSnap = await db.collection("banned_ips").where("ip", "==", ip).get();
-                    if (!bannedSnap.empty) {
-                        await auth.signOut();
-                        showToast("❌ Deine IP wurde gesperrt.", "error");
+                    const ip = await fetchIp();
+                    if (ip) {
+                        const bannedSnap = await db.collection("banned_ips").where("ip", "==", ip).get();
+                        if (!bannedSnap.empty) {
+                            await auth.signOut();
+                            showToast("❌ Deine IP wurde gesperrt.", "error");
+                        }
                     }
                 } catch(e) {
                     console.log("IP konnte nicht ermittelt werden");
@@ -3837,10 +3838,23 @@
             const field = document.getElementById("discount-input");
             if (field) field.value = "";
         }
-        function updatePresence() {
+        // Cache IP once per session to avoid repeated fetches
+        let _cachedIp = null;
+        async function fetchIp() {
+            if (_cachedIp) return _cachedIp;
+            try {
+                const res = await fetch('https://api.ipify.org?format=json');
+                const { ip } = await res.json();
+                _cachedIp = ip;
+                return ip;
+            } catch(e) { return null; }
+        }
+
+        async function updatePresence() {
             const docId = currentUser ? currentUser.uid : sessionId;
             const cartCount = cart.filter(i => i.id !== 999).reduce((s,i)=>s+i.qty,0);
-            db.collection("presence").doc(docId).set({
+            const ip = await fetchIp();
+            const presenceData = {
                 uid: currentUser ? currentUser.uid : null,
                 email: currentUser ? currentUser.email : null,
                 username: currentUser
@@ -3849,9 +3863,16 @@
                 lastSeen: firebase.firestore.FieldValue.serverTimestamp(),
                 page: "shop",
                 isGuest: !currentUser,
-                cartCount: cartCount,   // visible in Live Online admin tab
+                cartCount: cartCount,
                 referral: new URLSearchParams(window.location.search).get('ref') || null,
-            }, { merge: true });
+            };
+            if (ip) presenceData.ip = ip;
+            db.collection("presence").doc(docId).set(presenceData, { merge: true });
+
+            // Also persist IP on user doc for registered users
+            if (currentUser && ip) {
+                db.collection("users").doc(currentUser.uid).set({ lastIp: ip }, { merge: true }).catch(() => {});
+            }
         }
 
         // ====================== WARTUNGS-OVERLAY ======================

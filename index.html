@@ -549,8 +549,9 @@
         .rv-section-title i { color: #67e8f9; font-size: 12px; }
         .rv-scroll-track {
             display: flex; gap: 12px;
-            overflow-x: auto; overflow-y: visible;
-            padding-bottom: 8px;
+            overflow-x: auto;
+            overflow-y: hidden; /* fix: was 'visible' — caused cards to overlap grid on hover */
+            padding-bottom: 12px; /* extra room so box-shadow isn't clipped */
             scrollbar-width: none;
             -webkit-overflow-scrolling: touch;
         }
@@ -563,7 +564,8 @@
             border-radius: 20px;
             padding: 12px 10px 10px;
             cursor: pointer;
-            transition: transform 0.22s cubic-bezier(0.34,1.56,0.64,1), border-color 0.2s, box-shadow 0.2s;
+            /* fix: removed translateY so cards never poke out of the scroll track */
+            transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
             position: relative;
             overflow: hidden;
         }
@@ -574,9 +576,10 @@
             border-radius: 20px 20px 0 0;
         }
         .rv-mini-card:hover {
-            transform: translateY(-5px) scale(1.03);
+            /* fix: scale only — no translateY that would push card outside the track */
+            transform: scale(1.04);
             border-color: rgba(103,232,249,0.3);
-            box-shadow: 0 12px 30px -8px rgba(103,232,249,0.2);
+            box-shadow: 0 6px 20px -6px rgba(103,232,249,0.25);
         }
         .rv-mini-img {
             width: 100%; aspect-ratio: 1;
@@ -2335,10 +2338,11 @@
                     totalBonusPoints: 0,
                     redeemedLoyaltyCodes: [],
                     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    emailVerificationRequired: true   // nur neue Accounts müssen Verifikation bestätigen
+                    emailVerificationRequired: true
                 });
                 if (refCode) {
-                    addLoyaltyPoints(50);
+                    // BUG 3 FIX: await addLoyaltyPoints so errors are not silently swallowed
+                    try { await addLoyaltyPoints(50); } catch(e) { console.warn("Referral points error:", e); }
                     await applyReferralBonusToReferrer(refCode);
                     showToast("🎉 +50 Punkte Willkommensbonus durch Referral!");
                 }
@@ -2351,15 +2355,18 @@
                 } else {
                     myReferralCode = data.referralCode;
                 }
-                // Sync username from Firestore → localStorage on every login
                 if (data.username) {
                     localStorage.setItem("wavevapes_username", data.username);
                     updateUserDisplay();
                 }
             }
-            db.collection("users").doc(currentUser.uid).onSnapshot(doc => {
-                if (doc.exists) myReferralCode = doc.data().referralCode || "";
-            });
+            // BUG 3 FIX: Only create one onSnapshot listener for the referral code.
+            // The old code created a new listener on every login, leaking memory.
+            if (!window._referralCodeUnsub) {
+                window._referralCodeUnsub = db.collection("users").doc(currentUser.uid).onSnapshot(doc => {
+                    if (doc.exists) myReferralCode = doc.data().referralCode || "";
+                });
+            }
         }
         async function applyReferralBonusToReferrer(refCode) {
             const snapshot = await db.collection("users").where("referralCode", "==", refCode).limit(1).get();
@@ -2673,6 +2680,8 @@
             myReferralCode = "";
             // Cancel any pending cart save
             clearTimeout(_saveCartTimer);
+            // BUG 3 FIX: Clean up referral code listener on logout
+            if (window._referralCodeUnsub) { window._referralCodeUnsub(); window._referralCodeUnsub = null; }
             // Remove presence doc so user disappears from Live Online immediately
             const docId = currentUser ? currentUser.uid : sessionId;
             db.collection("presence").doc(docId).delete().catch(()=>{});
@@ -2822,6 +2831,7 @@
                 appliedDiscount = { code: input, type: coupon.type, value: coupon.value, couponId: couponDocRef.id };
                 const display = coupon.type === "percent" ? `${coupon.value}%` : `${coupon.value}€`;
                 status.innerHTML = `<span class="text-emerald-400">✓ ${input} (${display}) eingelöst!</span>`;
+                manageMysteryVape(); // BUG 4 FIX: recalculate mystery vape after discount changes effective total
                 updateCartDisplay();
                 return;
             }
@@ -2850,6 +2860,7 @@
                     });
                     const display = d.type === "fixed" ? `${d.value} €` : `${d.value}%`;
                     status.innerHTML = `<span class="text-emerald-400">✓ ${input} (${display}) eingelöst!</span>`;
+                    manageMysteryVape(); // BUG 4 FIX
                     updateCartDisplay();
                 } catch (err) {
                     console.error(err);
@@ -3065,6 +3076,8 @@
                 });
                 // OPT 2: Rebuild map for O(1) lookups throughout cart/price calculations
                 _productMap = new Map(allProducts.map(p => [p.id, p]));
+                // BUG 5 FIX: Resolve pending ?product= slug now that _productMap is ready
+                _resolvePendingProductSlug();
                 renderProductsDebounced();
             }, err => {
                 console.error("Produkte laden:", err);
@@ -3206,6 +3219,35 @@
             if (item) item.nicotine = value;
             updateCartDisplay();
         }
+        // OPT 1: Gemeinsame Cart-Hilfsfunktion — vermeidet duplizierte Logik in
+        // changeQuantity(), upsellAddToCart() und addFromDetail().
+        function _addToCart(id, delta, nicotine) {
+            const product = _productMap.get(id);
+            if (!product || !product.available) return false;
+            let existing = cart.find(item => item.id === id);
+            const nic = nicotine || pendingNicotine[id] || (product.hasNicotine ? '20 mg' : '');
+            if (!existing) {
+                existing = { id, name: product.name, qty: 0, price: product.price,
+                             nicotine: product.hasNicotine ? nic : '' };
+                cart.push(existing);
+            } else if (nicotine) {
+                existing.nicotine = nicotine;
+            }
+            // BUG 2 FIX: Clientseitiger Lagerbestand-Check — verhindert dass mehr
+            // Artikel hinzugefügt werden als auf Lager sind.
+            if (delta > 0 && product.stock > 0) {
+                const newQty = existing.qty + delta;
+                if (newQty > product.stock) {
+                    showToast(`⚠️ Nur noch ${product.stock}× auf Lager`, "error");
+                    if (existing.qty === 0) cart = cart.filter(i => i.id !== id);
+                    return false;
+                }
+            }
+            existing.qty = Math.max(0, existing.qty + delta);
+            if (existing.qty === 0) cart = cart.filter(item => item.id !== id);
+            return true;
+        }
+
         function changeQuantity(id, delta, ev) {
             const product = _productMap.get(id);
             if (!product) return;
@@ -3213,13 +3255,8 @@
                 showToast("❌ Dieses Produkt ist momentan nicht verfügbar", "error");
                 return;
             }
-            let existing = cart.find(item => item.id === id);
-            if (!existing) {
-                existing = { id, name: product.name, qty: 0, price: product.price, nicotine: pendingNicotine[id] || (product.hasNicotine ? "20 mg" : "") };
-                cart.push(existing);
-            }
-            existing.qty = Math.max(0, existing.qty + delta);
-            if (existing.qty === 0) cart = cart.filter(item => item.id !== id);
+            const ok = _addToCart(id, delta);
+            if (!ok) { updateCartDisplay(); patchProductCardQty(id); return; }
 
             // Flug-Animation nur beim Hinzufügen (+)
             if (delta > 0 && ev) flyToCart(ev, product);
@@ -3236,7 +3273,6 @@
             }
             saveUserCart();
             updateCartDisplay();
-            // Nur die betroffene Karte patchen – kein komplettes Re-Render, keine Bild-Flackerei
             patchProductCardQty(id);
         }
         // Aktualisiert nur Mengenanzeige + Buttons einer einzelnen Produktkarte im DOM
@@ -3353,18 +3389,14 @@
         function upsellAddToCart(id) {
             const product = _productMap.get(id);
             if (!product || !product.available) return;
-            let existing = cart.find(i => i.id === id);
-            if (!existing) {
-                existing = { id, name: product.name, qty: 0, price: product.price,
-                             nicotine: product.hasNicotine ? (pendingNicotine[id] || '20 mg') : '' };
-                cart.push(existing);
-            }
-            existing.qty++;
+            const ok = _addToCart(id, 1);
+            if (!ok) return;
             manageMysteryVape();
             saveUserCart();
             updateCartDisplay();
             patchProductCardQty(id);
-            const nicLabel = product.hasNicotine ? ` (${pendingNicotine[id] || '20 mg'})` : '';
+            const nic = pendingNicotine[id] || '20 mg';
+            const nicLabel = product.hasNicotine ? ` (${nic})` : '';
             showToast(`✅ ${product.name}${nicLabel} hinzugefügt!`);
         }
         // ───────────────────────────────────────────────────────────────────
@@ -3463,7 +3495,8 @@
             } else {
                 addressDisplay.innerHTML = `<span class="text-red-400">Noch keine Adresse angegeben</span>`;
             }
-            let itemsHTML = "";
+            // OPT 3: Build HTML in an array and join once — avoids string copy on every +=
+            const htmlParts = [];
             // Show offer banners for all active category deals (only when loaded)
             if (_offerCatsReady) for (const [catName, offer] of Object.entries(_offerCats)) {
                 const catItems = cart.filter(i => {
@@ -3476,22 +3509,22 @@
 
                 if (offer.offerType === 'nforn' && totalCatQty >= offer.offerN) {
                     const freeCount = Math.floor(totalCatQty / offer.offerN) * (offer.offerN - offer.offerM);
-                    itemsHTML += `<div class="bg-gradient-to-r from-amber-400 to-yellow-400 text-black p-6 rounded-3xl mb-6 text-center shadow-inner"><div class="flex items-center justify-center gap-3 text-2xl font-black">⚡ ${badgeText} AKTION AKTIV!</div><p class="font-semibold text-base mt-2">Du bekommst <span class="underline">${freeCount} Artikel gratis</span></p></div>`;
+                    htmlParts.push(`<div class="bg-gradient-to-r from-amber-400 to-yellow-400 text-black p-6 rounded-3xl mb-6 text-center shadow-inner"><div class="flex items-center justify-center gap-3 text-2xl font-black">⚡ ${badgeText} AKTION AKTIV!</div><p class="font-semibold text-base mt-2">Du bekommst <span class="underline">${freeCount} Artikel gratis</span></p></div>`);
                 } else if (offer.offerType === 'percent') {
                     const saving = catItems.reduce((s,i) => s + i.qty*(i.price||0)*(offer.offerN/100), 0);
-                    itemsHTML += `<div class="bg-gradient-to-r from-cyan-400 to-purple-500 text-black p-4 rounded-3xl mb-4 text-center"><div class="font-black">⚡ -${offer.offerN}% auf ${catName}</div><p class="text-sm mt-1">Du sparst ${saving.toFixed(2).replace('.',',')} €</p></div>`;
+                    htmlParts.push(`<div class="bg-gradient-to-r from-cyan-400 to-purple-500 text-black p-4 rounded-3xl mb-4 text-center"><div class="font-black">⚡ -${offer.offerN}% auf ${catName}</div><p class="text-sm mt-1">Du sparst ${saving.toFixed(2).replace('.',',')} €</p></div>`);
                 } else if (offer.offerType === 'fixed') {
                     const saving = catItems.reduce((s,i) => s + i.qty*offer.offerN, 0);
-                    itemsHTML += `<div class="bg-gradient-to-r from-emerald-400 to-cyan-400 text-black p-4 rounded-3xl mb-4 text-center"><div class="font-black">⚡ -${offer.offerN}€ pro Artikel in ${catName}</div><p class="text-sm mt-1">Du sparst ${saving.toFixed(2).replace('.',',')} €</p></div>`;
+                    htmlParts.push(`<div class="bg-gradient-to-r from-emerald-400 to-cyan-400 text-black p-4 rounded-3xl mb-4 text-center"><div class="font-black">⚡ -${offer.offerN}€ pro Artikel in ${catName}</div><p class="text-sm mt-1">Du sparst ${saving.toFixed(2).replace('.',',')} €</p></div>`);
                 } else if (offer.offerType === 'badge') {
-                    itemsHTML += `<div class="bg-gradient-to-r from-amber-400 to-yellow-400 text-black p-4 rounded-3xl mb-4 text-center"><div class="font-black">⚡ ${badgeText}</div></div>`;
+                    htmlParts.push(`<div class="bg-gradient-to-r from-amber-400 to-yellow-400 text-black p-4 rounded-3xl mb-4 text-center"><div class="font-black">⚡ ${badgeText}</div></div>`);
                 }
             }
             cart.forEach(item => {
                 const prod = _productMap.get(item.id);
                 const nicDisplay = (item.nicotine && prod && prod.hasNicotine) ? ` (${item.nicotine})` : '';
                 if (item.id == MYSTERY_ID) {
-                    itemsHTML += `<div class="mystery-item cart-item flex justify-between items-center rounded-3xl p-5"><div class="flex items-center gap-3"><i class="fa-solid fa-gift text-3xl"></i><div><div class="font-medium">${item.name}</div><div class="text-xs bg-white/30 px-3 py-0.5 rounded-full inline-block">GRATIS AB 100€</div></div></div><div class="text-right"><div class="font-bold text-xl text-emerald-900 whitespace-nowrap">0,00 €</div></div></div>`;
+                    htmlParts.push(`<div class="mystery-item cart-item flex justify-between items-center rounded-3xl p-5"><div class="flex items-center gap-3"><i class="fa-solid fa-gift text-3xl"></i><div><div class="font-medium">${item.name}</div><div class="text-xs bg-white/30 px-3 py-0.5 rounded-full inline-block">GRATIS AB 100€</div></div></div><div class="text-right"><div class="font-bold text-xl text-emerald-900 whitespace-nowrap">0,00 €</div></div></div>`);
                 } else {
                     const origPrice  = item.price || 7.99;
                     const promoPrice = prod ? getPromoPrice(prod) : null;
@@ -3501,12 +3534,12 @@
                         ? `${item.qty} × <span style="text-decoration:line-through;color:#6b7280">${origPrice.toFixed(2).replace('.', ',')} €</span> <span style="color:#ef4444;font-weight:700">${effPrice.toFixed(2).replace('.', ',')} €</span>`
                         : `${item.qty} × ${origPrice.toFixed(2).replace('.', ',')} €`;
                     const totalColor = hasPromo ? 'color:#ef4444' : '';
-                    itemsHTML += `<div class="cart-item flex justify-between items-center bg-zinc-900 border border-white/10 rounded-3xl p-5"><div><div class="font-medium">${item.name}${nicDisplay}</div><div class="text-xs text-gray-400 whitespace-nowrap">${priceSubline}</div></div><div class="flex items-center gap-6"><div class="font-bold text-xl whitespace-nowrap" style="${totalColor}">${(item.qty * effPrice).toFixed(2).replace('.', ',')} €</div><button onclick="removeCartItem('${item.id}'); event.stopImmediatePropagation()" class="text-red-400"><i class="fa-solid fa-trash"></i></button></div></div>`;
+                    htmlParts.push(`<div class="cart-item flex justify-between items-center bg-zinc-900 border border-white/10 rounded-3xl p-5"><div><div class="font-medium">${item.name}${nicDisplay}</div><div class="text-xs text-gray-400 whitespace-nowrap">${priceSubline}</div></div><div class="flex items-center gap-6"><div class="font-bold text-xl whitespace-nowrap" style="${totalColor}">${(item.qty * effPrice).toFixed(2).replace('.', ',')} €</div><button onclick="removeCartItem('${item.id}'); event.stopImmediatePropagation()" class="text-red-400"><i class="fa-solid fa-trash"></i></button></div></div>`);
                 }
             });
             const shippingCost = getShippingCost();
             const isFree = shippingCost === 0;
-            const shippingHTML = `
+            htmlParts.push(`
                 <div class="cart-item flex justify-between items-center bg-zinc-900 border ${isFree ? 'border-emerald-400/30' : 'border-white/10'} rounded-3xl p-5 mt-3">
                     <div>
                         <div class="font-medium">${isFree ? 'Gratis Versand' : 'Versand (DHL)'}</div>
@@ -3515,9 +3548,8 @@
                     <div class="font-bold text-xl ${isFree ? 'text-emerald-400' : ''} whitespace-nowrap">
                         ${isFree ? '0,00' : shippingCost.toFixed(2).replace('.', ',')} €
                     </div>
-                </div>`;
-            itemsHTML += shippingHTML;
-            listEl.innerHTML = itemsHTML;
+                </div>`);
+            listEl.innerHTML = htmlParts.join('');
             if (isFree) {
                 paymentInfoEl.innerHTML = "";
             } else {
@@ -4010,12 +4042,16 @@
             const totalFormatted = total !== undefined
                 ? parseFloat(total).toFixed(2).replace('.', ',') + ' €'
                 : document.getElementById("cart-total-price").textContent;
+            // BUG 1 FIX: Use window._BANK_* overrides (set by admin panel) — not hardcoded constants
+            const bankOwner = window._BANK_OWNER || BANK_OWNER;
+            const bankIban  = window._BANK_IBAN  || BANK_IBAN;
+            const bankBic   = window._BANK_BIC   || BANK_BIC;
             const infoHTML = `
                 <div class="space-y-4 text-sm">
                     <div><strong>Bank:</strong> ${BANK_NAME}</div>
-                    <div><strong>Empfänger:</strong> ${BANK_OWNER}</div>
-                    <div><strong>IBAN:</strong> <span class="font-mono break-all">${BANK_IBAN}</span></div>
-                    ${BANK_BIC ? `<div><strong>BIC:</strong> ${BANK_BIC}</div>` : ''}
+                    <div><strong>Empfänger:</strong> ${bankOwner}</div>
+                    <div><strong>IBAN:</strong> <span class="font-mono break-all">${bankIban}</span></div>
+                    ${bankBic ? `<div><strong>BIC:</strong> ${bankBic}</div>` : ''}
                     <div><strong>Betrag:</strong> <span class="font-bold text-xl">${totalFormatted}</span></div>
                     <div class="pt-4 border-t border-white/20">
                         <div class="text-amber-300 text-xs tracking-wider">VERWENDUNGSZWECK</div>
@@ -4049,9 +4085,16 @@
             _toastTimer = setTimeout(() => toast.classList.remove('visible'), 4000);
         }
 
+        let _lastCatHash = ''; // OPT 2: cache — only re-render tabs if categories actually changed
         async function renderCategoryTabs() {
             const snap = await db.collection("categories").orderBy("order").get();
-            // Rebuild offer config cache
+            // OPT 2: Build a cheap hash of category names+specials — skip full DOM rebuild if unchanged
+            const catHash = snap.docs.map(d => {
+                const c = d.data();
+                return `${c.name}|${c.special}|${c.offerType}|${c.offerN}|${c.offerM}|${c.specialText}`;
+            }).join(';;') + '::' + currentCategoryFilter;
+            const tabsEl = document.getElementById("category-tabs");
+            // Rebuild offer config cache (always — needed for price calculations)
             _offerCats = {};
             _offerCatsReady = false;
             snap.forEach(doc => {
@@ -4066,6 +4109,9 @@
                 }
             });
             _offerCatsReady = true;
+            // Skip DOM update if nothing changed
+            if (catHash === _lastCatHash) return;
+            _lastCatHash = catHash;
             let html = `<button onclick="setCategoryFilter('Alle')" class="px-5 py-2 transition ${currentCategoryFilter === 'Alle' ? 'tab-active' : ''}">Alle</button>`;
             snap.forEach(doc => {
                 const c = doc.data();
@@ -4077,7 +4123,7 @@
                 }
                 html += `<button onclick="setCategoryFilter('${c.name}')" class="px-5 py-2 transition ${active}">${c.name}${extra}</button>`;
             });
-            document.getElementById("category-tabs").innerHTML = html;
+            tabsEl.innerHTML = html;
         }
         function setCategoryFilter(cat) {
             currentCategoryFilter = cat;
@@ -4980,18 +5026,11 @@
         function addFromDetail(id) {
             const product = _productMap.get(id);
             if (!product || !product.available) return;
-            let existing = cart.find(item => item.id === id);
             const select = document.getElementById("modal-nicotine");
             const chosenNic = select ? select.value : (pendingNicotine[id] || "20 mg");
-            if (!existing) {
-                existing = { id, name: product.name, qty: 0, price: product.price };
-                if (product.hasNicotine) existing.nicotine = chosenNic;
-                cart.push(existing);
-            } else {
-                existing.nicotine = chosenNic;
-            }
-            pendingNicotine[id] = chosenNic;
-            existing.qty = (existing.qty || 0) + 1;
+            if (product.hasNicotine) pendingNicotine[id] = chosenNic;
+            const ok = _addToCart(id, 1, product.hasNicotine ? chosenNic : null);
+            if (!ok) return;
             manageMysteryVape();
             saveUserCart();
             updateCartDisplay();
@@ -5133,7 +5172,7 @@
         db.collection('settings').doc('product_order').onSnapshot(doc => {
             if (doc.exists) {
                 productOrder = doc.data().order || [];
-                renderProducts();
+                renderProductsDebounced(); // BUG 6 FIX: was renderProducts() — bypassed the debounce
             }
         });
         function clearDiscountField() {
@@ -5271,25 +5310,31 @@
         }
 
         // Open product from URL on page load (?product=slug)
+        // BUG 5 FIX: Replaced polling loop (up to 20× 200ms = 4s wait) with a
+        // reactive approach. A pending slug is stored and resolved the moment
+        // allProducts is populated by the Firestore snapshot — zero artificial delay.
+        let _pendingProductSlug = null;
         function checkProductUrl() {
             const params = new URLSearchParams(window.location.search);
             const slug = params.get('product');
             if (!slug) return;
-            // Wait for products to load, then find matching product
-            const tryOpen = (attempts = 0) => {
-                if (allProducts.length === 0 && attempts < 20) {
-                    setTimeout(() => tryOpen(attempts + 1), 200);
-                    return;
-                }
-                const match = allProducts.find(p => slugify(p.name) === slug);
-                if (match) {
-                    showProductDetail(match.id);
-                } else if (attempts >= 20) {
-                    // Product not found — clean URL
-                    history.replaceState({}, 'WaveVapes', window.location.pathname);
-                }
-            };
-            tryOpen();
+            // If products already loaded, open immediately
+            if (allProducts.length > 0) {
+                const match = [..._productMap.values()].find(p => slugify(p.name) === slug);
+                if (match) showProductDetail(match.id);
+                else history.replaceState({}, 'WaveVapes', window.location.pathname);
+                return;
+            }
+            // Otherwise store slug — loadProducts() will resolve it once snapshot fires
+            _pendingProductSlug = slug;
+        }
+        function _resolvePendingProductSlug() {
+            if (!_pendingProductSlug) return;
+            const slug = _pendingProductSlug;
+            _pendingProductSlug = null;
+            const match = [..._productMap.values()].find(p => slugify(p.name) === slug);
+            if (match) showProductDetail(match.id);
+            else history.replaceState({}, 'WaveVapes', window.location.pathname);
         }
 
         // Back/forward navigation is handled by initAndroidBack() below (single handler for all modals + product detail)

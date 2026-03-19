@@ -3059,13 +3059,36 @@
                         </div>
                         <div class="cfg-field">
                             <label class="cfg-label">Banner-Text</label>
-                            <input id="set-countdown-label" type="text" class="cfg-input" placeholder="🔥 Angebot endet in" maxlength="60">
+                            <input id="set-countdown-label" type="text" class="cfg-input" placeholder="🔥 Angebot endet in" maxlength="60" oninput="cdAdminPreview()">
                             <span class="cfg-input-hint">Wird links neben dem Timer angezeigt</span>
                         </div>
                         <div class="cfg-field">
                             <label class="cfg-label">Enddatum & Uhrzeit</label>
-                            <input id="set-countdown-end" type="datetime-local" class="cfg-input">
+                            <input id="set-countdown-end" type="datetime-local" class="cfg-input" oninput="cdAdminPreview()" onchange="cdAdminPreview()">
                             <span class="cfg-input-hint">Timer zählt bis zu diesem Zeitpunkt herunter</span>
+                        </div>
+                        <!-- Live Preview -->
+                        <div id="cd-admin-preview" style="display:none;margin-top:6px">
+                            <div style="font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.25);margin-bottom:8px">Vorschau</div>
+                            <div style="display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:10px 20px;background:linear-gradient(135deg,rgba(251,191,36,.08),rgba(239,68,68,.08));border:1px solid rgba(251,191,36,.3);border-radius:16px;padding:12px 20px;position:relative;overflow:hidden">
+                                <div style="font-size:13px;font-weight:700;color:#fbbf24;display:flex;align-items:center;gap:8px" id="cd-prev-label">🔥 Angebot endet in</div>
+                                <div style="display:flex;align-items:center;gap:6px">
+                                    <div style="display:flex;flex-direction:column;align-items:center;background:rgba(0,0,0,.35);border:1px solid rgba(251,191,36,.2);border-radius:10px;padding:6px 12px;min-width:48px">
+                                        <span style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:800;color:#fff;line-height:1" id="cd-prev-h">00</span>
+                                        <span style="font-size:8px;font-weight:700;letter-spacing:.1em;color:rgba(255,255,255,.35);text-transform:uppercase;margin-top:3px">Std</span>
+                                    </div>
+                                    <span style="font-size:18px;font-weight:800;color:rgba(251,191,36,.5);margin-bottom:12px">:</span>
+                                    <div style="display:flex;flex-direction:column;align-items:center;background:rgba(0,0,0,.35);border:1px solid rgba(251,191,36,.2);border-radius:10px;padding:6px 12px;min-width:48px">
+                                        <span style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:800;color:#fff;line-height:1" id="cd-prev-m">00</span>
+                                        <span style="font-size:8px;font-weight:700;letter-spacing:.1em;color:rgba(255,255,255,.35);text-transform:uppercase;margin-top:3px">Min</span>
+                                    </div>
+                                    <span style="font-size:18px;font-weight:800;color:rgba(251,191,36,.5);margin-bottom:12px">:</span>
+                                    <div style="display:flex;flex-direction:column;align-items:center;background:rgba(0,0,0,.35);border:1px solid rgba(251,191,36,.2);border-radius:10px;padding:6px 12px;min-width:48px">
+                                        <span style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:800;color:#fff;line-height:1" id="cd-prev-s">00</span>
+                                        <span style="font-size:8px;font-weight:700;letter-spacing:.1em;color:rgba(255,255,255,.35);text-transform:uppercase;margin-top:3px">Sek</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -6034,6 +6057,7 @@ async function loadSettings() {
     document.getElementById("set-countdown-active").checked = data.countdown_active || false;
     document.getElementById("set-countdown-label").value   = data.countdown_label  || "🔥 Angebot endet in";
     document.getElementById("set-countdown-end").value     = data.countdown_end    || "";
+    cdAdminPreview();
     stockCriticalThreshold = parseInt(data.stock_critical) || 3;
     stockWarningThreshold  = parseInt(data.stock_warning)  || 10;
     window._adminNotifyEmail = data.admin_notify_email || "";
@@ -7013,6 +7037,40 @@ function cuExportCSV() {
     const a    = Object.assign(document.createElement('a'), { href: url, download: `kunden-uebersicht-${new Date().toISOString().slice(0,10)}.csv` });
     document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
     showToast(`✅ ${list.length} Kunden exportiert`, 'success');
+}
+
+// ═══════════════════════════════════════════════════════
+//  COUNTDOWN ADMIN PREVIEW
+// ═══════════════════════════════════════════════════════
+let _cdPrevInterval = null;
+function cdAdminPreview() {
+    const endVal   = document.getElementById('set-countdown-end')?.value;
+    const labelVal = document.getElementById('set-countdown-label')?.value || '🔥 Angebot endet in';
+    const preview  = document.getElementById('cd-admin-preview');
+    if (!preview) return;
+    if (_cdPrevInterval) { clearInterval(_cdPrevInterval); _cdPrevInterval = null; }
+    if (!endVal) { preview.style.display = 'none'; return; }
+    const endMs = new Date(endVal).getTime();
+    if (isNaN(endMs) || endMs <= Date.now()) { preview.style.display = 'none'; return; }
+    preview.style.display = 'block';
+    const labelEl = document.getElementById('cd-prev-label');
+    if (labelEl) labelEl.textContent = labelVal;
+    const pad = n => String(n).padStart(2, '0');
+    function tick() {
+        const diff = endMs - Date.now();
+        if (diff <= 0) { preview.style.display = 'none'; clearInterval(_cdPrevInterval); return; }
+        const h = Math.floor(diff / 3600000);
+        const m = Math.floor((diff % 3600000) / 60000);
+        const s = Math.floor((diff % 60000) / 1000);
+        const hEl = document.getElementById('cd-prev-h');
+        const mEl = document.getElementById('cd-prev-m');
+        const sEl = document.getElementById('cd-prev-s');
+        if (hEl) hEl.textContent = pad(h);
+        if (mEl) mEl.textContent = pad(m);
+        if (sEl) sEl.textContent = pad(s);
+    }
+    tick();
+    _cdPrevInterval = setInterval(tick, 1000);
 }
 
 // ═══════════════════════════════════════════════════════

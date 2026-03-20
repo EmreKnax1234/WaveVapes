@@ -1898,6 +1898,41 @@
         .ca-chart-title { font-size:13px;font-weight:700;color:rgba(255,255,255,.75);display:flex;align-items:center;gap:8px;margin-bottom:16px; }
         @media(max-width:900px){ #ca-kpi-strip{grid-template-columns:repeat(2,1fr)!important;} }
         @media(max-width:700px){ #ca-kpi-strip{grid-template-columns:1fr 1fr!important;} }
+
+        /* ── Top Produkte ── */
+        .ca-tp-row {
+            display:grid;
+            grid-template-columns:28px 1fr 80px 80px 90px 72px;
+            align-items:center;gap:10px;
+            padding:11px 16px;
+            border-bottom:1px solid rgba(255,255,255,.04);
+            transition:background .13s;
+            cursor:default;
+        }
+        .ca-tp-row:last-child { border-bottom:none; }
+        .ca-tp-row:hover { background:rgba(103,232,249,.03); }
+        .ca-tp-rank {
+            font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;
+            color:rgba(255,255,255,.2);text-align:center;
+        }
+        .ca-tp-rank.gold   { color:#fbbf24; }
+        .ca-tp-rank.silver { color:#94a3b8; }
+        .ca-tp-rank.bronze { color:#b45309; }
+        .ca-tp-name { font-size:13px;font-weight:600;color:rgba(255,255,255,.82);
+            overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+        .ca-tp-cat  { font-size:10px;color:rgba(255,255,255,.28);margin-top:2px;
+            overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+        .ca-tp-num  { font-family:'JetBrains Mono',monospace;font-size:13px;
+            font-weight:700;text-align:right; }
+        .ca-tp-bar-wrap { height:6px;background:rgba(255,255,255,.06);border-radius:99px;overflow:hidden; }
+        .ca-tp-bar      { height:100%;border-radius:99px;transition:width .4s ease; }
+        .ca-tp-conv { font-size:11px;font-weight:700;text-align:right;padding:3px 8px;
+            border-radius:99px;background:rgba(255,255,255,.04); }
+        .ca-tp-empty { text-align:center;padding:36px 16px;color:rgba(255,255,255,.2);font-size:12px; }
+        @media(max-width:700px){
+            .ca-tp-row { grid-template-columns:24px 1fr 64px 64px; }
+            .ca-tp-bar-wrap,.ca-tp-conv { display:none; }
+        }
     </style>
 </head>
 <body class="min-h-screen">
@@ -3544,6 +3579,33 @@
                     </div>
                 </div>
                 <div style="position:relative;height:200px"><canvas id="ca-line-chart"></canvas></div>
+            </div>
+
+            <!-- Top Produkte -->
+            <div class="ca-chart-card" style="padding:0;overflow:hidden">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.06);flex-wrap:wrap;gap:10px">
+                    <div class="ca-chart-title" style="margin-bottom:0">
+                        <i class="fa-solid fa-fire" style="color:#ef4444"></i>
+                        Top Produkte
+                    </div>
+                    <div style="display:flex;gap:16px;font-size:10px;color:rgba(255,255,255,.3)">
+                        <span><i class="fa-solid fa-eye" style="margin-right:4px;color:#67e8f9"></i>Aufrufe</span>
+                        <span><i class="fa-solid fa-cart-plus" style="margin-right:4px;color:#a78bfa"></i>In den Warenkorb</span>
+                        <span><i class="fa-solid fa-percent" style="margin-right:4px;color:#34d399"></i>Conversion</span>
+                    </div>
+                </div>
+                <!-- Table header -->
+                <div style="display:grid;grid-template-columns:28px 1fr 80px 80px 90px 72px;gap:10px;padding:8px 16px;border-bottom:1px solid rgba(255,255,255,.04)">
+                    <div></div>
+                    <div style="font-size:9px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:rgba(255,255,255,.25)">Produkt</div>
+                    <div style="font-size:9px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#67e8f9;text-align:right">Aufrufe</div>
+                    <div style="font-size:9px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#a78bfa;text-align:right">Adds</div>
+                    <div style="font-size:9px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:rgba(255,255,255,.25)">Beliebtheit</div>
+                    <div style="font-size:9px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#34d399;text-align:right">Conv.</div>
+                </div>
+                <div id="ca-top-products-list">
+                    <div class="ca-tp-empty"><i class="fa-solid fa-spinner fa-spin" style="display:block;font-size:22px;margin-bottom:8px;opacity:.3"></i>Wird geladen…</div>
+                </div>
             </div>
 
             <!-- Event Table -->
@@ -8464,7 +8526,73 @@ function caApplyFilters() {
 
     caUpdateKPIs();
     caRenderCharts();
+    caRenderTopProducts();
     caRenderTable();
+}
+
+// ── Top-Produkte Ranking ────────────────────────────────────────────────────
+// Aggregates product_detail (views) and add_to_cart_* (adds) events from
+// _caFiltered and renders a ranked list with views, adds and conversion rate.
+function caRenderTopProducts() {
+    const el = document.getElementById('ca-top-products-list');
+    if (!el) return;
+
+    // Aggregate per product
+    const map = {}; // productId -> { name, category, views, adds }
+    _caFiltered.forEach(e => {
+        const pid  = e.productId;
+        const name = e.productName;
+        if (!pid || !name) return; // skip events without product context
+
+        if (!map[pid]) map[pid] = { name, category: e.category || '', views: 0, adds: 0 };
+
+        if (e.label === 'product_detail')                            map[pid].views++;
+        if (e.label === 'add_to_cart_detail' ||
+            e.label === 'add_to_cart_grid')                         map[pid].adds++;
+    });
+
+    const rows = Object.entries(map)
+        .map(([id, d]) => ({ id, ...d, score: d.views + d.adds * 3 }))
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 10);
+
+    if (!rows.length) {
+        el.innerHTML = '<div class="ca-tp-empty"><i class="fa-solid fa-box-open" style="display:block;font-size:28px;margin-bottom:8px;opacity:.2"></i>Noch keine Produktklicks erfasst</div>';
+        return;
+    }
+
+    const maxViews = Math.max(...rows.map(r => r.views), 1);
+    const rankMedal = ['🥇','🥈','🥉'];
+    const rankClass = ['gold','silver','bronze'];
+
+    el.innerHTML = rows.map((r, i) => {
+        const pct  = Math.round(r.views / maxViews * 100);
+        const conv = r.views > 0 ? Math.round(r.adds / r.views * 100) : 0;
+        // Colour the conversion badge: ≥30% green, 10–29% amber, <10% muted
+        const convColor = conv >= 30 ? '#34d399' : conv >= 10 ? '#fbbf24' : 'rgba(255,255,255,.25)';
+        const barColor  = i === 0 ? 'linear-gradient(90deg,#67e8f9,#a78bfa)'
+                        : i === 1 ? 'linear-gradient(90deg,#a78bfa,#818cf8)'
+                        : 'linear-gradient(90deg,rgba(103,232,249,.5),rgba(167,139,250,.5))';
+        const medal = i < 3 ? `<span style="font-size:15px">${rankMedal[i]}</span>`
+                            : `<span class="ca-tp-rank">${i + 1}</span>`;
+        const safeName = r.name.replace(/</g,'&lt;');
+        const safeCat  = r.category.replace(/</g,'&lt;');
+        return `<div class="ca-tp-row">
+            <div style="text-align:center">${medal}</div>
+            <div>
+                <div class="ca-tp-name" title="${safeName}">${safeName}</div>
+                ${safeCat ? `<div class="ca-tp-cat">${safeCat}</div>` : ''}
+            </div>
+            <div class="ca-tp-num" style="color:#67e8f9">${r.views.toLocaleString('de-DE')}</div>
+            <div class="ca-tp-num" style="color:#a78bfa">${r.adds.toLocaleString('de-DE')}</div>
+            <div>
+                <div class="ca-tp-bar-wrap">
+                    <div class="ca-tp-bar" style="width:${pct}%;background:${barColor}"></div>
+                </div>
+            </div>
+            <div class="ca-tp-conv" style="color:${convColor}">${conv}%</div>
+        </div>`;
+    }).join('');
 }
 
 function caUpdateKPIs() {

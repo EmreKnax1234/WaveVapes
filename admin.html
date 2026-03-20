@@ -9992,7 +9992,8 @@ window.saOpenTab = _patchedSaOpenTab;
 
 const BKP_CONFIG_DOC  = 'settings/backup_config';
 const BKP_COLLECTION  = 'backups';
-const BKP_ALL_COLS    = ['products','orders','users','categories','coupons','reviews','admin_logs','settings'];
+const BKP_ALL_COLS    = ['products','orders','users','categories','coupons','reviews','admin_logs','settings','promotions','banned_ips','unauthorized_access'];
+const BKP_OPTIONAL_COLS = ['click_events']; // Analytics — standardmäßig deaktiviert (kann sehr groß werden)
 
 let _bkpConfig        = null;   // geladene Konfig
 let _bkpRestoreId     = null;   // aktuell zu restorende Backup-ID
@@ -10099,9 +10100,10 @@ async function bkpSaveConfig() {
 function bkpRenderCollections() {
     const container = document.getElementById('bkp-collections-grid');
     if (!container) return;
-    const icons = { products:'🛍️', orders:'📦', users:'👤', categories:'🏷️', coupons:'🎟️', reviews:'⭐', admin_logs:'📋', settings:'⚙️' };
+    const icons = { products:'🛍️', orders:'📦', users:'👤', categories:'🏷️', coupons:'🎟️', reviews:'⭐', admin_logs:'📋', settings:'⚙️', promotions:'⚡', banned_ips:'🚫', unauthorized_access:'🔍', click_events:'🖱️' };
     const activeCols = _bkpConfig?.collections || BKP_ALL_COLS;
-    container.innerHTML = BKP_ALL_COLS.map(col => `
+    const allDisplayCols = [...BKP_ALL_COLS, ...BKP_OPTIONAL_COLS];
+    container.innerHTML = allDisplayCols.map(col =>
         <div id="bkp-col-${col}"
              class="sa-perm-toggle ${activeCols.includes(col) ? 'active' : ''}"
              onclick="bkpToggleCol('${col}')"
@@ -10183,15 +10185,27 @@ async function bkpRunNow() {
 
         for (const col of cols) {
             try {
-                const snap = await db.collection(col).limit(3000).get();
-                const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                const serialized = bkpSerialize(docs);
-                payload.collections[col] = serialized;
-                payload.meta.docCounts[col] = docs.length;
-                totalDocs += docs.length;
+                // Vollständige Pagination — kein künstliches limit()
+                const PAGE_SIZE = 500;
+                let allDocs = [];
+                let lastDoc  = null;
+                while (true) {
+                    let query = db.collection(col).orderBy(firebase.firestore.FieldPath.documentId()).limit(PAGE_SIZE);
+                    if (lastDoc) query = query.startAfter(lastDoc);
+                    const snap = await query.get();
+                    snap.docs.forEach(d => allDocs.push({ id: d.id, ...d.data() }));
+                    if (snap.docs.length < PAGE_SIZE) break;
+                    lastDoc = snap.docs[snap.docs.length - 1];
+                }
+                payload.collections[col] = bkpSerialize(allDocs);
+                payload.meta.docCounts[col] = allDocs.length;
+                totalDocs += allDocs.length;
             } catch(e) {
+                console.warn('[Backup] ' + col + ' fehlgeschlagen:', e.message);
                 payload.collections[col] = [];
                 payload.meta.docCounts[col] = 0;
+                payload.meta.errors = payload.meta.errors || {};
+                payload.meta.errors[col] = e.message;
             }
         }
 

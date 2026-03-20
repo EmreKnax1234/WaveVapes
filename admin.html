@@ -11038,6 +11038,29 @@ function bndShowModal(b=null) {
             </div>
         </div>
 
+        <!-- Bundle-Bild -->
+        <div style="margin-bottom:16px">
+            <div class="bnd-field-label">Bundle-Bild <span style="font-weight:400;opacity:.5;font-size:10px">optional — wird im Shop angezeigt</span></div>
+            <div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap">
+                <div id="bnd-img-preview" style="width:90px;height:90px;border-radius:14px;background:rgba(255,255,255,.04);border:1px dashed rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden">
+                    ${b?.image
+                        ? `<img src="${b.image}" style="width:100%;height:100%;object-fit:cover;border-radius:14px">`
+                        : `<i class="fa-solid fa-image" style="font-size:24px;color:rgba(255,255,255,.2)"></i>`}
+                </div>
+                <div style="flex:1;min-width:160px">
+                    <div id="bnd-img-dropzone" onclick="document.getElementById('bnd-img-input').click()"
+                        style="border:1px dashed rgba(167,139,250,.3);border-radius:12px;padding:14px;text-align:center;cursor:pointer;transition:all .2s;background:rgba(167,139,250,.04)"
+                        onmouseover="this.style.background='rgba(167,139,250,.1)';this.style.borderColor='rgba(167,139,250,.6)'"
+                        onmouseout="this.style.background='rgba(167,139,250,.04)';this.style.borderColor='rgba(167,139,250,.3)'">
+                        <i class="fa-solid fa-cloud-arrow-up" style="color:#a78bfa;display:block;font-size:18px;margin-bottom:4px"></i>
+                        <span style="font-size:11px;color:rgba(167,139,250,.7)">Bild hochladen</span>
+                    </div>
+                    <input type="file" id="bnd-img-input" accept="image/*" style="display:none" onchange="bndPreviewImage(this)">
+                    ${b?.image ? `<button onclick="bndRemoveImage()" style="margin-top:6px;width:100%;padding:5px;border-radius:8px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.18);color:#f87171;font-size:10px;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(239,68,68,.18)'" onmouseout="this.style.background='rgba(239,68,68,.08)'"><i class="fa-solid fa-trash"></i> Bild entfernen</button>` : ''}
+                </div>
+            </div>
+        </div>
+
         <!-- Produkt-Picker -->
         <div style="margin-bottom:14px">
             <div class="bnd-field-label">Produkte hinzufügen</div>
@@ -11347,6 +11370,26 @@ Antworte NUR auf Deutsch, in diesem Format:
 
 // ── Speichern ─────────────────────────────────────────────────────────────
 
+let _bndImageFile = null;
+let _bndRemoveImage = false;
+
+function bndPreviewImage(input) {
+    const file = input.files[0];
+    if (!file) return;
+    _bndImageFile = file;
+    _bndRemoveImage = false;
+    const url = URL.createObjectURL(file);
+    const preview = document.getElementById('bnd-img-preview');
+    if (preview) preview.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:14px">`;
+}
+
+function bndRemoveImage() {
+    _bndImageFile = null;
+    _bndRemoveImage = true;
+    const preview = document.getElementById('bnd-img-preview');
+    if (preview) preview.innerHTML = `<i class="fa-solid fa-trash" style="font-size:20px;color:#f87171"></i>`;
+}
+
 async function bndSave() {
     const name    = document.getElementById('bnd-f-name')?.value?.trim();
     const price   = parseFloat(document.getElementById('bnd-f-price')?.value);
@@ -11355,10 +11398,27 @@ async function bndSave() {
     if(!name){showToast('⚠️ Bundle-Name fehlt','warning');return;}
     if(!price||price<=0){showToast('⚠️ Bitte einen gültigen Preis eingeben','warning');return;}
     if(!_bundleItems.length){showToast('⚠️ Mindestens ein Produkt hinzufügen','warning');return;}
-    const orig=_bundleItems.reduce((s,it)=>s+it.price*it.qty,0);
-    const disc=orig>0?((orig-price)/orig*100):0;
-    const payload={name,description:desc,category:category||null,bundlePrice:price,originalTotal:orig,discountPct:disc,items:_bundleItems,updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+
+    const saveBtn = document.querySelector('#bnd-modal-overlay .bnd-btn-gold');
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Speichere…'; }
+
     try {
+        const orig=_bundleItems.reduce((s,it)=>s+it.price*it.qty,0);
+        const disc=orig>0?((orig-price)/orig*100):0;
+        const payload={name,description:desc,category:category||null,bundlePrice:price,originalTotal:orig,discountPct:disc,items:_bundleItems,updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+
+        // Bild hochladen
+        if (_bndImageFile) {
+            const fd = new FormData();
+            fd.append('file', _bndImageFile);
+            fd.append('upload_preset', 'wavevapes');
+            const res = await fetch('https://api.cloudinary.com/v1_1/dbbkmjsr5/image/upload', { method:'POST', body:fd });
+            const json = await res.json();
+            if (json.secure_url) payload.image = json.secure_url;
+        } else if (_bndRemoveImage) {
+            payload.image = firebase.firestore.FieldValue.delete();
+        }
+
         if(_bundleEditId){
             await db.collection(BND_COL).doc(_bundleEditId).update(payload);
             await logAction('bundle_updated',_bundleEditId,{name,price,discountPct:disc});
@@ -11371,9 +11431,14 @@ async function bndSave() {
             await logAction('bundle_created',ref.id,{name,price,discountPct:disc});
             showToast('✅ Bundle erstellt!');
         }
+        _bndImageFile = null; _bndRemoveImage = false;
         document.getElementById('bnd-modal-overlay')?.remove();
         await loadBundles();
-    } catch(e){showToast('❌ Fehler: '+e.message,'error');}
+    } catch(e){
+        showToast('❌ Fehler: '+e.message,'error');
+    } finally {
+        if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Bundle speichern'; }
+    }
 }
 
 // ── Toggle Aktiv ──────────────────────────────────────────────────────────

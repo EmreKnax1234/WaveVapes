@@ -2452,7 +2452,7 @@
             try {
                 const userDoc = await db.collection("users").doc(currentUser.uid).get();
                 const serverCart = (userDoc.exists && userDoc.data().cart) ? userDoc.data().cart : [];
-                const guestCart  = cart.filter(i => i.id !== 999); // items added before login
+                const guestCart  = cart.filter(i => i.id !== MYSTERY_ID); // BUG FIX: use MYSTERY_ID constant instead of hardcoded 999
 
                 if (guestCart.length > 0 && serverCart.length === 0) {
                     // Only guest items — just use them
@@ -2806,6 +2806,10 @@
             await db.collection("users").doc(currentUser.uid).update({
                 totalBonusPoints: firebase.firestore.FieldValue.increment(pointsToAdd)
             });
+            // BUG FIX: Update local loyaltyPoints variable so display refreshes immediately
+            // without waiting for the next Firestore snapshot.
+            loyaltyPoints += pointsToAdd;
+            updateLoyaltyDisplay();
             showToast(`🎉 +${pointsToAdd} Loyalty-Punkte gutgeschrieben!`);
         }
         // ====================== GUTSCHEIN-SYSTEM (FIXED: totalUsages) ======================
@@ -2977,10 +2981,13 @@
                         subtotal -= freeCount * cheapestPrice;
                     }
                 } else if (offer.offerType === 'percent') {
-                    // % off all items in category
+                    // % off all items in category — use effective price (promo-aware)
                     const pct = parseFloat(offer.offerN) || 0;
                     catItems.forEach(i => {
-                        subtotal -= i.qty * (i.price || 0) * (pct / 100);
+                        // BUG FIX: use getPromoPrice() like the nforn branch, not raw i.price
+                        const p = _productMap.get(i.id);
+                        const effPrice = p ? (getPromoPrice(p) ?? i.price ?? 0) : (i.price || 0);
+                        subtotal -= i.qty * effPrice * (pct / 100);
                     });
                 } else if (offer.offerType === 'fixed') {
                     // Fixed € off per item in category
@@ -3246,10 +3253,16 @@
             } else if (nicotine) {
                 existing.nicotine = nicotine;
             }
-            // BUG 2 FIX: Clientseitiger Lagerbestand-Check — verhindert dass mehr
-            // Artikel hinzugefügt werden als auf Lager sind.
-            if (delta > 0 && product.stock > 0) {
+            // BUG FIX: Stock check now also blocks when stock === 0 (not just > 0).
+            // Previously `if (delta > 0 && product.stock > 0)` skipped the check entirely
+            // for products without a stock value, allowing unlimited additions.
+            if (delta > 0) {
                 const newQty = existing.qty + delta;
+                if (product.stock <= 0) {
+                    showToast(`⚠️ Dieses Produkt ist ausverkauft`, "error");
+                    if (existing.qty === 0) cart = cart.filter(i => i.id !== id);
+                    return false;
+                }
                 if (newQty > product.stock) {
                     showToast(`⚠️ Nur noch ${product.stock}× auf Lager`, "error");
                     if (existing.qty === 0) cart = cart.filter(i => i.id !== id);
@@ -3327,9 +3340,13 @@
         }
         function showDealToast(label) {
             const toast = document.getElementById('notification-toast');
+            // BUG FIX: Clear any running toast timer before showing deal toast
+            clearTimeout(_toastTimer);
+            toast.style.background = '';
+            toast.style.color = '';
             toast.innerHTML = `⚡ <strong>${label || '4 FÜR 3'} EINGELÖST!</strong>`;
             toast.classList.add('visible');
-            setTimeout(() => {
+            _toastTimer = setTimeout(() => {
                 toast.classList.remove('visible');
             }, 5000);
         }
@@ -3422,8 +3439,8 @@
             const loyaltyCartInfo = document.getElementById("loyalty-cart-info");
             const paymentInfoEl = document.getElementById("cart-payment-info");
             const totalSection = document.getElementById("cart-total-section");
-            // Don't count mystery vape in badge (it's always qty 1 and free)
-            const totalItems = cart.filter(i => i.id != 999).reduce((sum, item) => sum + item.qty, 0);
+            // BUG FIX: Use MYSTERY_ID constant instead of hardcoded 999 for consistency
+            const totalItems = cart.filter(i => i.id != MYSTERY_ID).reduce((sum, item) => sum + item.qty, 0);
             countEl.textContent = totalItems;
 
             // ── Gratis-Versand Fortschrittsbalken ──────────────────────────
@@ -3863,7 +3880,7 @@
                     userEmail: currentUser.email,
                     orderNumber: orderNumber,
                     total: verifiedTotal,
-                    items: cart,
+                    items: verifiedItems, // BUG FIX: use server-verified items, not raw cart
                     shipping: shippingCost,
                     loyaltyEarned: loyaltyEarned
                 });
@@ -4032,7 +4049,7 @@
                                 </button>
                                 ${['Wird bearbeitet','Versendet','Zugestellt'].includes(status) ? `
                                 <button class="rv-open-btn w-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 py-3 rounded-2xl text-sm font-medium transition-all flex items-center justify-center gap-2"
-                                        data-review-items="${encodeURIComponent(JSON.stringify(order.items.filter(i=>i.id!=999)))}">
+                                        data-review-items="${encodeURIComponent(JSON.stringify(order.items.filter(i=>i.id!=MYSTERY_ID)))}">
                                     <i class="fa-solid fa-star"></i> Produkte bewerten
                                 </button>` : ''}
                             </div>
@@ -4096,8 +4113,9 @@
             let skippedCount = 0;
 
             for (const item of items) {
-                // Mystery-Vape (id 999) und sonstige Sonderpositionen überspringen
-                if (!item.id || item.id === 999) { skippedCount++; continue; }
+                // Mystery-Vape und sonstige Sonderpositionen überspringen
+                // BUG FIX: Use MYSTERY_ID constant instead of hardcoded 999
+                if (!item.id || item.id == MYSTERY_ID) { skippedCount++; continue; }
 
                 const productId = Number(item.id);
                 const product   = _productMap.get(productId);
@@ -4402,14 +4420,18 @@
 
             section.classList.add("visible");
             track.innerHTML = items.map(p => {
-                const price = p.price.toFixed(2).replace('.', ',') + ' €';
+                // BUG FIX: Show promo price if active, not always base price
+                const promoP = getPromoPrice(p);
+                const displayP = promoP !== null ? promoP : p.price;
+                const price = displayP.toFixed(2).replace('.', ',') + ' €';
+                const isPromo = promoP !== null;
                 const imgHTML = p.image
                     ? `<img class="rv-mini-img" src="${p.image}" alt="${p.name}" loading="lazy">`
                     : `<div class="rv-mini-placeholder">🧪</div>`;
                 return `<div class="rv-mini-card" onclick="showProductDetail('${p.id}')" title="${p.name}">
                     ${imgHTML}
                     <div class="rv-mini-name">${p.name}</div>
-                    <div class="rv-mini-price">${price}</div>
+                    <div class="rv-mini-price" style="${isPromo ? 'color:#ef4444;font-weight:800' : ''}">${price}</div>
                 </div>`;
             }).join('');
         }
@@ -5352,7 +5374,7 @@
         let _presenceFirstWriteDone = false;
         async function updatePresence() {
             const docId = currentUser ? currentUser.uid : sessionId;
-            const cartCount = cart.filter(i => i.id !== 999).reduce((s,i)=>s+i.qty,0);
+            const cartCount = cart.filter(i => i.id !== MYSTERY_ID).reduce((s,i)=>s+i.qty,0); // BUG FIX: use MYSTERY_ID constant
             const ip = await fetchIp();
             const presenceData = {
                 uid: currentUser ? currentUser.uid : null,
@@ -5530,24 +5552,27 @@
             }
         });
 
-        // Close modals on backdrop click
-        document.querySelectorAll('.fixed.inset-0').forEach(el => {
-            el.addEventListener('click', function(e) {
-                if (e.target === this) {
-                    const id = this.id;
-                    if (id === 'auth-modal') closeAuthModal();
-                    else if (id === 'address-modal') closeAddressModal();
-                    else if (id === 'name-modal') closeNameModal();
-                    else if (id === 'history-modal') closeHistoryModal();
-                    else if (id === 'payment-info-modal') closePaymentInfoModal();
-                    else if (id === 'referrals-modal') closeReferralsModal();
-                    else if (id === 'product-detail-modal') closeProductDetail();
-                    else if (id === 'impressum-modal') closeImpressumModal();
-                    else if (id === 'agb-modal') closeAgbModal();
-                    else if (id === 'widerruf-modal') closeWiderrufModal();
-                    else if (id === 'datenschutz-modal') closeDatenschutzModal();
-                }
-            });
+        // Close modals on backdrop click — delegated to document to catch all modals
+        // BUG FIX: previous querySelectorAll('.fixed.inset-0') ran at script-parse time,
+        // missing any modals injected after load and failing on slow-parsing browsers.
+        document.addEventListener('click', function(e) {
+            if (e.target === e.currentTarget) return; // ignore document itself
+            const el = e.target;
+            // Only act when the click is directly on a full-screen backdrop (not a child)
+            if (!el.classList.contains('fixed') || !el.classList.contains('inset-0')) return;
+            if (e.target !== el) return;
+            const id = el.id;
+            if (id === 'auth-modal') closeAuthModal();
+            else if (id === 'address-modal') closeAddressModal();
+            else if (id === 'name-modal') closeNameModal();
+            else if (id === 'history-modal') closeHistoryModal();
+            else if (id === 'payment-info-modal') closePaymentInfoModal();
+            else if (id === 'referrals-modal') closeReferralsModal();
+            else if (id === 'product-detail-modal') closeProductDetail();
+            else if (id === 'impressum-modal') closeImpressumModal();
+            else if (id === 'agb-modal') closeAgbModal();
+            else if (id === 'widerruf-modal') closeWiderrufModal();
+            else if (id === 'datenschutz-modal') closeDatenschutzModal();
         });
         // ═══════════════════════════════════════════════════════════════
         //  ANDROID & CROSS-PLATFORM MOBILE FIXES

@@ -3806,10 +3806,27 @@
                             <div style="font-size:10px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.06em">Letzter Backup</div>
                             <div style="font-size:13px;font-weight:700;color:#67e8f9;font-family:'JetBrains Mono',monospace" id="bkp-last-label">—</div>
                         </div>
-                        <button onclick="bkpRunNow()" id="bkp-run-btn" style="display:flex;align-items:center;gap:8px;padding:10px 18px;border-radius:13px;background:rgba(103,232,249,.1);border:1px solid rgba(103,232,249,.25);color:#67e8f9;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(103,232,249,.2)'" onmouseout="this.style.background='rgba(103,232,249,.1)'">
-                            <i class="fa-solid fa-play"></i> Jetzt sichern
-                        </button>
+                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                            <input type="text" id="bkp-note-input" placeholder="Optionale Notiz zum Backup…" maxlength="80"
+                                style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 14px;color:#fff;font-size:12px;outline:none;width:220px;transition:border-color .2s"
+                                onfocus="this.style.borderColor='rgba(103,232,249,.4)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">
+                            <button onclick="bkpRunNow()" id="bkp-run-btn" style="display:flex;align-items:center;gap:8px;padding:10px 18px;border-radius:13px;background:rgba(103,232,249,.1);border:1px solid rgba(103,232,249,.25);color:#67e8f9;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(103,232,249,.2)'" onmouseout="this.style.background='rgba(103,232,249,.1)'">
+                                <i class="fa-solid fa-play"></i> Jetzt sichern
+                            </button>
+                        </div>
                     </div>
+                </div>
+
+                <!-- ── Backup-Fortschritt ── -->
+                <div id="bkp-progress-bar-wrap" style="display:none;background:rgba(103,232,249,.04);border:1px solid rgba(103,232,249,.15);border-radius:16px;padding:16px 20px">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                        <div id="bkp-progress-label" style="font-size:12px;font-weight:600;color:#67e8f9">Backup wird erstellt…</div>
+                        <div id="bkp-progress-pct" style="font-size:12px;font-weight:700;color:#fbbf24;font-family:'JetBrains Mono',monospace">0%</div>
+                    </div>
+                    <div style="background:rgba(255,255,255,.08);border-radius:99px;height:6px;overflow:hidden">
+                        <div id="bkp-progress-fill" style="height:100%;background:linear-gradient(90deg,#67e8f9,#a78bfa);border-radius:99px;width:0%;transition:width .3s ease"></div>
+                    </div>
+                    <div id="bkp-progress-cols" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px"></div>
                 </div>
 
                 <!-- ── KPI Strip ── -->
@@ -3945,21 +3962,90 @@
                             <button class="sa-export-btn" onclick="saExport('reviews','json')"><i class="fa-solid fa-file-code"></i> JSON</button>
                             <button class="sa-export-btn" onclick="saExport('reviews','csv')" style="background:rgba(167,139,250,.1);color:#a78bfa"><i class="fa-solid fa-file-csv"></i> CSV</button>
                         </div>
+                        <div class="sa-export-card" style="border-color:rgba(52,211,153,.2)">
+                            <div class="sa-export-icon">📂</div><div class="sa-export-title">Import aus Datei</div>
+                            <div class="sa-export-desc">Lokal gespeicherte Backup-JSON-Datei hochladen und Daten wiederherstellen.</div>
+                            <button class="sa-export-btn" onclick="bkpImportFromFile()" style="background:rgba(52,211,153,.1);color:#34d399;border:1px solid rgba(52,211,153,.2)"><i class="fa-solid fa-file-import"></i> Datei importieren</button>
+                            <input type="file" id="bkp-import-file-input" accept=".json" style="display:none" onchange="bkpHandleFileImport(this)">
+                        </div>
                     </div>
                 </div>
 
                 <!-- Restore Modal -->
                 <div id="bkp-restore-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(12px);z-index:99999;align-items:center;justify-content:center">
-                    <div style="background:linear-gradient(160deg,#0f0f1a,#1a1a2e);border:1px solid rgba(248,113,113,.25);border-radius:28px;padding:36px;width:100%;max-width:460px;animation:modalPop .3s cubic-bezier(0.34,1.56,0.64,1)">
+                    <div style="background:linear-gradient(160deg,#0f0f1a,#1a1a2e);border:1px solid rgba(248,113,113,.25);border-radius:28px;padding:36px;width:100%;max-width:520px;animation:modalPop .3s cubic-bezier(0.34,1.56,0.64,1);max-height:90vh;overflow-y:auto">
                         <div style="width:56px;height:56px;border-radius:16px;background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.3);display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 20px">⚠️</div>
                         <div style="font-family:'Orbitron',sans-serif;font-size:16px;font-weight:700;color:#f87171;text-align:center;margin-bottom:8px">Backup wiederherstellen</div>
-                        <div style="font-size:11px;color:rgba(255,255,255,.35);text-align:center;line-height:1.6;margin-bottom:24px" id="bkp-restore-desc">—</div>
-                        <div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-radius:12px;padding:12px 14px;margin-bottom:20px;font-size:11px;color:rgba(248,113,113,.8);line-height:1.6">
-                            <i class="fa-solid fa-triangle-exclamation" style="margin-right:6px"></i><strong>Achtung:</strong> Aktuelle Daten werden bei Bestätigung durch den Backup-Stand ersetzt. Diese Aktion kann nicht rückgängig gemacht werden.
+                        <div style="font-size:11px;color:rgba(255,255,255,.35);text-align:center;line-height:1.6;margin-bottom:20px" id="bkp-restore-desc">—</div>
+
+                        <!-- Collection Selector -->
+                        <div style="margin-bottom:18px">
+                            <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Collections zum Wiederherstellen</div>
+                            <div id="bkp-restore-col-list" style="display:flex;flex-wrap:wrap;gap:6px">
+                                <!-- filled by JS -->
+                            </div>
+                            <div style="margin-top:8px;display:flex;gap:8px">
+                                <button onclick="bkpRestoreSelectAll(true)" style="font-size:10px;padding:4px 10px;border-radius:8px;border:1px solid rgba(103,232,249,.2);background:rgba(103,232,249,.06);color:#67e8f9;cursor:pointer">Alle</button>
+                                <button onclick="bkpRestoreSelectAll(false)" style="font-size:10px;padding:4px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:rgba(255,255,255,.4);cursor:pointer">Keine</button>
+                            </div>
                         </div>
+
+                        <div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-radius:12px;padding:12px 14px;margin-bottom:18px;font-size:11px;color:rgba(248,113,113,.8);line-height:1.6">
+                            <i class="fa-solid fa-triangle-exclamation" style="margin-right:6px"></i><strong>Achtung:</strong> Aktuelle Daten der gewählten Collections werden ersetzt. Diese Aktion kann nicht rückgängig gemacht werden.
+                        </div>
+
+                        <!-- Restore Progress -->
+                        <div id="bkp-restore-progress" style="display:none;margin-bottom:16px">
+                            <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+                                <div id="bkp-restore-prog-label" style="font-size:11px;color:#67e8f9;font-weight:600">Wiederherstellung…</div>
+                                <div id="bkp-restore-prog-pct" style="font-size:11px;color:#fbbf24;font-family:'JetBrains Mono',monospace">0%</div>
+                            </div>
+                            <div style="background:rgba(255,255,255,.08);border-radius:99px;height:5px;overflow:hidden">
+                                <div id="bkp-restore-prog-fill" style="height:100%;background:linear-gradient(90deg,#f87171,#fbbf24);border-radius:99px;width:0%;transition:width .3s ease"></div>
+                            </div>
+                        </div>
+
                         <div style="display:flex;gap:10px">
                             <button onclick="document.getElementById('bkp-restore-modal').style.display='none'" style="flex:1;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:rgba(255,255,255,.6);font-size:13px;font-weight:600;cursor:pointer">Abbrechen</button>
                             <button onclick="bkpConfirmRestore()" style="flex:1;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;font-size:13px;font-weight:700;cursor:pointer" id="bkp-restore-confirm-btn"><i class="fa-solid fa-rotate-left"></i> Wiederherstellen</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Import-from-File Modal -->
+                <div id="bkp-import-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(12px);z-index:99999;align-items:center;justify-content:center">
+                    <div style="background:linear-gradient(160deg,#0f0f1a,#1a1a2e);border:1px solid rgba(52,211,153,.25);border-radius:28px;padding:36px;width:100%;max-width:520px;animation:modalPop .3s cubic-bezier(0.34,1.56,0.64,1);max-height:90vh;overflow-y:auto">
+                        <div style="width:56px;height:56px;border-radius:16px;background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.3);display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 20px">📂</div>
+                        <div style="font-family:'Orbitron',sans-serif;font-size:16px;font-weight:700;color:#34d399;text-align:center;margin-bottom:6px">Import aus Datei</div>
+                        <div style="font-size:11px;color:rgba(255,255,255,.35);text-align:center;line-height:1.6;margin-bottom:20px" id="bkp-import-file-desc">—</div>
+
+                        <div style="margin-bottom:18px">
+                            <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Collections wiederherstellen</div>
+                            <div id="bkp-import-col-list" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+                            <div style="margin-top:8px;display:flex;gap:8px">
+                                <button onclick="bkpImportSelectAll(true)" style="font-size:10px;padding:4px 10px;border-radius:8px;border:1px solid rgba(52,211,153,.2);background:rgba(52,211,153,.06);color:#34d399;cursor:pointer">Alle</button>
+                                <button onclick="bkpImportSelectAll(false)" style="font-size:10px;padding:4px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:rgba(255,255,255,.4);cursor:pointer">Keine</button>
+                            </div>
+                        </div>
+
+                        <div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-radius:12px;padding:12px 14px;margin-bottom:18px;font-size:11px;color:rgba(248,113,113,.8);line-height:1.6">
+                            <i class="fa-solid fa-triangle-exclamation" style="margin-right:6px"></i><strong>Achtung:</strong> Aktuelle Firestore-Daten der gewählten Collections werden durch den Dateiinhalt ersetzt.
+                        </div>
+
+                        <!-- Import Progress -->
+                        <div id="bkp-import-progress" style="display:none;margin-bottom:16px">
+                            <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+                                <div id="bkp-import-prog-label" style="font-size:11px;color:#34d399;font-weight:600">Importiere…</div>
+                                <div id="bkp-import-prog-pct" style="font-size:11px;color:#fbbf24;font-family:'JetBrains Mono',monospace">0%</div>
+                            </div>
+                            <div style="background:rgba(255,255,255,.08);border-radius:99px;height:5px;overflow:hidden">
+                                <div id="bkp-import-prog-fill" style="height:100%;background:linear-gradient(90deg,#34d399,#67e8f9);border-radius:99px;width:0%;transition:width .3s ease"></div>
+                            </div>
+                        </div>
+
+                        <div style="display:flex;gap:10px">
+                            <button onclick="document.getElementById('bkp-import-modal').style.display='none'" style="flex:1;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:rgba(255,255,255,.6);font-size:13px;font-weight:600;cursor:pointer">Abbrechen</button>
+                            <button onclick="bkpConfirmImport()" style="flex:1;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#34d399,#10b981);color:#000;font-size:13px;font-weight:700;cursor:pointer" id="bkp-import-confirm-btn"><i class="fa-solid fa-file-import"></i> Importieren</button>
                         </div>
                     </div>
                 </div>
@@ -10171,16 +10257,45 @@ function bkpRenderStatus() {
 
 async function bkpRunNow() {
     const btn = document.getElementById('bkp-run-btn');
+    const noteInput = document.getElementById('bkp-note-input');
+    const note = noteInput?.value?.trim() || '';
+
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sichern...'; }
+
+    // Fortschrittsbalken einblenden
+    const progWrap  = document.getElementById('bkp-progress-bar-wrap');
+    const progLabel = document.getElementById('bkp-progress-label');
+    const progPct   = document.getElementById('bkp-progress-pct');
+    const progFill  = document.getElementById('bkp-progress-fill');
+    const progCols  = document.getElementById('bkp-progress-cols');
+    if (progWrap) { progWrap.style.display = 'block'; }
+    const setProgress = (pct, label, colName, done) => {
+        if (progLabel) progLabel.textContent = label;
+        if (progPct)   progPct.textContent   = Math.round(pct) + '%';
+        if (progFill)  progFill.style.width  = pct + '%';
+        if (colName && progCols) {
+            const chip = document.createElement('span');
+            chip.style.cssText = `font-size:10px;padding:2px 9px;border-radius:99px;background:${done?'rgba(52,211,153,.15)':'rgba(103,232,249,.1)'};color:${done?'#34d399':'#67e8f9'};border:1px solid ${done?'rgba(52,211,153,.3)':'rgba(103,232,249,.2)'};font-family:'JetBrains Mono',monospace;transition:all .2s`;
+            chip.textContent = (done ? '✓ ' : '⏳ ') + colName;
+            chip.id = 'bkp-chip-' + colName;
+            const existing = document.getElementById('bkp-chip-' + colName);
+            if (existing) existing.replaceWith(chip);
+            else progCols.appendChild(chip);
+        }
+    };
+
+    if (progCols) progCols.innerHTML = '';
     showToast('⏳ Backup wird erstellt...');
 
     try {
         const cols = (_bkpConfig?.collections?.length > 0) ? _bkpConfig.collections : BKP_ALL_COLS;
-        const payload = { createdAt: firebase.firestore.FieldValue.serverTimestamp(), version: '1.0', collections: {}, meta: { triggeredBy: auth.currentUser?.email || 'Superadmin', manual: true, docCounts: {} } };
+        const payload = { createdAt: firebase.firestore.FieldValue.serverTimestamp(), version: '1.0', collections: {}, meta: { triggeredBy: auth.currentUser?.email || 'Superadmin', manual: true, docCounts: {}, note: note || null } };
         let totalDocs = 0;
         let totalSize = 0;
 
-        for (const col of cols) {
+        for (let ci = 0; ci < cols.length; ci++) {
+            const col = cols[ci];
+            setProgress((ci / cols.length) * 80, `Sichere "${col}"…`, col, false);
             try {
                 const snap = await db.collection(col).limit(3000).get();
                 const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -10188,11 +10303,15 @@ async function bkpRunNow() {
                 payload.collections[col] = serialized;
                 payload.meta.docCounts[col] = docs.length;
                 totalDocs += docs.length;
+                setProgress(((ci + 1) / cols.length) * 80, `"${col}" gesichert (${docs.length} Docs)`, col, true);
             } catch(e) {
                 payload.collections[col] = [];
                 payload.meta.docCounts[col] = 0;
+                setProgress(((ci + 1) / cols.length) * 80, `"${col}" übersprungen (Fehler)`, col, true);
             }
         }
+
+        setProgress(90, 'In Firestore speichern…');
 
         // Größe abschätzen (JSON-String-Länge in Bytes)
         const jsonStr    = JSON.stringify(payload);
@@ -10219,8 +10338,14 @@ async function bkpRunNow() {
         // Alte Backups bereinigen
         await bkpCleanup();
 
+        // Notiz-Feld leeren
+        if (noteInput) noteInput.value = '';
+
         // Log
-        await logAction('auto_backup_created', backupRef.id, { totalDocs, sizeBytes: totalSize, manual: true });
+        await logAction('auto_backup_created', backupRef.id, { totalDocs, sizeBytes: totalSize, manual: true, note: note || null });
+
+        setProgress(100, 'Backup abgeschlossen ✅');
+        setTimeout(() => { if (progWrap) progWrap.style.display = 'none'; }, 2500);
 
         bkpRenderStatus();
         await bkpLoadHistory();
@@ -10322,6 +10447,7 @@ async function bkpLoadHistory() {
                         <span style="font-size:13px;font-weight:700;color:#fff">Backup ${bkpFmtDate(b.createdAt)}</span>
                         ${i===0?'<span style="font-size:10px;padding:2px 8px;border-radius:99px;background:rgba(103,232,249,.12);color:#67e8f9;border:1px solid rgba(103,232,249,.2);font-weight:700">AKTUELL</span>':''}
                         ${isManual?'<span style="font-size:10px;padding:2px 8px;border-radius:99px;background:rgba(251,191,36,.1);color:#fbbf24;border:1px solid rgba(251,191,36,.2);font-weight:700">MANUELL</span>':'<span style="font-size:10px;padding:2px 8px;border-radius:99px;background:rgba(167,139,250,.1);color:#a78bfa;border:1px solid rgba(167,139,250,.2);font-weight:700">AUTO</span>'}
+                        ${b.meta?.note ? `<span style="font-size:10px;padding:2px 9px;border-radius:99px;background:rgba(251,191,36,.08);color:#fbbf24;border:1px solid rgba(251,191,36,.15);font-style:italic;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${b.meta.note.replace(/"/g,'&quot;')}">„${b.meta.note}"</span>` : ''}
                     </div>
                     <div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:3px;display:flex;gap:12px;flex-wrap:wrap">
                         <span><i class="fa-solid fa-file-lines" style="margin-right:4px;opacity:.5"></i>${docCount} Docs</span>
@@ -10334,6 +10460,9 @@ async function bkpLoadHistory() {
 
                 <!-- Actions -->
                 <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap">
+                    <button onclick="bkpVerify('${b.id}', this)" title="Integrität prüfen" style="padding:7px 12px;border-radius:10px;border:1px solid rgba(52,211,153,.2);background:rgba(52,211,153,.06);color:#34d399;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s" onmouseover="this.style.background='rgba(52,211,153,.18)'" onmouseout="this.style.background='rgba(52,211,153,.06)'">
+                        <i class="fa-solid fa-shield-check"></i>
+                    </button>
                     <button onclick="bkpDownload('${b.id}')" title="Herunterladen" style="padding:7px 12px;border-radius:10px;border:1px solid rgba(103,232,249,.2);background:rgba(103,232,249,.07);color:#67e8f9;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s" onmouseover="this.style.background='rgba(103,232,249,.18)'" onmouseout="this.style.background='rgba(103,232,249,.07)'">
                         <i class="fa-solid fa-download"></i>
                     </button>
@@ -10438,6 +10567,19 @@ async function bkpPurgeOld() {
 
 // ── Restore: Modal öffnen ─────────────────────────────────────────────────
 
+function bkpRestoreSelectAll(val) {
+    document.querySelectorAll('.bkp-restore-col-chip').forEach(el => {
+        val ? el.classList.add('bkp-chip-active') : el.classList.remove('bkp-chip-active');
+        bkpUpdateChipStyle(el);
+    });
+}
+function bkpUpdateChipStyle(el) {
+    const on = el.classList.contains('bkp-chip-active');
+    el.style.background     = on ? 'rgba(248,113,113,.15)' : 'rgba(255,255,255,.04)';
+    el.style.borderColor    = on ? 'rgba(248,113,113,.4)'  : 'rgba(255,255,255,.1)';
+    el.style.color          = on ? '#f87171' : 'rgba(255,255,255,.4)';
+}
+
 async function bkpOpenRestore(id) {
     _bkpRestoreId   = id;
     _bkpRestoreCols = null;
@@ -10449,12 +10591,32 @@ async function bkpOpenRestore(id) {
         const date = bkpFmtDate(b.createdAt);
         const cols = b.collections || [];
         const docCounts = b.meta?.docCounts || {};
-        _bkpRestoreCols = cols;
+        const note = b.meta?.note || '';
 
         document.getElementById('bkp-restore-desc').innerHTML =
-            `<strong style="color:#fff">${date}</strong><br>` +
-            `Collections: ${cols.map(c => `<span style="color:#67e8f9">${c}</span> (${docCounts[c] || '?'} Docs)`).join(', ')}<br>` +
+            `<strong style="color:#fff">${date}</strong>` +
+            (note ? `<br><em style="color:#fbbf24">„${note}"</em>` : '') + `<br>` +
             `Größe: ${bkpFmtSize(b.meta?.sizeBytes || 0)}`;
+
+        // Collection-Chips rendern
+        const colList = document.getElementById('bkp-restore-col-list');
+        if (colList) {
+            colList.innerHTML = cols.map(c => {
+                const cnt = docCounts[c] || '?';
+                return `<span class="bkp-restore-col-chip bkp-chip-active"
+                    data-col="${c}"
+                    onclick="this.classList.toggle('bkp-chip-active');bkpUpdateChipStyle(this)"
+                    style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:99px;cursor:pointer;font-size:11px;font-weight:600;border:1px solid rgba(248,113,113,.4);background:rgba(248,113,113,.15);color:#f87171;transition:all .15s;user-select:none">
+                    <span>${c}</span><span style="opacity:.6;font-size:10px">${cnt}</span>
+                </span>`;
+            }).join('');
+        }
+
+        // Fortschritt zurücksetzen
+        const rp = document.getElementById('bkp-restore-progress');
+        if (rp) rp.style.display = 'none';
+        const rpf = document.getElementById('bkp-restore-prog-fill');
+        if (rpf) rpf.style.width = '0%';
 
         document.getElementById('bkp-restore-modal').style.display = 'flex';
     } catch(e) {
@@ -10466,21 +10628,43 @@ async function bkpOpenRestore(id) {
 
 async function bkpConfirmRestore() {
     if (!_bkpRestoreId) return;
+
+    // Selektierte Collections aus den Chips lesen
+    const selectedCols = [...document.querySelectorAll('.bkp-restore-col-chip.bkp-chip-active')].map(el => el.dataset.col);
+    if (!selectedCols.length) { showToast('⚠️ Keine Collections ausgewählt!', 'warning'); return; }
+
     const btn = document.getElementById('bkp-restore-confirm-btn');
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Wird wiederhergestellt...'; }
 
+    // Fortschritt einblenden
+    const rp    = document.getElementById('bkp-restore-progress');
+    const rpLbl = document.getElementById('bkp-restore-prog-label');
+    const rpPct = document.getElementById('bkp-restore-prog-pct');
+    const rpFil = document.getElementById('bkp-restore-prog-fill');
+    if (rp) rp.style.display = 'block';
+    const setRestoreProgress = (pct, label) => {
+        if (rpLbl) rpLbl.textContent = label;
+        if (rpPct) rpPct.textContent = Math.round(pct) + '%';
+        if (rpFil) rpFil.style.width = pct + '%';
+    };
+
     try {
+        setRestoreProgress(5, 'Backup laden…');
         const snap = await db.collection(BKP_COLLECTION).doc(_bkpRestoreId).get();
         if (!snap.exists) throw new Error('Backup-Dokument nicht gefunden.');
 
         const b = snap.data();
         const allData = JSON.parse(b.data || '{}');
-        const cols    = _bkpRestoreCols || Object.keys(allData);
+        const cols    = selectedCols.filter(c => allData[c] !== undefined);
         let restoredTotal = 0;
 
-        for (const col of cols) {
+        for (let ci = 0; ci < cols.length; ci++) {
+            const col  = cols[ci];
             const docs = allData[col];
             if (!Array.isArray(docs)) continue;
+
+            const pctBase = 10 + (ci / cols.length) * 85;
+            setRestoreProgress(pctBase, `Lösche alte "${col}"…`);
 
             // Erst löschen (in Batches à 400)
             const existingSnap = await db.collection(col).get();
@@ -10489,6 +10673,8 @@ async function bkpConfirmRestore() {
                 existingSnap.docs.slice(i, i + 400).forEach(d => batch.delete(d.ref));
                 await batch.commit();
             }
+
+            setRestoreProgress(pctBase + (0.85 / cols.length * 50), `Schreibe "${col}" (${docs.length} Docs)…`);
 
             // Dann schreiben (in Batches à 400)
             for (let i = 0; i < docs.length; i += 400) {
@@ -10502,13 +10688,18 @@ async function bkpConfirmRestore() {
             restoredTotal += docs.length;
         }
 
+        setRestoreProgress(98, 'Aktion protokollieren…');
         await logAction('backup_restored', _bkpRestoreId, {
             collections: cols,
             restoredDocs: restoredTotal,
             restoredBy: auth.currentUser?.email
         });
 
-        document.getElementById('bkp-restore-modal').style.display = 'none';
+        setRestoreProgress(100, 'Fertig ✅');
+        setTimeout(() => {
+            document.getElementById('bkp-restore-modal').style.display = 'none';
+        }, 900);
+
         showToast(`✅ ${restoredTotal} Dokumente aus ${cols.length} Collections wiederhergestellt!`, 'success');
         _bkpRestoreId = null;
 
@@ -10517,6 +10708,198 @@ async function bkpConfirmRestore() {
         console.error('Restore error:', e);
     } finally {
         if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-rotate-left"></i> Wiederherstellen'; }
+    }
+}
+
+// ── Backup-Integrität prüfen ──────────────────────────────────────────────
+
+async function bkpVerify(id, btn) {
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
+    showToast('🔍 Backup wird geprüft…');
+    try {
+        const snap = await db.collection(BKP_COLLECTION).doc(id).get();
+        if (!snap.exists) throw new Error('Backup nicht gefunden.');
+        const b    = snap.data();
+        const data = JSON.parse(b.data || '{}');
+        const cols = b.collections || Object.keys(data);
+        const counts = b.meta?.docCounts || {};
+        let issues = [];
+
+        for (const col of cols) {
+            const arr = data[col];
+            if (!Array.isArray(arr)) { issues.push(`"${col}": kein Array`); continue; }
+            const expected = counts[col];
+            if (expected !== undefined && arr.length !== expected) {
+                issues.push(`"${col}": erwartet ${expected}, gefunden ${arr.length}`);
+            }
+        }
+
+        if (issues.length === 0) {
+            showToast(`✅ Backup OK — ${cols.length} Collections, alle Dokumente vollständig`, 'success');
+            if (btn) { btn.style.borderColor='rgba(52,211,153,.5)'; btn.style.color='#34d399'; }
+        } else {
+            showToast(`⚠️ ${issues.length} Problem(e): ${issues.join(' | ')}`, 'warning');
+            if (btn) { btn.style.borderColor='rgba(251,191,36,.5)'; btn.style.color='#fbbf24'; }
+        }
+    } catch(e) {
+        showToast('❌ Prüfung fehlgeschlagen: ' + e.message, 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-shield-check"></i>'; }
+    }
+}
+
+// ── Import aus lokaler Datei ──────────────────────────────────────────────
+
+let _bkpImportData = null;  // geparstes Backup-Objekt aus der Datei
+
+function bkpImportFromFile() {
+    document.getElementById('bkp-import-file-input')?.click();
+}
+
+function bkpImportSelectAll(val) {
+    document.querySelectorAll('.bkp-import-col-chip').forEach(el => {
+        val ? el.classList.add('bkp-import-chip-active') : el.classList.remove('bkp-import-chip-active');
+        bkpUpdateImportChipStyle(el);
+    });
+}
+function bkpUpdateImportChipStyle(el) {
+    const on = el.classList.contains('bkp-import-chip-active');
+    el.style.background  = on ? 'rgba(52,211,153,.15)' : 'rgba(255,255,255,.04)';
+    el.style.borderColor = on ? 'rgba(52,211,153,.4)'  : 'rgba(255,255,255,.1)';
+    el.style.color       = on ? '#34d399' : 'rgba(255,255,255,.4)';
+}
+
+function bkpHandleFileImport(input) {
+    const file = input.files?.[0];
+    if (!file) return;
+    if (!file.name.endsWith('.json')) { showToast('⚠️ Nur JSON-Dateien erlaubt', 'warning'); return; }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const parsed = JSON.parse(e.target.result);
+            // Unterstützt beide Formate: saExportFull (collections-Objekt) & bkpRunNow (collections-Array + data-String)
+            let colData = parsed.collections || {};
+            // Falls das Objekt Collections als Arrays enthält (saExportFull-Format)
+            // → direkt verwenden
+            // Falls es ein bkpRunNow-Export ist (colData enthält nur Strings = Feldnamen)
+            // → nichts zu tun, colData ist bereits richtig
+
+            // Wenn colData ein Array ist (bkpRunNow-Format: collections=["orders",...]), hole data
+            if (Array.isArray(colData)) {
+                colData = typeof parsed.data === 'string' ? JSON.parse(parsed.data) : {};
+            }
+
+            const cols = Object.keys(colData).filter(k => Array.isArray(colData[k]));
+            if (!cols.length) throw new Error('Keine gültigen Collections gefunden.');
+
+            _bkpImportData = colData;
+
+            // Modal befüllen
+            const exportedAt = parsed.exportedAt || parsed.createdAt || '—';
+            const totalDocs  = cols.reduce((s, c) => s + colData[c].length, 0);
+            document.getElementById('bkp-import-file-desc').innerHTML =
+                `<strong style="color:#fff">${file.name}</strong><br>` +
+                `Exportiert: ${exportedAt}<br>` +
+                `${cols.length} Collections · ${totalDocs} Dokumente`;
+
+            const colList = document.getElementById('bkp-import-col-list');
+            if (colList) {
+                colList.innerHTML = cols.map(c => `
+                    <span class="bkp-import-col-chip bkp-import-chip-active"
+                        data-col="${c}"
+                        onclick="this.classList.toggle('bkp-import-chip-active');bkpUpdateImportChipStyle(this)"
+                        style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:99px;cursor:pointer;font-size:11px;font-weight:600;border:1px solid rgba(52,211,153,.4);background:rgba(52,211,153,.15);color:#34d399;transition:all .15s;user-select:none">
+                        <span>${c}</span><span style="opacity:.6;font-size:10px">${colData[c].length}</span>
+                    </span>`).join('');
+            }
+
+            const ip = document.getElementById('bkp-import-progress');
+            if (ip) ip.style.display = 'none';
+            const ipf = document.getElementById('bkp-import-prog-fill');
+            if (ipf) ipf.style.width = '0%';
+
+            document.getElementById('bkp-import-modal').style.display = 'flex';
+        } catch(err) {
+            showToast('❌ Datei ungültig: ' + err.message, 'error');
+        }
+        // Input zurücksetzen, damit dieselbe Datei erneut gewählt werden kann
+        input.value = '';
+    };
+    reader.readAsText(file);
+}
+
+async function bkpConfirmImport() {
+    if (!_bkpImportData) return;
+
+    const selectedCols = [...document.querySelectorAll('.bkp-import-col-chip.bkp-import-chip-active')].map(el => el.dataset.col);
+    if (!selectedCols.length) { showToast('⚠️ Keine Collections ausgewählt!', 'warning'); return; }
+
+    const btn = document.getElementById('bkp-import-confirm-btn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Importiere…'; }
+
+    const ip    = document.getElementById('bkp-import-progress');
+    const ipLbl = document.getElementById('bkp-import-prog-label');
+    const ipPct = document.getElementById('bkp-import-prog-pct');
+    const ipFil = document.getElementById('bkp-import-prog-fill');
+    if (ip) ip.style.display = 'block';
+    const setImportProgress = (pct, label) => {
+        if (ipLbl) ipLbl.textContent = label;
+        if (ipPct) ipPct.textContent = Math.round(pct) + '%';
+        if (ipFil) ipFil.style.width = pct + '%';
+    };
+
+    let restoredTotal = 0;
+    try {
+        for (let ci = 0; ci < selectedCols.length; ci++) {
+            const col  = selectedCols[ci];
+            const docs = _bkpImportData[col];
+            if (!Array.isArray(docs)) continue;
+
+            const pctBase = 5 + (ci / selectedCols.length) * 88;
+            setImportProgress(pctBase, `Lösche alte "${col}"…`);
+
+            const existingSnap = await db.collection(col).get();
+            for (let i = 0; i < existingSnap.docs.length; i += 400) {
+                const batch = db.batch();
+                existingSnap.docs.slice(i, i + 400).forEach(d => batch.delete(d.ref));
+                await batch.commit();
+            }
+
+            setImportProgress(pctBase + (88 / selectedCols.length * 0.5), `Schreibe "${col}" (${docs.length} Docs)…`);
+
+            for (let i = 0; i < docs.length; i += 400) {
+                const batch = db.batch();
+                docs.slice(i, i + 400).forEach(doc => {
+                    const { id, ...data } = doc;
+                    batch.set(db.collection(col).doc(String(id)), data);
+                });
+                await batch.commit();
+            }
+            restoredTotal += docs.length;
+        }
+
+        setImportProgress(98, 'Protokolliere…');
+        await logAction('backup_file_imported', 'file', {
+            collections: selectedCols,
+            restoredDocs: restoredTotal,
+            restoredBy: auth.currentUser?.email
+        });
+
+        setImportProgress(100, 'Import abgeschlossen ✅');
+        setTimeout(() => {
+            document.getElementById('bkp-import-modal').style.display = 'none';
+            _bkpImportData = null;
+        }, 900);
+
+        showToast(`✅ Import: ${restoredTotal} Dokumente aus ${selectedCols.length} Collections`, 'success');
+        await bkpLoadHistory();
+
+    } catch(e) {
+        showToast('❌ Import fehlgeschlagen: ' + e.message, 'error');
+        console.error('Import error:', e);
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-file-import"></i> Importieren'; }
     }
 }
 
@@ -10538,6 +10921,7 @@ const _bkpLabelMap = {
     'backup_downloaded':    '📥 Backup heruntergeladen',
     'backup_deleted':       '🗑️ Backup gelöscht',
     'backup_restored':      '🔄 Backup wiederhergestellt',
+    'backup_file_imported': '📂 Backup aus Datei importiert',
 };
 // Extend existing map by patching renderLogEntries
 const _origRenderLogEntries = window.renderLogEntries;

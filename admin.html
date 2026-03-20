@@ -10946,7 +10946,10 @@ function bndCardHTML(b) {
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px">
             <div style="min-width:0">
                 <div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${b.name||'–'}</div>
-                <div style="font-size:11px;color:rgba(255,255,255,.3)">${b.description||''}</div>
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:2px">
+                    ${b.description?`<span style="font-size:11px;color:rgba(255,255,255,.3)">${b.description}</span>`:''}
+                    ${b.category?`<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;background:rgba(103,232,249,.1);color:#67e8f9;border:1px solid rgba(103,232,249,.2)"><i class="fa-solid fa-tag" style="margin-right:3px;font-size:9px"></i>${b.category}</span>`:'<span style="font-size:10px;color:rgba(255,255,255,.2);font-style:italic">Keine Kategorie</span>'}
+                </div>
             </div>
             <span class="bnd-badge ${b.active?'bnd-badge-active':'bnd-badge-inactive'}" style="flex-shrink:0">${b.active?'✅ Aktiv':'⏸ Inaktiv'}</span>
         </div>
@@ -11021,7 +11024,19 @@ function bndShowModal(b=null) {
             <div><div class="bnd-field-label">Bundle-Name *</div><input class="bnd-input" id="bnd-f-name" placeholder="z.B. Starter-Set Tropical" value="${b?.name||''}"></div>
             <div><div class="bnd-field-label">Bundle-Preis (€) *</div><input class="bnd-input" id="bnd-f-price" type="number" step="0.01" min="0" placeholder="z.B. 34.99" value="${b?.bundlePrice||''}"></div>
         </div>
-        <div style="margin-bottom:16px"><div class="bnd-field-label">Beschreibung</div><input class="bnd-input" id="bnd-f-desc" placeholder="Kurze Info für den Kunden" value="${b?.description||''}"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+            <div>
+                <div class="bnd-field-label">Beschreibung</div>
+                <input class="bnd-input" id="bnd-f-desc" placeholder="Kurze Info für den Kunden" value="${b?.description||''}">
+            </div>
+            <div>
+                <div class="bnd-field-label">Kategorie <span style="font-weight:400;opacity:.5;font-size:10px">(im Shop anzeigen unter)</span></div>
+                <select class="bnd-input" id="bnd-f-category" style="color-scheme:dark;cursor:pointer">
+                    <option value="">— Keine Kategorie —</option>
+                    ${allCategories.map(c=>`<option value="${c.name}" ${(b?.category===c.name)?'selected':''}>${c.name}</option>`).join('')}
+                </select>
+            </div>
+        </div>
 
         <!-- Produkt-Picker -->
         <div style="margin-bottom:14px">
@@ -11333,15 +11348,16 @@ Antworte NUR auf Deutsch, in diesem Format:
 // ── Speichern ─────────────────────────────────────────────────────────────
 
 async function bndSave() {
-    const name =document.getElementById('bnd-f-name')?.value?.trim();
-    const price=parseFloat(document.getElementById('bnd-f-price')?.value);
-    const desc =document.getElementById('bnd-f-desc')?.value?.trim()||'';
+    const name    = document.getElementById('bnd-f-name')?.value?.trim();
+    const price   = parseFloat(document.getElementById('bnd-f-price')?.value);
+    const desc    = document.getElementById('bnd-f-desc')?.value?.trim()||'';
+    const category= document.getElementById('bnd-f-category')?.value||'';
     if(!name){showToast('⚠️ Bundle-Name fehlt','warning');return;}
     if(!price||price<=0){showToast('⚠️ Bitte einen gültigen Preis eingeben','warning');return;}
     if(!_bundleItems.length){showToast('⚠️ Mindestens ein Produkt hinzufügen','warning');return;}
     const orig=_bundleItems.reduce((s,it)=>s+it.price*it.qty,0);
     const disc=orig>0?((orig-price)/orig*100):0;
-    const payload={name,description:desc,bundlePrice:price,originalTotal:orig,discountPct:disc,items:_bundleItems,updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+    const payload={name,description:desc,category:category||null,bundlePrice:price,originalTotal:orig,discountPct:disc,items:_bundleItems,updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
     try {
         if(_bundleEditId){
             await db.collection(BND_COL).doc(_bundleEditId).update(payload);

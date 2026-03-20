@@ -4676,14 +4676,22 @@ function renderProductTable() {
 document.getElementById('product-search').addEventListener('input', applyAdminFilters);
 
 async function toggleAvailable(id, val) {
-    // BUG FIX: Use the passed checkbox element directly via event.currentTarget
-    // instead of relying on implicit global `event` which fails in strict mode.
     const cb = (typeof event !== 'undefined' && event.target) || document.querySelector(`[onchange*="toggleAvailable('${id}'"]`);
     const pill = cb ? cb.parentElement.querySelector('.prd-avail-pill') : null;
+    // Optimistic UI update — revert on error
     if (pill) pill.textContent = val ? 'Aktiv' : 'Inaktiv';
-    await db.collection('products').doc(id).update({ available: val });
-    await logAction("product_availability_changed", id, { available: val });
-    showToast('Verfügbarkeit aktualisiert');
+    // BUG FIX: No try/catch — Firestore errors were silently swallowed, leaving the
+    // UI showing the wrong state (checkbox flipped, pill updated, but DB unchanged).
+    try {
+        await db.collection('products').doc(id).update({ available: val });
+        await logAction("product_availability_changed", id, { available: val });
+        showToast('Verfügbarkeit aktualisiert');
+    } catch(e) {
+        // Revert optimistic UI change
+        if (pill) pill.textContent = val ? 'Inaktiv' : 'Aktiv';
+        if (cb) cb.checked = !val;
+        showToast('❌ Fehler: ' + e.message, 'error');
+    }
 }
 async function deleteProduct(id) {
     if (!confirm('⚠️ Produkt WIRKLICH PERMANENT löschen?\n\nDas kann nicht rückgängig gemacht werden!')) return;
@@ -5289,10 +5297,15 @@ async function showCouponHistory(couponId) {
 
 async function deleteCoupon(id) {
     if (!confirm('Gutschein wirklich löschen?')) return;
-    await db.collection('coupons').doc(id).delete();
-    await logAction("coupon_deleted", id);
-    showToast('🗑️ Gutschein gelöscht');
-    loadCoupons();
+    // BUG FIX: No try/catch — a Firestore error silently left the coupon in the list.
+    try {
+        await db.collection('coupons').doc(id).delete();
+        await logAction("coupon_deleted", id);
+        showToast('🗑️ Gutschein gelöscht');
+        loadCoupons();
+    } catch(e) {
+        showToast('❌ Löschen fehlgeschlagen: ' + e.message, 'error');
+    }
 }
 
 // ====================== BESTELLUNGEN v2 ======================
@@ -5541,10 +5554,15 @@ async function deleteOrder() {
         }
     }
 
-    await db.collection('orders').doc(currentOrderId).delete();
-    await logAction('order_deleted', currentOrderId);
-    showToast('🗑️ Bestellung gelöscht');
-    closeOrderModal();
+    // BUG FIX: No try/catch — a Firestore error left the modal open with no feedback.
+    try {
+        await db.collection('orders').doc(currentOrderId).delete();
+        await logAction('order_deleted', currentOrderId);
+        showToast('🗑️ Bestellung gelöscht');
+        closeOrderModal();
+    } catch(e) {
+        showToast('❌ Löschen fehlgeschlagen: ' + e.message, 'error');
+    }
 }
 
 // ====================== BENUTZER v2 ======================
@@ -5947,21 +5965,34 @@ async function loadAnalytics() {
     }
     let query = db.collection("orders").where("date",">=",since);
     if (until) query = query.where("date","<=",until);
-    const ordersSnap = await query.get();
+
+    // BUG FIX: No try/catch — a Firestore error (missing index, permissions) left
+    // the analytics tab blank with no explanation.
+    let ordersSnap;
+    try {
+        ordersSnap = await query.get();
+    } catch(e) {
+        console.error('loadAnalytics query failed:', e);
+        showToast('❌ Analytics konnten nicht geladen werden: ' + e.message, 'error');
+        return;
+    }
 
     let dailyRevenue={}, dailyOrdersCount={}, totalRevenue=0, totalOrders=0;
     let productMap=new Map(), userMap=new Map(), statusMap=new Map();
 
     ordersSnap.forEach(doc=>{
         const o=doc.data();
+        // BUG FIX: Stornierte Bestellungen wurden im Umsatz mitgezählt —
+        // sie liefern keinen echten Umsatz, da die Zahlung nie eingegangen ist.
+        const st=o.status||'Zahlung erwartet';
+        statusMap.set(st,(statusMap.get(st)||0)+1);
+        if (st === 'Storniert') return; // Nicht in Umsatz/Produktzählung
         const day=o.date.toDate().toISOString().slice(0,10);
         dailyRevenue[day]=(dailyRevenue[day]||0)+o.total;
         dailyOrdersCount[day]=(dailyOrdersCount[day]||0)+1;
         totalRevenue+=o.total; totalOrders++;
         o.items.forEach(item=>productMap.set(item.name,(productMap.get(item.name)||0)+item.qty));
         if(o.userEmail) userMap.set(o.userEmail,(userMap.get(o.userEmail)||0)+1);
-        const st=o.status||'Zahlung erwartet';
-        statusMap.set(st,(statusMap.get(st)||0)+1);
     });
 
     // KPIs
@@ -6062,7 +6093,8 @@ async function generatePDFReport() {
     const {jsPDF}=window.jspdf; const pdfDoc=new jsPDF();
     pdfDoc.setFontSize(22);pdfDoc.text("WaveVapes Monatsbericht",20,20); pdfDoc.setFontSize(11);pdfDoc.text(`Erstellt am: ${new Date().toLocaleDateString("de-DE")} ${new Date().toLocaleTimeString("de-DE")}`,20,30);
     const thirtyDaysAgo=firebase.firestore.Timestamp.fromDate(new Date(Date.now()-30*24*60*60*1000)); const ordersSnap=await db.collection("orders").where("date",">=",thirtyDaysAgo).get();
-    let totalRevenue=0,orderCount=0;const productMap=new Map(); ordersSnap.forEach(doc=>{const o=doc.data();totalRevenue+=o.total||0;orderCount++;o.items.forEach(item=>productMap.set(item.name,(productMap.get(item.name)||0)+item.qty));});
+    // BUG FIX: Stornierte Bestellungen wurden mitgezählt — excluded now.
+    let totalRevenue=0,orderCount=0;const productMap=new Map(); ordersSnap.forEach(doc=>{const o=doc.data();if((o.status||'')===('Storniert'))return;totalRevenue+=o.total||0;orderCount++;o.items.forEach(item=>productMap.set(item.name,(productMap.get(item.name)||0)+item.qty));});
     const topProducts=Array.from(productMap.entries()).sort((a,b)=>b[1]-a[1]).slice(0,5);
     pdfDoc.setFontSize(14);pdfDoc.text("Zusammenfassung letzte 30 Tage",20,45); pdfDoc.setFontSize(11);pdfDoc.text(`Gesamtumsatz: ${totalRevenue.toFixed(2)} €`,20,55);pdfDoc.text(`Bestellungen: ${orderCount}`,20,62);pdfDoc.text("Top 5 Produkte:",20,75);
     let y=82;topProducts.forEach(([name,qty])=>{pdfDoc.text(`${name}: ${qty} Stück`,25,y);y+=7;});
@@ -6485,18 +6517,25 @@ async function awardLoyaltyIfProcessed(orderId) {
     if (points > 0) showToast(`🎉 +${points} Loyalty-Punkte gutgeschrieben!`, 'success');
 }
 async function reverseLoyaltyIfCredited(orderId) {
-    const doc = await db.collection('orders').doc(orderId).get();
-    if (!doc.exists) return;
-    const order = doc.data();
-    if (!order || order.loyaltyCredited !== true) return;
-    if (!order.userId) return;
-    const points = order.loyaltyEarned || 0;
-    if (points <= 0) return;
-    await db.collection('users').doc(order.userId).update({
-        totalBonusPoints: firebase.firestore.FieldValue.increment(-points)
+    // BUG FIX: Same race condition as awardLoyaltyIfProcessed — two admins could
+    // both pass the loyaltyCredited===true check and deduct points twice.
+    // Fixed with a transaction, mirroring the award function.
+    let points = 0;
+    await db.runTransaction(async tx => {
+        const orderRef = db.collection('orders').doc(orderId);
+        const snap = await tx.get(orderRef);
+        if (!snap.exists) return;
+        const order = snap.data();
+        if (!order || order.loyaltyCredited !== true) return;
+        if (!order.userId) return;
+        points = order.loyaltyEarned || 0;
+        if (points <= 0) return;
+        tx.update(db.collection('users').doc(order.userId), {
+            totalBonusPoints: firebase.firestore.FieldValue.increment(-points)
+        });
+        tx.update(orderRef, { loyaltyCredited: false });
     });
-    await db.collection('orders').doc(orderId).update({ loyaltyCredited: false });
-    showToast(`↩ ${points} Loyalty-Punkte zurückgebucht (Storno)`, 'success');
+    if (points > 0) showToast(`↩ ${points} Loyalty-Punkte zurückgebucht (Storno)`, 'success');
 }
 async function handleStockOnStatusChange(orderId, newStatus) {
     const doc = await db.collection('orders').doc(orderId).get();

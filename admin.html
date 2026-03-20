@@ -4434,9 +4434,10 @@ function renderProductTable() {
 document.getElementById('product-search').addEventListener('input', applyAdminFilters);
 
 async function toggleAvailable(id, val) {
-    // Update pill text instantly
-    const cb = event.target;
-    const pill = cb.parentElement.querySelector('.prd-avail-pill');
+    // BUG FIX: Use the passed checkbox element directly via event.currentTarget
+    // instead of relying on implicit global `event` which fails in strict mode.
+    const cb = (typeof event !== 'undefined' && event.target) || document.querySelector(`[onchange*="toggleAvailable('${id}'"]`);
+    const pill = cb ? cb.parentElement.querySelector('.prd-avail-pill') : null;
     if (pill) pill.textContent = val ? 'Aktiv' : 'Inaktiv';
     await db.collection('products').doc(id).update({ available: val });
     await logAction("product_availability_changed", id, { available: val });
@@ -4465,13 +4466,19 @@ function toggleSelectAllProducts(cb) { document.querySelectorAll('.product-check
 async function enforceCategories() {
     if (!confirm('Alle Produkte automatisch kategorisieren? (WaveVapes Tornado-Produkte werden NICHT verändert)')) return;
     const snap = await db.collection('products').get();
-    const batch = db.batch(); let changed = 0;
-    snap.forEach(doc => {
-        const p = doc.data();
-        const targetCat = p.isNew === true ? "Neue Sorten" : "Normale Sorten";
-        if (p.category !== targetCat) { batch.update(doc.ref, { category: targetCat }); changed++; }
-    });
-    if (changed > 0) { await batch.commit(); await logAction("auto_category_assignment", "", { changed }); showToast(`✅ ${changed} Produkte kategorisiert!`, "success"); }
+    // BUG FIX: Use chunked batches of 499 — a single batch silently fails above 500 writes
+    const docs = snap.docs;
+    let changed = 0;
+    for (let i = 0; i < docs.length; i += 499) {
+        const batch = db.batch();
+        docs.slice(i, i + 499).forEach(doc => {
+            const p = doc.data();
+            const targetCat = p.isNew === true ? "Neue Sorten" : "Normale Sorten";
+            if (p.category !== targetCat) { batch.update(doc.ref, { category: targetCat }); changed++; }
+        });
+        await batch.commit();
+    }
+    if (changed > 0) { await logAction("auto_category_assignment", "", { changed }); showToast(`✅ ${changed} Produkte kategorisiert!`, "success"); }
     else showToast("✅ Alles war schon korrekt");
     loadProducts();
 }
@@ -5405,9 +5412,9 @@ function usrRenderTable() {
 
 document.getElementById('user-search').addEventListener('input', usrRenderTable);
 async function toggleFreeShipping(uid, enable) {
-    // Update pill text instantly
-    const cb = event.target;
-    const pill = cb.parentElement.querySelector('.usr-ship-pill');
+    // BUG FIX: Use implicit event safely with a fallback instead of assuming it always exists
+    const cb = (typeof event !== 'undefined' && event.target) || null;
+    const pill = cb ? cb.parentElement.querySelector('.usr-ship-pill') : null;
     if (pill) pill.innerHTML = `<i class="fa-solid fa-truck"></i>${enable ? 'Gratis' : 'Standard'}`;
     await db.collection('users').doc(uid).update({freeShipping:enable});
     await logAction(enable?"free_shipping_enabled":"free_shipping_disabled",uid);
@@ -7709,7 +7716,9 @@ function loadPresence() {
 }
 async function cleanupOldPresence() {
     const snap=await db.collection("presence").get();const batch=db.batch();const now=Date.now();let deleted=0;
-    snap.forEach(doc=>{const d=doc.data();if(d.lastSeen){const last=d.lastSeen.toDate().getTime();if(now-last>45000){batch.delete(doc.ref);deleted++;}}});
+    // BUG FIX: Aligned threshold to 90s — matches loadPresence() display window.
+    // Previously used 45s which deleted entries that were still shown as active.
+    snap.forEach(doc=>{const d=doc.data();if(d.lastSeen){const last=d.lastSeen.toDate().getTime();if(now-last>90000){batch.delete(doc.ref);deleted++;}}});
     await batch.commit();showToast(`✅ ${deleted} alte Einträge gelöscht`,"success");
 }
 

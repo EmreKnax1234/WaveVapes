@@ -4143,6 +4143,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
+const MYSTERY_ID = 999; // BUG FIX: single constant — mirrors index.html
 
 // EmailJS — same service/key as shop frontend
 const ADMIN_EMAILJS_SERVICE    = "service_lzvte0x";
@@ -4299,12 +4300,20 @@ function csSetValue(id, val) {
 async function logAction(action, target = "", details = {}) {
     if (!auth.currentUser) return;
     target = target || "";
-    await db.collection("admin_logs").add({
-        action, target,
-        adminEmail: auth.currentUser.email,
-        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-        details: details || {}
-    });
+    // BUG FIX: Wrapped in try/catch. Without this, a transient Firestore error
+    // (network blip, permission issue) threw an unhandled rejection that bubbled up
+    // into the calling function (quickStatus, saveOrderChanges, etc.) and showed
+    // the admin a misleading error even though the actual operation had succeeded.
+    try {
+        await db.collection("admin_logs").add({
+            action, target,
+            adminEmail: auth.currentUser.email,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            details: details || {}
+        });
+    } catch(e) {
+        console.warn('logAction failed (non-critical):', e.code, e.message);
+    }
 }
 
 // ====================== LAGERWARNUNG ======================
@@ -4443,7 +4452,7 @@ async function updateStats() {
             totalRevenue += o.total || 0;
             if (Array.isArray(o.items)) {
                 o.items.forEach(item => {
-                    if (item.id != 999) totalSold += item.qty || 0; // 999 = Mystery Vape
+                    if (item.id != MYSTERY_ID) totalSold += item.qty || 0; // 999 = Mystery Vape
                 });
             }
         });
@@ -5344,12 +5353,19 @@ document.getElementById('order-search').addEventListener('input', ordRenderTable
 document.getElementById('status-filter').addEventListener('change', ordSyncKpiFilter);
 
 async function quickStatus(id, status) {
-    await handleStockOnStatusChange(id, status);
-    await db.collection('orders').doc(id).update({ status });
-    if (status === "Wird bearbeitet") await awardLoyaltyIfProcessed(id);
-    if (status === "Storniert") await reverseLoyaltyIfCredited(id);
-    await logAction("order_status_changed", id, { status });
-    showToast(`Status auf „${status}" gesetzt`);
+    // BUG FIX: Wrapped in try/catch — any Firestore error now shows a
+    // user-friendly toast instead of a silent unhandled rejection.
+    try {
+        await handleStockOnStatusChange(id, status);
+        await db.collection('orders').doc(id).update({ status });
+        if (status === "Wird bearbeitet") await awardLoyaltyIfProcessed(id);
+        if (status === "Storniert") await reverseLoyaltyIfCredited(id);
+        await logAction("order_status_changed", id, { status });
+        showToast(`Status auf „${status}" gesetzt`);
+    } catch(e) {
+        console.error('quickStatus error:', e);
+        showToast('❌ Status konnte nicht gesetzt werden: ' + e.message, 'error');
+    }
 }
 
 async function showOrderModal(orderId) {
@@ -5417,15 +5433,22 @@ async function saveOrderChanges() {
     const carrier      = document.getElementById('modal-carrier').value;
     const tracking     = document.getElementById('modal-tracking').value.trim();
     const internalNotes= document.getElementById('modal-internal-notes').value.trim();
-    await handleStockOnStatusChange(currentOrderId, status);
-    const updateData = { status, carrier, trackingNumber: tracking || firebase.firestore.FieldValue.delete() };
-    updateData.internalNotes = internalNotes || firebase.firestore.FieldValue.delete();
-    await db.collection('orders').doc(currentOrderId).update(updateData);
-    if (status === "Wird bearbeitet") await awardLoyaltyIfProcessed(currentOrderId);
-    if (status === "Storniert") await reverseLoyaltyIfCredited(currentOrderId);
-    await logAction("order_updated", currentOrderId, { status });
-    showToast('✅ Bestellung aktualisiert');
-    closeOrderModal();
+    // BUG FIX: Wrapped in try/catch so Firestore errors surface as toasts,
+    // not silent failures that leave the modal open with no feedback.
+    try {
+        await handleStockOnStatusChange(currentOrderId, status);
+        const updateData = { status, carrier, trackingNumber: tracking || firebase.firestore.FieldValue.delete() };
+        updateData.internalNotes = internalNotes || firebase.firestore.FieldValue.delete();
+        await db.collection('orders').doc(currentOrderId).update(updateData);
+        if (status === "Wird bearbeitet") await awardLoyaltyIfProcessed(currentOrderId);
+        if (status === "Storniert") await reverseLoyaltyIfCredited(currentOrderId);
+        await logAction("order_updated", currentOrderId, { status });
+        showToast('✅ Bestellung aktualisiert');
+        closeOrderModal();
+    } catch(e) {
+        console.error('saveOrderChanges error:', e);
+        showToast('❌ Speichern fehlgeschlagen: ' + e.message, 'error');
+    }
 }
 
 async function deleteOrder() {
@@ -5443,7 +5466,7 @@ async function deleteOrder() {
         if (shouldRestoreStock && order.items?.length) {
             const batch = db.batch();
             for (const item of order.items) {
-                if (item.id == 999) continue;
+                if (item.id == MYSTERY_ID) continue;
                 const ref = db.collection('products').doc(String(item.id));
                 const update = (order.stockReserved && !wasProcessed)
                     ? { stock: firebase.firestore.FieldValue.increment(item.qty) }
@@ -5739,7 +5762,7 @@ async function euDrawerDanger(action){
             const wasProcessed = ['Wird bearbeitet','Versendet','Zugestellt'].includes(o.status);
             if (wasProcessed && o.items?.length) {
                 o.items.forEach(item => {
-                    if (item.id == 999) return;
+                    if (item.id == MYSTERY_ID) return;
                     statsBatch.update(db.collection('products').doc(String(item.id)), {
                         stock: firebase.firestore.FieldValue.increment(item.qty),
                         sold:  firebase.firestore.FieldValue.increment(-item.qty)
@@ -5770,7 +5793,7 @@ async function deleteUser(uid, email) {
             const wasProcessed = ['Wird bearbeitet','Versendet','Zugestellt'].includes(o.status);
             if (wasProcessed && o.items?.length) {
                 o.items.forEach(item => {
-                    if (item.id == 999) return;
+                    if (item.id == MYSTERY_ID) return;
                     statsBatch.update(db.collection('products').doc(String(item.id)), {
                         stock: firebase.firestore.FieldValue.increment(item.qty),
                         sold:  firebase.firestore.FieldValue.increment(-item.qty)
@@ -6378,18 +6401,26 @@ function getStatusClass(s) {
     }
 }
 async function awardLoyaltyIfProcessed(orderId) {
-    const doc = await db.collection('orders').doc(orderId).get();
-    if (!doc.exists) return;
-    const order = doc.data();
-    if (!order || order.loyaltyCredited === true) return;
-    if (!order.userId) return; // safety guard
-    const points = order.loyaltyEarned || 0;
-    if (points <= 0) return;
-    await db.collection('users').doc(order.userId).update({
-        totalBonusPoints: firebase.firestore.FieldValue.increment(points)
+    // BUG FIX: Replaced get() + update() with a Firestore transaction.
+    // The old code had a race condition: two admins changing the same order
+    // simultaneously could both pass the loyaltyCredited===true check and
+    // credit points twice. The transaction serialises the read+write atomically.
+    let points = 0;
+    await db.runTransaction(async tx => {
+        const orderRef = db.collection('orders').doc(orderId);
+        const snap = await tx.get(orderRef);
+        if (!snap.exists) return;
+        const order = snap.data();
+        if (!order || order.loyaltyCredited === true) return;
+        if (!order.userId) return;
+        points = order.loyaltyEarned || 0;
+        if (points <= 0) return;
+        tx.update(db.collection('users').doc(order.userId), {
+            totalBonusPoints: firebase.firestore.FieldValue.increment(points)
+        });
+        tx.update(orderRef, { loyaltyCredited: true });
     });
-    await db.collection('orders').doc(orderId).update({ loyaltyCredited: true });
-    showToast(`🎉 +${points} Loyalty-Punkte gutgeschrieben!`, 'success');
+    if (points > 0) showToast(`🎉 +${points} Loyalty-Punkte gutgeschrieben!`, 'success');
 }
 async function reverseLoyaltyIfCredited(orderId) {
     const doc = await db.collection('orders').doc(orderId).get();
@@ -6416,7 +6447,7 @@ async function handleStockOnStatusChange(orderId, newStatus) {
     if (newStatus === 'Wird bearbeitet' && oldStatus !== 'Wird bearbeitet') {
         const batch = db.batch();
         for (const item of order.items) {
-            if (item.id == 999) continue;
+            if (item.id == MYSTERY_ID) continue;
             const update = order.stockReserved
                 ? { sold: firebase.firestore.FieldValue.increment(item.qty) }          // new: stock already reserved
                 : { stock: firebase.firestore.FieldValue.increment(-item.qty),         // legacy: decrement stock too
@@ -6435,7 +6466,7 @@ async function handleStockOnStatusChange(orderId, newStatus) {
     if (shouldRestoreStock) {
         const batch = db.batch();
         for (const item of order.items) {
-            if (item.id == 999) continue;
+            if (item.id == MYSTERY_ID) continue;
             const update = (order.stockReserved && !wasProcessed)
                 ? { stock: firebase.firestore.FieldValue.increment(item.qty) }                     // new order, not yet processed — only restore stock
                 : { stock: firebase.firestore.FieldValue.increment(item.qty),                      // processed or legacy — restore stock + undo sold
@@ -7191,7 +7222,12 @@ function switchTab(n) {
     if(n===10)loadExtendedUsers();
     if(n===13)loadCustomerOverview();
     if(n===14)loadPromos();
-    if(n===15)loadClickAnalytics();
+    if(n===15) {
+        loadClickAnalytics();
+    } else {
+        // Tear down click-analytics live listener when leaving tab 15
+        if(_caUnsub) { _caUnsub(); _caUnsub = null; }
+    }
 }
 function toggleSidebar(){
     const s=document.getElementById('sidebar');
@@ -8313,9 +8349,29 @@ let _caTypeFilter  = '';   // '' | 'loggedin' | 'guest'
 let _caPage        = 0;
 const CA_PAGE_SIZE = 50;
 
-let _caBarChart   = null;
-let _caDonutChart = null;
-let _caLineChart  = null;
+let _caBarChart    = null;
+let _caDonutChart  = null;
+let _caLineChart   = null;
+let _caUnsub       = null; // BUG FIX: track live listener for cleanup
+
+// Helper: parse a Firestore click_event doc into a normalised JS object
+function _caParseDoc(d) {
+    const data = d.data();
+    const tsRaw = data.ts || data.createdAt || null;
+    // ts can be a pending FieldValue on the first snapshot tick — fall back to now
+    const tsDate = tsRaw ? (tsRaw.toDate ? tsRaw.toDate() : new Date(tsRaw)) : new Date();
+    return {
+        id:        d.id,
+        label:     data.label     || 'Unbekannt',
+        // BUG FIX: explicit === true so missing-field docs are not wrongly counted as guests
+        isGuest:   data.isGuest   === true,
+        userId:    data.userId    || null,
+        userEmail: data.userEmail || null,
+        page:      data.page      || '/',
+        ts:        tsDate,
+        productId: data.productId || null,
+    };
+}
 
 async function caWriteTestEvent() {
     try {
@@ -8327,55 +8383,43 @@ async function caWriteTestEvent() {
             page: '/admin-test',
             ts: firebase.firestore.FieldValue.serverTimestamp(),
         });
-        showToast('✅ Test-Event geschrieben — jetzt Aktualisieren klicken', 'success');
+        showToast('✅ Test-Event geschrieben — erscheint automatisch im Live-Stream', 'success');
     } catch(e) {
         showToast('❌ Schreiben fehlgeschlagen: ' + e.message, 'error');
         console.error('caWriteTestEvent error:', e);
     }
 }
 
-async function loadClickAnalytics() {
+// BUG FIX: replaced one-shot get() with onSnapshot so new click events appear
+// in the dashboard in real-time without the admin needing to click "Aktualisieren".
+// The previous listener (if any) is torn down first to avoid duplicate listeners
+// when the admin navigates away and back to tab 15.
+function loadClickAnalytics() {
     const tbody = document.getElementById('ca-events-tbody');
-    if (tbody) tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:40px;color:rgba(255,255,255,.2);font-size:13px"><i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>Lade Click-Events...</td></tr>`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:40px;color:rgba(255,255,255,.2);font-size:13px"><i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>Verbinde Live-Stream...</td></tr>`;
 
-    try {
-        // Kein orderBy -> kein Index noetig; wir sortieren clientseitig
-        const snap = await db.collection('click_events').limit(2000).get();
+    // Tear down previous listener
+    if (_caUnsub) { _caUnsub(); _caUnsub = null; }
 
-        if (snap.empty) {
-            _caAllEvents = [];
+    _caUnsub = db.collection('click_events')
+        .limit(2000)
+        .onSnapshot(snap => {
+            if (snap.empty) {
+                _caAllEvents = [];
+                caApplyFilters();
+                if (tbody) tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:40px;color:rgba(255,255,255,.2);font-size:13px"><i class="fa-solid fa-database" style="display:block;font-size:28px;margin-bottom:10px;opacity:.3"></i>Noch keine Click-Events in Firestore.<br><span style="font-size:11px;opacity:.6">Klicke im Shop auf Produkte, Kategorien etc.</span></td></tr>`;
+                return;
+            }
+            _caAllEvents = snap.docs.map(_caParseDoc).sort((a, b) => b.ts - a.ts);
             caApplyFilters();
-            if (tbody) tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:40px;color:rgba(255,255,255,.2);font-size:13px"><i class="fa-solid fa-database" style="display:block;font-size:28px;margin-bottom:10px;opacity:.3"></i>Noch keine Click-Events in Firestore.<br><span style="font-size:11px;opacity:.6">Klicke im Shop auf Produkte, Kategorien etc.</span></td></tr>`;
-            return;
-        }
-
-        _caAllEvents = snap.docs.map(d => {
-            const data = d.data();
-            // ts kann beim ersten Lesen noch pending sein -> createdAt oder jetzt als Fallback
-            const tsRaw = data.ts || data.createdAt || null;
-            const tsDate = tsRaw ? (tsRaw.toDate ? tsRaw.toDate() : new Date(tsRaw)) : new Date();
-            return {
-                id: d.id,
-                label: data.label || 'Unbekannt',
-                isGuest: data.isGuest !== false,
-                userId: data.userId || null,
-                userEmail: data.userEmail || null,
-                page: data.page || '/',
-                ts: tsDate,
-                productId: data.productId || null,
-            };
-        })
-        .sort((a, b) => b.ts - a.ts);
-
-        caApplyFilters();
-    } catch(e) {
-        console.error('loadClickAnalytics error:', e);
-        const isPermission = e.code === 'permission-denied' || (e.message && e.message.includes('permission'));
-        const hint = isPermission
-            ? '<br><span style="font-size:11px;opacity:.7">Firestore Rules: click_events braucht allow read: if isAdmin();</span>'
-            : '';
-        if (tbody) tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:40px;color:#f87171;font-size:13px"><i class="fa-solid fa-circle-exclamation" style="margin-right:8px"></i>${e.message}${hint}</td></tr>`;
-    }
+        }, e => {
+            console.error('loadClickAnalytics error:', e);
+            const isPermission = e.code === 'permission-denied' || (e.message && e.message.includes('permission'));
+            const hint = isPermission
+                ? '<br><span style="font-size:11px;opacity:.7">Firestore Rules: click_events braucht allow read: if isAdmin();</span>'
+                : '';
+            if (tbody) tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:40px;color:#f87171;font-size:13px"><i class="fa-solid fa-circle-exclamation" style="margin-right:8px"></i>${e.message}${hint}</td></tr>`;
+        });
 }
 
 function caSetPeriod(days, btn) {
@@ -8401,7 +8445,9 @@ function caSetTypeFilter(type, optEl) {
     caApplyFilters();
 }
 
-function caFilterTable() { _caPage = 0; caRenderTable(); }
+// BUG FIX: was only calling caRenderTable() — KPIs and charts ignored the search term.
+// caApplyFilters() rebuilds _caFiltered then calls caUpdateKPIs + caRenderCharts + caRenderTable.
+function caFilterTable() { _caPage = 0; caApplyFilters(); }
 
 function caApplyFilters() {
     const now = Date.now();
@@ -8511,17 +8557,20 @@ function caRenderCharts() {
     }
 
     // ── Line Chart: Verlauf ──
+    // BUG FIX 1: "Alle" used to cap at 30 days — now shows up to 90.
+    // BUG FIX 2: Key was dd.mm without year — collisions across calendar years.
+    //            Key is now dd.mm.yyyy so Jan 5 2025 ≠ Jan 5 2026.
     const dayBuckets = {};
-    const daysToShow = _caPeriodDays > 0 ? Math.min(_caPeriodDays, 30) : 30;
+    const daysToShow = _caPeriodDays > 0 ? Math.min(_caPeriodDays, 90) : 90;
     const now = new Date();
+    const dayKey = d => d.toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit', year:'numeric' });
     for (let i = daysToShow - 1; i >= 0; i--) {
         const d = new Date(now);
         d.setDate(d.getDate() - i);
-        const key = d.toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit' });
-        dayBuckets[key] = { all: 0, loggedin: 0, guest: 0 };
+        dayBuckets[dayKey(d)] = { all: 0, loggedin: 0, guest: 0 };
     }
     _caFiltered.forEach(e => {
-        const key = e.ts.toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit' });
+        const key = dayKey(e.ts);
         if (dayBuckets[key]) {
             dayBuckets[key].all++;
             if (e.isGuest) dayBuckets[key].guest++;
@@ -8657,7 +8706,8 @@ window.addEventListener('beforeunload', () => {
         _ordersUnsub,
         _watchOrdersUnsub,
         _rvAdminUnsub,
-        _rvStatsUnsub
+        _rvStatsUnsub,
+        _caUnsub   // BUG FIX: clean up click-analytics live listener on unload
     ];
     listeners.forEach(fn => { try { if (typeof fn === 'function') fn(); } catch(e) {} });
 });

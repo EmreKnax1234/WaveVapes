@@ -10046,7 +10046,7 @@ async function bkpInit() {
 
 async function bkpLoadConfig() {
     try {
-        const snap = await db.doc(BKP_CONFIG_DOC).get();
+        const snap = await db.collection('settings').doc('backup_config').get();
         _bkpConfig = snap.exists ? snap.data() : {};
     } catch(e) {
         _bkpConfig = {};
@@ -10079,7 +10079,7 @@ async function bkpSaveConfig() {
     if (!_bkpConfig.collections.length) _bkpConfig.collections = [...BKP_ALL_COLS];
 
     try {
-        await db.doc(BKP_CONFIG_DOC).set(_bkpConfig, { merge: true });
+        await db.collection('settings').doc('backup_config').set(_bkpConfig, { merge: true });
         bkpRenderStatus();
         bkpScheduleAutoCheck();
         showToast('✅ Backup-Konfiguration gespeichert');
@@ -10213,7 +10213,7 @@ async function bkpRunNow() {
         });
 
         // Konfig aktualisieren: lastBackupAt
-        await db.doc(BKP_CONFIG_DOC).set({ lastBackupAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+        await db.collection('settings').doc('backup_config').set({ lastBackupAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
         _bkpConfig.lastBackupAt = { toDate: () => new Date() };
 
         // Alte Backups bereinigen

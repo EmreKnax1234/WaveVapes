@@ -4757,7 +4757,7 @@ document.getElementById('add-form').addEventListener('submit', async e => {
     const name = document.getElementById('prod-name').value.trim();
     const price = parseFloat(document.getElementById('prod-price').value);
     const originalPrice = parseFloat(document.getElementById('prod-original-price').value) || null;
-    const stock = parseInt(document.getElementById('prod-stock').value);
+    const stock = parseInt(document.getElementById('prod-stock', 10).value);
     const isNew = document.getElementById('prod-new').checked;
     const unavailable = document.getElementById('prod-unavailable').checked;
     const hasNicotine = document.getElementById('prod-has-nicotine').checked;
@@ -4811,7 +4811,7 @@ async function importProductsFromCSV(e) {
             for (let i = 1; i < rows.length; i++) {
                 if (!rows[i].trim()) continue;
                 const v = parseCSVLine(rows[i]);
-                batch.set(db.collection("products").doc(v[0]), { name:v[1], price:parseFloat(v[2]), originalPrice:v[3]?parseFloat(v[3]):null, stock:parseInt(v[4]), category:v[5], isNew:v[6]==="true", available:v[7]==="true", hasNicotine:v[8]==="true", description:v[9], image:v[10]||null, sold:parseInt(v[11])||0 });
+                batch.set(db.collection("products").doc(v[0]), { name:v[1], price:parseFloat(v[2]), originalPrice:v[3]?parseFloat(v[3]):null, stock:parseInt(v[4], 10), category:v[5], isNew:v[6]==="true", available:v[7]==="true", hasNicotine:v[8]==="true", description:v[9], image:v[10]||null, sold:parseInt(v[11], 10)||0 });
                 count++;
                 if (count % 499 === 0) { await batch.commit(); batch = db.batch(); }
             }
@@ -4848,7 +4848,7 @@ async function importOrdersFromCSV(e) {
             for (let i = 1; i < rows.length; i++) {
                 if (!rows[i].trim()) continue;
                 const v = parseCSVLine(rows[i]);
-                batch.set(db.collection("orders").doc(v[0]), { orderNumber:v[1], date:firebase.firestore.Timestamp.fromDate(new Date(v[2])), userEmail:v[3], total:parseFloat(v[4]), status:v[5], items:v[6].split(' | ').map(item=>{const p=item.match(/(.*?) x(\d+)(?:\s*\((.*)\))?/);return p?{name:p[1].trim(),qty:parseInt(p[2]),nicotine:p[3]||""}:{}}).filter(Boolean), address:{street:v[7].split(',')[0]||"",zip:v[7].split(',')[1]?v[7].split(',')[1].trim().split(' ')[0]:"",city:v[7].split(',')[1]?v[7].split(',')[1].trim().split(' ').slice(1).join(' '):""} });
+                batch.set(db.collection("orders").doc(v[0]), { orderNumber:v[1], date:firebase.firestore.Timestamp.fromDate(new Date(v[2])), userEmail:v[3], total:parseFloat(v[4]), status:v[5], items:v[6].split(' | ').map(item=>{const p=item.match(/(.*?) x(\d+)(?:\s*\((.*)\))?/);return p?{name:p[1].trim(),qty:parseInt(p[2], 10),nicotine:p[3]||""}:{}}).filter(Boolean), address:{street:v[7].split(',')[0]||"",zip:v[7].split(',')[1]?v[7].split(',')[1].trim().split(' ')[0]:"",city:v[7].split(',')[1]?v[7].split(',')[1].trim().split(' ').slice(1).join(' '):""} });
                 count++;
                 if (count % 499 === 0) { await batch.commit(); batch = db.batch(); }
             }
@@ -4880,7 +4880,7 @@ async function importUsersFromCSV(e) {
             for (let i = 1; i < rows.length; i++) {
                 if (!rows[i].trim()) continue;
                 const v = parseCSVLine(rows[i]);
-                batch.set(db.collection("users").doc(v[0]), { email:v[1], username:v[2], referralCode:v[3], totalBonusPoints:parseInt(v[4]), freeShipping:v[5]==="JA", disabled:v[6]==="JA", referralCount:parseInt(v[7])||0 });
+                batch.set(db.collection("users").doc(v[0]), { email:v[1], username:v[2], referralCode:v[3], totalBonusPoints:parseInt(v[4], 10), freeShipping:v[5]==="JA", disabled:v[6]==="JA", referralCount:parseInt(v[7], 10)||0 });
                 count++;
                 if (count % 499 === 0) { await batch.commit(); batch = db.batch(); }
             }
@@ -5025,7 +5025,7 @@ function catOpenInlineEdit(id) {
 async function catSaveInlineEdit() {
     if (!_catEditId) return;
     const name      = document.getElementById('edit-cat-name').value.trim();
-    const order     = parseInt(document.getElementById('edit-cat-order').value) || 999;
+    const order     = parseInt(document.getElementById('edit-cat-order', 10).value) || 999;
     const offerData = catGetOfferData('edit');
     if (!name) return showToast('Name erforderlich','error');
     await db.collection('categories').doc(_catEditId).update({ name, order, ...offerData });
@@ -5086,7 +5086,7 @@ function renderCategoryTable() {
 document.getElementById('add-category-form').addEventListener('submit', async e => {
     e.preventDefault();
     const name   = document.getElementById('cat-name').value.trim();
-    const order  = parseInt(document.getElementById('cat-order').value) || 999;
+    const order  = parseInt(document.getElementById('cat-order', 10).value) || 999;
     const offerData = catGetOfferData('add');
     if (!name) return showToast('Name erforderlich','error');
     await db.collection('categories').add({ name, order, ...offerData });
@@ -5422,6 +5422,8 @@ function ordRenderTable() {
 }
 
 function loadOrders() {
+    if (_ordersUnsub) { _ordersUnsub(); _ordersUnsub = null; }
+    // BUG FIX: Listener vor Neustart sauber beenden (verhindert Listener-Stacking)
     if (_ordersUnsub) { _ordersUnsub(); _ordersUnsub = null; }
     _ordersUnsub = db.collection('orders').orderBy('date','desc').onSnapshot(snap => {
         _ordAllDocs = snap.docs;
@@ -5804,7 +5806,7 @@ async function euBulkAction(action){
         const batch=db.batch();ids.forEach(id=>batch.update(db.collection('users').doc(id),{disabled:false}));await batch.commit();
         await logAction('bulk_users_enabled','',{count:ids.length});showToast(`✅ ${ids.length} User entsperrt!`);euClearSelection();
     } else if(action==='addpoints'){
-        const p=prompt('Wie viele Punkte addieren?','500');if(!p)return;const pts=parseInt(p);
+        const p=prompt('Wie viele Punkte addieren?','500');if(!p)return;const pts=parseInt(p, 10);
         const batch=db.batch();ids.forEach(id=>batch.update(db.collection('users').doc(id),{totalBonusPoints:firebase.firestore.FieldValue.increment(pts)}));await batch.commit();
         await logAction('bulk_points_added','',{pts,count:ids.length});showToast(`✅ +${pts} Punkte an ${ids.length} User!`);euClearSelection();
     } else if(action==='freeship'){
@@ -5991,6 +5993,9 @@ async function loadAnalytics() {
         const st=o.status||'Zahlung erwartet';
         statusMap.set(st,(statusMap.get(st)||0)+1);
         if (st === 'Storniert') return; // Nicht in Umsatz/Produktzählung
+        // BUG FIX: o.date kann undefined sein (manuell angelegte Testbestellungen).
+        // Ohne Null-Check crasht .toDate() und das gesamte Analytics-Dashboard rendert nicht.
+        if (!o.date) return;
         const day=o.date.toDate().toISOString().slice(0,10);
         dailyRevenue[day]=(dailyRevenue[day]||0)+o.total;
         dailyOrdersCount[day]=(dailyOrdersCount[day]||0)+1;
@@ -6166,6 +6171,8 @@ function lgRelTime(date) {
 
 function loadAdminLogs() {
     if (logsUnsubscribe) logsUnsubscribe();
+    // BUG FIX: Listener vor Neustart sauber beenden (verhindert Listener-Stacking)
+    if (logsUnsubscribe) { logsUnsubscribe(); logsUnsubscribe = null; }
     logsUnsubscribe = db.collection("admin_logs").orderBy("timestamp","desc").limit(50).onSnapshot(snap => {
         const container = document.getElementById("logs-container");
         const badge = document.getElementById("lg-log-count");
@@ -6455,8 +6462,8 @@ async function loadSettings() {
     document.getElementById("set-stock-critical").value = data.stock_critical !== undefined ? data.stock_critical : 3;
     document.getElementById("set-stock-warning").value  = data.stock_warning  !== undefined ? data.stock_warning  : 10;
     document.getElementById("set-notify-email").value   = data.admin_notify_email || "";
-    stockCriticalThreshold = parseInt(data.stock_critical) || 3;
-    stockWarningThreshold  = parseInt(data.stock_warning)  || 10;
+    stockCriticalThreshold = parseInt(data.stock_critical, 10) || 3;
+    stockWarningThreshold  = parseInt(data.stock_warning, 10)  || 10;
     window._adminNotifyEmail = data.admin_notify_email || "";
     cfgUpdateStatusPill();
     cfgUpdatePreviews();
@@ -6473,8 +6480,8 @@ async function saveSettings() {
         shipping_cost:           parseFloat(document.getElementById("set-shipping").value),
         free_shipping_threshold: parseFloat(document.getElementById("set-free-threshold").value),
         email_template:          document.getElementById("set-email-template").value,
-        stock_critical:          parseInt(document.getElementById("set-stock-critical").value) || 3,
-        stock_warning:           parseInt(document.getElementById("set-stock-warning").value)  || 10,
+        stock_critical:          parseInt(document.getElementById("set-stock-critical", 10).value) || 3,
+        stock_warning:           parseInt(document.getElementById("set-stock-warning", 10).value)  || 10,
         admin_notify_email:      document.getElementById("set-notify-email").value.trim() || null,
     };
     await db.collection("settings").doc("main").set(data, {merge:true});
@@ -7108,7 +7115,7 @@ async function euSaveDrawer(){
     const data={
         username:         document.getElementById('eu-d-username').value.trim(),
         referralCode:     document.getElementById('eu-d-refcode').value.trim(),
-        totalBonusPoints: parseInt(document.getElementById('eu-d-pts').value)||0,
+        totalBonusPoints: parseInt(document.getElementById('eu-d-pts', 10).value)||0,
         disabled:        nowDisabled,
         freeShipping:     document.getElementById('eu-d-freeship').checked,
         vip:              document.getElementById('eu-d-vip').checked,
@@ -7953,6 +7960,8 @@ function requestNotifPermission() {
 function watchNewOrders() {
     if (_watchOrdersUnsub) { _watchOrdersUnsub(); _watchOrdersUnsub = null; }
     let firstLoad = true;
+    // BUG FIX: Listener vor Neustart sauber beenden (verhindert Listener-Stacking)
+    if (_watchOrdersUnsub) { _watchOrdersUnsub(); _watchOrdersUnsub = null; }
     _watchOrdersUnsub = db.collection('orders').orderBy('date','desc').limit(50).onSnapshot(snap => {
         if (firstLoad) { _orderNotifPrevCount = snap.size; firstLoad = false; return; }
         const newOrders = snap.docChanges().filter(c => c.type === 'added');
@@ -7965,7 +7974,7 @@ function watchNewOrders() {
             );
             // update sidebar badge
             const badge = document.getElementById('sb-badge-orders');
-            if (badge) { badge.style.display='inline'; badge.textContent=parseInt(badge.textContent||0)+1; }
+            if (badge) { badge.style.display='inline'; badge.textContent=parseInt(badge.textContent||0, 10)+1; }
         });
     });
 }
@@ -8182,7 +8191,7 @@ async function saveEdit() {
     const name           = document.getElementById('edit-name').value;
     const price          = parseFloat(document.getElementById('edit-price').value);
     const originalPrice  = parseFloat(document.getElementById('edit-original-price').value) || null;
-    const stock          = parseInt(document.getElementById('edit-stock').value);
+    const stock          = parseInt(document.getElementById('edit-stock', 10).value);
     const description    = document.getElementById('edit-description').value;
     const adminNotes     = document.getElementById('edit-admin-notes').value.trim();
     const isNew          = document.getElementById('edit-new').checked;
@@ -8255,7 +8264,7 @@ async function executeBulkEdit() {
             const prd = allProducts.find(p=>p.id===id);
             if (prd) updateData.price = Math.round(prd.price * (1 + parseFloat(pctVal)/100) * 100) / 100;
         }
-        if (stockVal)       updateData.stock        = parseInt(stockVal);
+        if (stockVal)       updateData.stock        = parseInt(stockVal, 10);
         if (category)       updateData.category     = category;
         if (available!==null) updateData.available  = available;
         if (isNew!==null)    updateData.isNew        = isNew;
@@ -8310,6 +8319,8 @@ function rvAdminLoadStats() {
     // Cancel previous stats listener
     if (_rvStatsUnsub) { _rvStatsUnsub(); _rvStatsUnsub = null; }
 
+    // BUG FIX: Listener vor Neustart sauber beenden (verhindert Listener-Stacking)
+    if (_rvStatsUnsub) { _rvStatsUnsub(); _rvStatsUnsub = null; }
     _rvStatsUnsub = db.collection('reviews').onSnapshot(snap => {
         const docs = snap.docs.map(d => d.data());
         const approved = docs.filter(d => d.approved === true);
@@ -8528,6 +8539,8 @@ function loadClickAnalytics() {
     // Tear down previous listener
     if (_caUnsub) { _caUnsub(); _caUnsub = null; }
 
+    // BUG FIX: Listener vor Neustart sauber beenden (verhindert Listener-Stacking)
+    if (_caUnsub) { _caUnsub(); _caUnsub = null; }
     _caUnsub = db.collection('click_events')
         .limit(2000)
         .onSnapshot(snap => {
@@ -9610,8 +9623,8 @@ async function saLoadSecuritySettings() {
 
 async function saSaveSecuritySettings() {
     const settings = {
-        timeout:     parseInt(document.getElementById('sa-sec-timeout').value) || 30,
-        maxAttempts: parseInt(document.getElementById('sa-sec-maxattempts').value) || 5,
+        timeout:     parseInt(document.getElementById('sa-sec-timeout', 10).value) || 30,
+        maxAttempts: parseInt(document.getElementById('sa-sec-maxattempts', 10).value) || 5,
         notify:      document.getElementById('sa-sec-notify').checked,
         forceIP:     document.getElementById('sa-sec-force-ip').checked,
         verboseLog:  document.getElementById('sa-sec-verbose').checked,

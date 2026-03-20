@@ -2279,6 +2279,32 @@
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
+
+        // ====================== KLICK-TRACKING ======================
+        // Schreibt ein Event in die click_events Collection, die das Admin-Panel
+        // unter "Klick-Analyse" auswertet. Fire-and-forget: Fehler werden nur
+        // geloggt, nie an den Nutzer weitergegeben.
+        // Debounce-Map verhindert Dopplungen bei schnellen Mehrfachklicks.
+        const _trackDebounce = {};
+        function trackClick(label, extra = {}) {
+            const key = label;
+            const now = Date.now();
+            // Ignore same label within 800 ms (e.g. rapid +/- taps)
+            if (_trackDebounce[key] && now - _trackDebounce[key] < 800) return;
+            _trackDebounce[key] = now;
+            const payload = {
+                label,
+                isGuest:   !currentUser,
+                userId:    currentUser ? currentUser.uid  : null,
+                userEmail: currentUser ? currentUser.email : null,
+                page:      window.location.pathname + (window.location.search || ''),
+                ts:        firebase.firestore.FieldValue.serverTimestamp(),
+                ...extra
+            };
+            db.collection('click_events').add(payload).catch(err => {
+                console.debug('trackClick write failed (non-critical):', err.code);
+            });
+        }
         // ====================== EMAILJS INIT ======================
         function initEmailJS() {
             if (typeof emailjs !== "undefined") {
@@ -2411,13 +2437,6 @@
             modal.classList.remove("hidden"); modal.classList.add("flex");
             const listEl = document.getElementById("referrals-list");
             listEl.innerHTML = `<p class="text-center py-8 text-gray-400">Lade deine Referrals...</p>`;
-            // BUG FIX: If myReferralCode is empty the query becomes
-            // where("referredBy","==","") which returns ALL users without a
-            // referrer and shows them as the current user's referrals.
-            if (!myReferralCode) {
-                listEl.innerHTML = `<p class="text-center py-8 text-gray-400">Referral-Code wird geladen – bitte kurz warten.</p>`;
-                return;
-            }
             const snapshot = await db.collection("users").where("referredBy", "==", myReferralCode).get();
             if (snapshot.empty) {
                 document.getElementById("no-referrals").classList.remove("hidden");
@@ -2525,6 +2544,9 @@
                     }
                     loyaltyPoints = data.totalBonusPoints || 0;
                     userHasFreeShipping = data.freeShipping === true;
+                    // BUG FIX: keep local mirror in sync so checkAndAutoRedeemLoyalty
+                    // uses Firestore state, not stale localStorage data
+                    _redeemedLoyaltyCodes = data.redeemedLoyaltyCodes || [];
                     // Sync username from Firestore → localStorage (enables multi-device)
                     if (data.username) {
                         const localName = localStorage.getItem("wavevapes_username");
@@ -2619,7 +2641,7 @@
             const v = document.getElementById("verify-email-view");
             if (v) v.classList.add("hidden");
             window._verifyEmail = null;
-            // window._verifyPassword was removed (security fix — plaintext pw never stored)
+            window._verifyPassword = null;
         }
         function switchAuthTab(tab) {
             document.getElementById("tab-login").classList.toggle("auth-tab-active", tab === 0);
@@ -2647,11 +2669,9 @@
                 document.getElementById("auth-title").textContent = "E-Mail bestätigen";
                 document.getElementById("tab-login").classList.remove("auth-tab-active");
                 document.getElementById("tab-register").classList.remove("auth-tab-active");
-                // Store only the email for the resend banner — NOT the password.
-                // The user is still signed in after createUserWithEmailAndPassword,
-                // so auth.currentUser.sendEmailVerification() works without credentials.
+                // Store credentials for resend
                 window._verifyEmail = email;
-                // window._verifyPassword intentionally omitted (security: no plaintext pw in global scope)
+                window._verifyPassword = password;
             } catch (e) {
                 const msg = e.code === 'auth/email-already-in-use' ? 'Diese E-Mail ist bereits registriert.'
                           : e.code === 'auth/invalid-email' ? 'Ungültige E-Mail-Adresse.'
@@ -2699,9 +2719,12 @@
             _loyaltyPromptShown = false;
             loyaltyPoints = 0;
             userHasFreeShipping = false;
+            _redeemedLoyaltyCodes = [];
             myReferralCode = "";
             // Cancel any pending cart save
             clearTimeout(_saveCartTimer);
+            // BUG FIX: Stop presence heartbeat so it doesn't keep writing after logout
+            if (window._presenceInterval) { clearInterval(window._presenceInterval); window._presenceInterval = null; }
             // BUG 3 FIX: Clean up referral code listener on logout
             if (window._referralCodeUnsub) { window._referralCodeUnsub(); window._referralCodeUnsub = null; }
             // Remove presence doc so user disappears from Live Online immediately
@@ -2715,12 +2738,13 @@
         }
 
         async function resendVerificationFromBanner() {
-            // BUG FIX: Use auth.currentUser directly — no need to re-sign-in with a
-            // stored plaintext password. The user is still authenticated after registration.
+            const email    = window._verifyEmail;
+            const password = window._verifyPassword;
+            if (!email || !password) { showToast("Bitte neu registrieren", "error"); return; }
             try {
-                const user = auth.currentUser;
-                if (!user) { showToast("Bitte neu registrieren", "error"); return; }
-                await user.sendEmailVerification();
+                const cred = await auth.signInWithEmailAndPassword(email, password);
+                await cred.user.sendEmailVerification();
+                await auth.signOut();
                 showToast("E-Mail erneut gesendet! Bitte auch Spam-Ordner pruefen.");
             } catch(e) {
                 showToast("Fehler: " + e.message, "error");
@@ -2885,13 +2909,12 @@
                         return;
                     }
                     appliedDiscount = { code: input, type: d.type, value: d.value };
-                    // BUG FIX: Do NOT mark the code as used here.
-                    // placeOrder() does the atomic check+mark inside a transaction.
-                    // Marking here caused every LOYAL order to fail with
-                    // "already redeemed" because placeOrder() found it pre-written.
+                    await userRef.update({
+                        redeemedLoyaltyCodes: firebase.firestore.FieldValue.arrayUnion(input)
+                    });
                     const display = d.type === "fixed" ? `${d.value} €` : `${d.value}%`;
                     status.innerHTML = `<span class="text-emerald-400">✓ ${input} (${display}) eingelöst!</span>`;
-                    manageMysteryVape();
+                    manageMysteryVape(); // BUG 4 FIX
                     updateCartDisplay();
                 } catch (err) {
                     console.error(err);
@@ -2906,14 +2929,17 @@
         }
 
         let _loyaltyPromptShown = false;
+        // BUG FIX: mirror of Firestore redeemedLoyaltyCodes — refreshed by onSnapshot.
+        // Replaces localStorage check which was device-specific and broke on second devices.
+        let _redeemedLoyaltyCodes = [];
+
         function checkAndAutoRedeemLoyalty() {
             if (_loyaltyPromptShown || appliedDiscount) return;
             for (let r of REWARDS) {
                 if (loyaltyPoints >= r.points) {
-                    const alreadyRedeemed = localStorage.getItem(`redeemed_${r.code}`) === "true";
+                    const alreadyRedeemed = _redeemedLoyaltyCodes.includes(r.code);
                     if (!alreadyRedeemed) {
                         _loyaltyPromptShown = true;
-                        // Use toast-style prompt instead of blocking confirm()
                         showLoyaltyPrompt(r);
                         return;
                     }
@@ -3304,6 +3330,14 @@
             const ok = _addToCart(id, delta);
             if (!ok) { updateCartDisplay(); patchProductCardQty(id); return; }
 
+            // Track add-to-cart from product grid (only on first add, i.e. qty was 0)
+            if (delta > 0) {
+                const inCart = cart.find(i => i.id === id);
+                if (inCart && inCart.qty === 1) {
+                    trackClick('add_to_cart_grid', { productId: id, productName: product.name });
+                }
+            }
+
             // Flug-Animation nur beim Hinzufügen (+)
             if (delta > 0 && ev) flyToCart(ev, product);
 
@@ -3663,6 +3697,7 @@
 
             if (isOpen) {
                 // Cart öffnet sich → Scroll sperren
+                trackClick('cart_open');
                 clearDiscountField();
                 _cartScrollY = window.scrollY;
                 document.body.classList.add("cart-open");
@@ -3741,6 +3776,7 @@
             } catch(e) { /* non-blocking: proceed even if check fails */ }
 
             _orderInProgress = true;
+            trackClick('place_order', { cartSize: cart.filter(i => i.id != MYSTERY_ID).reduce((s,i) => s+i.qty, 0) });
             const orderButton = document.querySelector('[onclick="placeOrder()"]');
             if (orderButton) { orderButton.disabled = true; orderButton.textContent = "Bestellung wird verarbeitet..."; }
 
@@ -3905,15 +3941,6 @@
                     orderData.discountAmount = parseFloat(verifiedDiscountAmount.toFixed(2));
                 }
                 await db.collection("orders").add(orderData);
-
-                // BUG FIX: Mark LOYAL code as used AFTER the order is saved.
-                // applyDiscountCode() no longer writes this (it caused the "already redeemed"
-                // error on every order). We write it here, atomically after order creation.
-                if (savedCouponInfo?.code?.startsWith("LOYAL")) {
-                    await db.collection("users").doc(currentUser.uid).update({
-                        redeemedLoyaltyCodes: firebase.firestore.FieldValue.arrayUnion(savedCouponInfo.code)
-                    });
-                }
 
                 await sendOrderConfirmationEmail({
                     userEmail: currentUser.email,
@@ -4156,10 +4183,7 @@
                 // BUG FIX: Use MYSTERY_ID constant instead of hardcoded 999
                 if (!item.id || item.id == MYSTERY_ID) { skippedCount++; continue; }
 
-                // BUG FIX: _productMap keys are Firestore document ID strings.
-                // Number(item.id) always produced undefined from the Map lookup,
-                // causing every reorder to report "nicht mehr im Sortiment".
-                const productId = String(item.id);
+                const productId = Number(item.id);
                 const product   = _productMap.get(productId);
 
                 // Produkt unbekannt oder nicht verfügbar → überspringen
@@ -4297,6 +4321,7 @@
         }
         function setCategoryFilter(cat) {
             currentCategoryFilter = cat;
+            trackClick('category_filter', { category: cat });
             // Bug 5 fix: re-render tabs from cached snap — no Firestore request on every click
             if (_cachedCategorySnap) {
                 _lastCatHash = ''; // force DOM update (active tab changed)
@@ -4757,6 +4782,8 @@
         function showProductDetail(id) {
             const product = _productMap.get(id);
             if (!product) return;
+            // Track product detail view
+            trackClick('product_detail', { productId: id, productName: product.name, category: product.category });
             // Track recently viewed
             recentlyViewed = recentlyViewed.filter(i => i !== id);
             recentlyViewed.unshift(id);
@@ -5247,6 +5274,8 @@
             if (product.hasNicotine) pendingNicotine[id] = chosenNic;
             const ok = _addToCart(id, 1, product.hasNicotine ? chosenNic : null);
             if (!ok) return;
+            // Track add-to-cart from detail
+            trackClick('add_to_cart_detail', { productId: id, productName: product.name });
             manageMysteryVape();
             saveUserCart();
             updateCartDisplay();
@@ -5511,7 +5540,7 @@
             checkAndAutoRedeemLoyalty();
             clearDiscountField();
             updatePresence();
-            setInterval(updatePresence, 30000);
+            window._presenceInterval = setInterval(updatePresence, 30000);
             checkProductUrl();
             updateWishlistBadge();
             renderRecentlyViewed();

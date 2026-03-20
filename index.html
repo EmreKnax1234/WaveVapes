@@ -2411,6 +2411,13 @@
             modal.classList.remove("hidden"); modal.classList.add("flex");
             const listEl = document.getElementById("referrals-list");
             listEl.innerHTML = `<p class="text-center py-8 text-gray-400">Lade deine Referrals...</p>`;
+            // BUG FIX: If myReferralCode is empty the query becomes
+            // where("referredBy","==","") which returns ALL users without a
+            // referrer and shows them as the current user's referrals.
+            if (!myReferralCode) {
+                listEl.innerHTML = `<p class="text-center py-8 text-gray-400">Referral-Code wird geladen – bitte kurz warten.</p>`;
+                return;
+            }
             const snapshot = await db.collection("users").where("referredBy", "==", myReferralCode).get();
             if (snapshot.empty) {
                 document.getElementById("no-referrals").classList.remove("hidden");
@@ -2612,7 +2619,7 @@
             const v = document.getElementById("verify-email-view");
             if (v) v.classList.add("hidden");
             window._verifyEmail = null;
-            window._verifyPassword = null;
+            // window._verifyPassword was removed (security fix — plaintext pw never stored)
         }
         function switchAuthTab(tab) {
             document.getElementById("tab-login").classList.toggle("auth-tab-active", tab === 0);
@@ -2640,9 +2647,11 @@
                 document.getElementById("auth-title").textContent = "E-Mail bestätigen";
                 document.getElementById("tab-login").classList.remove("auth-tab-active");
                 document.getElementById("tab-register").classList.remove("auth-tab-active");
-                // Store credentials for resend
+                // Store only the email for the resend banner — NOT the password.
+                // The user is still signed in after createUserWithEmailAndPassword,
+                // so auth.currentUser.sendEmailVerification() works without credentials.
                 window._verifyEmail = email;
-                window._verifyPassword = password;
+                // window._verifyPassword intentionally omitted (security: no plaintext pw in global scope)
             } catch (e) {
                 const msg = e.code === 'auth/email-already-in-use' ? 'Diese E-Mail ist bereits registriert.'
                           : e.code === 'auth/invalid-email' ? 'Ungültige E-Mail-Adresse.'
@@ -2706,13 +2715,12 @@
         }
 
         async function resendVerificationFromBanner() {
-            const email    = window._verifyEmail;
-            const password = window._verifyPassword;
-            if (!email || !password) { showToast("Bitte neu registrieren", "error"); return; }
+            // BUG FIX: Use auth.currentUser directly — no need to re-sign-in with a
+            // stored plaintext password. The user is still authenticated after registration.
             try {
-                const cred = await auth.signInWithEmailAndPassword(email, password);
-                await cred.user.sendEmailVerification();
-                await auth.signOut();
+                const user = auth.currentUser;
+                if (!user) { showToast("Bitte neu registrieren", "error"); return; }
+                await user.sendEmailVerification();
                 showToast("E-Mail erneut gesendet! Bitte auch Spam-Ordner pruefen.");
             } catch(e) {
                 showToast("Fehler: " + e.message, "error");
@@ -2877,12 +2885,13 @@
                         return;
                     }
                     appliedDiscount = { code: input, type: d.type, value: d.value };
-                    await userRef.update({
-                        redeemedLoyaltyCodes: firebase.firestore.FieldValue.arrayUnion(input)
-                    });
+                    // BUG FIX: Do NOT mark the code as used here.
+                    // placeOrder() does the atomic check+mark inside a transaction.
+                    // Marking here caused every LOYAL order to fail with
+                    // "already redeemed" because placeOrder() found it pre-written.
                     const display = d.type === "fixed" ? `${d.value} €` : `${d.value}%`;
                     status.innerHTML = `<span class="text-emerald-400">✓ ${input} (${display}) eingelöst!</span>`;
-                    manageMysteryVape(); // BUG 4 FIX
+                    manageMysteryVape();
                     updateCartDisplay();
                 } catch (err) {
                     console.error(err);
@@ -3897,6 +3906,15 @@
                 }
                 await db.collection("orders").add(orderData);
 
+                // BUG FIX: Mark LOYAL code as used AFTER the order is saved.
+                // applyDiscountCode() no longer writes this (it caused the "already redeemed"
+                // error on every order). We write it here, atomically after order creation.
+                if (savedCouponInfo?.code?.startsWith("LOYAL")) {
+                    await db.collection("users").doc(currentUser.uid).update({
+                        redeemedLoyaltyCodes: firebase.firestore.FieldValue.arrayUnion(savedCouponInfo.code)
+                    });
+                }
+
                 await sendOrderConfirmationEmail({
                     userEmail: currentUser.email,
                     orderNumber: orderNumber,
@@ -4138,7 +4156,10 @@
                 // BUG FIX: Use MYSTERY_ID constant instead of hardcoded 999
                 if (!item.id || item.id == MYSTERY_ID) { skippedCount++; continue; }
 
-                const productId = Number(item.id);
+                // BUG FIX: _productMap keys are Firestore document ID strings.
+                // Number(item.id) always produced undefined from the Map lookup,
+                // causing every reorder to report "nicht mehr im Sortiment".
+                const productId = String(item.id);
                 const product   = _productMap.get(productId);
 
                 // Produkt unbekannt oder nicht verfügbar → überspringen

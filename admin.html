@@ -7596,7 +7596,7 @@ function switchTab(n) {
         // Tear down click-analytics live listener when leaving tab 15
         if(_caUnsub) { _caUnsub(); _caUnsub = null; }
     }
-    if(n===16) loadBundles();
+    if(n===16) { if(!_promos.length) loadPromos(); loadBundles(); }
 }
 function toggleSidebar(){
     const s=document.getElementById('sidebar');
@@ -10891,6 +10891,20 @@ function bndRender() {
     </div>`;
 }
 
+// ── Hilfsfunktion: Effektiver Verkaufspreis inkl. aktiver Aktionen ────────
+// Gibt den tatsächlich im Shop geltenden Preis zurück (nach Promo-Rabatt)
+function bndEffectivePrice(p) {
+    const promo = _promos.find(pr => pr.active && pr.category === p.category);
+    if (!promo) return p.price;
+    if (promo.type === 'percent') {
+        return Math.round(p.price * (1 - promo.value / 100) * 100) / 100;
+    }
+    if (promo.type === 'fixed') {
+        return Math.max(0, Math.round((p.price - promo.value) * 100) / 100);
+    }
+    return p.price;
+}
+
 // ── Hilfsfunktion: Echter Einkaufspreis pro Item ──────────────────────────
 // Priorität: 1) costPrice aus allProducts (live, immer aktuell)
 //            2) gespeichertes it.cost im Bundle-Item
@@ -11058,9 +11072,16 @@ function bndFilterProducts(q) {
     const visible=_allProducts.filter(p=>p.name.toLowerCase().includes(term)).slice(0,30);
     list.innerHTML=visible.map(p=>{
         const already=_bundleItems.find(it=>it.productId===p.id);
+        const effPrice = bndEffectivePrice(p);
+        const hasPromo = effPrice < p.price;
+        const priceHtml = hasPromo
+            ? `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--bnd-gold)">${bndFmt(effPrice)}</span>
+               <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(255,255,255,.25);text-decoration:line-through;margin-left:4px">${bndFmt(p.price)}</span>
+               <span style="font-size:9px;background:rgba(239,68,68,.2);color:#f87171;border-radius:5px;padding:1px 5px;margin-left:3px">SALE</span>`
+            : `<span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--bnd-gold)">${bndFmt(effPrice)}</span>`;
         return `<div class="bnd-prod-item${already?' bnd-prod-selected':''}" ${already?'':'onclick="bndAddProduct(\''+p.id+'\')"'}>
             <span style="font-weight:600;color:${already?'rgba(255,255,255,.3)':'#fff'}">${already?'✓ ':''} ${p.name}</span>
-            <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--bnd-gold)">${bndFmt(p.price)}</span>
+            <span style="display:flex;align-items:center;gap:2px">${priceHtml}</span>
         </div>`;
     }).join('')||'<div style="color:rgba(255,255,255,.2);font-size:12px;padding:10px">Keine Produkte gefunden</div>';
 }
@@ -11068,7 +11089,8 @@ function bndFilterProducts(q) {
 function bndAddProduct(id) {
     const p=_allProducts.find(x=>x.id===id);
     if(!p||_bundleItems.find(it=>it.productId===id))return;
-    _bundleItems.push({productId:id,name:p.name,price:p.price,cost:p.costPrice||p.cost||0,qty:1});
+    const effectivePrice = bndEffectivePrice(p);
+    _bundleItems.push({productId:id, name:p.name, price:effectivePrice, originalPrice:p.price, cost:p.costPrice||p.cost||0, qty:1});
     bndFilterProducts(document.getElementById('bnd-prod-search')?.value||'');
     bndRenderItems();
     bndUpdateSummary();
@@ -11096,17 +11118,36 @@ function bndRenderItems() {
         list.innerHTML='<div style="color:rgba(255,255,255,.2);font-size:12px;padding:12px;text-align:center;border:1px dashed rgba(255,255,255,.08);border-radius:10px">Noch keine Produkte hinzugefügt</div>';
         return;
     }
-    list.innerHTML=_bundleItems.map(it=>`
+    // Preise live aus allProducts + Promos aktualisieren
+    _bundleItems.forEach(it => {
+        const prod = _allProducts.find(p => p.id === it.productId);
+        if (prod) {
+            const effPrice = bndEffectivePrice(prod);
+            it.price = effPrice;
+            it.originalPrice = prod.price;
+        }
+    });
+    list.innerHTML=_bundleItems.map(it=>{
+        const hasPromo = it.originalPrice && it.originalPrice > it.price;
+        const priceDisplay = hasPromo
+            ? `<div class="bnd-item-price" style="display:flex;flex-direction:column;align-items:flex-end;gap:1px">
+                   <span>${bndFmt(it.price*it.qty)}</span>
+                   <span style="font-size:10px;color:rgba(255,255,255,.25);text-decoration:line-through">${bndFmt(it.originalPrice*it.qty)}</span>
+               </div>`
+            : `<div class="bnd-item-price">${bndFmt(it.price*it.qty)}</div>`;
+        return `
     <div class="bnd-item-row">
-        <div class="bnd-item-name">${it.name}</div>
+        <div class="bnd-item-name">${it.name}${hasPromo?` <span style="font-size:9px;background:rgba(239,68,68,.2);color:#f87171;border-radius:4px;padding:1px 5px;margin-left:4px;vertical-align:middle">SALE</span>`:''}
+        </div>
         <div style="display:flex;align-items:center;gap:6px">
             <button class="bnd-qty-btn" onclick="bndChangeQty('${it.productId}',-1)">−</button>
             <span class="bnd-qty-val">${it.qty}</span>
             <button class="bnd-qty-btn" onclick="bndChangeQty('${it.productId}',1)">+</button>
         </div>
-        <div class="bnd-item-price">${bndFmt(it.price*it.qty)}</div>
+        ${priceDisplay}
         <button onclick="bndRemoveItem('${it.productId}')" style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.15);border-radius:8px;color:#f87171;width:26px;height:26px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
-    </div>`).join('');
+    </div>`;
+    }).join('');
 }
 
 // ── Live-Profit-Analyse ───────────────────────────────────────────────────

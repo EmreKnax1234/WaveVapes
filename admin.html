@@ -10830,22 +10830,41 @@ function bndRender() {
     </div>`;
 }
 
+// ── Hilfsfunktion: Echter Einkaufspreis pro Item ──────────────────────────
+// Priorität: 1) costPrice aus allProducts (live, immer aktuell)
+//            2) gespeichertes it.cost im Bundle-Item
+//            3) null wenn kein EK hinterlegt (kein 40%-Schätzer!)
+function bndRealCost(it) {
+    const prod = allProducts.find(p => p.id === (it.productId || it.id));
+    if (prod && prod.costPrice > 0) return prod.costPrice;
+    if (it.cost > 0) return it.cost;
+    return null; // kein EK bekannt
+}
+
+// Gibt true zurück wenn alle Items einen bekannten EK haben
+function bndAllCostsKnown(items) {
+    return items.every(it => bndRealCost(it) !== null);
+}
+
 function bndMarginPct(b) {
     const items = b.items||[];
-    const cost  = items.reduce((s,it)=>s+(it.cost>0?it.cost:it.price*0.4)*it.qty,0);
+    if (!bndAllCostsKnown(items)) return null; // EK fehlt — kein Schätzen
+    const cost  = items.reduce((s,it)=>s+bndRealCost(it)*it.qty, 0);
     const profit= (b.bundlePrice||0)-cost;
     return b.bundlePrice>0?(profit/b.bundlePrice*100):0;
 }
 
 function bndCardHTML(b) {
-    const orig   = (b.items||[]).reduce((s,it)=>s+it.price*it.qty,0);
-    const disc   = orig>0?((orig-b.bundlePrice)/orig*100):0;
-    const margin = bndMarginPct(b);
-    const cost   = (b.items||[]).reduce((s,it)=>s+(it.cost>0?it.cost:it.price*0.4)*it.qty,0);
-    const profit = (b.bundlePrice||0)-cost;
-    const pc     = margin>30?'var(--bnd-green)':margin>15?'var(--bnd-gold)':'var(--bnd-red)';
-    const pb     = margin>30?'linear-gradient(90deg,#34d399,#10b981)':margin>15?'linear-gradient(90deg,#fbbf24,#f59e0b)':'linear-gradient(90deg,#f87171,#ef4444)';
-    const pr     = margin>30?'🟢 Gute Marge':margin>15?'🟡 Akzeptabel':'🔴 Niedrig';
+    const orig        = (b.items||[]).reduce((s,it)=>s+it.price*it.qty, 0);
+    const disc        = orig>0?((orig-b.bundlePrice)/orig*100):0;
+    const margin      = bndMarginPct(b); // null wenn EK fehlt
+    const allKnown    = bndAllCostsKnown(b.items||[]);
+    const cost        = allKnown ? (b.items||[]).reduce((s,it)=>s+bndRealCost(it)*it.qty, 0) : null;
+    const profit      = cost !== null ? (b.bundlePrice||0)-cost : null;
+    const pc          = margin===null?'rgba(255,255,255,.4)':margin>30?'var(--bnd-green)':margin>15?'var(--bnd-gold)':'var(--bnd-red)';
+    const pb          = margin===null?'rgba(255,255,255,.12)':margin>30?'linear-gradient(90deg,#34d399,#10b981)':margin>15?'linear-gradient(90deg,#fbbf24,#f59e0b)':'linear-gradient(90deg,#f87171,#ef4444)';
+    const pr          = margin===null?'⚠️ Einkaufspreis fehlt':margin<0?'🔴 Verlust! EK prüfen':margin>30?'🟢 Gute Marge':margin>15?'🟡 Akzeptabel':'🔴 Niedrige Marge!';
+    const profitLabel = profit!==null?(bndPct(margin)+' · '+bndFmt(profit)+' Profit'):'EK eintragen';
 
     return `
     <div class="bnd-card ${b.active?'bnd-card-active':'bnd-card-inactive'}">
@@ -10874,14 +10893,18 @@ function bndCardHTML(b) {
                 <div style="font-size:10px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">Ersparnis</div>
                 <div style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;color:var(--bnd-purple)">−${bndPct(disc)}</div>
             </div>
+            ${cost!==null?`<div>
+                <div style="font-size:10px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">Einkaufspreis</div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--bnd-red)">${bndFmt(cost)}</div>
+            </div>`:'<div style="font-size:10px;color:#fbbf24;align-self:flex-end;padding-bottom:2px"><i class="fa-solid fa-triangle-exclamation" style="margin-right:3px"></i>EK fehlt</div>'}
         </div>
 
         <div style="margin-bottom:14px">
             <div style="display:flex;justify-content:space-between;font-size:10px;color:rgba(255,255,255,.3);margin-bottom:3px">
-                <span>${pr}</span>
-                <span style="color:${pc};font-weight:700">${bndPct(margin)} · ${bndFmt(profit)} Profit</span>
+                <span style="color:${pc}">${pr}</span>
+                <span style="color:${pc};font-weight:700">${profitLabel}</span>
             </div>
-            <div class="bnd-profit-bar"><div class="bnd-profit-fill" style="width:${Math.min(100,Math.max(0,margin))}%;background:${pb}"></div></div>
+            <div class="bnd-profit-bar"><div class="bnd-profit-fill" style="width:${Math.min(100,Math.max(0,margin??0))}%;background:${pb}"></div></div>
         </div>
 
         <div style="display:flex;gap:6px;flex-wrap:wrap">
@@ -11039,7 +11062,12 @@ function bndUpdateSummary() {
 
     const inputPrice=parseFloat(priceEl?.value)||0;
     const orig=_bundleItems.reduce((s,it)=>s+it.price*it.qty,0);
-    const cost=_bundleItems.reduce((s,it)=>s+(it.cost>0?it.cost:it.price*0.4)*it.qty,0);
+    // Echter Einkaufspreis: immer live aus allProducts holen, kein 40%-Schätzer
+    const cost=_bundleItems.reduce((s,it)=>{
+        const ek=bndRealCost(it);
+        return s+(ek!==null?ek:it.price*0.4)*it.qty;
+    },0);
+    const allCostsKnown=bndAllCostsKnown(_bundleItems);
     const bp=inputPrice>0?inputPrice:orig;
     const disc=orig>0?((orig-bp)/orig*100):0;
     const profit=bp-cost;
@@ -11048,18 +11076,20 @@ function bndUpdateSummary() {
     const pb=margin>30?'linear-gradient(90deg,#34d399,#10b981)':margin>15?'linear-gradient(90deg,#fbbf24,#f59e0b)':'linear-gradient(90deg,#f87171,#ef4444)';
     const pr=margin>30?'🟢 Gute Marge':margin>15?'🟡 Akzeptable Marge':'🔴 Niedrige Marge — Preis prüfen';
     const tip=margin<0?'⚠️ Du machst Verlust mit diesem Bundle!':margin<10?'💡 Tipp: KI-Analyse nutzen für besseren Preis':margin>40?'🚀 Sehr gute Marge!':'';
+    const ekHint=!allCostsKnown?'<div style="font-size:10px;color:#fbbf24;margin-top:8px;padding:6px 10px;background:rgba(251,191,36,.07);border-radius:8px;border:1px solid rgba(251,191,36,.18)"><i class="fa-solid fa-triangle-exclamation" style="margin-right:4px"></i>Einige Produkte haben keinen Einkaufspreis — Marge ist Schätzung. <button onclick="openCatCostModal()" style="background:none;border:none;color:#fbbf24;text-decoration:underline;cursor:pointer;font-size:10px;padding:0">Jetzt hinterlegen</button></div>':'';
 
     box.innerHTML=`
     <div style="font-size:12px;font-weight:700;color:var(--bnd-green);margin-bottom:12px;display:flex;align-items:center;gap:6px"><i class="fa-solid fa-chart-pie"></i> Live-Profit-Analyse</div>
     <div class="bnd-profit-row"><span class="bnd-profit-lbl">Originalpreis (Summe)</span><span class="bnd-profit-val" style="color:rgba(255,255,255,.45)">${bndFmt(orig)}</span></div>
     <div class="bnd-profit-row"><span class="bnd-profit-lbl">Bundle-Preis</span><span class="bnd-profit-val" style="color:var(--bnd-gold)">${bndFmt(bp)}</span></div>
     <div class="bnd-profit-row"><span class="bnd-profit-lbl">Kundenersparnis</span><span class="bnd-profit-val" style="color:var(--bnd-purple)">−${bndFmt(orig-bp)} (${bndPct(disc)})</span></div>
-    <div class="bnd-profit-row"><span class="bnd-profit-lbl">Gesch. Wareneinsatz</span><span class="bnd-profit-val" style="color:var(--bnd-red)">${bndFmt(cost)}</span></div>
+    <div class="bnd-profit-row"><span class="bnd-profit-lbl">${allCostsKnown?'Einkaufspreis gesamt':'Einkaufspreis (Schätzung)'}</span><span class="bnd-profit-val" style="color:var(--bnd-red)">${bndFmt(cost)}</span></div>
     <div class="bnd-divider"></div>
     <div class="bnd-profit-row"><span class="bnd-profit-lbl" style="font-weight:700;color:#fff;font-size:13px">Dein Profit</span><span class="bnd-profit-val" style="color:${pc};font-size:17px">${bndFmt(profit)}</span></div>
     <div style="margin:8px 0 4px"><div class="bnd-profit-bar"><div class="bnd-profit-fill" style="width:${Math.min(100,Math.max(0,margin))}%;background:${pb}"></div></div></div>
     <div style="font-size:11px;color:${pc};font-weight:700">${pr} · Marge: ${bndPct(margin)}</div>
     ${tip?`<div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:8px">${tip}</div>`:''}
+    ${ekHint}
     ${!inputPrice?'<div style="font-size:10px;color:rgba(255,255,255,.22);margin-top:8px">💡 Gib einen Bundle-Preis ein — oder lass die KI einen vorschlagen</div>':''}`;
 }
 
@@ -11070,30 +11100,51 @@ async function bndAICalc(strategy) {
     if(!el)return;
     if(!_bundleItems.length){el.textContent='⚠️ Füge zuerst Produkte hinzu.';return;}
 
+    // Prüfen ob alle Einkaufspreise bekannt sind
+    const missingEK = _bundleItems.filter(it => bndRealCost(it) === null);
+    if (missingEK.length > 0) {
+        el.innerHTML = `<span style="color:#f87171"><i class="fa-solid fa-triangle-exclamation" style="margin-right:6px"></i>Einkaufspreis fehlt bei: <strong>${missingEK.map(it=>it.name).join(', ')}</strong><br><span style="font-size:11px;opacity:.7">Trage zuerst den Einkaufspreis ein (Produkte → Stift-Icon → Einkaufspreis), damit die KI profitabel rechnen kann.</span></span>`;
+        return;
+    }
+
     const btns=['c','b','a'].map(k=>document.getElementById('bnd-ai-btn-'+k));
     btns.forEach(b=>{if(b)b.disabled=true;});
     el.innerHTML='<i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>KI analysiert dein Bundle…';
 
-    const orig=_bundleItems.reduce((s,it)=>s+it.price*it.qty,0);
-    const cost=_bundleItems.reduce((s,it)=>s+(it.cost>0?it.cost:it.price*0.4)*it.qty,0);
-    const name=document.getElementById('bnd-f-name')?.value||'Bundle';
-    const labels={conservative:'konservativ (Marge schützen, min. 30% Marge)',balanced:'ausgewogen (Marge & Attraktivität balancieren, ~20% Marge)',aggressive:'aggressiv (maximale Kundenattraktivität, min. 10% Marge)'};
+    const orig = _bundleItems.reduce((s,it)=>s+it.price*it.qty, 0);
+    const cost = _bundleItems.reduce((s,it)=>s+bndRealCost(it)*it.qty, 0);
+    const minProfit = cost; // Bundle-Preis MUSS über dem EK liegen
+    const name = document.getElementById('bnd-f-name')?.value||'Bundle';
 
-    const prompt=`Du bist Pricing-Experte für WaveVapes, einen deutschen Vape Online-Shop.
+    const labels = {
+        conservative: 'konservativ — Ziel: mindestens 35% Marge auf den Bundle-Preis',
+        balanced:     'ausgewogen — Ziel: mindestens 25% Marge auf den Bundle-Preis',
+        aggressive:   'aggressiv — Ziel: mindestens 15% Marge auf den Bundle-Preis (maximale Kundenattraktivität)'
+    };
+
+    const prompt=`Du bist Pricing-Experte für WaveVapes, einen deutschen Disposable-Vape Online-Shop.
+
+WICHTIG: Der empfohlene Bundle-Preis MUSS IMMER deutlich über dem Einkaufspreis (${cost.toFixed(2)} €) liegen. Ein Bundle-Preis unter dem Einkaufspreis ist absolut inakzeptabel.
 
 Bundle: "${name}"
 Strategie: ${labels[strategy]}
 
-Produkte im Bundle:
-${_bundleItems.map(it=>`- ${it.name} ×${it.qty}: VK ${(it.price*it.qty).toFixed(2)}€ | EK ca. ${((it.cost>0?it.cost:it.price*0.4)*it.qty).toFixed(2)}€`).join('\n')}
+Produkte im Bundle (mit ECHTEN Einkaufspreisen):
+${_bundleItems.map(it=>`- ${it.name} ×${it.qty}: Einzelpreis im Shop ${(it.price*it.qty).toFixed(2)} € | ECHTER Einkaufspreis ${(bndRealCost(it)*it.qty).toFixed(2)} €`).join('\n')}
 
-Originalpreis (Summe): ${orig.toFixed(2)}€
-Wareneinsatz gesamt: ${cost.toFixed(2)}€
+Summe Einzelpreise im Shop: ${orig.toFixed(2)} €
+ECHTER Gesamteinkaufspreis: ${cost.toFixed(2)} €
+Mindest-Bundle-Preis (Break-Even): ${cost.toFixed(2)} €
+
+Berechne einen Bundle-Preis, der:
+1. IMMER über ${cost.toFixed(2)} € liegt (sonst Verlust!)
+2. Die gewählte Margenstrategie erfüllt
+3. Für den Kunden attraktiv ist (günstiger als Einzelkauf)
 
 Antworte NUR auf Deutsch, direkt und konkret, in diesem exakten Format:
 💡 Empfohlener Bundle-Preis: XX,XX €
 🏷️ Rabatt: X,X% (Kundenersparnis: XX,XX €)
-💰 Dein Profit: XX,XX € | Marge: XX%
+💰 Dein Profit: XX,XX € | Marge: XX% (auf Basis ECHTER Einkaufspreise)
 📊 Begründung: [1-2 Sätze warum dieser Preis Sinn macht]
 🚀 Marketingtipp: [1 konkreter Tipp wie du das Bundle bewirbst]`;
 

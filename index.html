@@ -721,6 +721,45 @@
         .sd-empty { padding: 16px 18px; color: rgba(255,255,255,0.3); font-size: 13px; text-align: center; }
         .product-card { transition: all 0.3s ease; display: flex; flex-direction: column; height: 100%; }
         .product-card:hover { transform: translateY(-12px) scale(1.04); box-shadow: 0 25px 50px -12px rgb(103 232 249); }
+
+        /* ── Bundle Card ── */
+        .bundle-card {
+            position: relative; display: flex; flex-direction: column; height: 100%;
+            background: linear-gradient(160deg, #13131f, #1a0f2e);
+            border: 1px solid rgba(167,139,250,.3);
+            border-radius: 24px; overflow: hidden; cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .bundle-card:hover { transform: translateY(-10px) scale(1.03); box-shadow: 0 25px 50px -12px rgba(167,139,250,.35); border-color: rgba(167,139,250,.6); }
+        .bundle-card-bar { height: 4px; background: linear-gradient(90deg, #a78bfa, #f472b6, #fbbf24); border-radius: 0; }
+        .bundle-badge {
+            position: absolute; top: 14px; left: 14px;
+            background: linear-gradient(135deg, #a78bfa, #7c3aed);
+            color: #fff; font-size: 9px; font-weight: 800;
+            letter-spacing: .08em; text-transform: uppercase;
+            padding: 3px 9px; border-radius: 99px;
+        }
+        .bundle-tag {
+            font-size: 10px; background: rgba(167,139,250,.1);
+            color: rgba(255,255,255,.6); border: 1px solid rgba(167,139,250,.18);
+            border-radius: 99px; padding: 2px 8px; white-space: nowrap;
+        }
+        .bundle-orig-price { font-size: 11px; color: rgba(255,255,255,.3); text-decoration: line-through; }
+        .bundle-sale-price { font-size: 1.5rem; font-weight: 800; color: #fbbf24; font-family: 'JetBrains Mono', monospace; }
+        .bundle-save-badge {
+            font-size: 11px; font-weight: 700; color: #a78bfa;
+            background: rgba(167,139,250,.12); border: 1px solid rgba(167,139,250,.25);
+            border-radius: 99px; padding: 2px 8px;
+        }
+        .bundle-add-btn {
+            width: 100%; padding: 10px; border-radius: 14px; border: none; cursor: pointer;
+            background: linear-gradient(135deg, rgba(167,139,250,.18), rgba(244,114,182,.12));
+            border: 1px solid rgba(167,139,250,.3);
+            color: #a78bfa; font-size: 12px; font-weight: 700;
+            transition: all .2s; margin-top: auto;
+        }
+        .bundle-add-btn:hover { background: linear-gradient(135deg, rgba(167,139,250,.32), rgba(244,114,182,.22)); border-color: rgba(167,139,250,.6); color: #fff; }
+        .bundle-add-btn.in-cart { background: linear-gradient(135deg, rgba(52,211,153,.15), rgba(103,232,249,.1)); border-color: rgba(52,211,153,.35); color: #34d399; }
         /* tornado-image wird nur noch im Produkt-Detail-Modal verwendet */
         .tornado-image {
             width: 100%;
@@ -2245,6 +2284,41 @@
         ];
         let allProducts = [];
         let _productMap = new Map(); // OPT 2: O(1) product lookup — rebuilt whenever allProducts changes
+
+        // ── Bundles ──────────────────────────────────────────────────────────
+        let allBundles = [];
+
+        function loadBundles() {
+            db.collection('bundles').where('active', '==', true).onSnapshot(snap => {
+                allBundles = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                renderProductsDebounced();
+            }, err => console.warn('Bundles laden fehlgeschlagen:', err));
+        }
+
+        function addBundleToCart(bundleId, ev) {
+            if (ev) { ev.stopImmediatePropagation(); ev.preventDefault(); }
+            const bundle = allBundles.find(b => b.id === bundleId);
+            if (!bundle) return;
+            // Bundle als einzelnes Cart-Item mit special type
+            const existing = cart.find(i => i.bundleId === bundleId);
+            if (existing) {
+                existing.qty = (existing.qty || 1) + 1;
+            } else {
+                cart.push({
+                    id: 'bundle_' + bundleId,
+                    bundleId: bundleId,
+                    name: bundle.name,
+                    price: bundle.bundlePrice,
+                    qty: 1,
+                    isBundle: true,
+                    bundleItems: bundle.items || []
+                });
+            }
+            saveCart();
+            updateCartUI();
+            showToast(`🎁 „${bundle.name}" zum Warenkorb hinzugefügt!`);
+            renderProducts(); // refresh btn state
+        }
         let cart = [];
         let currentUser = null;
         let userAddress = JSON.parse(localStorage.getItem("wavevapes_address")) || {};
@@ -3034,12 +3108,9 @@
         function getSubtotal() {
             return cart.reduce((sum, item) => {
                 if (item.id == MYSTERY_ID) return sum;
+                if (item.isBundle) return sum + item.qty * (item.price || 0);
                 const product = _productMap.get(item.id);
                 const effPrice = product ? (getPromoPrice(product) ?? item.price) : item.price;
-                // BUG FIX: fallback was 7.99 — if effPrice is legitimately 0
-                // (e.g. a free promotional item) it was incorrectly charged 7.99.
-                // Use 0 as the safe fallback; out-of-stock / unavailable products
-                // shouldn't appear in the cart anyway.
                 return sum + item.qty * (effPrice ?? 0);
             }, 0);
         }
@@ -3327,6 +3398,50 @@
                     </div>`;
             });
             container.innerHTML = html || `<p class="col-span-full text-center py-16 text-gray-400">Keine Produkte gefunden.</p>`;
+
+            // ── Bundle-Karten hinzufügen ──────────────────────────────────
+            const activeBundles = allBundles.filter(b => {
+                if (!b.active) return false;
+                if (currentCategoryFilter === 'Alle') return true;
+                return b.category === currentCategoryFilter;
+            });
+            if (activeBundles.length > 0) {
+                let bundleHtml = '';
+                activeBundles.forEach(b => {
+                    const inCart = cart.some(i => i.bundleId === b.id);
+                    const orig = (b.originalTotal || 0).toFixed(2).replace('.', ',');
+                    const sale = (b.bundlePrice || 0).toFixed(2).replace('.', ',');
+                    const save = b.originalTotal > b.bundlePrice
+                        ? ((b.originalTotal - b.bundlePrice)).toFixed(2).replace('.', ',')
+                        : null;
+                    const tags = (b.items || []).slice(0, 3).map(it =>
+                        `<span class="bundle-tag">${it.name.length > 20 ? it.name.slice(0, 18) + '…' : it.name} ×${it.qty}</span>`
+                    ).join('');
+                    const moreTags = b.items && b.items.length > 3
+                        ? `<span class="bundle-tag">+${b.items.length - 3} mehr</span>` : '';
+                    bundleHtml += `
+                    <div class="bundle-card" onclick="addBundleToCart('${b.id}', event)">
+                        <div class="bundle-card-bar"></div>
+                        <div class="p-5 flex flex-col h-full gap-3">
+                            <span class="bundle-badge">🎁 Bundle</span>
+                            <div style="margin-top:22px">
+                                <h4 class="font-bold text-base leading-tight text-white mb-1">${b.name}</h4>
+                                ${b.description ? `<p style="font-size:11px;color:rgba(255,255,255,.4)">${b.description}</p>` : ''}
+                            </div>
+                            <div style="display:flex;flex-wrap:wrap;gap:5px">${tags}${moreTags}</div>
+                            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:auto">
+                                ${b.originalTotal > b.bundlePrice ? `<span class="bundle-orig-price">${orig} €</span>` : ''}
+                                <span class="bundle-sale-price">${sale} €</span>
+                                ${save ? `<span class="bundle-save-badge">−${save} € sparen</span>` : ''}
+                            </div>
+                            <button class="bundle-add-btn ${inCart ? 'in-cart' : ''}" onclick="addBundleToCart('${b.id}', event)">
+                                ${inCart ? '✅ Im Warenkorb' : '🛒 Bundle kaufen'}
+                            </button>
+                        </div>
+                    </div>`;
+                });
+                container.innerHTML += bundleHtml;
+            }
         }
         function updateNicotine(id, value) {
             pendingNicotine[id] = value;
@@ -3564,6 +3679,7 @@
             const _shipRate   = window._SHIPPING_COST   !== undefined ? window._SHIPPING_COST   : SHIPPING_COST;
             const rawSubtotal = cart.filter(i => i.id != MYSTERY_ID)
                 .reduce((s, i) => {
+                    if (i.isBundle) return s + i.qty * (i.price || 0);
                     const p = _productMap.get(i.id);
                     return s + i.qty * (p ? (getPromoPrice(p) ?? i.price) : i.price);
                 }, 0);
@@ -3676,6 +3792,29 @@
                 const nicDisplay = (item.nicotine && prod && prod.hasNicotine) ? ` (${item.nicotine})` : '';
                 if (item.id == MYSTERY_ID) {
                     htmlParts.push(`<div class="mystery-item cart-item flex justify-between items-center rounded-3xl p-5"><div class="flex items-center gap-3"><i class="fa-solid fa-gift text-3xl"></i><div><div class="font-medium">${item.name}</div><div class="text-xs bg-white/30 px-3 py-0.5 rounded-full inline-block">GRATIS AB 100€</div></div></div><div class="text-right"><div class="font-bold text-xl text-emerald-900 whitespace-nowrap">0,00 €</div></div></div>`);
+                } else if (item.isBundle) {
+                    // Bundle-Item im Warenkorb
+                    const bundleTotal = (item.qty * item.price).toFixed(2).replace('.', ',');
+                    const itemList = (item.bundleItems || []).slice(0, 4).map(bi =>
+                        `<span style="font-size:10px;background:rgba(167,139,250,.12);color:rgba(167,139,250,.9);border:1px solid rgba(167,139,250,.2);border-radius:99px;padding:1px 7px">${bi.name} ×${bi.qty}</span>`
+                    ).join(' ');
+                    const moreItems = item.bundleItems && item.bundleItems.length > 4
+                        ? `<span style="font-size:10px;color:rgba(255,255,255,.3)">+${item.bundleItems.length - 4} mehr</span>` : '';
+                    htmlParts.push(`
+                    <div class="cart-item flex justify-between items-start bg-zinc-900 border border-purple-400/20 rounded-3xl p-5" style="background:linear-gradient(135deg,#13131f,#1a0f2e)">
+                        <div style="flex:1;min-width:0">
+                            <div class="font-medium flex items-center gap-2">
+                                <span style="font-size:10px;background:linear-gradient(135deg,#a78bfa,#7c3aed);color:#fff;border-radius:99px;padding:2px 8px;font-weight:800;letter-spacing:.05em">🎁 BUNDLE</span>
+                                ${item.name}
+                            </div>
+                            <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">${itemList}${moreItems}</div>
+                            <div class="text-xs text-gray-400 mt-1">${item.qty} × ${item.price.toFixed(2).replace('.', ',')} €</div>
+                        </div>
+                        <div class="flex items-center gap-4" style="flex-shrink:0;margin-left:12px">
+                            <div class="font-bold text-xl whitespace-nowrap" style="color:#fbbf24">${bundleTotal} €</div>
+                            <button onclick="removeCartItem('${item.id}'); event.stopImmediatePropagation()" class="text-red-400"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>`);
                 } else {
                     const origPrice  = item.price || 7.99;
                     const promoPrice = prod ? getPromoPrice(prod) : null;
@@ -3851,9 +3990,10 @@
                 // SECURITY: Re-fetch all product prices from Firestore.
                 // This prevents a user from manipulating item.price in
                 // the client-side cart to get products for less.
+                // Bundles are excluded from this check — their price is fixed on the bundle doc.
                 // ═══════════════════════════════════════════════════════
                 const cartProductIds = [...new Set(
-                    cart.filter(i => i.id != MYSTERY_ID).map(i => String(i.id))
+                    cart.filter(i => i.id != MYSTERY_ID && !i.isBundle).map(i => String(i.id))
                 )];
                 const priceSnaps = await Promise.all(
                     cartProductIds.map(id => db.collection("products").doc(id).get())
@@ -3862,19 +4002,32 @@
                 priceSnaps.forEach(snap => {
                     if (snap.exists) serverPriceMap[snap.id] = snap.data().price || 0;
                 });
-                // Verify all products still exist
+                // Verify all regular products still exist
                 for (const id of cartProductIds) {
                     if (serverPriceMap[id] === undefined) {
                         throw new Error("Ein Produkt im Warenkorb ist nicht mehr verfügbar.");
                     }
                 }
-                // Build server-verified cart items (use Firestore price, not client price)
+                // Verify bundle prices from Firestore
+                const bundleItems = cart.filter(i => i.isBundle);
+                const bundlePriceMap = {};
+                await Promise.all(bundleItems.map(async i => {
+                    const snap = await db.collection('bundles').doc(i.bundleId).get();
+                    if (!snap.exists || !snap.data().active) throw new Error(`Das Bundle „${i.name}" ist nicht mehr verfügbar.`);
+                    bundlePriceMap[i.bundleId] = snap.data().bundlePrice || 0;
+                }));
+                // Build server-verified cart items
                 const verifiedItems = cart.map(item => ({
                     id: item.id,
                     name: item.name,
                     qty: item.qty,
-                    price: item.id == MYSTERY_ID ? (item.price || 0) : serverPriceMap[String(item.id)],
-                    nicotine: item.nicotine || ""
+                    price: item.id == MYSTERY_ID ? (item.price || 0)
+                         : item.isBundle ? bundlePriceMap[item.bundleId]
+                         : serverPriceMap[String(item.id)],
+                    nicotine: item.nicotine || "",
+                    isBundle: item.isBundle || false,
+                    bundleId: item.bundleId || null,
+                    bundleItems: item.bundleItems || null
                 }));
 
                 // ═══════════════════════════════════════════════════════
@@ -3883,7 +4036,7 @@
                 // the same time — Firestore transactions are serialised.
                 // ═══════════════════════════════════════════════════════
                 const qtyMap = {};
-                cart.filter(i => i.id != MYSTERY_ID).forEach(i => {
+                cart.filter(i => i.id != MYSTERY_ID && !i.isBundle).forEach(i => {
                     qtyMap[String(i.id)] = (qtyMap[String(i.id)] || 0) + i.qty;
                 });
                 await db.runTransaction(async (tx) => {
@@ -5632,6 +5785,7 @@
             updateLoyaltyDisplay();
             renderCategoryTabs();
             loadProducts();
+            loadBundles();
             checkAndAutoRedeemLoyalty();
             clearDiscountField();
             updatePresence();

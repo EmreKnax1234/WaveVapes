@@ -7616,48 +7616,37 @@ function loadPresence() {
     const liveDot   = document.getElementById('prs-live-dot');
     const lastUpd   = document.getElementById('prs-last-update');
 
-    db.collection("presence").onSnapshot(snap => {
-        const now = Date.now();
-        const active = [];
-        snap.forEach(doc => {
-            const d = doc.data();
-            if (!d.lastSeen) return;
-            const last = d.lastSeen.toDate().getTime();
-            if (now - last > 45000) return;
-            active.push({ ...d, _age: now - last });
-        });
+    // _presenceData: letzter Snapshot-Stand, damit Sekunden-Ticker unabhaengig re-rendern kann
+    let _presenceData = [];
+    let _presenceTickerInterval = null;
 
-        // stats
-        const loggedIn = active.filter(d => !d.isGuest && d.uid).length;
-        const guests   = active.filter(d => d.isGuest || !d.uid).length;
-        const set = (id,v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
-        set('prs-total',    active.length);
-        set('prs-loggedin', loggedIn);
-        set('prs-guests',   guests);
+    function fmtAge(ms) {
+        if (ms < 0) ms = 0;
+        const h   = Math.floor(ms / 3600000);
+        const min = Math.floor((ms % 3600000) / 60000);
+        const sec = Math.floor((ms % 60000) / 1000);
+        if (h > 0)   return `${h}h ${min}m`;
+        if (min > 0) return `${min}m ${sec}s`;
+        return `${sec}s`;
+    }
 
-        // live dot
-        if (liveDot) liveDot.style.display = active.length ? 'inline-block' : 'none';
-        // sidebar dot
-        const sbDot = document.getElementById('sb-live-dot');
-        if (sbDot) sbDot.style.display = active.length ? 'inline-block' : 'none';
-        // last update
-        if (lastUpd) lastUpd.textContent = 'Aktualisiert: ' + new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-
-        if (!active.length) {
+    function renderPresenceCards() {
+        if (!_presenceData.length) {
             container.innerHTML = `<div class="prs-empty"><i class="fa-solid fa-users-slash"></i>Niemand gerade online.</div>`;
             return;
         }
-
+        const now = Date.now();
         let html = '';
-        active.sort((a,b) => a._age - b._age).forEach((d,idx) => {
-            const isGuest = d.isGuest || !d.uid;
-            const name    = d.username || (isGuest ? 'Gast' : '—');
+        [..._presenceData].sort((a,b) => (a._firstMs||a._lastMs) - (b._firstMs||b._lastMs)).forEach((d,idx) => {
+            const isGuest   = d.isGuest || !d.uid;
+            const name      = d.username || (isGuest ? 'Gast' : '—');
             const [avBg,avColor] = prsAvColor(d.email || d.uid || String(idx));
-            const initials = name.slice(0,2).toUpperCase();
-            const ageMin  = Math.floor(d._age / 60000);
-            const ageSec  = Math.floor((d._age % 60000) / 1000);
-            const ageStr  = ageMin > 0 ? `${ageMin}m ${ageSec}s` : `${ageSec}s`;
+            const initials  = name.slice(0,2).toUpperCase();
+            // Aktiv seit: firstSeen wenn vorhanden (echter Sitzungsbeginn), sonst lastSeen
+            const sinceMs   = d._firstMs ? (now - d._firstMs) : (now - d._lastMs);
+            const ageStr    = fmtAge(sinceMs);
             const cartItems = d.cartCount || d.cart?.length || null;
+            const ipEscaped = (d.ip || '').replace(/'/g, '');
 
             html += `<div class="prs-card" style="animation-delay:${idx*.04}s">
                 <div class="prs-card-top">
@@ -7672,12 +7661,50 @@ function loadPresence() {
                     <div class="prs-meta-item"><i class="fa-solid fa-clock"></i><span>Aktiv seit <span class="prs-meta-val">${ageStr}</span></span></div>
                     ${d.page ? `<div class="prs-meta-item"><i class="fa-solid fa-location-dot"></i><span class="prs-meta-val">${d.page}</span></div>` : ''}
                     ${d.referral ? `<div class="prs-meta-item"><i class="fa-solid fa-link"></i><span class="prs-meta-val">${d.referral}</span></div>` : ''}
-                    ${d.ip ? `<div class="prs-meta-item"><i class="fa-solid fa-network-wired"></i><span class="prs-meta-val" style="font-family:'JetBrains Mono',monospace;font-size:11px;cursor:pointer;" onclick="navigator.clipboard.writeText('${d.ip}').then(()=>showToast('IP kopiert','success'))" title="Klicken zum Kopieren">${d.ip}</span></div>` : ''}
+                    ${d.ip ? `<div class="prs-meta-item"><i class="fa-solid fa-network-wired"></i><span class="prs-meta-val" style="font-family:'JetBrains Mono',monospace;font-size:11px;cursor:pointer;" onclick="navigator.clipboard.writeText('${ipEscaped}').then(()=>showToast('IP kopiert','success'))" title="Klicken zum Kopieren">${d.ip}</span></div>` : ''}
                 </div>
                 ${cartItems ? `<div class="prs-cart-strip"><i class="fa-solid fa-cart-shopping"></i>${cartItems} Artikel im Warenkorb</div>` : ''}
             </div>`;
         });
         container.innerHTML = html;
+    }
+
+    db.collection("presence").onSnapshot(snap => {
+        const now = Date.now();
+        const active = [];
+        snap.forEach(doc => {
+            const d = doc.data();
+            if (!d.lastSeen) return;
+            const lastMs = d.lastSeen.toDate().getTime();
+            // Timeout 90s statt 45s: toleriert Netzwerkverzoegerung + Browser-Tab-Throttling
+            if (now - lastMs > 90000) return;
+            const firstMs = d.firstSeen ? d.firstSeen.toDate().getTime() : null;
+            active.push({ ...d, _lastMs: lastMs, _firstMs: firstMs });
+        });
+
+        _presenceData = active;
+
+        // Stats
+        const loggedIn = active.filter(d => !d.isGuest && d.uid).length;
+        const guests   = active.filter(d => d.isGuest || !d.uid).length;
+        const set = (id,v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
+        set('prs-total',    active.length);
+        set('prs-loggedin', loggedIn);
+        set('prs-guests',   guests);
+
+        if (liveDot) liveDot.style.display = active.length ? 'inline-block' : 'none';
+        const sbDot = document.getElementById('sb-live-dot');
+        if (sbDot) sbDot.style.display = active.length ? 'inline-block' : 'none';
+        if (lastUpd) lastUpd.textContent = 'Aktualisiert: ' + new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+
+        renderPresenceCards();
+
+        // Sekunden-Ticker: einmalig starten, laeuft dauerhaft und tickt den Timer jede Sekunde
+        if (!_presenceTickerInterval) {
+            _presenceTickerInterval = setInterval(() => {
+                if (_presenceData.length) renderPresenceCards();
+            }, 1000);
+        }
     });
 }
 async function cleanupOldPresence() {

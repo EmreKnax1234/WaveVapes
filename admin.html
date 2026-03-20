@@ -3478,6 +3478,9 @@
                     <button onclick="caExportCSV()" style="display:flex;align-items:center;gap:7px;padding:8px 16px;border-radius:12px;background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.25);color:#34d399;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(52,211,153,.2)'" onmouseout="this.style.background='rgba(52,211,153,.1)'">
                         <i class="fa-solid fa-file-csv"></i> CSV Export
                     </button>
+                    <button onclick="caWriteTestEvent()" style="display:flex;align-items:center;gap:7px;padding:8px 16px;border-radius:12px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.2);color:#fbbf24;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(251,191,36,.16)'" onmouseout="this.style.background='rgba(251,191,36,.08)'">
+                        <i class="fa-solid fa-vial"></i> Test-Event
+                    </button>
                     <button onclick="loadClickAnalytics()" style="display:flex;align-items:center;gap:7px;padding:8px 16px;border-radius:12px;background:rgba(103,232,249,.08);border:1px solid rgba(103,232,249,.2);color:#67e8f9;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(103,232,249,.16)'" onmouseout="this.style.background='rgba(103,232,249,.08)'">
                         <i class="fa-solid fa-rotate"></i> Aktualisieren
                     </button>
@@ -8313,6 +8316,23 @@ const CA_PAGE_SIZE = 50;
 let _caBarChart   = null;
 let _caDonutChart = null;
 let _caLineChart  = null;
+
+async function caWriteTestEvent() {
+    try {
+        await db.collection('click_events').add({
+            label: 'Admin Test-Event',
+            isGuest: false,
+            userId: auth.currentUser ? auth.currentUser.uid : null,
+            userEmail: auth.currentUser ? auth.currentUser.email : null,
+            page: '/admin-test',
+            ts: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+        showToast('✅ Test-Event geschrieben — jetzt Aktualisieren klicken', 'success');
+    } catch(e) {
+        showToast('❌ Schreiben fehlgeschlagen: ' + e.message, 'error');
+        console.error('caWriteTestEvent error:', e);
+    }
+}
 
 async function loadClickAnalytics() {
     const tbody = document.getElementById('ca-events-tbody');

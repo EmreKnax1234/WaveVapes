@@ -2369,13 +2369,19 @@
             }
         }
         async function applyReferralBonusToReferrer(refCode) {
-            const snapshot = await db.collection("users").where("referralCode", "==", refCode).limit(1).get();
-            if (!snapshot.empty) {
-                const referrerRef = snapshot.docs[0].ref;
-                await referrerRef.update({
-                    referralCount: firebase.firestore.FieldValue.increment(1),
-                    totalBonusPoints: firebase.firestore.FieldValue.increment(100)
-                });
+            // BUG FIX: Wrapped in try/catch — an uncaught Firestore error here would
+            // silently crash createOrUpdateUserProfile() and block the user's login flow.
+            try {
+                const snapshot = await db.collection("users").where("referralCode", "==", refCode).limit(1).get();
+                if (!snapshot.empty) {
+                    const referrerRef = snapshot.docs[0].ref;
+                    await referrerRef.update({
+                        referralCount: firebase.firestore.FieldValue.increment(1),
+                        totalBonusPoints: firebase.firestore.FieldValue.increment(100)
+                    });
+                }
+            } catch(e) {
+                console.warn("applyReferralBonusToReferrer fehlgeschlagen:", e.message);
             }
         }
         async function shareReferral() {
@@ -2803,14 +2809,19 @@
         async function addLoyaltyPoints(amount) {
             if (!currentUser) return;
             const pointsToAdd = Math.floor(amount);
-            await db.collection("users").doc(currentUser.uid).update({
-                totalBonusPoints: firebase.firestore.FieldValue.increment(pointsToAdd)
-            });
-            // BUG FIX: Update local loyaltyPoints variable so display refreshes immediately
-            // without waiting for the next Firestore snapshot.
-            loyaltyPoints += pointsToAdd;
-            updateLoyaltyDisplay();
-            showToast(`🎉 +${pointsToAdd} Loyalty-Punkte gutgeschrieben!`);
+            try {
+                await db.collection("users").doc(currentUser.uid).update({
+                    totalBonusPoints: firebase.firestore.FieldValue.increment(pointsToAdd)
+                });
+                // BUG FIX: Update local loyaltyPoints variable so display refreshes immediately
+                // without waiting for the next Firestore snapshot.
+                loyaltyPoints += pointsToAdd;
+                updateLoyaltyDisplay();
+                showToast(`🎉 +${pointsToAdd} Loyalty-Punkte gutgeschrieben!`);
+            } catch(e) {
+                console.error("addLoyaltyPoints fehlgeschlagen:", e.message);
+                showToast("❌ Punkte konnten nicht gutgeschrieben werden.", "error");
+            }
         }
         // ====================== GUTSCHEIN-SYSTEM (FIXED: totalUsages) ======================
         async function applyDiscountCode() {
@@ -3521,7 +3532,10 @@
                 loyaltyCartInfo.innerHTML = "";
             }
             if (userAddress.street) {
-                addressDisplay.innerHTML = `${userAddress.street}<br>${userAddress.zip} ${userAddress.city}`;
+                // BUG FIX: Sanitize address fields before inserting into innerHTML
+                // to prevent XSS if a user typed HTML/script tags into the address form.
+                const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+                addressDisplay.innerHTML = `${esc(userAddress.street)}<br>${esc(userAddress.zip)} ${esc(userAddress.city)}`;
             } else {
                 addressDisplay.innerHTML = `<span class="text-red-400">Noch keine Adresse angegeben</span>`;
             }
@@ -3541,7 +3555,14 @@
                     const freeCount = Math.floor(totalCatQty / offer.offerN) * (offer.offerN - offer.offerM);
                     htmlParts.push(`<div class="bg-gradient-to-r from-amber-400 to-yellow-400 text-black p-6 rounded-3xl mb-6 text-center shadow-inner"><div class="flex items-center justify-center gap-3 text-2xl font-black">⚡ ${badgeText} AKTION AKTIV!</div><p class="font-semibold text-base mt-2">Du bekommst <span class="underline">${freeCount} Artikel gratis</span></p></div>`);
                 } else if (offer.offerType === 'percent') {
-                    const saving = catItems.reduce((s,i) => s + i.qty*(i.price||0)*(offer.offerN/100), 0);
+                    // BUG FIX: Use effective (promo-aware) price for savings display,
+                    // not raw i.price — avoids showing inflated savings when a product
+                    // already has an active promotion running on top of the category offer.
+                    const saving = catItems.reduce((s,i) => {
+                        const p = _productMap.get(i.id);
+                        const effPrice = p ? (getPromoPrice(p) ?? i.price ?? 0) : (i.price || 0);
+                        return s + i.qty * effPrice * (offer.offerN / 100);
+                    }, 0);
                     htmlParts.push(`<div class="bg-gradient-to-r from-cyan-400 to-purple-500 text-black p-4 rounded-3xl mb-4 text-center"><div class="font-black">⚡ -${offer.offerN}% auf ${catName}</div><p class="text-sm mt-1">Du sparst ${saving.toFixed(2).replace('.',',')} €</p></div>`);
                 } else if (offer.offerType === 'fixed') {
                     const saving = catItems.reduce((s,i) => s + i.qty*offer.offerN, 0);

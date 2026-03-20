@@ -2133,6 +2133,7 @@
             <div onclick="switchTab(11)" id="sidebar-11" class="sidebar-item"><i class="fa-solid fa-star"></i><span>Bewertungen</span><span class="sidebar-badge" id="sb-reviews-badge" style="display:none">0</span></div>
             <div onclick="switchTab(13)" id="sidebar-13" class="sidebar-item"><i class="fa-solid fa-crown"></i><span>Kunden-Übersicht</span></div>
             <div onclick="switchTab(14)" id="sidebar-14" class="sidebar-item"><i class="fa-solid fa-bolt"></i><span>Aktionen</span><span class="sidebar-badge" id="sb-promos-badge" style="display:none">0</span></div>
+            <div onclick="switchTab(16)" id="sidebar-16" class="sidebar-item"><i class="fa-solid fa-layer-group"></i><span>Bundles</span><span class="sidebar-badge" id="sb-bundles-badge" style="display:none">0</span></div>
 
             <div class="sidebar-section-label" style="margin-top:12px; border-top:1px solid rgba(251,191,36,.1); padding-top:12px;">Superadmin</div>
             <div onclick="openSuperadminZone()" id="sidebar-12" class="sidebar-item-locked" title="Nur für Superadmin">
@@ -3806,27 +3807,10 @@
                             <div style="font-size:10px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.06em">Letzter Backup</div>
                             <div style="font-size:13px;font-weight:700;color:#67e8f9;font-family:'JetBrains Mono',monospace" id="bkp-last-label">—</div>
                         </div>
-                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                            <input type="text" id="bkp-note-input" placeholder="Optionale Notiz zum Backup…" maxlength="80"
-                                style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 14px;color:#fff;font-size:12px;outline:none;width:220px;transition:border-color .2s"
-                                onfocus="this.style.borderColor='rgba(103,232,249,.4)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">
-                            <button onclick="bkpRunNow()" id="bkp-run-btn" style="display:flex;align-items:center;gap:8px;padding:10px 18px;border-radius:13px;background:rgba(103,232,249,.1);border:1px solid rgba(103,232,249,.25);color:#67e8f9;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(103,232,249,.2)'" onmouseout="this.style.background='rgba(103,232,249,.1)'">
-                                <i class="fa-solid fa-play"></i> Jetzt sichern
-                            </button>
-                        </div>
+                        <button onclick="bkpRunNow()" id="bkp-run-btn" style="display:flex;align-items:center;gap:8px;padding:10px 18px;border-radius:13px;background:rgba(103,232,249,.1);border:1px solid rgba(103,232,249,.25);color:#67e8f9;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(103,232,249,.2)'" onmouseout="this.style.background='rgba(103,232,249,.1)'">
+                            <i class="fa-solid fa-play"></i> Jetzt sichern
+                        </button>
                     </div>
-                </div>
-
-                <!-- ── Backup-Fortschritt ── -->
-                <div id="bkp-progress-bar-wrap" style="display:none;background:rgba(103,232,249,.04);border:1px solid rgba(103,232,249,.15);border-radius:16px;padding:16px 20px">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-                        <div id="bkp-progress-label" style="font-size:12px;font-weight:600;color:#67e8f9">Backup wird erstellt…</div>
-                        <div id="bkp-progress-pct" style="font-size:12px;font-weight:700;color:#fbbf24;font-family:'JetBrains Mono',monospace">0%</div>
-                    </div>
-                    <div style="background:rgba(255,255,255,.08);border-radius:99px;height:6px;overflow:hidden">
-                        <div id="bkp-progress-fill" style="height:100%;background:linear-gradient(90deg,#67e8f9,#a78bfa);border-radius:99px;width:0%;transition:width .3s ease"></div>
-                    </div>
-                    <div id="bkp-progress-cols" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px"></div>
                 </div>
 
                 <!-- ── KPI Strip ── -->
@@ -3962,90 +3946,21 @@
                             <button class="sa-export-btn" onclick="saExport('reviews','json')"><i class="fa-solid fa-file-code"></i> JSON</button>
                             <button class="sa-export-btn" onclick="saExport('reviews','csv')" style="background:rgba(167,139,250,.1);color:#a78bfa"><i class="fa-solid fa-file-csv"></i> CSV</button>
                         </div>
-                        <div class="sa-export-card" style="border-color:rgba(52,211,153,.2)">
-                            <div class="sa-export-icon">📂</div><div class="sa-export-title">Import aus Datei</div>
-                            <div class="sa-export-desc">Lokal gespeicherte Backup-JSON-Datei hochladen und Daten wiederherstellen.</div>
-                            <button class="sa-export-btn" onclick="bkpImportFromFile()" style="background:rgba(52,211,153,.1);color:#34d399;border:1px solid rgba(52,211,153,.2)"><i class="fa-solid fa-file-import"></i> Datei importieren</button>
-                            <input type="file" id="bkp-import-file-input" accept=".json" style="display:none" onchange="bkpHandleFileImport(this)">
-                        </div>
                     </div>
                 </div>
 
                 <!-- Restore Modal -->
                 <div id="bkp-restore-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(12px);z-index:99999;align-items:center;justify-content:center">
-                    <div style="background:linear-gradient(160deg,#0f0f1a,#1a1a2e);border:1px solid rgba(248,113,113,.25);border-radius:28px;padding:36px;width:100%;max-width:520px;animation:modalPop .3s cubic-bezier(0.34,1.56,0.64,1);max-height:90vh;overflow-y:auto">
+                    <div style="background:linear-gradient(160deg,#0f0f1a,#1a1a2e);border:1px solid rgba(248,113,113,.25);border-radius:28px;padding:36px;width:100%;max-width:460px;animation:modalPop .3s cubic-bezier(0.34,1.56,0.64,1)">
                         <div style="width:56px;height:56px;border-radius:16px;background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.3);display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 20px">⚠️</div>
                         <div style="font-family:'Orbitron',sans-serif;font-size:16px;font-weight:700;color:#f87171;text-align:center;margin-bottom:8px">Backup wiederherstellen</div>
-                        <div style="font-size:11px;color:rgba(255,255,255,.35);text-align:center;line-height:1.6;margin-bottom:20px" id="bkp-restore-desc">—</div>
-
-                        <!-- Collection Selector -->
-                        <div style="margin-bottom:18px">
-                            <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Collections zum Wiederherstellen</div>
-                            <div id="bkp-restore-col-list" style="display:flex;flex-wrap:wrap;gap:6px">
-                                <!-- filled by JS -->
-                            </div>
-                            <div style="margin-top:8px;display:flex;gap:8px">
-                                <button onclick="bkpRestoreSelectAll(true)" style="font-size:10px;padding:4px 10px;border-radius:8px;border:1px solid rgba(103,232,249,.2);background:rgba(103,232,249,.06);color:#67e8f9;cursor:pointer">Alle</button>
-                                <button onclick="bkpRestoreSelectAll(false)" style="font-size:10px;padding:4px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:rgba(255,255,255,.4);cursor:pointer">Keine</button>
-                            </div>
+                        <div style="font-size:11px;color:rgba(255,255,255,.35);text-align:center;line-height:1.6;margin-bottom:24px" id="bkp-restore-desc">—</div>
+                        <div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-radius:12px;padding:12px 14px;margin-bottom:20px;font-size:11px;color:rgba(248,113,113,.8);line-height:1.6">
+                            <i class="fa-solid fa-triangle-exclamation" style="margin-right:6px"></i><strong>Achtung:</strong> Aktuelle Daten werden bei Bestätigung durch den Backup-Stand ersetzt. Diese Aktion kann nicht rückgängig gemacht werden.
                         </div>
-
-                        <div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-radius:12px;padding:12px 14px;margin-bottom:18px;font-size:11px;color:rgba(248,113,113,.8);line-height:1.6">
-                            <i class="fa-solid fa-triangle-exclamation" style="margin-right:6px"></i><strong>Achtung:</strong> Aktuelle Daten der gewählten Collections werden ersetzt. Diese Aktion kann nicht rückgängig gemacht werden.
-                        </div>
-
-                        <!-- Restore Progress -->
-                        <div id="bkp-restore-progress" style="display:none;margin-bottom:16px">
-                            <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-                                <div id="bkp-restore-prog-label" style="font-size:11px;color:#67e8f9;font-weight:600">Wiederherstellung…</div>
-                                <div id="bkp-restore-prog-pct" style="font-size:11px;color:#fbbf24;font-family:'JetBrains Mono',monospace">0%</div>
-                            </div>
-                            <div style="background:rgba(255,255,255,.08);border-radius:99px;height:5px;overflow:hidden">
-                                <div id="bkp-restore-prog-fill" style="height:100%;background:linear-gradient(90deg,#f87171,#fbbf24);border-radius:99px;width:0%;transition:width .3s ease"></div>
-                            </div>
-                        </div>
-
                         <div style="display:flex;gap:10px">
                             <button onclick="document.getElementById('bkp-restore-modal').style.display='none'" style="flex:1;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:rgba(255,255,255,.6);font-size:13px;font-weight:600;cursor:pointer">Abbrechen</button>
                             <button onclick="bkpConfirmRestore()" style="flex:1;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;font-size:13px;font-weight:700;cursor:pointer" id="bkp-restore-confirm-btn"><i class="fa-solid fa-rotate-left"></i> Wiederherstellen</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Import-from-File Modal -->
-                <div id="bkp-import-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(12px);z-index:99999;align-items:center;justify-content:center">
-                    <div style="background:linear-gradient(160deg,#0f0f1a,#1a1a2e);border:1px solid rgba(52,211,153,.25);border-radius:28px;padding:36px;width:100%;max-width:520px;animation:modalPop .3s cubic-bezier(0.34,1.56,0.64,1);max-height:90vh;overflow-y:auto">
-                        <div style="width:56px;height:56px;border-radius:16px;background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.3);display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 20px">📂</div>
-                        <div style="font-family:'Orbitron',sans-serif;font-size:16px;font-weight:700;color:#34d399;text-align:center;margin-bottom:6px">Import aus Datei</div>
-                        <div style="font-size:11px;color:rgba(255,255,255,.35);text-align:center;line-height:1.6;margin-bottom:20px" id="bkp-import-file-desc">—</div>
-
-                        <div style="margin-bottom:18px">
-                            <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Collections wiederherstellen</div>
-                            <div id="bkp-import-col-list" style="display:flex;flex-wrap:wrap;gap:6px"></div>
-                            <div style="margin-top:8px;display:flex;gap:8px">
-                                <button onclick="bkpImportSelectAll(true)" style="font-size:10px;padding:4px 10px;border-radius:8px;border:1px solid rgba(52,211,153,.2);background:rgba(52,211,153,.06);color:#34d399;cursor:pointer">Alle</button>
-                                <button onclick="bkpImportSelectAll(false)" style="font-size:10px;padding:4px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:rgba(255,255,255,.4);cursor:pointer">Keine</button>
-                            </div>
-                        </div>
-
-                        <div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-radius:12px;padding:12px 14px;margin-bottom:18px;font-size:11px;color:rgba(248,113,113,.8);line-height:1.6">
-                            <i class="fa-solid fa-triangle-exclamation" style="margin-right:6px"></i><strong>Achtung:</strong> Aktuelle Firestore-Daten der gewählten Collections werden durch den Dateiinhalt ersetzt.
-                        </div>
-
-                        <!-- Import Progress -->
-                        <div id="bkp-import-progress" style="display:none;margin-bottom:16px">
-                            <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-                                <div id="bkp-import-prog-label" style="font-size:11px;color:#34d399;font-weight:600">Importiere…</div>
-                                <div id="bkp-import-prog-pct" style="font-size:11px;color:#fbbf24;font-family:'JetBrains Mono',monospace">0%</div>
-                            </div>
-                            <div style="background:rgba(255,255,255,.08);border-radius:99px;height:5px;overflow:hidden">
-                                <div id="bkp-import-prog-fill" style="height:100%;background:linear-gradient(90deg,#34d399,#67e8f9);border-radius:99px;width:0%;transition:width .3s ease"></div>
-                            </div>
-                        </div>
-
-                        <div style="display:flex;gap:10px">
-                            <button onclick="document.getElementById('bkp-import-modal').style.display='none'" style="flex:1;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:rgba(255,255,255,.6);font-size:13px;font-weight:600;cursor:pointer">Abbrechen</button>
-                            <button onclick="bkpConfirmImport()" style="flex:1;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#34d399,#10b981);color:#000;font-size:13px;font-weight:700;cursor:pointer" id="bkp-import-confirm-btn"><i class="fa-solid fa-file-import"></i> Importieren</button>
                         </div>
                     </div>
                 </div>
@@ -4129,6 +4044,11 @@
             </div>
 
         </div>
+        </div>
+
+        <!-- TAB 16: BUNDLES -->
+        <div id="tab-content-16" class="hidden">
+            <div id="bundle-shell"></div>
         </div>
 
 
@@ -7534,7 +7454,7 @@ const TAB_NAMES = {
     0:'Produkte', 1:'Bestellungen', 2:'Benutzer', 3:'Kategorien',
     4:'Gutscheine', 5:'Analytics', 6:'Admin Logs', 7:'Settings',
     8:'Sortierung', 9:'Live Online', 10:'Erw. Benutzer', 11:'Bewertungen', 12:'Superadmin Zone',
-    13:'Kunden-Übersicht', 14:'Aktionen', 15:'Klick-Analyse'
+    13:'Kunden-Übersicht', 14:'Aktionen', 15:'Klick-Analyse', 16:'Bundles'
 };
 
 function switchTab(n) {
@@ -7583,6 +7503,7 @@ function switchTab(n) {
         // Tear down click-analytics live listener when leaving tab 15
         if(_caUnsub) { _caUnsub(); _caUnsub = null; }
     }
+    if(n===16) loadBundles();
 }
 function toggleSidebar(){
     const s=document.getElementById('sidebar');
@@ -9190,6 +9111,7 @@ const SA_PERMISSIONS = [
     { key:'extusers',    label:'Erw. Benutzer',   icon:'fa-users-cog',       tab:10 },
     { key:'reviews',     label:'Bewertungen',     icon:'fa-star',            tab:11 },
     { key:'clicks',      label:'Klick-Analyse',   icon:'fa-computer-mouse',  tab:15 },
+    { key:'bundles',     label:'Bundles',          icon:'fa-layer-group',     tab:16 },
 ];
 
 let saUnlocked = false;
@@ -10257,45 +10179,16 @@ function bkpRenderStatus() {
 
 async function bkpRunNow() {
     const btn = document.getElementById('bkp-run-btn');
-    const noteInput = document.getElementById('bkp-note-input');
-    const note = noteInput?.value?.trim() || '';
-
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sichern...'; }
-
-    // Fortschrittsbalken einblenden
-    const progWrap  = document.getElementById('bkp-progress-bar-wrap');
-    const progLabel = document.getElementById('bkp-progress-label');
-    const progPct   = document.getElementById('bkp-progress-pct');
-    const progFill  = document.getElementById('bkp-progress-fill');
-    const progCols  = document.getElementById('bkp-progress-cols');
-    if (progWrap) { progWrap.style.display = 'block'; }
-    const setProgress = (pct, label, colName, done) => {
-        if (progLabel) progLabel.textContent = label;
-        if (progPct)   progPct.textContent   = Math.round(pct) + '%';
-        if (progFill)  progFill.style.width  = pct + '%';
-        if (colName && progCols) {
-            const chip = document.createElement('span');
-            chip.style.cssText = `font-size:10px;padding:2px 9px;border-radius:99px;background:${done?'rgba(52,211,153,.15)':'rgba(103,232,249,.1)'};color:${done?'#34d399':'#67e8f9'};border:1px solid ${done?'rgba(52,211,153,.3)':'rgba(103,232,249,.2)'};font-family:'JetBrains Mono',monospace;transition:all .2s`;
-            chip.textContent = (done ? '✓ ' : '⏳ ') + colName;
-            chip.id = 'bkp-chip-' + colName;
-            const existing = document.getElementById('bkp-chip-' + colName);
-            if (existing) existing.replaceWith(chip);
-            else progCols.appendChild(chip);
-        }
-    };
-
-    if (progCols) progCols.innerHTML = '';
     showToast('⏳ Backup wird erstellt...');
 
     try {
         const cols = (_bkpConfig?.collections?.length > 0) ? _bkpConfig.collections : BKP_ALL_COLS;
-        const payload = { createdAt: firebase.firestore.FieldValue.serverTimestamp(), version: '1.0', collections: {}, meta: { triggeredBy: auth.currentUser?.email || 'Superadmin', manual: true, docCounts: {}, note: note || null } };
+        const payload = { createdAt: firebase.firestore.FieldValue.serverTimestamp(), version: '1.0', collections: {}, meta: { triggeredBy: auth.currentUser?.email || 'Superadmin', manual: true, docCounts: {} } };
         let totalDocs = 0;
         let totalSize = 0;
 
-        for (let ci = 0; ci < cols.length; ci++) {
-            const col = cols[ci];
-            setProgress((ci / cols.length) * 80, `Sichere "${col}"…`, col, false);
+        for (const col of cols) {
             try {
                 const snap = await db.collection(col).limit(3000).get();
                 const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -10303,15 +10196,11 @@ async function bkpRunNow() {
                 payload.collections[col] = serialized;
                 payload.meta.docCounts[col] = docs.length;
                 totalDocs += docs.length;
-                setProgress(((ci + 1) / cols.length) * 80, `"${col}" gesichert (${docs.length} Docs)`, col, true);
             } catch(e) {
                 payload.collections[col] = [];
                 payload.meta.docCounts[col] = 0;
-                setProgress(((ci + 1) / cols.length) * 80, `"${col}" übersprungen (Fehler)`, col, true);
             }
         }
-
-        setProgress(90, 'In Firestore speichern…');
 
         // Größe abschätzen (JSON-String-Länge in Bytes)
         const jsonStr    = JSON.stringify(payload);
@@ -10338,14 +10227,8 @@ async function bkpRunNow() {
         // Alte Backups bereinigen
         await bkpCleanup();
 
-        // Notiz-Feld leeren
-        if (noteInput) noteInput.value = '';
-
         // Log
-        await logAction('auto_backup_created', backupRef.id, { totalDocs, sizeBytes: totalSize, manual: true, note: note || null });
-
-        setProgress(100, 'Backup abgeschlossen ✅');
-        setTimeout(() => { if (progWrap) progWrap.style.display = 'none'; }, 2500);
+        await logAction('auto_backup_created', backupRef.id, { totalDocs, sizeBytes: totalSize, manual: true });
 
         bkpRenderStatus();
         await bkpLoadHistory();
@@ -10447,7 +10330,6 @@ async function bkpLoadHistory() {
                         <span style="font-size:13px;font-weight:700;color:#fff">Backup ${bkpFmtDate(b.createdAt)}</span>
                         ${i===0?'<span style="font-size:10px;padding:2px 8px;border-radius:99px;background:rgba(103,232,249,.12);color:#67e8f9;border:1px solid rgba(103,232,249,.2);font-weight:700">AKTUELL</span>':''}
                         ${isManual?'<span style="font-size:10px;padding:2px 8px;border-radius:99px;background:rgba(251,191,36,.1);color:#fbbf24;border:1px solid rgba(251,191,36,.2);font-weight:700">MANUELL</span>':'<span style="font-size:10px;padding:2px 8px;border-radius:99px;background:rgba(167,139,250,.1);color:#a78bfa;border:1px solid rgba(167,139,250,.2);font-weight:700">AUTO</span>'}
-                        ${b.meta?.note ? `<span style="font-size:10px;padding:2px 9px;border-radius:99px;background:rgba(251,191,36,.08);color:#fbbf24;border:1px solid rgba(251,191,36,.15);font-style:italic;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${b.meta.note.replace(/"/g,'&quot;')}">„${b.meta.note}"</span>` : ''}
                     </div>
                     <div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:3px;display:flex;gap:12px;flex-wrap:wrap">
                         <span><i class="fa-solid fa-file-lines" style="margin-right:4px;opacity:.5"></i>${docCount} Docs</span>
@@ -10460,9 +10342,6 @@ async function bkpLoadHistory() {
 
                 <!-- Actions -->
                 <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap">
-                    <button onclick="bkpVerify('${b.id}', this)" title="Integrität prüfen" style="padding:7px 12px;border-radius:10px;border:1px solid rgba(52,211,153,.2);background:rgba(52,211,153,.06);color:#34d399;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s" onmouseover="this.style.background='rgba(52,211,153,.18)'" onmouseout="this.style.background='rgba(52,211,153,.06)'">
-                        <i class="fa-solid fa-shield-check"></i>
-                    </button>
                     <button onclick="bkpDownload('${b.id}')" title="Herunterladen" style="padding:7px 12px;border-radius:10px;border:1px solid rgba(103,232,249,.2);background:rgba(103,232,249,.07);color:#67e8f9;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s" onmouseover="this.style.background='rgba(103,232,249,.18)'" onmouseout="this.style.background='rgba(103,232,249,.07)'">
                         <i class="fa-solid fa-download"></i>
                     </button>
@@ -10567,19 +10446,6 @@ async function bkpPurgeOld() {
 
 // ── Restore: Modal öffnen ─────────────────────────────────────────────────
 
-function bkpRestoreSelectAll(val) {
-    document.querySelectorAll('.bkp-restore-col-chip').forEach(el => {
-        val ? el.classList.add('bkp-chip-active') : el.classList.remove('bkp-chip-active');
-        bkpUpdateChipStyle(el);
-    });
-}
-function bkpUpdateChipStyle(el) {
-    const on = el.classList.contains('bkp-chip-active');
-    el.style.background     = on ? 'rgba(248,113,113,.15)' : 'rgba(255,255,255,.04)';
-    el.style.borderColor    = on ? 'rgba(248,113,113,.4)'  : 'rgba(255,255,255,.1)';
-    el.style.color          = on ? '#f87171' : 'rgba(255,255,255,.4)';
-}
-
 async function bkpOpenRestore(id) {
     _bkpRestoreId   = id;
     _bkpRestoreCols = null;
@@ -10591,32 +10457,12 @@ async function bkpOpenRestore(id) {
         const date = bkpFmtDate(b.createdAt);
         const cols = b.collections || [];
         const docCounts = b.meta?.docCounts || {};
-        const note = b.meta?.note || '';
+        _bkpRestoreCols = cols;
 
         document.getElementById('bkp-restore-desc').innerHTML =
-            `<strong style="color:#fff">${date}</strong>` +
-            (note ? `<br><em style="color:#fbbf24">„${note}"</em>` : '') + `<br>` +
+            `<strong style="color:#fff">${date}</strong><br>` +
+            `Collections: ${cols.map(c => `<span style="color:#67e8f9">${c}</span> (${docCounts[c] || '?'} Docs)`).join(', ')}<br>` +
             `Größe: ${bkpFmtSize(b.meta?.sizeBytes || 0)}`;
-
-        // Collection-Chips rendern
-        const colList = document.getElementById('bkp-restore-col-list');
-        if (colList) {
-            colList.innerHTML = cols.map(c => {
-                const cnt = docCounts[c] || '?';
-                return `<span class="bkp-restore-col-chip bkp-chip-active"
-                    data-col="${c}"
-                    onclick="this.classList.toggle('bkp-chip-active');bkpUpdateChipStyle(this)"
-                    style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:99px;cursor:pointer;font-size:11px;font-weight:600;border:1px solid rgba(248,113,113,.4);background:rgba(248,113,113,.15);color:#f87171;transition:all .15s;user-select:none">
-                    <span>${c}</span><span style="opacity:.6;font-size:10px">${cnt}</span>
-                </span>`;
-            }).join('');
-        }
-
-        // Fortschritt zurücksetzen
-        const rp = document.getElementById('bkp-restore-progress');
-        if (rp) rp.style.display = 'none';
-        const rpf = document.getElementById('bkp-restore-prog-fill');
-        if (rpf) rpf.style.width = '0%';
 
         document.getElementById('bkp-restore-modal').style.display = 'flex';
     } catch(e) {
@@ -10628,43 +10474,21 @@ async function bkpOpenRestore(id) {
 
 async function bkpConfirmRestore() {
     if (!_bkpRestoreId) return;
-
-    // Selektierte Collections aus den Chips lesen
-    const selectedCols = [...document.querySelectorAll('.bkp-restore-col-chip.bkp-chip-active')].map(el => el.dataset.col);
-    if (!selectedCols.length) { showToast('⚠️ Keine Collections ausgewählt!', 'warning'); return; }
-
     const btn = document.getElementById('bkp-restore-confirm-btn');
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Wird wiederhergestellt...'; }
 
-    // Fortschritt einblenden
-    const rp    = document.getElementById('bkp-restore-progress');
-    const rpLbl = document.getElementById('bkp-restore-prog-label');
-    const rpPct = document.getElementById('bkp-restore-prog-pct');
-    const rpFil = document.getElementById('bkp-restore-prog-fill');
-    if (rp) rp.style.display = 'block';
-    const setRestoreProgress = (pct, label) => {
-        if (rpLbl) rpLbl.textContent = label;
-        if (rpPct) rpPct.textContent = Math.round(pct) + '%';
-        if (rpFil) rpFil.style.width = pct + '%';
-    };
-
     try {
-        setRestoreProgress(5, 'Backup laden…');
         const snap = await db.collection(BKP_COLLECTION).doc(_bkpRestoreId).get();
         if (!snap.exists) throw new Error('Backup-Dokument nicht gefunden.');
 
         const b = snap.data();
         const allData = JSON.parse(b.data || '{}');
-        const cols    = selectedCols.filter(c => allData[c] !== undefined);
+        const cols    = _bkpRestoreCols || Object.keys(allData);
         let restoredTotal = 0;
 
-        for (let ci = 0; ci < cols.length; ci++) {
-            const col  = cols[ci];
+        for (const col of cols) {
             const docs = allData[col];
             if (!Array.isArray(docs)) continue;
-
-            const pctBase = 10 + (ci / cols.length) * 85;
-            setRestoreProgress(pctBase, `Lösche alte "${col}"…`);
 
             // Erst löschen (in Batches à 400)
             const existingSnap = await db.collection(col).get();
@@ -10673,8 +10497,6 @@ async function bkpConfirmRestore() {
                 existingSnap.docs.slice(i, i + 400).forEach(d => batch.delete(d.ref));
                 await batch.commit();
             }
-
-            setRestoreProgress(pctBase + (0.85 / cols.length * 50), `Schreibe "${col}" (${docs.length} Docs)…`);
 
             // Dann schreiben (in Batches à 400)
             for (let i = 0; i < docs.length; i += 400) {
@@ -10688,18 +10510,13 @@ async function bkpConfirmRestore() {
             restoredTotal += docs.length;
         }
 
-        setRestoreProgress(98, 'Aktion protokollieren…');
         await logAction('backup_restored', _bkpRestoreId, {
             collections: cols,
             restoredDocs: restoredTotal,
             restoredBy: auth.currentUser?.email
         });
 
-        setRestoreProgress(100, 'Fertig ✅');
-        setTimeout(() => {
-            document.getElementById('bkp-restore-modal').style.display = 'none';
-        }, 900);
-
+        document.getElementById('bkp-restore-modal').style.display = 'none';
         showToast(`✅ ${restoredTotal} Dokumente aus ${cols.length} Collections wiederhergestellt!`, 'success');
         _bkpRestoreId = null;
 
@@ -10708,198 +10525,6 @@ async function bkpConfirmRestore() {
         console.error('Restore error:', e);
     } finally {
         if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-rotate-left"></i> Wiederherstellen'; }
-    }
-}
-
-// ── Backup-Integrität prüfen ──────────────────────────────────────────────
-
-async function bkpVerify(id, btn) {
-    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
-    showToast('🔍 Backup wird geprüft…');
-    try {
-        const snap = await db.collection(BKP_COLLECTION).doc(id).get();
-        if (!snap.exists) throw new Error('Backup nicht gefunden.');
-        const b    = snap.data();
-        const data = JSON.parse(b.data || '{}');
-        const cols = b.collections || Object.keys(data);
-        const counts = b.meta?.docCounts || {};
-        let issues = [];
-
-        for (const col of cols) {
-            const arr = data[col];
-            if (!Array.isArray(arr)) { issues.push(`"${col}": kein Array`); continue; }
-            const expected = counts[col];
-            if (expected !== undefined && arr.length !== expected) {
-                issues.push(`"${col}": erwartet ${expected}, gefunden ${arr.length}`);
-            }
-        }
-
-        if (issues.length === 0) {
-            showToast(`✅ Backup OK — ${cols.length} Collections, alle Dokumente vollständig`, 'success');
-            if (btn) { btn.style.borderColor='rgba(52,211,153,.5)'; btn.style.color='#34d399'; }
-        } else {
-            showToast(`⚠️ ${issues.length} Problem(e): ${issues.join(' | ')}`, 'warning');
-            if (btn) { btn.style.borderColor='rgba(251,191,36,.5)'; btn.style.color='#fbbf24'; }
-        }
-    } catch(e) {
-        showToast('❌ Prüfung fehlgeschlagen: ' + e.message, 'error');
-    } finally {
-        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-shield-check"></i>'; }
-    }
-}
-
-// ── Import aus lokaler Datei ──────────────────────────────────────────────
-
-let _bkpImportData = null;  // geparstes Backup-Objekt aus der Datei
-
-function bkpImportFromFile() {
-    document.getElementById('bkp-import-file-input')?.click();
-}
-
-function bkpImportSelectAll(val) {
-    document.querySelectorAll('.bkp-import-col-chip').forEach(el => {
-        val ? el.classList.add('bkp-import-chip-active') : el.classList.remove('bkp-import-chip-active');
-        bkpUpdateImportChipStyle(el);
-    });
-}
-function bkpUpdateImportChipStyle(el) {
-    const on = el.classList.contains('bkp-import-chip-active');
-    el.style.background  = on ? 'rgba(52,211,153,.15)' : 'rgba(255,255,255,.04)';
-    el.style.borderColor = on ? 'rgba(52,211,153,.4)'  : 'rgba(255,255,255,.1)';
-    el.style.color       = on ? '#34d399' : 'rgba(255,255,255,.4)';
-}
-
-function bkpHandleFileImport(input) {
-    const file = input.files?.[0];
-    if (!file) return;
-    if (!file.name.endsWith('.json')) { showToast('⚠️ Nur JSON-Dateien erlaubt', 'warning'); return; }
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        try {
-            const parsed = JSON.parse(e.target.result);
-            // Unterstützt beide Formate: saExportFull (collections-Objekt) & bkpRunNow (collections-Array + data-String)
-            let colData = parsed.collections || {};
-            // Falls das Objekt Collections als Arrays enthält (saExportFull-Format)
-            // → direkt verwenden
-            // Falls es ein bkpRunNow-Export ist (colData enthält nur Strings = Feldnamen)
-            // → nichts zu tun, colData ist bereits richtig
-
-            // Wenn colData ein Array ist (bkpRunNow-Format: collections=["orders",...]), hole data
-            if (Array.isArray(colData)) {
-                colData = typeof parsed.data === 'string' ? JSON.parse(parsed.data) : {};
-            }
-
-            const cols = Object.keys(colData).filter(k => Array.isArray(colData[k]));
-            if (!cols.length) throw new Error('Keine gültigen Collections gefunden.');
-
-            _bkpImportData = colData;
-
-            // Modal befüllen
-            const exportedAt = parsed.exportedAt || parsed.createdAt || '—';
-            const totalDocs  = cols.reduce((s, c) => s + colData[c].length, 0);
-            document.getElementById('bkp-import-file-desc').innerHTML =
-                `<strong style="color:#fff">${file.name}</strong><br>` +
-                `Exportiert: ${exportedAt}<br>` +
-                `${cols.length} Collections · ${totalDocs} Dokumente`;
-
-            const colList = document.getElementById('bkp-import-col-list');
-            if (colList) {
-                colList.innerHTML = cols.map(c => `
-                    <span class="bkp-import-col-chip bkp-import-chip-active"
-                        data-col="${c}"
-                        onclick="this.classList.toggle('bkp-import-chip-active');bkpUpdateImportChipStyle(this)"
-                        style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:99px;cursor:pointer;font-size:11px;font-weight:600;border:1px solid rgba(52,211,153,.4);background:rgba(52,211,153,.15);color:#34d399;transition:all .15s;user-select:none">
-                        <span>${c}</span><span style="opacity:.6;font-size:10px">${colData[c].length}</span>
-                    </span>`).join('');
-            }
-
-            const ip = document.getElementById('bkp-import-progress');
-            if (ip) ip.style.display = 'none';
-            const ipf = document.getElementById('bkp-import-prog-fill');
-            if (ipf) ipf.style.width = '0%';
-
-            document.getElementById('bkp-import-modal').style.display = 'flex';
-        } catch(err) {
-            showToast('❌ Datei ungültig: ' + err.message, 'error');
-        }
-        // Input zurücksetzen, damit dieselbe Datei erneut gewählt werden kann
-        input.value = '';
-    };
-    reader.readAsText(file);
-}
-
-async function bkpConfirmImport() {
-    if (!_bkpImportData) return;
-
-    const selectedCols = [...document.querySelectorAll('.bkp-import-col-chip.bkp-import-chip-active')].map(el => el.dataset.col);
-    if (!selectedCols.length) { showToast('⚠️ Keine Collections ausgewählt!', 'warning'); return; }
-
-    const btn = document.getElementById('bkp-import-confirm-btn');
-    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Importiere…'; }
-
-    const ip    = document.getElementById('bkp-import-progress');
-    const ipLbl = document.getElementById('bkp-import-prog-label');
-    const ipPct = document.getElementById('bkp-import-prog-pct');
-    const ipFil = document.getElementById('bkp-import-prog-fill');
-    if (ip) ip.style.display = 'block';
-    const setImportProgress = (pct, label) => {
-        if (ipLbl) ipLbl.textContent = label;
-        if (ipPct) ipPct.textContent = Math.round(pct) + '%';
-        if (ipFil) ipFil.style.width = pct + '%';
-    };
-
-    let restoredTotal = 0;
-    try {
-        for (let ci = 0; ci < selectedCols.length; ci++) {
-            const col  = selectedCols[ci];
-            const docs = _bkpImportData[col];
-            if (!Array.isArray(docs)) continue;
-
-            const pctBase = 5 + (ci / selectedCols.length) * 88;
-            setImportProgress(pctBase, `Lösche alte "${col}"…`);
-
-            const existingSnap = await db.collection(col).get();
-            for (let i = 0; i < existingSnap.docs.length; i += 400) {
-                const batch = db.batch();
-                existingSnap.docs.slice(i, i + 400).forEach(d => batch.delete(d.ref));
-                await batch.commit();
-            }
-
-            setImportProgress(pctBase + (88 / selectedCols.length * 0.5), `Schreibe "${col}" (${docs.length} Docs)…`);
-
-            for (let i = 0; i < docs.length; i += 400) {
-                const batch = db.batch();
-                docs.slice(i, i + 400).forEach(doc => {
-                    const { id, ...data } = doc;
-                    batch.set(db.collection(col).doc(String(id)), data);
-                });
-                await batch.commit();
-            }
-            restoredTotal += docs.length;
-        }
-
-        setImportProgress(98, 'Protokolliere…');
-        await logAction('backup_file_imported', 'file', {
-            collections: selectedCols,
-            restoredDocs: restoredTotal,
-            restoredBy: auth.currentUser?.email
-        });
-
-        setImportProgress(100, 'Import abgeschlossen ✅');
-        setTimeout(() => {
-            document.getElementById('bkp-import-modal').style.display = 'none';
-            _bkpImportData = null;
-        }, 900);
-
-        showToast(`✅ Import: ${restoredTotal} Dokumente aus ${selectedCols.length} Collections`, 'success');
-        await bkpLoadHistory();
-
-    } catch(e) {
-        showToast('❌ Import fehlgeschlagen: ' + e.message, 'error');
-        console.error('Import error:', e);
-    } finally {
-        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-file-import"></i> Importieren'; }
     }
 }
 
@@ -10921,7 +10546,6 @@ const _bkpLabelMap = {
     'backup_downloaded':    '📥 Backup heruntergeladen',
     'backup_deleted':       '🗑️ Backup gelöscht',
     'backup_restored':      '🔄 Backup wiederhergestellt',
-    'backup_file_imported': '📂 Backup aus Datei importiert',
 };
 // Extend existing map by patching renderLogEntries
 const _origRenderLogEntries = window.renderLogEntries;
@@ -10953,6 +10577,525 @@ window.renderLogEntries = function(el, docs, compact) {
         return `<div class="sa-log-entry"><div class="sa-log-dot ${dotClass}"></div><div><div class="sa-log-action">${actionLabel}</div><div class="sa-log-meta">${dateStr}${target?' • '+target.substring(0,20):''}${ip?' • '+ip:''}</div></div></div>`;
     }).join('');
 };
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  WAVEVAPES BUNDLE MANAGER v1.0  (Tab 16)
+// ═══════════════════════════════════════════════════════════════════════════
+
+let _bundles      = [];
+let _allProducts  = [];
+let _bundleEditId = null;
+let _bundleItems  = [];
+
+const BND_COL = 'bundles';
+
+// ── CSS ───────────────────────────────────────────────────────────────────
+(function injectBundleCSS() {
+    const s = document.createElement('style');
+    s.textContent = `
+    :root{--bnd-gold:#fbbf24;--bnd-cyan:#67e8f9;--bnd-green:#34d399;--bnd-red:#f87171;--bnd-purple:#a78bfa;--bnd-card:#0f0f1a;--bnd-border:rgba(255,255,255,.07)}
+    .bnd-shell{display:flex;flex-direction:column;gap:20px;padding:4px 0}
+    .bnd-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+    .bnd-title{font-family:'Orbitron',sans-serif;font-size:20px;font-weight:700;color:var(--bnd-gold);display:flex;align-items:center;gap:10px;text-shadow:0 0 20px rgba(251,191,36,.3)}
+    .bnd-kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+    .bnd-kpi{background:var(--bnd-card);border:1px solid var(--bnd-border);border-radius:18px;padding:16px 20px;transition:all .2s}
+    .bnd-kpi:hover{border-color:rgba(251,191,36,.2);transform:translateY(-2px)}
+    .bnd-kpi-icon{font-size:20px;margin-bottom:8px}
+    .bnd-kpi-label{font-size:10px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+    .bnd-kpi-value{font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:700;color:var(--bnd-gold);line-height:1}
+    .bnd-kpi-sub{font-size:10px;color:rgba(255,255,255,.25);margin-top:4px}
+    .bnd-card{background:var(--bnd-card);border:1px solid var(--bnd-border);border-radius:20px;padding:20px 22px;transition:all .2s;position:relative}
+    .bnd-card:hover{border-color:rgba(251,191,36,.18)}
+    .bnd-card-active{border-color:rgba(52,211,153,.2)!important}
+    .bnd-card-inactive{opacity:.6}
+    .bnd-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:99px;font-size:10px;font-weight:700}
+    .bnd-badge-active{background:rgba(52,211,153,.12);color:var(--bnd-green);border:1px solid rgba(52,211,153,.25)}
+    .bnd-badge-inactive{background:rgba(239,68,68,.1);color:var(--bnd-red);border:1px solid rgba(239,68,68,.2)}
+    .bnd-profit-bar{height:6px;border-radius:99px;background:rgba(255,255,255,.07);overflow:hidden;margin:6px 0}
+    .bnd-profit-fill{height:100%;border-radius:99px;transition:width .4s ease}
+    .bnd-tag{display:inline-flex;padding:2px 8px;border-radius:6px;font-size:10px;background:rgba(103,232,249,.08);color:var(--bnd-cyan);border:1px solid rgba(103,232,249,.15)}
+    .bnd-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.88);backdrop-filter:blur(14px);z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding:24px;overflow-y:auto}
+    .bnd-modal{background:linear-gradient(160deg,#0f0f1a,#15152a);border:1px solid rgba(251,191,36,.2);border-radius:28px;padding:32px;width:100%;max-width:800px;animation:modalPop .3s cubic-bezier(0.34,1.56,0.64,1)}
+    .bnd-modal-title{font-family:'Orbitron',sans-serif;font-size:18px;font-weight:700;color:var(--bnd-gold);display:flex;align-items:center;gap:10px;margin-bottom:24px;text-shadow:0 0 16px rgba(251,191,36,.3)}
+    .bnd-field-label{font-size:11px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px}
+    .bnd-input{width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:11px 14px;color:#fff;font-size:13px;outline:none;box-sizing:border-box;transition:border-color .2s}
+    .bnd-input:focus{border-color:rgba(251,191,36,.4);box-shadow:0 0 0 3px rgba(251,191,36,.06)}
+    .bnd-input::placeholder{color:rgba(255,255,255,.2)}
+    .bnd-btn{padding:10px 20px;border-radius:12px;border:none;cursor:pointer;font-size:13px;font-weight:700;transition:all .15s;display:inline-flex;align-items:center;gap:8px}
+    .bnd-btn-gold{background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#000}
+    .bnd-btn-gold:hover{opacity:.9;transform:translateY(-1px)}
+    .bnd-btn-ghost{background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.1)}
+    .bnd-btn-ghost:hover{background:rgba(255,255,255,.1)}
+    .bnd-btn-cyan{background:rgba(103,232,249,.1);color:var(--bnd-cyan);border:1px solid rgba(103,232,249,.2)}
+    .bnd-btn-cyan:hover{background:rgba(103,232,249,.2)}
+    .bnd-btn-green{background:rgba(52,211,153,.1);color:var(--bnd-green);border:1px solid rgba(52,211,153,.2)}
+    .bnd-btn-green:hover{background:rgba(52,211,153,.2)}
+    .bnd-btn-red{background:rgba(239,68,68,.1);color:var(--bnd-red);border:1px solid rgba(239,68,68,.2)}
+    .bnd-btn-red:hover{background:rgba(239,68,68,.2)}
+    .bnd-btn-purple{background:rgba(167,139,250,.1);color:var(--bnd-purple);border:1px solid rgba(167,139,250,.2)}
+    .bnd-btn-purple:hover{background:rgba(167,139,250,.2)}
+    .bnd-btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important}
+    .bnd-prod-search{width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 12px;color:#fff;font-size:12px;outline:none;box-sizing:border-box;transition:border-color .2s}
+    .bnd-prod-search:focus{border-color:rgba(103,232,249,.35)}
+    .bnd-prod-list{max-height:200px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;margin-top:8px}
+    .bnd-prod-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:10px;cursor:pointer;transition:all .12s;font-size:12px}
+    .bnd-prod-item:hover{background:rgba(103,232,249,.07);border-color:rgba(103,232,249,.15)}
+    .bnd-prod-item.bnd-prod-selected{background:rgba(251,191,36,.05);border-color:rgba(251,191,36,.15);cursor:default}
+    .bnd-item-row{display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:12px}
+    .bnd-item-name{flex:1;font-size:12px;font-weight:600;color:rgba(255,255,255,.85)}
+    .bnd-item-price{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--bnd-gold);white-space:nowrap}
+    .bnd-qty-btn{width:26px;height:26px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.06);color:#fff;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .1s;flex-shrink:0;line-height:1}
+    .bnd-qty-btn:hover{background:rgba(255,255,255,.14)}
+    .bnd-qty-val{font-size:13px;font-weight:700;color:#fff;min-width:20px;text-align:center}
+    .bnd-ai-box{background:linear-gradient(135deg,rgba(167,139,250,.06),rgba(251,191,36,.04));border:1px solid rgba(167,139,250,.2);border-radius:18px;padding:18px 20px}
+    .bnd-ai-title{font-size:13px;font-weight:700;color:var(--bnd-purple);display:flex;align-items:center;gap:8px;margin-bottom:12px}
+    .bnd-ai-result{font-size:12px;color:rgba(255,255,255,.7);line-height:1.7;white-space:pre-wrap}
+    .bnd-profit-box{background:rgba(52,211,153,.04);border:1px solid rgba(52,211,153,.15);border-radius:16px;padding:16px 20px}
+    .bnd-profit-row{display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:6px}
+    .bnd-profit-lbl{color:rgba(255,255,255,.4)}
+    .bnd-profit-val{font-weight:700;font-family:'JetBrains Mono',monospace}
+    .bnd-divider{height:1px;background:rgba(255,255,255,.06);margin:12px 0}
+    `;
+    document.head.appendChild(s);
+})();
+
+// ── Helfer ────────────────────────────────────────────────────────────────
+
+function bndFmt(v) { return Number(v||0).toFixed(2).replace('.',',') + ' €'; }
+function bndPct(v) { return Number(v||0).toFixed(1) + '%'; }
+
+// ── Produkte laden ────────────────────────────────────────────────────────
+
+async function bndLoadProducts() {
+    if (_allProducts.length) return;
+    const snap = await db.collection('products').get();
+    _allProducts = snap.docs.map(d => {
+        const x = d.data();
+        return { id:d.id, name:x.name||'–', price:parseFloat(x.price)||0, cost:parseFloat(x.cost)||0, stock:parseInt(x.stock)||0, category:x.category||'' };
+    });
+}
+
+// ── Haupt-Loader ──────────────────────────────────────────────────────────
+
+async function loadBundles() {
+    const shell = document.getElementById('bundle-shell');
+    if (!shell) return;
+    shell.innerHTML = '<div style="color:rgba(255,255,255,.2);font-size:13px;padding:60px;text-align:center"><i class="fa-solid fa-spinner fa-spin" style="font-size:28px;display:block;margin-bottom:14px"></i>Lade Bundles…</div>';
+    try {
+        await bndLoadProducts();
+        const snap = await db.collection(BND_COL).orderBy('createdAt','desc').get();
+        _bundles = snap.docs.map(d => ({id:d.id,...d.data()}));
+
+        // Badge in Sidebar
+        const badge = document.getElementById('sb-bundles-badge');
+        if (badge) {
+            const activeCount = _bundles.filter(b=>b.active).length;
+            badge.textContent = activeCount;
+            badge.style.display = activeCount ? 'inline-flex' : 'none';
+        }
+
+        bndRender();
+    } catch(e) {
+        shell.innerHTML = `<div style="color:#f87171;padding:40px;text-align:center">❌ ${e.message}</div>`;
+    }
+}
+
+// ── Render ────────────────────────────────────────────────────────────────
+
+function bndRender() {
+    const shell = document.getElementById('bundle-shell');
+    if (!shell) return;
+
+    const active   = _bundles.filter(b=>b.active);
+    const totalRev = _bundles.reduce((s,b)=>s+(b.soldCount||0)*(b.bundlePrice||0),0);
+    const avgDisc  = _bundles.length ? (_bundles.reduce((s,b)=>s+(b.discountPct||0),0)/_bundles.length) : 0;
+    const avgMargin= _bundles.length ? (_bundles.reduce((s,b)=>s+bndMarginPct(b),0)/_bundles.length) : 0;
+
+    shell.innerHTML = `
+    <div class="bnd-shell">
+        <div class="bnd-header">
+            <div class="bnd-title"><i class="fa-solid fa-layer-group"></i> Bundle Manager</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button class="bnd-btn bnd-btn-ghost" style="font-size:12px;padding:8px 14px" onclick="loadBundles()"><i class="fa-solid fa-rotate"></i> Aktualisieren</button>
+                <button class="bnd-btn bnd-btn-gold" onclick="bndOpenCreate()"><i class="fa-solid fa-plus"></i> Neues Bundle</button>
+            </div>
+        </div>
+
+        <div class="bnd-kpi-grid">
+            <div class="bnd-kpi"><div class="bnd-kpi-icon">📦</div><div class="bnd-kpi-label">Bundles gesamt</div><div class="bnd-kpi-value">${_bundles.length}</div><div class="bnd-kpi-sub">${active.length} aktiv</div></div>
+            <div class="bnd-kpi"><div class="bnd-kpi-icon">✅</div><div class="bnd-kpi-label">Aktive Bundles</div><div class="bnd-kpi-value" style="color:var(--bnd-green)">${active.length}</div><div class="bnd-kpi-sub">im Shop sichtbar</div></div>
+            <div class="bnd-kpi"><div class="bnd-kpi-icon">🏷️</div><div class="bnd-kpi-label">Ø Rabatt</div><div class="bnd-kpi-value" style="color:var(--bnd-purple)">${bndPct(avgDisc)}</div><div class="bnd-kpi-sub">über alle Bundles</div></div>
+            <div class="bnd-kpi"><div class="bnd-kpi-icon">📈</div><div class="bnd-kpi-label">Ø Profit-Marge</div><div class="bnd-kpi-value" style="color:${avgMargin>25?'var(--bnd-green)':avgMargin>12?'var(--bnd-gold)':'var(--bnd-red)'}">${bndPct(avgMargin)}</div><div class="bnd-kpi-sub">über alle Bundles</div></div>
+            <div class="bnd-kpi"><div class="bnd-kpi-icon">💰</div><div class="bnd-kpi-label">Hochger. Umsatz</div><div class="bnd-kpi-value" style="color:var(--bnd-cyan);font-size:18px">${bndFmt(totalRev)}</div><div class="bnd-kpi-sub">aus Bundle-Käufen</div></div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px">
+            ${_bundles.length ? _bundles.map(b=>bndCardHTML(b)).join('') : '<div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:rgba(255,255,255,.2)"><i class="fa-solid fa-layer-group" style="font-size:40px;display:block;margin-bottom:14px;opacity:.15"></i>Noch keine Bundles. Erstelle dein erstes!</div>'}
+        </div>
+    </div>`;
+}
+
+function bndMarginPct(b) {
+    const items = b.items||[];
+    const cost  = items.reduce((s,it)=>s+(it.cost>0?it.cost:it.price*0.4)*it.qty,0);
+    const profit= (b.bundlePrice||0)-cost;
+    return b.bundlePrice>0?(profit/b.bundlePrice*100):0;
+}
+
+function bndCardHTML(b) {
+    const orig   = (b.items||[]).reduce((s,it)=>s+it.price*it.qty,0);
+    const disc   = orig>0?((orig-b.bundlePrice)/orig*100):0;
+    const margin = bndMarginPct(b);
+    const cost   = (b.items||[]).reduce((s,it)=>s+(it.cost>0?it.cost:it.price*0.4)*it.qty,0);
+    const profit = (b.bundlePrice||0)-cost;
+    const pc     = margin>30?'var(--bnd-green)':margin>15?'var(--bnd-gold)':'var(--bnd-red)';
+    const pb     = margin>30?'linear-gradient(90deg,#34d399,#10b981)':margin>15?'linear-gradient(90deg,#fbbf24,#f59e0b)':'linear-gradient(90deg,#f87171,#ef4444)';
+    const pr     = margin>30?'🟢 Gute Marge':margin>15?'🟡 Akzeptabel':'🔴 Niedrig';
+
+    return `
+    <div class="bnd-card ${b.active?'bnd-card-active':'bnd-card-inactive'}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px">
+            <div style="min-width:0">
+                <div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${b.name||'–'}</div>
+                <div style="font-size:11px;color:rgba(255,255,255,.3)">${b.description||''}</div>
+            </div>
+            <span class="bnd-badge ${b.active?'bnd-badge-active':'bnd-badge-inactive'}" style="flex-shrink:0">${b.active?'✅ Aktiv':'⏸ Inaktiv'}</span>
+        </div>
+
+        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:14px">
+            ${(b.items||[]).map(it=>`<span class="bnd-tag">${it.name} ×${it.qty}</span>`).join('')}
+        </div>
+
+        <div style="display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap">
+            <div>
+                <div style="font-size:10px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">Originalpreis</div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:rgba(255,255,255,.35);text-decoration:line-through">${bndFmt(orig)}</div>
+            </div>
+            <div>
+                <div style="font-size:10px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">Bundle-Preis</div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:var(--bnd-gold)">${bndFmt(b.bundlePrice)}</div>
+            </div>
+            <div>
+                <div style="font-size:10px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">Ersparnis</div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;color:var(--bnd-purple)">−${bndPct(disc)}</div>
+            </div>
+        </div>
+
+        <div style="margin-bottom:14px">
+            <div style="display:flex;justify-content:space-between;font-size:10px;color:rgba(255,255,255,.3);margin-bottom:3px">
+                <span>${pr}</span>
+                <span style="color:${pc};font-weight:700">${bndPct(margin)} · ${bndFmt(profit)} Profit</span>
+            </div>
+            <div class="bnd-profit-bar"><div class="bnd-profit-fill" style="width:${Math.min(100,Math.max(0,margin))}%;background:${pb}"></div></div>
+        </div>
+
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="bnd-btn bnd-btn-cyan" style="font-size:11px;padding:7px 12px" onclick="bndToggleActive('${b.id}',${!b.active})">
+                <i class="fa-solid fa-${b.active?'pause':'play'}"></i> ${b.active?'Deaktivieren':'Aktivieren'}
+            </button>
+            <button class="bnd-btn bnd-btn-ghost" style="font-size:11px;padding:7px 12px" onclick="bndOpenEdit('${b.id}')">
+                <i class="fa-solid fa-pen"></i> Bearbeiten
+            </button>
+            <button class="bnd-btn bnd-btn-red" style="font-size:11px;padding:7px 12px" onclick="bndDelete('${b.id}')">
+                <i class="fa-solid fa-trash"></i>
+            </button>
+        </div>
+    </div>`;
+}
+
+// ── Modal öffnen ──────────────────────────────────────────────────────────
+
+function bndOpenCreate() { _bundleEditId=null; _bundleItems=[]; bndShowModal(); }
+
+function bndOpenEdit(id) {
+    const b=_bundles.find(x=>x.id===id);
+    if(!b)return;
+    _bundleEditId=id;
+    _bundleItems=(b.items||[]).map(it=>({...it}));
+    bndShowModal(b);
+}
+
+function bndShowModal(b=null) {
+    document.getElementById('bnd-modal-overlay')?.remove();
+    const ov=document.createElement('div');
+    ov.id='bnd-modal-overlay';
+    ov.className='bnd-modal-overlay';
+    ov.innerHTML=`
+    <div class="bnd-modal">
+        <div class="bnd-modal-title"><i class="fa-solid fa-layer-group"></i>${b?'Bundle bearbeiten':'Neues Bundle erstellen'}</div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+            <div><div class="bnd-field-label">Bundle-Name *</div><input class="bnd-input" id="bnd-f-name" placeholder="z.B. Starter-Set Tropical" value="${b?.name||''}"></div>
+            <div><div class="bnd-field-label">Bundle-Preis (€) *</div><input class="bnd-input" id="bnd-f-price" type="number" step="0.01" min="0" placeholder="z.B. 34.99" value="${b?.bundlePrice||''}"></div>
+        </div>
+        <div style="margin-bottom:16px"><div class="bnd-field-label">Beschreibung</div><input class="bnd-input" id="bnd-f-desc" placeholder="Kurze Info für den Kunden" value="${b?.description||''}"></div>
+
+        <!-- Produkt-Picker -->
+        <div style="margin-bottom:14px">
+            <div class="bnd-field-label">Produkte hinzufügen</div>
+            <input class="bnd-prod-search" id="bnd-prod-search" placeholder="🔍 Produkt suchen…" oninput="bndFilterProducts(this.value)">
+            <div class="bnd-prod-list" id="bnd-prod-list"></div>
+        </div>
+
+        <!-- Gewählte Produkte -->
+        <div style="margin-bottom:16px">
+            <div class="bnd-field-label">Im Bundle enthalten</div>
+            <div id="bnd-items-list" style="display:flex;flex-direction:column;gap:6px;min-height:44px"></div>
+        </div>
+
+        <!-- Live-Profit -->
+        <div id="bnd-summary" style="display:none;margin-bottom:16px">
+            <div class="bnd-profit-box" id="bnd-profit-box"></div>
+        </div>
+
+        <!-- KI -->
+        <div class="bnd-ai-box" style="margin-bottom:20px">
+            <div class="bnd-ai-title"><i class="fa-solid fa-wand-magic-sparkles"></i> KI-Rabatt-Empfehlung</div>
+            <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+                <button class="bnd-btn bnd-btn-purple" style="font-size:12px;padding:8px 14px" id="bnd-ai-btn-c" onclick="bndAICalc('conservative')"><i class="fa-solid fa-shield"></i> Konservativ</button>
+                <button class="bnd-btn bnd-btn-purple" style="font-size:12px;padding:8px 14px" id="bnd-ai-btn-b" onclick="bndAICalc('balanced')"><i class="fa-solid fa-scale-balanced"></i> Ausgewogen</button>
+                <button class="bnd-btn bnd-btn-purple" style="font-size:12px;padding:8px 14px" id="bnd-ai-btn-a" onclick="bndAICalc('aggressive')"><i class="fa-solid fa-fire"></i> Aggressiv</button>
+            </div>
+            <div id="bnd-ai-result" class="bnd-ai-result" style="color:rgba(255,255,255,.3);font-size:12px">← Klicke eine Strategie für KI-Preisanalyse</div>
+        </div>
+
+        <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap">
+            <button class="bnd-btn bnd-btn-ghost" onclick="document.getElementById('bnd-modal-overlay').remove()">Abbrechen</button>
+            <button class="bnd-btn bnd-btn-gold" onclick="bndSave()"><i class="fa-solid fa-floppy-disk"></i> Bundle speichern</button>
+        </div>
+    </div>`;
+    document.body.appendChild(ov);
+    bndFilterProducts('');
+    bndRenderItems();
+    bndUpdateSummary();
+}
+
+// ── Produkt-Picker ────────────────────────────────────────────────────────
+
+function bndFilterProducts(q) {
+    const list=document.getElementById('bnd-prod-list');
+    if(!list)return;
+    const term=q.toLowerCase();
+    const visible=_allProducts.filter(p=>p.name.toLowerCase().includes(term)).slice(0,30);
+    list.innerHTML=visible.map(p=>{
+        const already=_bundleItems.find(it=>it.productId===p.id);
+        return `<div class="bnd-prod-item${already?' bnd-prod-selected':''}" ${already?'':'onclick="bndAddProduct(\''+p.id+'\')"'}>
+            <span style="font-weight:600;color:${already?'rgba(255,255,255,.3)':'#fff'}">${already?'✓ ':''} ${p.name}</span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--bnd-gold)">${bndFmt(p.price)}</span>
+        </div>`;
+    }).join('')||'<div style="color:rgba(255,255,255,.2);font-size:12px;padding:10px">Keine Produkte gefunden</div>';
+}
+
+function bndAddProduct(id) {
+    const p=_allProducts.find(x=>x.id===id);
+    if(!p||_bundleItems.find(it=>it.productId===id))return;
+    _bundleItems.push({productId:id,name:p.name,price:p.price,cost:p.cost,qty:1});
+    bndFilterProducts(document.getElementById('bnd-prod-search')?.value||'');
+    bndRenderItems();
+    bndUpdateSummary();
+}
+
+function bndChangeQty(id,delta) {
+    const it=_bundleItems.find(x=>x.productId===id);
+    if(!it)return;
+    it.qty=Math.max(1,it.qty+delta);
+    bndRenderItems();
+    bndUpdateSummary();
+}
+
+function bndRemoveItem(id) {
+    _bundleItems=_bundleItems.filter(it=>it.productId!==id);
+    bndFilterProducts(document.getElementById('bnd-prod-search')?.value||'');
+    bndRenderItems();
+    bndUpdateSummary();
+}
+
+function bndRenderItems() {
+    const list=document.getElementById('bnd-items-list');
+    if(!list)return;
+    if(!_bundleItems.length){
+        list.innerHTML='<div style="color:rgba(255,255,255,.2);font-size:12px;padding:12px;text-align:center;border:1px dashed rgba(255,255,255,.08);border-radius:10px">Noch keine Produkte hinzugefügt</div>';
+        return;
+    }
+    list.innerHTML=_bundleItems.map(it=>`
+    <div class="bnd-item-row">
+        <div class="bnd-item-name">${it.name}</div>
+        <div style="display:flex;align-items:center;gap:6px">
+            <button class="bnd-qty-btn" onclick="bndChangeQty('${it.productId}',-1)">−</button>
+            <span class="bnd-qty-val">${it.qty}</span>
+            <button class="bnd-qty-btn" onclick="bndChangeQty('${it.productId}',1)">+</button>
+        </div>
+        <div class="bnd-item-price">${bndFmt(it.price*it.qty)}</div>
+        <button onclick="bndRemoveItem('${it.productId}')" style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.15);border-radius:8px;color:#f87171;width:26px;height:26px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
+    </div>`).join('');
+}
+
+// ── Live-Profit-Analyse ───────────────────────────────────────────────────
+
+function bndUpdateSummary() {
+    const wrap=document.getElementById('bnd-summary');
+    const box =document.getElementById('bnd-profit-box');
+    if(!wrap||!box)return;
+    if(!_bundleItems.length){wrap.style.display='none';return;}
+    wrap.style.display='block';
+
+    const priceEl=document.getElementById('bnd-f-price');
+    if(priceEl&&!priceEl._bndBound){priceEl._bndBound=true;priceEl.addEventListener('input',bndUpdateSummary);}
+
+    const inputPrice=parseFloat(priceEl?.value)||0;
+    const orig=_bundleItems.reduce((s,it)=>s+it.price*it.qty,0);
+    const cost=_bundleItems.reduce((s,it)=>s+(it.cost>0?it.cost:it.price*0.4)*it.qty,0);
+    const bp=inputPrice>0?inputPrice:orig;
+    const disc=orig>0?((orig-bp)/orig*100):0;
+    const profit=bp-cost;
+    const margin=bp>0?(profit/bp*100):0;
+    const pc=margin>30?'#34d399':margin>15?'#fbbf24':'#f87171';
+    const pb=margin>30?'linear-gradient(90deg,#34d399,#10b981)':margin>15?'linear-gradient(90deg,#fbbf24,#f59e0b)':'linear-gradient(90deg,#f87171,#ef4444)';
+    const pr=margin>30?'🟢 Gute Marge':margin>15?'🟡 Akzeptable Marge':'🔴 Niedrige Marge — Preis prüfen';
+    const tip=margin<0?'⚠️ Du machst Verlust mit diesem Bundle!':margin<10?'💡 Tipp: KI-Analyse nutzen für besseren Preis':margin>40?'🚀 Sehr gute Marge!':'';
+
+    box.innerHTML=`
+    <div style="font-size:12px;font-weight:700;color:var(--bnd-green);margin-bottom:12px;display:flex;align-items:center;gap:6px"><i class="fa-solid fa-chart-pie"></i> Live-Profit-Analyse</div>
+    <div class="bnd-profit-row"><span class="bnd-profit-lbl">Originalpreis (Summe)</span><span class="bnd-profit-val" style="color:rgba(255,255,255,.45)">${bndFmt(orig)}</span></div>
+    <div class="bnd-profit-row"><span class="bnd-profit-lbl">Bundle-Preis</span><span class="bnd-profit-val" style="color:var(--bnd-gold)">${bndFmt(bp)}</span></div>
+    <div class="bnd-profit-row"><span class="bnd-profit-lbl">Kundenersparnis</span><span class="bnd-profit-val" style="color:var(--bnd-purple)">−${bndFmt(orig-bp)} (${bndPct(disc)})</span></div>
+    <div class="bnd-profit-row"><span class="bnd-profit-lbl">Gesch. Wareneinsatz</span><span class="bnd-profit-val" style="color:var(--bnd-red)">${bndFmt(cost)}</span></div>
+    <div class="bnd-divider"></div>
+    <div class="bnd-profit-row"><span class="bnd-profit-lbl" style="font-weight:700;color:#fff;font-size:13px">Dein Profit</span><span class="bnd-profit-val" style="color:${pc};font-size:17px">${bndFmt(profit)}</span></div>
+    <div style="margin:8px 0 4px"><div class="bnd-profit-bar"><div class="bnd-profit-fill" style="width:${Math.min(100,Math.max(0,margin))}%;background:${pb}"></div></div></div>
+    <div style="font-size:11px;color:${pc};font-weight:700">${pr} · Marge: ${bndPct(margin)}</div>
+    ${tip?`<div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:8px">${tip}</div>`:''}
+    ${!inputPrice?'<div style="font-size:10px;color:rgba(255,255,255,.22);margin-top:8px">💡 Gib einen Bundle-Preis ein — oder lass die KI einen vorschlagen</div>':''}`;
+}
+
+// ── KI-Rabatt-Empfehlung ──────────────────────────────────────────────────
+
+async function bndAICalc(strategy) {
+    const el=document.getElementById('bnd-ai-result');
+    if(!el)return;
+    if(!_bundleItems.length){el.textContent='⚠️ Füge zuerst Produkte hinzu.';return;}
+
+    const btns=['c','b','a'].map(k=>document.getElementById('bnd-ai-btn-'+k));
+    btns.forEach(b=>{if(b)b.disabled=true;});
+    el.innerHTML='<i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>KI analysiert dein Bundle…';
+
+    const orig=_bundleItems.reduce((s,it)=>s+it.price*it.qty,0);
+    const cost=_bundleItems.reduce((s,it)=>s+(it.cost>0?it.cost:it.price*0.4)*it.qty,0);
+    const name=document.getElementById('bnd-f-name')?.value||'Bundle';
+    const labels={conservative:'konservativ (Marge schützen, min. 30% Marge)',balanced:'ausgewogen (Marge & Attraktivität balancieren, ~20% Marge)',aggressive:'aggressiv (maximale Kundenattraktivität, min. 10% Marge)'};
+
+    const prompt=`Du bist Pricing-Experte für WaveVapes, einen deutschen Vape Online-Shop.
+
+Bundle: "${name}"
+Strategie: ${labels[strategy]}
+
+Produkte im Bundle:
+${_bundleItems.map(it=>`- ${it.name} ×${it.qty}: VK ${(it.price*it.qty).toFixed(2)}€ | EK ca. ${((it.cost>0?it.cost:it.price*0.4)*it.qty).toFixed(2)}€`).join('\n')}
+
+Originalpreis (Summe): ${orig.toFixed(2)}€
+Wareneinsatz gesamt: ${cost.toFixed(2)}€
+
+Antworte NUR auf Deutsch, direkt und konkret, in diesem exakten Format:
+💡 Empfohlener Bundle-Preis: XX,XX €
+🏷️ Rabatt: X,X% (Kundenersparnis: XX,XX €)
+💰 Dein Profit: XX,XX € | Marge: XX%
+📊 Begründung: [1-2 Sätze warum dieser Preis Sinn macht]
+🚀 Marketingtipp: [1 konkreter Tipp wie du das Bundle bewirbst]`;
+
+    try {
+        const res=await fetch('https://api.anthropic.com/v1/messages',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:600,messages:[{role:'user',content:prompt}]})
+        });
+        const data=await res.json();
+        const text=(data.content||[]).map(c=>c.text||'').join('');
+
+        el.innerHTML='';
+
+        // Preis extrahieren & Auto-Fill Button
+        const m=text.match(/Bundle-Preis[:\s]+(\d+)[,.](\d+)\s*€/i);
+        if(m){
+            const suggested=parseFloat(m[1]+'.'+m[2]);
+            const applyBtn=document.createElement('button');
+            applyBtn.className='bnd-btn bnd-btn-green';
+            applyBtn.style.cssText='font-size:11px;padding:6px 14px;margin-bottom:12px';
+            applyBtn.innerHTML=`<i class="fa-solid fa-check"></i> Preis übernehmen: ${bndFmt(suggested)}`;
+            applyBtn.onclick=()=>{
+                const inp=document.getElementById('bnd-f-price');
+                if(inp){inp.value=suggested.toFixed(2);bndUpdateSummary();}
+                showToast('💡 Bundle-Preis auf '+bndFmt(suggested)+' gesetzt');
+                applyBtn.innerHTML='<i class="fa-solid fa-check"></i> Übernommen!';
+                applyBtn.disabled=true;
+            };
+            el.appendChild(applyBtn);
+        }
+
+        const textDiv=document.createElement('div');
+        textDiv.className='bnd-ai-result';
+        textDiv.textContent=text;
+        el.appendChild(textDiv);
+
+    } catch(e) {
+        el.textContent='❌ KI-Fehler: '+e.message;
+    } finally {
+        btns.forEach(b=>{if(b)b.disabled=false;});
+    }
+}
+
+// ── Speichern ─────────────────────────────────────────────────────────────
+
+async function bndSave() {
+    const name =document.getElementById('bnd-f-name')?.value?.trim();
+    const price=parseFloat(document.getElementById('bnd-f-price')?.value);
+    const desc =document.getElementById('bnd-f-desc')?.value?.trim()||'';
+    if(!name){showToast('⚠️ Bundle-Name fehlt','warning');return;}
+    if(!price||price<=0){showToast('⚠️ Bitte einen gültigen Preis eingeben','warning');return;}
+    if(!_bundleItems.length){showToast('⚠️ Mindestens ein Produkt hinzufügen','warning');return;}
+    const orig=_bundleItems.reduce((s,it)=>s+it.price*it.qty,0);
+    const disc=orig>0?((orig-price)/orig*100):0;
+    const payload={name,description:desc,bundlePrice:price,originalTotal:orig,discountPct:disc,items:_bundleItems,updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+    try {
+        if(_bundleEditId){
+            await db.collection(BND_COL).doc(_bundleEditId).update(payload);
+            await logAction('bundle_updated',_bundleEditId,{name,price,discountPct:disc});
+            showToast('✅ Bundle aktualisiert');
+        } else {
+            payload.createdAt=firebase.firestore.FieldValue.serverTimestamp();
+            payload.soldCount=0;
+            payload.active=true;
+            const ref=await db.collection(BND_COL).add(payload);
+            await logAction('bundle_created',ref.id,{name,price,discountPct:disc});
+            showToast('✅ Bundle erstellt!');
+        }
+        document.getElementById('bnd-modal-overlay')?.remove();
+        await loadBundles();
+    } catch(e){showToast('❌ Fehler: '+e.message,'error');}
+}
+
+// ── Toggle Aktiv ──────────────────────────────────────────────────────────
+
+async function bndToggleActive(id,val) {
+    try {
+        await db.collection(BND_COL).doc(id).update({active:val});
+        await logAction('bundle_toggle',id,{active:val});
+        showToast(val?'✅ Bundle aktiviert':'⏸ Bundle deaktiviert');
+        await loadBundles();
+    } catch(e){showToast('❌ '+e.message,'error');}
+}
+
+// ── Löschen ───────────────────────────────────────────────────────────────
+
+async function bndDelete(id) {
+    const b=_bundles.find(x=>x.id===id);
+    if(!confirm('Bundle "'+( b?.name||id)+'" wirklich löschen?'))return;
+    try {
+        await db.collection(BND_COL).doc(id).delete();
+        await logAction('bundle_deleted',id,{name:b?.name});
+        showToast('🗑️ Bundle gelöscht');
+        await loadBundles();
+    } catch(e){showToast('❌ '+e.message,'error');}
+}
 </script>
 </body>
 </html>

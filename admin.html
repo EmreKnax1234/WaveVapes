@@ -2014,11 +2014,19 @@
                 <div class="ped-grid2">
                     <div class="ped-field">
                         <label class="ped-label">Aktueller Preis (€)</label>
-                        <input class="ped-input" id="edit-price" type="number" step="0.01">
+                        <input class="ped-input" id="edit-price" type="number" step="0.01" oninput="pedUpdateMargin()">
                     </div>
                     <div class="ped-field">
                         <label class="ped-label">Alter Preis (€)</label>
                         <input class="ped-input" id="edit-original-price" type="number" step="0.01" placeholder="—">
+                    </div>
+                    <div class="ped-field">
+                        <label class="ped-label" style="color:#34d399">Einkaufspreis (€) <i class="fa-solid fa-lock-open" style="font-size:8px;opacity:.6"></i></label>
+                        <input class="ped-input" id="edit-purchase-price" type="number" step="0.01" placeholder="0.00" oninput="pedUpdateMargin()" style="border-color:rgba(52,211,153,.25)">
+                    </div>
+                    <div class="ped-field">
+                        <label class="ped-label" style="color:#34d399">Marge / Gewinn</label>
+                        <div class="ped-input" id="ped-margin-display" style="border-color:rgba(52,211,153,.2);background:rgba(52,211,153,.04);color:#34d399;font-weight:700;cursor:default;user-select:none">—</div>
                     </div>
                     <div class="ped-field">
                         <label class="ped-label">Lagerbestand</label>
@@ -2225,6 +2233,10 @@
                                 <input id="prod-original-price" type="number" step="0.01" class="prd-add-input" placeholder="9.99">
                             </div>
                             <div class="prd-add-field">
+                                <label class="prd-add-label" style="color:#34d399">Einkaufspreis (€) <i class="fa-solid fa-tag" style="font-size:8px;opacity:.7"></i></label>
+                                <input id="prod-purchase-price" type="number" step="0.01" class="prd-add-input" placeholder="z.B. 3.50" style="border-color:rgba(52,211,153,.3)">
+                            </div>
+                            <div class="prd-add-field">
                                 <label class="prd-add-label">Lagerbestand</label>
                                 <input id="prod-stock" type="number" class="prd-add-input" placeholder="50" required>
                             </div>
@@ -2258,6 +2270,36 @@
                             <i class="fa-solid fa-cloud-arrow-up"></i> Produkt speichern
                         </button>
                     </form>
+                </div>
+            </div>
+
+            <!-- Kategorie-Einkaufspreis Massenpflege -->
+            <div class="prd-add-panel" id="cat-ek-panel">
+                <div class="prd-add-hdr" onclick="this.parentElement.classList.toggle('open')">
+                    <div class="prd-add-hdr-left">
+                        <div class="prd-add-icon" style="background:rgba(52,211,153,.12);color:#34d399"><i class="fa-solid fa-tags"></i></div>
+                        <div>
+                            <div class="prd-add-hdr-title" style="color:rgba(52,211,153,.8)">Kategorie-Einkaufspreis (Massenpflege)</div>
+                            <div style="font-size:10px;color:rgba(255,255,255,.3);margin-top:2px">Setzt den Einkaufspreis für alle Produkte einer Kategorie auf einmal</div>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-chevron-down prd-add-chevron"></i>
+                </div>
+                <div class="prd-add-body">
+                    <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end;margin-top:10px;flex-wrap:wrap">
+                        <div class="prd-add-field">
+                            <label class="prd-add-label">Kategorie auswählen</label>
+                            <select id="cat-ek-category" class="prd-add-input" style="border-color:rgba(52,211,153,.3)" onchange="updateCatEkPreview()"></select>
+                        </div>
+                        <div class="prd-add-field">
+                            <label class="prd-add-label" style="color:#34d399">Einkaufspreis (€) für alle Produkte</label>
+                            <input id="cat-ek-price" type="number" step="0.01" class="prd-add-input" placeholder="z.B. 3.50" style="border-color:rgba(52,211,153,.3)" oninput="updateCatEkPreview()">
+                        </div>
+                        <button onclick="applyCategoryPurchasePrice()" class="prd-btn prd-btn-green" style="height:38px;padding:0 18px;font-size:12px;border-radius:10px">
+                            <i class="fa-solid fa-check"></i> Anwenden
+                        </button>
+                    </div>
+                    <div id="cat-ek-preview" style="font-size:11px;color:rgba(255,255,255,.35);margin-top:10px;padding:10px 13px;background:rgba(52,211,153,.04);border:1px solid rgba(52,211,153,.12);border-radius:10px;display:none"></div>
                 </div>
             </div>
 
@@ -2295,6 +2337,7 @@
                                 <th onclick="sortAdminTable('name')">Produkt</th>
                                 <th onclick="sortAdminTable('category')">Kategorie</th>
                                 <th onclick="sortAdminTable('price')" style="text-align:right">Preis</th>
+                                <th onclick="sortAdminTable('margin')" style="text-align:right">EK / Marge</th>
                                 <th onclick="sortAdminTable('stock')" style="text-align:center">Lager</th>
                                 <th onclick="sortAdminTable('available')" style="text-align:center">Verfügbar</th>
                                 <th onclick="sortAdminTable('sold')" style="text-align:right">Verkauft</th>
@@ -2303,7 +2346,7 @@
                             </tr>
                         </thead>
                         <tbody id="products-tbody">
-                            <tr><td colspan="9"><div class="prd-empty"><span class="eu-spinner"></span><br><br>Lade Produkte...</div></td></tr>
+                            <tr><td colspan="10"><div class="prd-empty"><span class="eu-spinner"></span><br><br>Lade Produkte...</div></td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -4680,6 +4723,7 @@ function loadProducts() {
         allProducts = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         updateStats();
         renderProductTable();
+        populateCatEkSelect();
     });
 }
 function applyAdminFilters() {
@@ -4718,6 +4762,7 @@ function renderProductTable() {
             case 'name':          valA = a.name;                    valB = b.name; break;
             case 'category':      valA = a.category || '';          valB = b.category || ''; break;
             case 'price':         valA = a.price;                   valB = b.price; break;
+            case 'margin':        valA = (a.purchasePrice>0) ? (a.price||0)-a.purchasePrice : -9999; valB = (b.purchasePrice>0) ? (b.price||0)-b.purchasePrice : -9999; break;
             case 'originalPrice': valA = a.originalPrice || 0;      valB = b.originalPrice || 0; break;
             case 'stock':         valA = a.stock || 0;              valB = b.stock || 0; break;
             case 'sold':          valA = a.sold || 0;               valB = b.sold || 0; break;
@@ -4752,7 +4797,7 @@ function renderProductTable() {
     }
 
     if (!filtered.length) {
-        tbody.innerHTML = `<tr><td colspan="9"><div class="prd-empty"><i class="fa-solid fa-box-open"></i>Keine Produkte gefunden</div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10"><div class="prd-empty"><i class="fa-solid fa-box-open"></i>Keine Produkte gefunden</div></td></tr>`;
         return;
     }
 
@@ -4790,6 +4835,17 @@ function renderProductTable() {
             <td style="text-align:right">
                 <div class="prd-price">${(p.price||0).toFixed(2)} €</div>
                 ${p.originalPrice ? `<div class="prd-price-orig">${p.originalPrice.toFixed(2)} €</div>` : ''}
+            </td>
+            <td style="text-align:right">
+                ${(()=>{
+                    if (!p.purchasePrice) return `<span style="color:rgba(255,255,255,.18);font-size:10px">—</span>`;
+                    const ek = p.purchasePrice;
+                    const margin = (p.price||0) - ek;
+                    const pct = ek > 0 ? (margin / ek * 100) : 0;
+                    const color = margin >= 3 ? '#34d399' : margin >= 1 ? '#fbbf24' : '#f87171';
+                    return `<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,.5)">${ek.toFixed(2)} €</div>
+                            <div style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:${color}">${margin>=0?'+':''}${margin.toFixed(2)} € <span style="font-size:9px;opacity:.7">(${pct.toFixed(0)}%)</span></div>`;
+                })()}
             </td>
             <td style="text-align:center">
                 <span class="prd-stock-val ${stockClass}">${stock}</span>
@@ -4898,6 +4954,7 @@ document.getElementById('add-form').addEventListener('submit', async e => {
     const name = document.getElementById('prod-name').value.trim();
     const price = parseFloat(document.getElementById('prod-price').value);
     const originalPrice = parseFloat(document.getElementById('prod-original-price').value) || null;
+    const purchasePrice = parseFloat(document.getElementById('prod-purchase-price').value) || null;
     const stock = parseInt(document.getElementById('prod-stock', 10).value);
     const isNew = document.getElementById('prod-new').checked;
     const unavailable = document.getElementById('prod-unavailable').checked;
@@ -4905,7 +4962,7 @@ document.getElementById('add-form').addEventListener('submit', async e => {
     const description = document.getElementById('prod-description').value.trim();
     const categorySelect = document.getElementById('prod-category');
     const category = categorySelect && categorySelect.value ? categorySelect.value : (isNew ? "Neue Sorten" : "Normale Sorten");
-    const docRef = await db.collection('products').add({ name, price, originalPrice, stock, category, isNew: isNew||false, available: !unavailable, hasNicotine, description: description||"", sold: 0 });
+    const docRef = await db.collection('products').add({ name, price, originalPrice, purchasePrice, stock, category, isNew: isNew||false, available: !unavailable, hasNicotine, description: description||"", sold: 0 });
     if (selectedFile) {
         const formData = new FormData(); formData.append("file", selectedFile); formData.append("upload_preset", "wavevapes");
         const res = await fetch("https://api.cloudinary.com/v1_1/dbbkmjsr5/image/upload", { method: "POST", body: formData });
@@ -5276,6 +5333,14 @@ function populateCategorySelects() {
             initCustomSelect(id, opts, cur, id === 'bulk-category' ? null : null);
         }
     });
+    // Also populate the category EK bulk select (plain native select, no custom wrapper)
+    const catEkSel = document.getElementById('cat-ek-category');
+    if (catEkSel && allCategories.length) {
+        const prev = catEkSel.value;
+        catEkSel.innerHTML = allCategories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+        if (prev) catEkSel.value = prev;
+        updateCatEkPreview();
+    }
 }
 
 function populateAdminCategoryFilter() {
@@ -8284,12 +8349,14 @@ async function openEditModal(id) {
     document.getElementById('edit-name').value             = p.name || '';
     document.getElementById('edit-price').value            = p.price || '';
     document.getElementById('edit-original-price').value  = p.originalPrice || '';
+    document.getElementById('edit-purchase-price').value  = p.purchasePrice || '';
     document.getElementById('edit-stock').value            = p.stock || '';
     document.getElementById('edit-description').value     = p.description || '';
     document.getElementById('edit-admin-notes').value     = p.adminNotes || '';
     document.getElementById('edit-new').checked           = !!p.isNew;
     document.getElementById('edit-unavailable').checked   = p.available === false;
     document.getElementById('edit-has-nicotine').checked  = p.hasNicotine !== false;
+    pedUpdateMargin();
 
     // preview
     const wrap = document.getElementById('ped-preview-wrap');
@@ -8333,6 +8400,7 @@ async function saveEdit() {
     const name           = document.getElementById('edit-name').value;
     const price          = parseFloat(document.getElementById('edit-price').value);
     const originalPrice  = parseFloat(document.getElementById('edit-original-price').value) || null;
+    const purchasePrice  = parseFloat(document.getElementById('edit-purchase-price').value) || null;
     const stock          = parseInt(document.getElementById('edit-stock', 10).value);
     const description    = document.getElementById('edit-description').value;
     const adminNotes     = document.getElementById('edit-admin-notes').value.trim();
@@ -8342,7 +8410,7 @@ async function saveEdit() {
     const cs             = document.getElementById('edit-category-select');
     const category       = cs && cs.value ? cs.value : (isNew ? "Neue Sorten" : "Normale Sorten");
 
-    let data = { name, price, originalPrice, stock, category, description:description||"", isNew, available:!unavailable, hasNicotine,
+    let data = { name, price, originalPrice, purchasePrice, stock, category, description:description||"", isNew, available:!unavailable, hasNicotine,
                  adminNotes: adminNotes || firebase.firestore.FieldValue.delete() };
 
     if (removeCurrentImage && !selectedFile) data.image = null;
@@ -8420,7 +8488,74 @@ async function executeBulkEdit() {
     loadProducts();
 }
 
-async function logUnauthorizedAccess(reason, email=null) {
+// ═══════════════════════════════════════════════════════
+//  EINKAUFSPREIS – Live-Marge im Drawer
+// ═══════════════════════════════════════════════════════
+function pedUpdateMargin() {
+    const price    = parseFloat(document.getElementById('edit-price')?.value) || 0;
+    const ek       = parseFloat(document.getElementById('edit-purchase-price')?.value) || 0;
+    const display  = document.getElementById('ped-margin-display');
+    if (!display) return;
+    if (!ek || !price) { display.textContent = '—'; display.style.color = '#34d399'; return; }
+    const margin   = price - ek;
+    const pct      = ek > 0 ? (margin / ek * 100) : 0;
+    const color    = margin >= 3 ? '#34d399' : margin >= 1 ? '#fbbf24' : '#f87171';
+    display.style.color = color;
+    display.textContent = `${margin >= 0 ? '+' : ''}${margin.toFixed(2)} € (${pct.toFixed(0)}%)`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  KATEGORIE-EINKAUFSPREIS MASSENPFLEGE
+// ═══════════════════════════════════════════════════════
+function populateCatEkSelect() {
+    const sel = document.getElementById('cat-ek-category');
+    if (!sel || !allCategories) return;
+    sel.innerHTML = allCategories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+    updateCatEkPreview();
+}
+
+function updateCatEkPreview() {
+    const sel     = document.getElementById('cat-ek-category');
+    const priceEl = document.getElementById('cat-ek-price');
+    const preview = document.getElementById('cat-ek-preview');
+    if (!sel || !preview) return;
+    const cat     = sel.value;
+    const ek      = parseFloat(priceEl?.value) || 0;
+    const prods   = allProducts.filter(p => p.category === cat);
+    if (!prods.length) { preview.style.display='none'; return; }
+    preview.style.display = 'block';
+    if (!ek) {
+        preview.innerHTML = `<i class="fa-solid fa-circle-info" style="color:#67e8f9"></i> <strong style="color:#fff">${prods.length} Produkte</strong> in „${cat}" würden aktualisiert`;
+        return;
+    }
+    const lines = prods.slice(0,5).map(p => {
+        const margin = (p.price||0) - ek;
+        const pct    = ek > 0 ? (margin/ek*100) : 0;
+        const col    = margin >= 3 ? '#34d399' : margin >= 1 ? '#fbbf24' : '#f87171';
+        return `<span style="margin-right:12px">${p.name.slice(0,22)}… → <strong style="color:${col}">${margin>=0?'+':''}${margin.toFixed(2)} € (${pct.toFixed(0)}%)</strong></span>`;
+    }).join('');
+    const more = prods.length > 5 ? `<span style="opacity:.5"> + ${prods.length-5} weitere</span>` : '';
+    preview.innerHTML = `<i class="fa-solid fa-eye" style="color:#67e8f9;margin-right:6px"></i><strong style="color:#fff">${prods.length} Produkte</strong> in „${cat}":<br><span style="display:block;margin-top:6px;line-height:2">${lines}${more}</span>`;
+}
+
+async function applyCategoryPurchasePrice() {
+    const sel   = document.getElementById('cat-ek-category');
+    const ek    = parseFloat(document.getElementById('cat-ek-price').value);
+    if (!sel?.value) { showToast('Bitte eine Kategorie wählen', 'error'); return; }
+    if (!ek || ek <= 0) { showToast('Bitte einen gültigen Einkaufspreis eingeben', 'error'); return; }
+    const cat   = sel.value;
+    const prods = allProducts.filter(p => p.category === cat);
+    if (!prods.length) { showToast('Keine Produkte in dieser Kategorie', 'error'); return; }
+    if (!confirm(`Einkaufspreis ${ek.toFixed(2)} € für alle ${prods.length} Produkte in „${cat}" setzen?`)) return;
+    const batch = db.batch();
+    prods.forEach(p => batch.update(db.collection('products').doc(p.id), { purchasePrice: ek }));
+    await batch.commit();
+    await logAction("bulk_purchase_price", "", { category: cat, purchasePrice: ek, count: prods.length });
+    showToast(`✅ Einkaufspreis für ${prods.length} Produkte in „${cat}" gesetzt!`);
+    loadProducts();
+}
+
+
     try {
         let ip="unbekannt";
         try{const res=await fetch("https://api.ipify.org?format=json");const data=await res.json();ip=data.ip||"unbekannt";}catch(e){}

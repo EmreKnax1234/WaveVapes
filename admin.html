@@ -655,6 +655,7 @@
         /* pct adjust field highlight */
         .bke-pct-wrap { display:flex; align-items:center; gap:6px; }
         .bke-pct-sign { font-size:14px; font-weight:700; color:rgba(255,255,255,.35); }
+        @keyframes bke-pulse { 0%,100%{opacity:1} 50%{opacity:.55} }
 
         /* ═══════════════════════════════════════════════════════
            ADMIN LOGS v2 – Design System
@@ -2139,9 +2140,14 @@
         </div>
         <button class="bke-close" onclick="closeBulkModal()">✕</button>
     </div>
+    <!-- Info-Banner: zeigt ob Auswahl oder gefilterte Liste -->
+    <div id="bke-source-banner" style="margin:0 20px 4px;padding:8px 12px;border-radius:10px;background:rgba(103,232,249,.07);border:1px solid rgba(103,232,249,.15);font-size:11px;color:rgba(255,255,255,.55);display:flex;align-items:center;gap:7px">
+        <i class="fa-solid fa-filter" style="color:#67e8f9;font-size:10px"></i>
+        <span id="bke-source-text">0 Produkte ausgewählt</span>
+    </div>
     <div class="bke-body">
         <div class="bke-field">
-            <label class="bke-label">Neuer Preis (€)</label>
+            <label class="bke-label">Verkaufspreis (€)</label>
             <input class="bke-input" id="bulk-price" type="number" step="0.01" placeholder="z.B. 7.99">
         </div>
         <div class="bke-field">
@@ -2152,10 +2158,14 @@
             </div>
         </div>
         <div class="bke-field">
+            <label class="bke-label" style="color:#fbbf24">Einkaufspreis (€) <span style="font-weight:400;opacity:.5;font-size:8px">intern</span></label>
+            <input class="bke-input" id="bulk-cost-price" type="number" step="0.01" placeholder="z.B. 3.50" style="border-color:rgba(251,191,36,.2);background:rgba(251,191,36,.03)">
+        </div>
+        <div class="bke-field">
             <label class="bke-label">Lagerbestand</label>
             <input class="bke-input" id="bulk-stock" type="number" placeholder="z.B. 50">
         </div>
-        <div class="bke-field">
+        <div class="bke-field" style="grid-column:span 2">
             <label class="bke-label">Kategorie</label>
             <select class="bke-input" id="bulk-category"></select>
         </div>
@@ -2353,6 +2363,11 @@
                 <button class="prd-btn" style="background:rgba(251,191,36,.09);color:#fbbf24;border-color:rgba(251,191,36,.2)" onclick="openCatCostModal()"><i class="fa-solid fa-tag"></i> Kategorie-EK</button>
                 <div class="prd-sep"></div>
                 <span class="prd-result-count" id="prd-result-count"></span>
+                <!-- Erscheint nur wenn Filter aktiv -->
+                <button id="bke-filtered-btn" class="prd-btn" onclick="openBulkEditFiltered()"
+                    style="display:none;background:rgba(167,139,250,.12);color:#a78bfa;border-color:rgba(167,139,250,.28);animation:bke-pulse .8s ease-in-out 2">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> <span id="bke-filtered-label">Alle sichtbaren bulk-editieren</span>
+                </button>
             </div>
 
             <!-- Product table -->
@@ -4800,11 +4815,18 @@ function renderProductTable() {
         return adminSortDirection === 'asc' ? valA - valB : valB - valA;
     });
 
-    // update result count
+    // update result count + filtered bulk button
     const rc = document.getElementById('prd-result-count');
-    if (rc) rc.textContent = filtered.length !== allProducts.length
+    const filteredBtn = document.getElementById('bke-filtered-btn');
+    const filteredLabel = document.getElementById('bke-filtered-label');
+    const isFiltered = filtered.length !== allProducts.length;
+    if (rc) rc.textContent = isFiltered
         ? `${filtered.length} von ${allProducts.length} Produkten`
         : `${allProducts.length} Produkte`;
+    if (filteredBtn) {
+        filteredBtn.style.display = isFiltered && filtered.length > 0 ? 'inline-flex' : 'none';
+        if (filteredLabel) filteredLabel.textContent = `${filtered.length} sichtbare bulk-editieren`;
+    }
 
     // update sort headers
     document.querySelectorAll('.prd-table thead th').forEach(th => {
@@ -8462,21 +8484,41 @@ function bkePillToggle(el, key) {
     else { _bkePillState[key] = true; el.classList.add('active'); }
 }
 
-function openBulkEditModal() {
-    selectedProductIds = [];
-    document.querySelectorAll('.product-checkbox:checked').forEach(cb => selectedProductIds.push(cb.dataset.id));
-    if (!selectedProductIds.length) { showToast('Bitte zuerst Produkte auswählen','error'); return; }
+function _bkeOpen(ids, sourceLabel) {
+    if (!ids.length) { showToast('Keine Produkte zum Bearbeiten', 'error'); return; }
+    selectedProductIds = ids;
     _bkePillState = {};
     document.querySelectorAll('.bke-toggle-pill').forEach(p => p.classList.remove('active'));
-    document.getElementById('bulk-price').value    = '';
-    document.getElementById('bulk-price-pct').value= '';
-    document.getElementById('bulk-stock').value    = '';
-    document.getElementById('bke-count').textContent = selectedProductIds.length + ' Produkte';
-    // Re-init category custom select with "nicht ändern" as first option
+    document.getElementById('bulk-price').value      = '';
+    document.getElementById('bulk-price-pct').value  = '';
+    document.getElementById('bulk-cost-price').value = '';
+    document.getElementById('bulk-stock').value      = '';
+    document.getElementById('bke-count').textContent = ids.length + ' Produkte';
+    // Source banner
+    const banner = document.getElementById('bke-source-text');
+    if (banner) banner.textContent = sourceLabel;
+    // Re-init category custom select
     const bkeCatOpts = [{ value:'', label:'Kategorie nicht ändern' }, ...allCategories.map(c=>({ value:c.name, label:c.name }))];
     initCustomSelect('bulk-category', bkeCatOpts, '', null);
     document.getElementById('bke-overlay').classList.add('open');
     document.getElementById('bke-sheet').classList.add('open');
+}
+
+function openBulkEditModal() {
+    const checkedIds = [];
+    document.querySelectorAll('.product-checkbox:checked').forEach(cb => checkedIds.push(cb.dataset.id));
+    if (!checkedIds.length) { showToast('Bitte zuerst Produkte auswählen (oder nutze „Alle sichtbaren bulk-editieren")', 'error'); return; }
+    _bkeOpen(checkedIds, `${checkedIds.length} manuell ausgewählt`);
+}
+
+function openBulkEditFiltered() {
+    // Liest die aktuell sichtbaren Zeilen aus der Tabelle
+    const visibleIds = Array.from(document.querySelectorAll('#products-tbody .product-checkbox')).map(cb => cb.dataset.id);
+    const searchTerm = (document.getElementById('product-search').value || '').trim();
+    const label = searchTerm
+        ? `${visibleIds.length} gefilterte Produkte (Suche: „${searchTerm}")`
+        : `${visibleIds.length} sichtbare Produkte`;
+    _bkeOpen(visibleIds, label);
 }
 
 function closeBulkModal() {
@@ -8485,34 +8527,53 @@ function closeBulkModal() {
 }
 
 async function executeBulkEdit() {
-    const priceVal  = document.getElementById('bulk-price').value;
-    const pctVal    = document.getElementById('bulk-price-pct').value;
-    const stockVal  = document.getElementById('bulk-stock').value;
-    const category  = csGetValue('bulk-category') || null;
-    const available = _bkePillState['available'] ?? null;
-    const isNew     = _bkePillState['new']       ?? null;
-    const hasNic    = _bkePillState['nicotine']   ?? null;
+    const priceVal    = document.getElementById('bulk-price').value;
+    const pctVal      = document.getElementById('bulk-price-pct').value;
+    const costPriceVal= document.getElementById('bulk-cost-price').value;
+    const stockVal    = document.getElementById('bulk-stock').value;
+    const category    = csGetValue('bulk-category') || null;
+    const available   = _bkePillState['available'] ?? null;
+    const isNew       = _bkePillState['new']       ?? null;
+    const hasNic      = _bkePillState['nicotine']   ?? null;
 
-    const batch = db.batch(); let changed = 0;
-    for (let id of selectedProductIds) {
-        const updateData = {};
-        if (priceVal) updateData.price = parseFloat(priceVal);
-        else if (pctVal) {
-            const prd = allProducts.find(p=>p.id===id);
-            if (prd) updateData.price = Math.round(prd.price * (1 + parseFloat(pctVal)/100) * 100) / 100;
-        }
-        if (stockVal)       updateData.stock        = parseInt(stockVal, 10);
-        if (category)       updateData.category     = category;
-        if (available!==null) updateData.available  = available;
-        if (isNew!==null)    updateData.isNew        = isNew;
-        if (hasNic!==null)   updateData.hasNicotine  = hasNic;
-        if (Object.keys(updateData).length > 0) { batch.update(db.collection('products').doc(id), updateData); changed++; }
+    // Mindestens ein Feld muss ausgefüllt sein
+    if (!priceVal && !pctVal && !costPriceVal && !stockVal && !category && available===null && isNew===null && hasNic===null) {
+        showToast('Bitte mindestens ein Feld ausfüllen', 'error'); return;
     }
-    await batch.commit();
-    await logAction("bulk_edit","",{count:changed});
-    closeBulkModal();
-    showToast(`✅ ${changed} Produkte aktualisiert!`);
-    loadProducts();
+
+    const saveBtn = document.querySelector('.bke-save');
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Speichere…'; }
+
+    try {
+        let changed = 0;
+        for (let i = 0; i < selectedProductIds.length; i += 400) {
+            const batch = db.batch();
+            selectedProductIds.slice(i, i + 400).forEach(id => {
+                const updateData = {};
+                if (priceVal)         updateData.price      = parseFloat(priceVal);
+                else if (pctVal) {
+                    const prd = allProducts.find(p => p.id === id);
+                    if (prd) updateData.price = Math.round(prd.price * (1 + parseFloat(pctVal)/100) * 100) / 100;
+                }
+                if (costPriceVal)     updateData.costPrice  = parseFloat(costPriceVal);
+                if (stockVal)         updateData.stock       = parseInt(stockVal, 10);
+                if (category)         updateData.category    = category;
+                if (available!==null) updateData.available   = available;
+                if (isNew!==null)     updateData.isNew       = isNew;
+                if (hasNic!==null)    updateData.hasNicotine = hasNic;
+                if (Object.keys(updateData).length > 0) { batch.update(db.collection('products').doc(id), updateData); changed++; }
+            });
+            await batch.commit();
+        }
+        await logAction('bulk_edit', '', { count: changed, fields: { priceVal, pctVal, costPriceVal, stockVal, category } });
+        closeBulkModal();
+        showToast(`✅ ${changed} Produkte aktualisiert!`);
+        loadProducts();
+    } catch(e) {
+        showToast('❌ Fehler: ' + e.message, 'error');
+    } finally {
+        if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '<i class="fa-solid fa-check"></i> Änderungen anwenden'; }
+    }
 }
 
 async function logUnauthorizedAccess(reason, email=null) {

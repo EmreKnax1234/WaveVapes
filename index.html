@@ -2443,14 +2443,20 @@
             }
         }
         // ====================== SERVER-CART ======================
+        // Generation counter: jeder loadUserCart()-Aufruf bekommt eine neue ID.
+        // Nur der aktuellste Aufruf darf cart überschreiben und speichern.
+        let _cartLoadGen = 0;
         async function loadUserCart() {
             if (!currentUser) {
                 cart = [];
                 updateCartDisplay();
                 return;
             }
+            const myGen = ++_cartLoadGen;
             try {
                 const userDoc = await db.collection("users").doc(currentUser.uid).get();
+                // Ein neuerer loadUserCart()-Aufruf hat bereits übernommen → abbrechen
+                if (myGen !== _cartLoadGen) return;
                 const serverCart = (userDoc.exists && userDoc.data().cart) ? userDoc.data().cart : [];
                 const guestCart  = cart.filter(i => i.id !== 999); // items added before login
 
@@ -3081,7 +3087,7 @@
                         images: Array.isArray(data.images) && data.images.length > 0
                             ? data.images
                             : (data.image ? [data.image] : []),
-                        stock: data.stock || 0,
+                        stock: data.stock != null ? Number(data.stock) : null,
                         description: data.description || "",
                         hasNicotine: data.hasNicotine !== false
                     });
@@ -3170,8 +3176,9 @@
                     </div>` : '';
                 let stockHTML = '';
                 if (product.available) {
-                    const stock = product.stock || 0;
-                    if (stock > 5) stockHTML = `<div class="stock-info stock-high">✅ Noch ${stock} auf Lager</div>`;
+                    const stock = product.stock; // null = unlimited, 0 = sold out, N = count
+                    if (stock === null || stock === undefined) stockHTML = `<div class="stock-info stock-high">✅ Auf Lager</div>`;
+                    else if (stock > 5) stockHTML = `<div class="stock-info stock-high">✅ Noch ${stock} auf Lager</div>`;
                     else if (stock > 0) stockHTML = `<div class="stock-info stock-low">⚠️ Nur noch ${stock} auf Lager</div>`;
                     else stockHTML = `<div class="stock-info stock-zero">❌ Ausverkauft</div>`;
                 } else {
@@ -3246,9 +3253,13 @@
             } else if (nicotine) {
                 existing.nicotine = nicotine;
             }
-            // BUG 2 FIX: Clientseitiger Lagerbestand-Check — verhindert dass mehr
-            // Artikel hinzugefügt werden als auf Lager sind.
-            if (delta > 0 && product.stock > 0) {
+            // Stock-Check: null = unbegrenzt → kein Check nötig. 0 = ausverkauft → blockieren.
+            if (delta > 0 && product.stock !== null && product.stock !== undefined) {
+                if (product.stock === 0) {
+                    showToast(`❌ Ausverkauft`, "error");
+                    if (existing.qty === 0) cart = cart.filter(i => i.id !== id);
+                    return false;
+                }
                 const newQty = existing.qty + delta;
                 if (newQty > product.stock) {
                     showToast(`⚠️ Nur noch ${product.stock}× auf Lager`, "error");
@@ -4078,6 +4089,7 @@
                 ordersUnsubscribe();
                 ordersUnsubscribe = null;
             }
+            _ordersLoading = false; // Lock zurücksetzen, sonst bleibt Modal beim nächsten Öffnen leer
         }
 
         // ═══════════════════════════════════════════════════════════════
@@ -4099,7 +4111,7 @@
                 // Mystery-Vape (id 999) und sonstige Sonderpositionen überspringen
                 if (!item.id || item.id === 999) { skippedCount++; continue; }
 
-                const productId = String(item.id);
+                const productId = Number(item.id);
                 const product   = _productMap.get(productId);
 
                 // Produkt unbekannt oder nicht verfügbar → überspringen
@@ -4722,7 +4734,12 @@
                         <option value="20 mg" selected>20 mg/ml</option>
                     </select>
                 </div>` : '';
-            const stockHTML = product.stock > 0
+            const stockHTML = (product.stock === null || product.stock === undefined)
+                ? `<div class="inline-flex items-center gap-2 bg-emerald-900/50 text-emerald-400 text-sm px-5 py-2 rounded-3xl">
+                       <div class="w-2.5 h-2.5 bg-emerald-400 rounded-full animate-pulse"></div>
+                       Auf Lager
+                   </div>`
+                : product.stock > 0
                 ? `<div class="inline-flex items-center gap-2 bg-emerald-900/50 text-emerald-400 text-sm px-5 py-2 rounded-3xl">
                        <div class="w-2.5 h-2.5 bg-emerald-400 rounded-full animate-pulse"></div>
                        Noch ${product.stock} auf Lager

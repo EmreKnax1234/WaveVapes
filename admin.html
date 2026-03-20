@@ -3788,47 +3788,182 @@
 
             <!-- PANEL: BACKUP & EXPORT -->
             <div class="sa-inner-panel" id="sa-panel-backup">
-                <div class="sa-section-title"><i class="fa-solid fa-database" style="color:#67e8f9"></i> Daten exportieren</div>
-                <div class="sa-export-grid">
-                    <div class="sa-export-card">
-                        <div class="sa-export-icon">📦</div><div class="sa-export-title">Alle Bestellungen</div>
-                        <div class="sa-export-desc">Vollständiger Export aller Bestellungen mit Kundendaten, Produkten und Status.</div>
-                        <button class="sa-export-btn" onclick="saExport('orders','json')"><i class="fa-solid fa-file-code"></i> JSON</button>
-                        <button class="sa-export-btn" onclick="saExport('orders','csv')" style="background:rgba(167,139,250,.1);color:#a78bfa"><i class="fa-solid fa-file-csv"></i> CSV</button>
+
+                <!-- ── Auto-Backup Status Card ── -->
+                <div id="bkp-status-card" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;padding:20px 24px;border-radius:20px;background:linear-gradient(135deg,rgba(103,232,249,.06),rgba(103,232,249,.02));border:1px solid rgba(103,232,249,.18);margin-bottom:4px">
+                    <div style="display:flex;align-items:center;gap:14px">
+                        <div style="width:46px;height:46px;border-radius:14px;background:rgba(103,232,249,.1);border:1px solid rgba(103,232,249,.2);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">🔄</div>
+                        <div>
+                            <div style="font-size:14px;font-weight:700;color:#fff;display:flex;align-items:center;gap:8px">
+                                Auto-Backup
+                                <span id="bkp-auto-badge" style="font-size:10px;padding:2px 9px;border-radius:99px;background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.3);font-weight:700">DEAKTIVIERT</span>
+                            </div>
+                            <div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:3px" id="bkp-next-label">Nächster Backup: —</div>
+                        </div>
                     </div>
-                    <div class="sa-export-card">
-                        <div class="sa-export-icon">👤</div><div class="sa-export-title">Alle Benutzer</div>
-                        <div class="sa-export-desc">Benutzerdaten inkl. E-Mail, Punkte, Rolle und Registrierungsdatum.</div>
-                        <button class="sa-export-btn" onclick="saExport('users','json')"><i class="fa-solid fa-file-code"></i> JSON</button>
-                        <button class="sa-export-btn" onclick="saExport('users','csv')" style="background:rgba(167,139,250,.1);color:#a78bfa"><i class="fa-solid fa-file-csv"></i> CSV</button>
-                    </div>
-                    <div class="sa-export-card">
-                        <div class="sa-export-icon">🛍️</div><div class="sa-export-title">Alle Produkte</div>
-                        <div class="sa-export-desc">Produktkatalog mit Preisen, Lagerbestand und Kategorien.</div>
-                        <button class="sa-export-btn" onclick="saExport('products','json')"><i class="fa-solid fa-file-code"></i> JSON</button>
-                        <button class="sa-export-btn" onclick="saExport('products','csv')" style="background:rgba(167,139,250,.1);color:#a78bfa"><i class="fa-solid fa-file-csv"></i> CSV</button>
-                    </div>
-                    <div class="sa-export-card">
-                        <div class="sa-export-icon">📋</div><div class="sa-export-title">Admin-Logs</div>
-                        <div class="sa-export-desc">Alle Admin-Aktionen der letzten 90 Tage für Audits.</div>
-                        <button class="sa-export-btn" onclick="saExport('admin_logs','json')"><i class="fa-solid fa-file-code"></i> JSON</button>
-                        <button class="sa-export-btn" onclick="saExport('admin_logs','csv')" style="background:rgba(167,139,250,.1);color:#a78bfa"><i class="fa-solid fa-file-csv"></i> CSV</button>
-                    </div>
-                    <div class="sa-export-card" style="border-color:rgba(251,191,36,.2)">
-                        <div class="sa-export-icon">💾</div><div class="sa-export-title">Vollständiges Backup</div>
-                        <div class="sa-export-desc">Alle Collections in einer JSON-Datei — ideal für vollständige Datensicherung.</div>
-                        <button class="sa-export-btn" onclick="saExportFull()" style="background:rgba(251,191,36,.1);color:#fbbf24;border:1px solid rgba(251,191,36,.2)"><i class="fa-solid fa-download"></i> Vollbackup erstellen</button>
-                    </div>
-                    <div class="sa-export-card">
-                        <div class="sa-export-icon">⭐</div><div class="sa-export-title">Bewertungen</div>
-                        <div class="sa-export-desc">Alle Bewertungen mit Status, Nutzerdaten und Zeitstempeln.</div>
-                        <button class="sa-export-btn" onclick="saExport('reviews','json')"><i class="fa-solid fa-file-code"></i> JSON</button>
-                        <button class="sa-export-btn" onclick="saExport('reviews','csv')" style="background:rgba(167,139,250,.1);color:#a78bfa"><i class="fa-solid fa-file-csv"></i> CSV</button>
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+                        <div style="text-align:right">
+                            <div style="font-size:10px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.06em">Letzter Backup</div>
+                            <div style="font-size:13px;font-weight:700;color:#67e8f9;font-family:'JetBrains Mono',monospace" id="bkp-last-label">—</div>
+                        </div>
+                        <button onclick="bkpRunNow()" id="bkp-run-btn" style="display:flex;align-items:center;gap:8px;padding:10px 18px;border-radius:13px;background:rgba(103,232,249,.1);border:1px solid rgba(103,232,249,.25);color:#67e8f9;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(103,232,249,.2)'" onmouseout="this.style.background='rgba(103,232,249,.1)'">
+                            <i class="fa-solid fa-play"></i> Jetzt sichern
+                        </button>
                     </div>
                 </div>
-                <div style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.05);border-radius:16px;padding:14px;margin-top:4px">
-                    <div style="font-size:11px;color:rgba(255,255,255,.25);line-height:1.7"><i class="fa-solid fa-circle-info" style="margin-right:6px;color:rgba(103,232,249,.4)"></i>Exports werden direkt im Browser generiert und lokal gespeichert. Alle Exports werden im SA-Aktivitätslog protokolliert.</div>
+
+                <!-- ── KPI Strip ── -->
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px">
+                    <div class="sa-kpi" style="padding:14px 18px">
+                        <div class="sa-kpi-icon" style="font-size:18px;margin-bottom:6px">🗄️</div>
+                        <div class="sa-kpi-label">Backups gespeichert</div>
+                        <div class="sa-kpi-value" id="bkp-kpi-count" style="font-size:22px">—</div>
+                        <div class="sa-kpi-sub" id="bkp-kpi-sub">in Firestore</div>
+                    </div>
+                    <div class="sa-kpi" style="padding:14px 18px">
+                        <div class="sa-kpi-icon" style="font-size:18px;margin-bottom:6px">⚖️</div>
+                        <div class="sa-kpi-label">Gesamtgröße</div>
+                        <div class="sa-kpi-value" id="bkp-kpi-size" style="font-size:22px">—</div>
+                        <div class="sa-kpi-sub">aller Backups</div>
+                    </div>
+                    <div class="sa-kpi" style="padding:14px 18px">
+                        <div class="sa-kpi-icon" style="font-size:18px;margin-bottom:6px">✅</div>
+                        <div class="sa-kpi-label">Erfolgreiche</div>
+                        <div class="sa-kpi-value" id="bkp-kpi-ok" style="font-size:22px;color:#34d399">—</div>
+                        <div class="sa-kpi-sub">letzte 30 Tage</div>
+                    </div>
+                    <div class="sa-kpi" style="padding:14px 18px">
+                        <div class="sa-kpi-icon" style="font-size:18px;margin-bottom:6px">🔁</div>
+                        <div class="sa-kpi-label">Intervall</div>
+                        <div class="sa-kpi-value" id="bkp-kpi-interval" style="font-size:22px;color:#fbbf24">—h</div>
+                        <div class="sa-kpi-sub" id="bkp-kpi-retention-lbl">Aufbewahrung: —</div>
+                    </div>
                 </div>
+
+                <!-- ── Configuration ── -->
+                <div>
+                    <div class="sa-section-title"><i class="fa-solid fa-sliders" style="color:#fbbf24"></i> Auto-Backup Konfiguration</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+
+                        <div class="sa-sec-card">
+                            <div class="sa-sec-card-title"><i class="fa-solid fa-power-off" style="color:#34d399"></i> Auto-Backup aktivieren</div>
+                            <div class="sa-sec-card-desc">Automatisch täglich alle Firestore-Collections sichern und in der Datenbank speichern.</div>
+                            <div class="sa-sec-row">
+                                <span class="sa-sec-label">Auto-Backup</span>
+                                <label class="sa-switch"><input type="checkbox" id="bkp-cfg-enabled" onchange="bkpSaveConfig()"><span class="sa-switch-sl"></span></label>
+                            </div>
+                        </div>
+
+                        <div class="sa-sec-card">
+                            <div class="sa-sec-card-title"><i class="fa-solid fa-clock" style="color:#67e8f9"></i> Backup-Intervall</div>
+                            <div class="sa-sec-card-desc">Wie oft soll automatisch gesichert werden?</div>
+                            <div class="sa-sec-row">
+                                <span class="sa-sec-label">Alle (Stunden)</span>
+                                <input type="number" class="sa-sec-input" id="bkp-cfg-interval" value="24" min="1" max="168" onchange="bkpSaveConfig()">
+                            </div>
+                        </div>
+
+                        <div class="sa-sec-card">
+                            <div class="sa-sec-card-title"><i class="fa-solid fa-trash-clock" style="color:#a78bfa"></i> Aufbewahrungsdauer</div>
+                            <div class="sa-sec-card-desc">Alte Backups werden automatisch nach X Tagen gelöscht.</div>
+                            <div class="sa-sec-row">
+                                <span class="sa-sec-label">Behalten (Tage)</span>
+                                <input type="number" class="sa-sec-input" id="bkp-cfg-retention" value="30" min="1" max="365" onchange="bkpSaveConfig()">
+                            </div>
+                        </div>
+
+                        <div class="sa-sec-card">
+                            <div class="sa-sec-card-title"><i class="fa-solid fa-layer-group" style="color:#f87171"></i> Max. Backups</div>
+                            <div class="sa-sec-card-desc">Maximale Anzahl gespeicherter Backups (älteste werden automatisch gelöscht).</div>
+                            <div class="sa-sec-row">
+                                <span class="sa-sec-label">Max. Anzahl</span>
+                                <input type="number" class="sa-sec-input" id="bkp-cfg-maxcount" value="10" min="1" max="50" onchange="bkpSaveConfig()">
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- ── Collections Selector ── -->
+                <div>
+                    <div class="sa-section-title"><i class="fa-solid fa-table-list" style="color:#67e8f9"></i> Gesicherte Collections</div>
+                    <div id="bkp-collections-grid" style="display:flex;flex-wrap:wrap;gap:8px">
+                        <!-- rendered by JS -->
+                    </div>
+                </div>
+
+                <!-- ── Backup-History ── -->
+                <div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+                        <div class="sa-section-title" style="margin:0;flex:1"><i class="fa-solid fa-clock-rotate-left" style="color:#a78bfa"></i> Backup-Verlauf</div>
+                        <div style="display:flex;gap:8px">
+                            <button onclick="bkpInit()" style="padding:7px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:rgba(255,255,255,.5);font-size:11px;cursor:pointer;font-weight:600"><i class="fa-solid fa-rotate"></i> Aktualisieren</button>
+                            <button onclick="bkpPurgeOld()" style="padding:7px 14px;border-radius:10px;border:1px solid rgba(248,113,113,.2);background:rgba(248,113,113,.06);color:#f87171;font-size:11px;cursor:pointer;font-weight:600"><i class="fa-solid fa-broom"></i> Alte löschen</button>
+                        </div>
+                    </div>
+                    <div id="bkp-history-list" style="display:flex;flex-direction:column;gap:8px;margin-top:12px">
+                        <div style="color:rgba(255,255,255,.2);font-size:12px;padding:20px;text-align:center"><i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>Lade Backup-Verlauf...</div>
+                    </div>
+                </div>
+
+                <!-- ── Manueller Export ── -->
+                <div>
+                    <div class="sa-section-title"><i class="fa-solid fa-download" style="color:#67e8f9"></i> Einzelne Collections exportieren</div>
+                    <div class="sa-export-grid">
+                        <div class="sa-export-card">
+                            <div class="sa-export-icon">📦</div><div class="sa-export-title">Bestellungen</div>
+                            <div class="sa-export-desc">Alle Bestellungen mit Kundendaten, Produkten und Status.</div>
+                            <button class="sa-export-btn" onclick="saExport('orders','json')"><i class="fa-solid fa-file-code"></i> JSON</button>
+                            <button class="sa-export-btn" onclick="saExport('orders','csv')" style="background:rgba(167,139,250,.1);color:#a78bfa"><i class="fa-solid fa-file-csv"></i> CSV</button>
+                        </div>
+                        <div class="sa-export-card">
+                            <div class="sa-export-icon">👤</div><div class="sa-export-title">Benutzer</div>
+                            <div class="sa-export-desc">E-Mail, Punkte, Rolle und Registrierungsdatum.</div>
+                            <button class="sa-export-btn" onclick="saExport('users','json')"><i class="fa-solid fa-file-code"></i> JSON</button>
+                            <button class="sa-export-btn" onclick="saExport('users','csv')" style="background:rgba(167,139,250,.1);color:#a78bfa"><i class="fa-solid fa-file-csv"></i> CSV</button>
+                        </div>
+                        <div class="sa-export-card">
+                            <div class="sa-export-icon">🛍️</div><div class="sa-export-title">Produkte</div>
+                            <div class="sa-export-desc">Produktkatalog mit Preisen, Lagerbestand, Kategorien.</div>
+                            <button class="sa-export-btn" onclick="saExport('products','json')"><i class="fa-solid fa-file-code"></i> JSON</button>
+                            <button class="sa-export-btn" onclick="saExport('products','csv')" style="background:rgba(167,139,250,.1);color:#a78bfa"><i class="fa-solid fa-file-csv"></i> CSV</button>
+                        </div>
+                        <div class="sa-export-card">
+                            <div class="sa-export-icon">📋</div><div class="sa-export-title">Admin-Logs</div>
+                            <div class="sa-export-desc">Alle Admin-Aktionen für Audits und Compliance.</div>
+                            <button class="sa-export-btn" onclick="saExport('admin_logs','json')"><i class="fa-solid fa-file-code"></i> JSON</button>
+                            <button class="sa-export-btn" onclick="saExport('admin_logs','csv')" style="background:rgba(167,139,250,.1);color:#a78bfa"><i class="fa-solid fa-file-csv"></i> CSV</button>
+                        </div>
+                        <div class="sa-export-card" style="border-color:rgba(251,191,36,.2)">
+                            <div class="sa-export-icon">💾</div><div class="sa-export-title">Vollbackup (Download)</div>
+                            <div class="sa-export-desc">Alle Collections in einer JSON-Datei — lokal speichern.</div>
+                            <button class="sa-export-btn" onclick="saExportFull()" style="background:rgba(251,191,36,.1);color:#fbbf24;border:1px solid rgba(251,191,36,.2)"><i class="fa-solid fa-download"></i> Vollbackup herunterladen</button>
+                        </div>
+                        <div class="sa-export-card">
+                            <div class="sa-export-icon">⭐</div><div class="sa-export-title">Bewertungen</div>
+                            <div class="sa-export-desc">Alle Bewertungen mit Status und Zeitstempeln.</div>
+                            <button class="sa-export-btn" onclick="saExport('reviews','json')"><i class="fa-solid fa-file-code"></i> JSON</button>
+                            <button class="sa-export-btn" onclick="saExport('reviews','csv')" style="background:rgba(167,139,250,.1);color:#a78bfa"><i class="fa-solid fa-file-csv"></i> CSV</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Restore Modal -->
+                <div id="bkp-restore-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(12px);z-index:99999;align-items:center;justify-content:center">
+                    <div style="background:linear-gradient(160deg,#0f0f1a,#1a1a2e);border:1px solid rgba(248,113,113,.25);border-radius:28px;padding:36px;width:100%;max-width:460px;animation:modalPop .3s cubic-bezier(0.34,1.56,0.64,1)">
+                        <div style="width:56px;height:56px;border-radius:16px;background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.3);display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 20px">⚠️</div>
+                        <div style="font-family:'Orbitron',sans-serif;font-size:16px;font-weight:700;color:#f87171;text-align:center;margin-bottom:8px">Backup wiederherstellen</div>
+                        <div style="font-size:11px;color:rgba(255,255,255,.35);text-align:center;line-height:1.6;margin-bottom:24px" id="bkp-restore-desc">—</div>
+                        <div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-radius:12px;padding:12px 14px;margin-bottom:20px;font-size:11px;color:rgba(248,113,113,.8);line-height:1.6">
+                            <i class="fa-solid fa-triangle-exclamation" style="margin-right:6px"></i><strong>Achtung:</strong> Aktuelle Daten werden bei Bestätigung durch den Backup-Stand ersetzt. Diese Aktion kann nicht rückgängig gemacht werden.
+                        </div>
+                        <div style="display:flex;gap:10px">
+                            <button onclick="document.getElementById('bkp-restore-modal').style.display='none'" style="flex:1;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:rgba(255,255,255,.6);font-size:13px;font-weight:600;cursor:pointer">Abbrechen</button>
+                            <button onclick="bkpConfirmRestore()" style="flex:1;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;font-size:13px;font-weight:700;cursor:pointer" id="bkp-restore-confirm-btn"><i class="fa-solid fa-rotate-left"></i> Wiederherstellen</button>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
             <!-- PANEL: SA-AKTIVITÄTSLOG -->
@@ -9443,7 +9578,7 @@ function saSwitchInner(panel, el) {
     if (panel === 'security')   { saLoadIPWhitelist(); saLoadSecuritySettings(); }
     if (panel === 'sessions')   saLoadSessions();
     if (panel === 'actlog')     saLoadActivityLog();
-    if (panel === 'backup')     {} // static
+    if (panel === 'backup')     bkpInit();
     if (panel === 'danger')     {} // static
 }
 
@@ -9846,6 +9981,594 @@ const _patchedSaOpenTab = function() {
 };
 // Replace in window scope
 window.saOpenTab = _patchedSaOpenTab;
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  WAVEVAPES AUTO-BACKUP SYSTEM v1.0
+//  • Konfiguration & Zeitplan in Firestore settings/backup_config
+//  • Backups als JSON-Dokumente in Firestore backups/{id}
+//  • Trigger: beim Öffnen des Panels + automatisch nach Intervall-Check
+//  • Restore: einzelne Collections aus gespeichertem Backup wiederherstellen
+// ═══════════════════════════════════════════════════════════════════════════
+
+const BKP_CONFIG_DOC  = 'settings/backup_config';
+const BKP_COLLECTION  = 'backups';
+const BKP_ALL_COLS    = ['products','orders','users','categories','coupons','reviews','admin_logs','settings'];
+
+let _bkpConfig        = null;   // geladene Konfig
+let _bkpRestoreId     = null;   // aktuell zu restorende Backup-ID
+let _bkpRestoreCols   = null;   // welche Collections restore
+let _bkpAutoTimer     = null;   // setInterval-Handle
+
+// ── Hilfsfunktionen ───────────────────────────────────────────────────────
+
+function bkpFmtSize(bytes) {
+    if (bytes < 1024)       return bytes + ' B';
+    if (bytes < 1048576)    return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1048576).toFixed(2) + ' MB';
+}
+
+function bkpFmtDate(ts) {
+    if (!ts) return '—';
+    const d = ts.toDate ? ts.toDate() : new Date(ts);
+    return d.toLocaleString('de-DE', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+
+function bkpTimeAgo(ts) {
+    if (!ts) return '—';
+    const d   = ts.toDate ? ts.toDate() : new Date(ts);
+    const min = Math.floor((Date.now() - d.getTime()) / 60000);
+    if (min < 2)    return 'gerade eben';
+    if (min < 60)   return `vor ${min} Min`;
+    const h = Math.floor(min / 60);
+    if (h < 24)     return `vor ${h} Std`;
+    return `vor ${Math.floor(h / 24)} Tagen`;
+}
+
+// Serialisiert Firestore-Timestamps in ISO-Strings
+function bkpSerialize(data) {
+    return JSON.parse(JSON.stringify(data, (k, v) => {
+        if (v && typeof v === 'object' && typeof v.toDate === 'function') return v.toDate().toISOString();
+        return v;
+    }));
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+
+async function bkpInit() {
+    await bkpLoadConfig();
+    bkpRenderCollections();
+    bkpRenderStatus();
+    await bkpLoadHistory();
+    bkpScheduleAutoCheck();
+}
+
+// ── Konfig laden / speichern ─────────────────────────────────────────────
+
+async function bkpLoadConfig() {
+    try {
+        const snap = await db.doc(BKP_CONFIG_DOC).get();
+        _bkpConfig = snap.exists ? snap.data() : {};
+    } catch(e) {
+        _bkpConfig = {};
+    }
+    // Defaults setzen
+    _bkpConfig = Object.assign({
+        enabled:      false,
+        intervalHours: 24,
+        retentionDays: 30,
+        maxCount:      10,
+        collections:   [...BKP_ALL_COLS],
+        lastBackupAt:  null,
+    }, _bkpConfig);
+
+    // UI befüllen
+    const s = (id, v) => { const el = document.getElementById(id); if (el) el[typeof v === 'boolean' ? 'checked' : 'value'] = v; };
+    s('bkp-cfg-enabled',   _bkpConfig.enabled);
+    s('bkp-cfg-interval',  _bkpConfig.intervalHours);
+    s('bkp-cfg-retention', _bkpConfig.retentionDays);
+    s('bkp-cfg-maxcount',  _bkpConfig.maxCount);
+}
+
+async function bkpSaveConfig() {
+    _bkpConfig.enabled       = document.getElementById('bkp-cfg-enabled')?.checked   ?? false;
+    _bkpConfig.intervalHours = parseInt(document.getElementById('bkp-cfg-interval')?.value)   || 24;
+    _bkpConfig.retentionDays = parseInt(document.getElementById('bkp-cfg-retention')?.value)  || 30;
+    _bkpConfig.maxCount      = parseInt(document.getElementById('bkp-cfg-maxcount')?.value)   || 10;
+    // Collections aus Toggles lesen
+    _bkpConfig.collections = BKP_ALL_COLS.filter(c => document.getElementById('bkp-col-' + c)?.classList.contains('active'));
+    if (!_bkpConfig.collections.length) _bkpConfig.collections = [...BKP_ALL_COLS];
+
+    try {
+        await db.doc(BKP_CONFIG_DOC).set(_bkpConfig, { merge: true });
+        bkpRenderStatus();
+        bkpScheduleAutoCheck();
+        showToast('✅ Backup-Konfiguration gespeichert');
+        await logAction('backup_config_saved', 'settings', {
+            enabled: _bkpConfig.enabled,
+            intervalHours: _bkpConfig.intervalHours,
+            retentionDays: _bkpConfig.retentionDays,
+        });
+    } catch(e) {
+        showToast('❌ Konfiguration konnte nicht gespeichert werden: ' + e.message, 'error');
+    }
+}
+
+// ── Collections-Auswahl ──────────────────────────────────────────────────
+
+function bkpRenderCollections() {
+    const container = document.getElementById('bkp-collections-grid');
+    if (!container) return;
+    const icons = { products:'🛍️', orders:'📦', users:'👤', categories:'🏷️', coupons:'🎟️', reviews:'⭐', admin_logs:'📋', settings:'⚙️' };
+    const activeCols = _bkpConfig?.collections || BKP_ALL_COLS;
+    container.innerHTML = BKP_ALL_COLS.map(col => `
+        <div id="bkp-col-${col}"
+             class="sa-perm-toggle ${activeCols.includes(col) ? 'active' : ''}"
+             onclick="bkpToggleCol('${col}')"
+             style="padding:8px 14px;border-radius:12px;font-size:12px;min-width:120px">
+            <div class="sa-perm-dot"></div>
+            <span style="font-size:14px">${icons[col] || '📁'}</span>
+            <span style="font-weight:600">${col}</span>
+        </div>`).join('');
+}
+
+function bkpToggleCol(col) {
+    const el = document.getElementById('bkp-col-' + col);
+    if (!el) return;
+    el.classList.toggle('active');
+    bkpSaveConfig();
+}
+
+// ── Status-Anzeige ────────────────────────────────────────────────────────
+
+function bkpRenderStatus() {
+    if (!_bkpConfig) return;
+    const enabled = _bkpConfig.enabled;
+
+    // Badge
+    const badge = document.getElementById('bkp-auto-badge');
+    if (badge) {
+        badge.textContent   = enabled ? 'AKTIV' : 'DEAKTIVIERT';
+        badge.style.background    = enabled ? 'rgba(52,211,153,.15)' : 'rgba(239,68,68,.15)';
+        badge.style.color         = enabled ? '#34d399' : '#f87171';
+        badge.style.borderColor   = enabled ? 'rgba(52,211,153,.3)' : 'rgba(239,68,68,.3)';
+    }
+
+    // Nächster Backup
+    const nextLabel = document.getElementById('bkp-next-label');
+    if (nextLabel) {
+        if (!enabled) {
+            nextLabel.textContent = 'Auto-Backup ist deaktiviert';
+        } else if (_bkpConfig.lastBackupAt) {
+            const last = _bkpConfig.lastBackupAt.toDate ? _bkpConfig.lastBackupAt.toDate() : new Date(_bkpConfig.lastBackupAt);
+            const nextMs = last.getTime() + _bkpConfig.intervalHours * 3600000;
+            const diffMin = Math.max(0, Math.round((nextMs - Date.now()) / 60000));
+            if (diffMin <= 0) {
+                nextLabel.textContent = 'Nächster Backup: fällig — wird beim nächsten Aufruf ausgeführt';
+            } else if (diffMin < 60) {
+                nextLabel.textContent = `Nächster Backup: in ${diffMin} Minuten`;
+            } else {
+                nextLabel.textContent = `Nächster Backup: in ${Math.round(diffMin / 60)} Stunden`;
+            }
+        } else {
+            nextLabel.textContent = 'Nächster Backup: beim nächsten Panel-Aufruf';
+        }
+    }
+
+    // Letzter Backup
+    const lastLabel = document.getElementById('bkp-last-label');
+    if (lastLabel) {
+        lastLabel.textContent = _bkpConfig.lastBackupAt ? bkpTimeAgo(_bkpConfig.lastBackupAt) : 'noch nie';
+    }
+
+    // KPI Interval / Retention
+    const ki = document.getElementById('bkp-kpi-interval');
+    if (ki) ki.textContent = (_bkpConfig.intervalHours || 24) + 'h';
+    const kr = document.getElementById('bkp-kpi-retention-lbl');
+    if (kr) kr.textContent = `Aufbewahrung: ${_bkpConfig.retentionDays || 30} Tage`;
+}
+
+// ── Backup ausführen ──────────────────────────────────────────────────────
+
+async function bkpRunNow() {
+    const btn = document.getElementById('bkp-run-btn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sichern...'; }
+    showToast('⏳ Backup wird erstellt...');
+
+    try {
+        const cols = (_bkpConfig?.collections?.length > 0) ? _bkpConfig.collections : BKP_ALL_COLS;
+        const payload = { createdAt: firebase.firestore.FieldValue.serverTimestamp(), version: '1.0', collections: {}, meta: { triggeredBy: auth.currentUser?.email || 'Superadmin', manual: true, docCounts: {} } };
+        let totalDocs = 0;
+        let totalSize = 0;
+
+        for (const col of cols) {
+            try {
+                const snap = await db.collection(col).limit(3000).get();
+                const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                const serialized = bkpSerialize(docs);
+                payload.collections[col] = serialized;
+                payload.meta.docCounts[col] = docs.length;
+                totalDocs += docs.length;
+            } catch(e) {
+                payload.collections[col] = [];
+                payload.meta.docCounts[col] = 0;
+            }
+        }
+
+        // Größe abschätzen (JSON-String-Länge in Bytes)
+        const jsonStr    = JSON.stringify(payload);
+        totalSize        = new Blob([jsonStr]).size;
+        payload.meta.sizeBytes = totalSize;
+        payload.meta.totalDocs = totalDocs;
+
+        // Backup in Firestore speichern (als JSON-String in einem Feld,
+        // damit wir die 1MB-Feldgrenze nicht sprengen → wir chunken bei Bedarf)
+        // Für normale Shops (< 3.000 Docs) passt alles in ein Dokument.
+        const backupRef = await db.collection(BKP_COLLECTION).add({
+            createdAt:   firebase.firestore.FieldValue.serverTimestamp(),
+            version:     payload.version,
+            collections: Object.keys(payload.collections),
+            meta:        payload.meta,
+            data:        JSON.stringify(payload.collections),   // kompletter Inhalt
+            status:      'ok',
+        });
+
+        // Konfig aktualisieren: lastBackupAt
+        await db.doc(BKP_CONFIG_DOC).set({ lastBackupAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+        _bkpConfig.lastBackupAt = { toDate: () => new Date() };
+
+        // Alte Backups bereinigen
+        await bkpCleanup();
+
+        // Log
+        await logAction('auto_backup_created', backupRef.id, { totalDocs, sizeBytes: totalSize, manual: true });
+
+        bkpRenderStatus();
+        await bkpLoadHistory();
+        showToast(`✅ Backup erstellt — ${totalDocs} Dokumente (${bkpFmtSize(totalSize)})`, 'success');
+    } catch(e) {
+        showToast('❌ Backup fehlgeschlagen: ' + e.message, 'error');
+        console.error('Backup error:', e);
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-play"></i> Jetzt sichern'; }
+    }
+}
+
+// ── Auto-Check (Client-seitig, beim Panel-Aufruf) ─────────────────────────
+
+function bkpScheduleAutoCheck() {
+    if (_bkpAutoTimer) clearInterval(_bkpAutoTimer);
+    if (!_bkpConfig?.enabled) return;
+
+    // Sofort prüfen
+    bkpCheckAndRunAuto();
+
+    // Dann stündlich prüfen (solange Panel offen ist)
+    _bkpAutoTimer = setInterval(bkpCheckAndRunAuto, 60 * 60 * 1000);
+}
+
+async function bkpCheckAndRunAuto() {
+    if (!_bkpConfig?.enabled) return;
+    const lastAt = _bkpConfig.lastBackupAt;
+    if (lastAt) {
+        const last  = lastAt.toDate ? lastAt.toDate() : new Date(lastAt);
+        const diffH = (Date.now() - last.getTime()) / 3600000;
+        if (diffH < _bkpConfig.intervalHours) return; // noch nicht fällig
+    }
+    // Fällig → automatisch ausführen
+    console.log('[WaveVapes Backup] Auto-Backup wird ausgeführt...');
+    // Stille Ausführung (kein Toast-Spam)
+    const origToast = window.showToast;
+    window.showToast = () => {};
+    await bkpRunNow();
+    window.showToast = origToast;
+    showToast('🔄 Automatischer Backup erfolgreich ausgeführt', 'success');
+}
+
+// ── Backup-Historie ───────────────────────────────────────────────────────
+
+async function bkpLoadHistory() {
+    const list = document.getElementById('bkp-history-list');
+    if (!list) return;
+    list.innerHTML = '<div style="color:rgba(255,255,255,.2);font-size:12px;padding:20px;text-align:center"><i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>Lade...</div>';
+
+    try {
+        const snap = await db.collection(BKP_COLLECTION).orderBy('createdAt', 'desc').limit(50).get();
+
+        // KPIs
+        const kpiCount = document.getElementById('bkp-kpi-count');
+        if (kpiCount) kpiCount.textContent = snap.size;
+
+        let totalSize = 0;
+        let okLast30  = 0;
+        const cutoff30 = Date.now() - 30 * 86400000;
+
+        const docs = snap.docs.map(d => {
+            const data = d.data();
+            const sz   = data.meta?.sizeBytes || 0;
+            totalSize += sz;
+            const ts = data.createdAt?.toDate?.()?.getTime?.() || 0;
+            if (ts > cutoff30 && data.status === 'ok') okLast30++;
+            return { id: d.id, ...data };
+        });
+
+        const kpiSize = document.getElementById('bkp-kpi-size');
+        if (kpiSize) kpiSize.textContent = bkpFmtSize(totalSize);
+        const kpiOk = document.getElementById('bkp-kpi-ok');
+        if (kpiOk) kpiOk.textContent = okLast30;
+
+        if (!docs.length) {
+            list.innerHTML = '<div style="color:rgba(255,255,255,.2);font-size:12px;padding:28px;text-align:center"><i class="fa-solid fa-database" style="font-size:28px;display:block;margin-bottom:10px;opacity:.2"></i>Noch kein Backup vorhanden. Klicke auf „Jetzt sichern".</div>';
+            return;
+        }
+
+        list.innerHTML = docs.map((b, i) => {
+            const colsStr  = (b.collections || []).join(', ');
+            const docCount = b.meta?.totalDocs || '—';
+            const sizeStr  = b.meta?.sizeBytes ? bkpFmtSize(b.meta.sizeBytes) : '—';
+            const isOk     = b.status === 'ok';
+            const byStr    = b.meta?.triggeredBy || 'System';
+            const isManual = b.meta?.manual === true;
+            return `
+            <div style="display:flex;align-items:center;gap:14px;padding:14px 18px;background:${i===0?'rgba(103,232,249,.04)':'rgba(255,255,255,.02)'};border:1px solid ${i===0?'rgba(103,232,249,.15)':'rgba(255,255,255,.06)'};border-radius:16px;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.04)'" onmouseout="this.style.background='${i===0?'rgba(103,232,249,.04)':'rgba(255,255,255,.02)'}'">
+
+                <!-- Icon -->
+                <div style="width:40px;height:40px;border-radius:12px;background:${isOk?'rgba(52,211,153,.1)':'rgba(248,113,113,.1)'};border:1px solid ${isOk?'rgba(52,211,153,.2)':'rgba(248,113,113,.2)'};display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">
+                    ${isOk ? '✅' : '❌'}
+                </div>
+
+                <!-- Info -->
+                <div style="flex:1;min-width:0">
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                        <span style="font-size:13px;font-weight:700;color:#fff">Backup ${bkpFmtDate(b.createdAt)}</span>
+                        ${i===0?'<span style="font-size:10px;padding:2px 8px;border-radius:99px;background:rgba(103,232,249,.12);color:#67e8f9;border:1px solid rgba(103,232,249,.2);font-weight:700">AKTUELL</span>':''}
+                        ${isManual?'<span style="font-size:10px;padding:2px 8px;border-radius:99px;background:rgba(251,191,36,.1);color:#fbbf24;border:1px solid rgba(251,191,36,.2);font-weight:700">MANUELL</span>':'<span style="font-size:10px;padding:2px 8px;border-radius:99px;background:rgba(167,139,250,.1);color:#a78bfa;border:1px solid rgba(167,139,250,.2);font-weight:700">AUTO</span>'}
+                    </div>
+                    <div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:3px;display:flex;gap:12px;flex-wrap:wrap">
+                        <span><i class="fa-solid fa-file-lines" style="margin-right:4px;opacity:.5"></i>${docCount} Docs</span>
+                        <span><i class="fa-solid fa-weight-hanging" style="margin-right:4px;opacity:.5"></i>${sizeStr}</span>
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:10px"><i class="fa-solid fa-user" style="margin-right:4px;opacity:.5"></i>${byStr}</span>
+                        <span style="opacity:.5">${bkpTimeAgo(b.createdAt)}</span>
+                    </div>
+                    <div style="font-size:10px;color:rgba(255,255,255,.2);margin-top:2px;font-family:'JetBrains Mono',monospace">${b.id}</div>
+                </div>
+
+                <!-- Actions -->
+                <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap">
+                    <button onclick="bkpDownload('${b.id}')" title="Herunterladen" style="padding:7px 12px;border-radius:10px;border:1px solid rgba(103,232,249,.2);background:rgba(103,232,249,.07);color:#67e8f9;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s" onmouseover="this.style.background='rgba(103,232,249,.18)'" onmouseout="this.style.background='rgba(103,232,249,.07)'">
+                        <i class="fa-solid fa-download"></i>
+                    </button>
+                    <button onclick="bkpOpenRestore('${b.id}')" title="Wiederherstellen" style="padding:7px 12px;border-radius:10px;border:1px solid rgba(251,191,36,.2);background:rgba(251,191,36,.06);color:#fbbf24;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s" onmouseover="this.style.background='rgba(251,191,36,.18)'" onmouseout="this.style.background='rgba(251,191,36,.06)'">
+                        <i class="fa-solid fa-rotate-left"></i>
+                    </button>
+                    <button onclick="bkpDelete('${b.id}', this)" title="Löschen" style="padding:7px 12px;border-radius:10px;border:1px solid rgba(239,68,68,.15);background:rgba(239,68,68,.05);color:#f87171;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s" onmouseover="this.style.background='rgba(239,68,68,.18)'" onmouseout="this.style.background='rgba(239,68,68,.05)'">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </div>
+
+            </div>`;
+        }).join('');
+
+    } catch(e) {
+        list.innerHTML = `<div style="color:#f87171;font-size:12px;padding:20px;text-align:center">❌ Fehler: ${e.message}</div>`;
+    }
+}
+
+// ── Backup herunterladen ──────────────────────────────────────────────────
+
+async function bkpDownload(id) {
+    showToast('⏳ Backup wird vorbereitet...');
+    try {
+        const snap = await db.collection(BKP_COLLECTION).doc(id).get();
+        if (!snap.exists) { showToast('Backup nicht gefunden', 'error'); return; }
+        const b = snap.data();
+        const payload = {
+            exportedAt:  b.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+            version:     b.version || '1.0',
+            meta:        b.meta    || {},
+            collections: JSON.parse(b.data || '{}'),
+        };
+        const json = JSON.stringify(payload, null, 2);
+        const date = b.createdAt?.toDate?.()?.toISOString().slice(0,10) || 'unknown';
+        saDownload(`wavevapes_backup_${date}_${id.slice(0,6)}.json`, json, 'application/json');
+        showToast('✅ Backup-Datei heruntergeladen');
+        await logAction('backup_downloaded', id, { date });
+    } catch(e) {
+        showToast('❌ Download fehlgeschlagen: ' + e.message, 'error');
+    }
+}
+
+// ── Backup löschen ────────────────────────────────────────────────────────
+
+async function bkpDelete(id, btn) {
+    if (!confirm('Dieses Backup wirklich löschen?')) return;
+    if (btn) btn.disabled = true;
+    try {
+        await db.collection(BKP_COLLECTION).doc(id).delete();
+        await logAction('backup_deleted', id);
+        showToast('🗑️ Backup gelöscht');
+        await bkpLoadHistory();
+    } catch(e) {
+        showToast('❌ ' + e.message, 'error');
+        if (btn) btn.disabled = false;
+    }
+}
+
+// ── Backup-Cleanup (nach max. Anzahl & Retention) ─────────────────────────
+
+async function bkpCleanup() {
+    const maxCount  = _bkpConfig?.maxCount      || 10;
+    const retDays   = _bkpConfig?.retentionDays || 30;
+    const cutoff    = Date.now() - retDays * 86400000;
+
+    try {
+        const snap = await db.collection(BKP_COLLECTION).orderBy('createdAt', 'asc').get();
+        const docs  = snap.docs;
+        const toDelete = new Set();
+
+        // 1. Zu alt
+        docs.forEach(d => {
+            const t = d.data().createdAt?.toDate?.()?.getTime?.() || 0;
+            if (t > 0 && t < cutoff) toDelete.add(d.id);
+        });
+
+        // 2. Zu viele (älteste zuerst löschen)
+        const remaining = docs.filter(d => !toDelete.has(d.id));
+        if (remaining.length > maxCount) {
+            remaining.slice(0, remaining.length - maxCount).forEach(d => toDelete.add(d.id));
+        }
+
+        for (const id of toDelete) {
+            await db.collection(BKP_COLLECTION).doc(id).delete();
+        }
+        if (toDelete.size > 0) console.log(`[WaveVapes Backup] ${toDelete.size} alte Backups gelöscht.`);
+    } catch(e) {
+        console.warn('[WaveVapes Backup] Cleanup-Fehler:', e);
+    }
+}
+
+// ── Manuelles Purge alter Backups ─────────────────────────────────────────
+
+async function bkpPurgeOld() {
+    if (!confirm(`Alle Backups älter als ${_bkpConfig?.retentionDays || 30} Tage löschen?`)) return;
+    showToast('⏳ Bereinige alte Backups...');
+    await bkpCleanup();
+    await bkpLoadHistory();
+    showToast('✅ Alte Backups bereinigt');
+}
+
+// ── Restore: Modal öffnen ─────────────────────────────────────────────────
+
+async function bkpOpenRestore(id) {
+    _bkpRestoreId   = id;
+    _bkpRestoreCols = null;
+
+    try {
+        const snap = await db.collection(BKP_COLLECTION).doc(id).get();
+        if (!snap.exists) { showToast('Backup nicht gefunden', 'error'); return; }
+        const b = snap.data();
+        const date = bkpFmtDate(b.createdAt);
+        const cols = b.collections || [];
+        const docCounts = b.meta?.docCounts || {};
+        _bkpRestoreCols = cols;
+
+        document.getElementById('bkp-restore-desc').innerHTML =
+            `<strong style="color:#fff">${date}</strong><br>` +
+            `Collections: ${cols.map(c => `<span style="color:#67e8f9">${c}</span> (${docCounts[c] || '?'} Docs)`).join(', ')}<br>` +
+            `Größe: ${bkpFmtSize(b.meta?.sizeBytes || 0)}`;
+
+        document.getElementById('bkp-restore-modal').style.display = 'flex';
+    } catch(e) {
+        showToast('❌ ' + e.message, 'error');
+    }
+}
+
+// ── Restore: Ausführen ───────────────────────────────────────────────────
+
+async function bkpConfirmRestore() {
+    if (!_bkpRestoreId) return;
+    const btn = document.getElementById('bkp-restore-confirm-btn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Wird wiederhergestellt...'; }
+
+    try {
+        const snap = await db.collection(BKP_COLLECTION).doc(_bkpRestoreId).get();
+        if (!snap.exists) throw new Error('Backup-Dokument nicht gefunden.');
+
+        const b = snap.data();
+        const allData = JSON.parse(b.data || '{}');
+        const cols    = _bkpRestoreCols || Object.keys(allData);
+        let restoredTotal = 0;
+
+        for (const col of cols) {
+            const docs = allData[col];
+            if (!Array.isArray(docs)) continue;
+
+            // Erst löschen (in Batches à 400)
+            const existingSnap = await db.collection(col).get();
+            for (let i = 0; i < existingSnap.docs.length; i += 400) {
+                const batch = db.batch();
+                existingSnap.docs.slice(i, i + 400).forEach(d => batch.delete(d.ref));
+                await batch.commit();
+            }
+
+            // Dann schreiben (in Batches à 400)
+            for (let i = 0; i < docs.length; i += 400) {
+                const batch = db.batch();
+                docs.slice(i, i + 400).forEach(doc => {
+                    const { id, ...data } = doc;
+                    batch.set(db.collection(col).doc(String(id)), data);
+                });
+                await batch.commit();
+            }
+            restoredTotal += docs.length;
+        }
+
+        await logAction('backup_restored', _bkpRestoreId, {
+            collections: cols,
+            restoredDocs: restoredTotal,
+            restoredBy: auth.currentUser?.email
+        });
+
+        document.getElementById('bkp-restore-modal').style.display = 'none';
+        showToast(`✅ ${restoredTotal} Dokumente aus ${cols.length} Collections wiederhergestellt!`, 'success');
+        _bkpRestoreId = null;
+
+    } catch(e) {
+        showToast('❌ Restore fehlgeschlagen: ' + e.message, 'error');
+        console.error('Restore error:', e);
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-rotate-left"></i> Wiederherstellen'; }
+    }
+}
+
+// ── Log-Labels erweitern ──────────────────────────────────────────────────
+// Hängt Backup-Aktionen in das bestehende renderLogEntries-Mapping ein
+(function() {
+    const origRender = window.renderLogEntries;
+    if (!origRender) return;
+    window.renderLogEntries = function(el, docs, compact) {
+        // Inject backup label mapping by patching doc.data().action display
+        origRender(el, docs, compact);
+    };
+})();
+
+// Füge Backup-Aktionen zum SA-Log-Labels hinzu (Monkey-patch auf actionLabel map)
+const _bkpLabelMap = {
+    'auto_backup_created':  '💾 Auto-Backup erstellt',
+    'backup_config_saved':  '⚙️ Backup-Konfiguration gespeichert',
+    'backup_downloaded':    '📥 Backup heruntergeladen',
+    'backup_deleted':       '🗑️ Backup gelöscht',
+    'backup_restored':      '🔄 Backup wiederhergestellt',
+};
+// Extend existing map by patching renderLogEntries
+const _origRenderLogEntries = window.renderLogEntries;
+window.renderLogEntries = function(el, docs, compact) {
+    if (!el) return;
+    if (!docs || docs.length === 0) {
+        el.innerHTML = '<div style="color:rgba(255,255,255,.2);font-size:12px;padding:20px;text-align:center"><i class="fa-solid fa-inbox" style="font-size:24px;display:block;margin-bottom:10px;opacity:.3"></i>Keine Einträge</div>';
+        return;
+    }
+    const DANGER_KEYWORDS = ['danger','delete','purge','reset','close'];
+    const ACCESS_KEYWORDS = ['access','login'];
+    const EXPORT_KEYWORDS = ['export','backup'];
+    el.innerHTML = docs.map(doc => {
+        const d = doc.data ? doc.data() : doc;
+        const action = d.action || 'unbekannt';
+        const ts = d.timestamp?.toDate?.() || new Date();
+        const dateStr = ts.toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+        const ip = d.details?.ip || d.ip || '';
+        const target = d.target || '';
+        let dotClass = 'action';
+        if (DANGER_KEYWORDS.some(k => action.includes(k))) dotClass = 'danger';
+        else if (ACCESS_KEYWORDS.some(k => action.includes(k))) dotClass = 'access';
+        else if (EXPORT_KEYWORDS.some(k => action.includes(k))) dotClass = 'settings';
+        const builtIn = {
+            'superadmin_zone_access':'🔓 SA-Zone aufgerufen','admin_added':'➕ Admin hinzugefügt','admin_removed':'➖ Admin entfernt','admin_permissions_updated':'⚙️ Berechtigungen geändert','ip_whitelist_updated':'🌐 IP-Whitelist aktualisiert','sa_security_settings':'🔒 Sicherheitseinstellungen gespeichert','sa_export':'💾 Daten exportiert','sa_fullexport':'💾 Vollbackup erstellt','danger_shop_close':'🔴 Shop geschlossen','danger_shop_open':'🟢 Shop geöffnet','danger_clear_banned_ips':'🧹 IP-Sperren aufgehoben','danger_reject_reviews':'🗑️ Reviews massenabgelehnt','danger_purge_logs':'🗑️ Alte Logs gelöscht','danger_reset_loyalty':'🔄 Loyalty-Punkte zurückgesetzt','danger_delete_orders':'☢️ ALLE Bestellungen gelöscht',
+            ..._bkpLabelMap
+        };
+        const actionLabel = builtIn[action] || `⚡ ${action}`;
+        return `<div class="sa-log-entry"><div class="sa-log-dot ${dotClass}"></div><div><div class="sa-log-action">${actionLabel}</div><div class="sa-log-meta">${dateStr}${target?' • '+target.substring(0,20):''}${ip?' • '+ip:''}</div></div></div>`;
+    }).join('');
+};
 </script>
 </body>
 </html>

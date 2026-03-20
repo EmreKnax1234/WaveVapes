@@ -52,6 +52,50 @@
         /* ═══════════════════════════════════════════
            SUPERADMIN ZONE
         ═══════════════════════════════════════════ */
+        /* ═══════════════════════════════════════════
+           CLICK-TRACKING TAB (tab 15)
+        ═══════════════════════════════════════════ */
+        .ct-kpi {
+            background:#18181b; border:1px solid rgba(255,255,255,.07);
+            border-radius:18px; padding:18px 20px; text-align:center;
+            transition:transform .2s;
+        }
+        .ct-kpi:hover { transform:translateY(-3px); }
+        .ct-kpi-icon { font-size:22px; margin-bottom:8px; }
+        .ct-kpi-val  { font-family:'JetBrains Mono',monospace; font-size:26px; font-weight:700; color:#fff; line-height:1; }
+        .ct-kpi-lbl  { font-size:10px; color:rgba(255,255,255,.3); text-transform:uppercase; letter-spacing:.06em; margin-top:6px; }
+
+        .ct-row {
+            display:flex; align-items:center; gap:12px;
+            padding:10px 20px; border-bottom:1px solid rgba(255,255,255,.04);
+            transition:background .13s;
+        }
+        .ct-row:last-child { border-bottom:none; }
+        .ct-row:hover { background:rgba(255,255,255,.03); }
+        .ct-rank { font-size:11px; font-weight:800; color:rgba(255,255,255,.2); width:22px; text-align:center; flex-shrink:0; font-family:'JetBrains Mono',monospace; }
+        .ct-label { flex:1; font-size:12px; font-weight:600; color:#e4e4e7; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .ct-badge { font-size:9px; font-weight:800; padding:2px 8px; border-radius:99px; flex-shrink:0; }
+        .ct-badge-user  { background:rgba(167,139,250,.15); color:#a78bfa; border:1px solid rgba(167,139,250,.25); }
+        .ct-badge-guest { background:rgba(52,211,153,.12); color:#34d399; border:1px solid rgba(52,211,153,.2); }
+        .ct-count { font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:800; color:#fbbf24; flex-shrink:0; min-width:36px; text-align:right; }
+        .ct-bar-wrap { width:80px; flex-shrink:0; }
+        .ct-bar-bg { height:4px; background:rgba(255,255,255,.07); border-radius:99px; }
+        .ct-bar    { height:4px; border-radius:99px; background:linear-gradient(90deg,#67e8f9,#a78bfa); transition:width .5s ease; }
+
+        .ct-feed-row {
+            display:flex; align-items:center; gap:12px; padding:9px 20px;
+            border-bottom:1px solid rgba(255,255,255,.04);
+            transition:background .13s;
+        }
+        .ct-feed-row:last-child { border-bottom:none; }
+        .ct-feed-row:hover { background:rgba(255,255,255,.03); }
+        .ct-feed-time { font-size:10px; color:rgba(255,255,255,.25); font-family:'JetBrains Mono',monospace; flex-shrink:0; min-width:80px; }
+        .ct-feed-who  { font-size:11px; font-weight:700; flex-shrink:0; min-width:68px; }
+        .ct-feed-what { flex:1; font-size:11px; color:rgba(255,255,255,.7); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .ct-feed-page { font-size:10px; color:rgba(255,255,255,.3); flex-shrink:0; max-width:90px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+        .ct-period-btn.active { border-color:rgba(103,232,249,.5) !important; background:rgba(103,232,249,.15) !important; color:#67e8f9 !important; }
+
         .sa-locked-btn {
             display:flex; align-items:center; gap:10px;
             padding:9px 14px; border-radius:12px; cursor:pointer;
@@ -2068,6 +2112,7 @@
             <div onclick="switchTab(11)" id="sidebar-11" class="sidebar-item"><i class="fa-solid fa-star"></i><span>Bewertungen</span><span class="sidebar-badge" id="sb-reviews-badge" style="display:none">0</span></div>
             <div onclick="switchTab(13)" id="sidebar-13" class="sidebar-item"><i class="fa-solid fa-crown"></i><span>Kunden-Übersicht</span></div>
             <div onclick="switchTab(14)" id="sidebar-14" class="sidebar-item"><i class="fa-solid fa-bolt"></i><span>Aktionen</span><span class="sidebar-badge" id="sb-promos-badge" style="display:none">0</span></div>
+            <div onclick="switchTab(15)" id="sidebar-15" class="sidebar-item"><i class="fa-solid fa-mouse-pointer"></i><span>Click-Tracking</span><span class="sidebar-notif" id="sb-clicks-dot" style="display:none"></span></div>
 
             <div class="sidebar-section-label" style="margin-top:12px; border-top:1px solid rgba(251,191,36,.1); padding-top:12px;">Superadmin</div>
             <div onclick="openSuperadminZone()" id="sidebar-12" class="sidebar-item-locked" title="Nur für Superadmin">
@@ -3424,7 +3469,103 @@
         </div><!-- /cu-shell -->
         </div>
 
-        <div id="tab-content-12" class="hidden">
+        <!-- TAB 15: CLICK-TRACKING -->
+        <div id="tab-content-15" class="hidden">
+        <div style="display:flex;flex-direction:column;gap:20px;max-width:1200px">
+
+            <!-- Header -->
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:22px 26px;border-radius:22px;background:linear-gradient(135deg,rgba(103,232,249,.07),rgba(167,139,250,.04));border:1px solid rgba(103,232,249,.18)">
+                <div>
+                    <div style="font-family:'Orbitron',sans-serif;font-size:18px;font-weight:700;color:#67e8f9;text-shadow:0 0 16px rgba(103,232,249,.4);display:flex;align-items:center;gap:10px">
+                        <i class="fa-solid fa-mouse-pointer"></i> Click-Tracking
+                    </div>
+                    <div style="font-size:11px;color:rgba(255,255,255,.3);margin-top:4px">Wohin klicken Gäste und eingeloggte User?</div>
+                </div>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+                    <!-- Zeitraum Filter -->
+                    <div style="display:flex;gap:6px">
+                        <button class="ct-period-btn active" id="ct-btn-7"   onclick="ctSetPeriod(7)"  style="padding:7px 14px;border-radius:10px;border:1px solid rgba(103,232,249,.25);background:rgba(103,232,249,.12);color:#67e8f9;font-size:11px;font-weight:700;cursor:pointer">7T</button>
+                        <button class="ct-period-btn"        id="ct-btn-30"  onclick="ctSetPeriod(30)" style="padding:7px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:rgba(255,255,255,.5);font-size:11px;font-weight:700;cursor:pointer">30T</button>
+                        <button class="ct-period-btn"        id="ct-btn-90"  onclick="ctSetPeriod(90)" style="padding:7px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:rgba(255,255,255,.5);font-size:11px;font-weight:700;cursor:pointer">90T</button>
+                        <button class="ct-period-btn"        id="ct-btn-0"   onclick="ctSetPeriod(0)"  style="padding:7px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:rgba(255,255,255,.5);font-size:11px;font-weight:700;cursor:pointer">Alle</button>
+                    </div>
+                    <button onclick="ctClearAll()" style="padding:7px 14px;border-radius:10px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.08);color:#f87171;font-size:11px;font-weight:700;cursor:pointer"><i class="fa-solid fa-trash"></i> Daten löschen</button>
+                </div>
+            </div>
+
+            <!-- KPI Strip -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px">
+                <div class="ct-kpi">
+                    <div class="ct-kpi-icon" style="color:#67e8f9"><i class="fa-solid fa-computer-mouse"></i></div>
+                    <div class="ct-kpi-val" id="ct-kpi-total">—</div>
+                    <div class="ct-kpi-lbl">Klicks gesamt</div>
+                </div>
+                <div class="ct-kpi">
+                    <div class="ct-kpi-icon" style="color:#a78bfa"><i class="fa-solid fa-user-check"></i></div>
+                    <div class="ct-kpi-val" id="ct-kpi-users">—</div>
+                    <div class="ct-kpi-lbl">von eingeloggten Usern</div>
+                </div>
+                <div class="ct-kpi">
+                    <div class="ct-kpi-icon" style="color:#34d399"><i class="fa-solid fa-user-secret"></i></div>
+                    <div class="ct-kpi-val" id="ct-kpi-guests">—</div>
+                    <div class="ct-kpi-lbl">von Gästen</div>
+                </div>
+                <div class="ct-kpi">
+                    <div class="ct-kpi-icon" style="color:#fbbf24"><i class="fa-solid fa-fire"></i></div>
+                    <div class="ct-kpi-val" id="ct-kpi-top">—</div>
+                    <div class="ct-kpi-lbl">Meistgeklickt</div>
+                </div>
+            </div>
+
+            <!-- User vs Gast Toggle -->
+            <div style="display:flex;gap:8px;background:#18181b;border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:6px">
+                <button id="ct-tab-all"    onclick="ctSetView('all')"    style="flex:1;padding:9px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid rgba(103,232,249,.5);background:rgba(103,232,249,.12);color:#67e8f9;transition:all .15s">Alle</button>
+                <button id="ct-tab-users"  onclick="ctSetView('users')"  style="flex:1;padding:9px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid transparent;background:transparent;color:rgba(255,255,255,.4);transition:all .15s">👤 Eingeloggte User</button>
+                <button id="ct-tab-guests" onclick="ctSetView('guests')" style="flex:1;padding:9px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid transparent;background:transparent;color:rgba(255,255,255,.4);transition:all .15s">👻 Gäste</button>
+            </div>
+
+            <!-- Main Grid: Top-Klicks Tabelle + Heatmap -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+
+                <!-- Top Klicks Tabelle -->
+                <div style="background:#18181b;border:1px solid rgba(255,255,255,.07);border-radius:20px;overflow:hidden">
+                    <div style="padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between">
+                        <div style="font-size:13px;font-weight:700;color:#e4e4e7;display:flex;align-items:center;gap:8px"><i class="fa-solid fa-ranking-star" style="color:#fbbf24"></i> Top-Klicks</div>
+                        <div style="font-size:10px;color:rgba(255,255,255,.3)" id="ct-table-label">alle Nutzer</div>
+                    </div>
+                    <div id="ct-table-body" style="max-height:420px;overflow-y:auto">
+                        <div style="padding:40px;text-align:center;color:rgba(255,255,255,.2);font-size:13px"><i class="fa-solid fa-spinner fa-spin" style="font-size:20px;display:block;margin-bottom:10px"></i>Lade Daten...</div>
+                    </div>
+                </div>
+
+                <!-- Klick-Verlauf Chart -->
+                <div style="background:#18181b;border:1px solid rgba(255,255,255,.07);border-radius:20px;overflow:hidden">
+                    <div style="padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between">
+                        <div style="font-size:13px;font-weight:700;color:#e4e4e7;display:flex;align-items:center;gap:8px"><i class="fa-solid fa-chart-area" style="color:#67e8f9"></i> Klick-Verlauf</div>
+                        <div style="font-size:10px;color:rgba(255,255,255,.3)" id="ct-chart-label">letzte 7 Tage</div>
+                    </div>
+                    <div style="padding:16px">
+                        <canvas id="ct-chart" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Letzte Klicks (Live Feed) -->
+            <div style="background:#18181b;border:1px solid rgba(255,255,255,.07);border-radius:20px;overflow:hidden">
+                <div style="padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between">
+                    <div style="font-size:13px;font-weight:700;color:#e4e4e7;display:flex;align-items:center;gap:8px">
+                        <span style="width:7px;height:7px;border-radius:50%;background:#34d399;box-shadow:0 0 6px #34d399;display:inline-block;animation:sb-pulse 2s infinite"></span>
+                        Live-Feed – letzte Klicks
+                    </div>
+                    <button onclick="ctLoadFeed()" style="padding:5px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:rgba(255,255,255,.5);font-size:11px;cursor:pointer"><i class="fa-solid fa-rotate"></i></button>
+                </div>
+                <div id="ct-feed" style="max-height:280px;overflow-y:auto">
+                    <div style="padding:30px;text-align:center;color:rgba(255,255,255,.2);font-size:13px"><i class="fa-solid fa-spinner fa-spin"></i></div>
+                </div>
+            </div>
+
+        </div>
+        </div>
         <div class="sa-shell">
 
             <!-- ── Header ── -->
@@ -6977,7 +7118,7 @@ const TAB_NAMES = {
     0:'Produkte', 1:'Bestellungen', 2:'Benutzer', 3:'Kategorien',
     4:'Gutscheine', 5:'Analytics', 6:'Admin Logs', 7:'Settings',
     8:'Sortierung', 9:'Live Online', 10:'Erw. Benutzer', 11:'Bewertungen', 12:'Superadmin Zone',
-    13:'Kunden-Übersicht', 14:'Aktionen'
+    13:'Kunden-Übersicht', 14:'Aktionen', 15:'Click-Tracking'
 };
 
 function switchTab(n) {
@@ -7020,6 +7161,7 @@ function switchTab(n) {
     if(n===10)loadExtendedUsers();
     if(n===13)loadCustomerOverview();
     if(n===14)loadPromos();
+    if(n===15)loadClickTracking();
 }
 function toggleSidebar(){
     const s=document.getElementById('sidebar');
@@ -8200,6 +8342,7 @@ const SA_PERMISSIONS = [
     { key:'liveonline',  label:'Live Online',     icon:'fa-users-viewfinder',tab:9  },
     { key:'extusers',    label:'Erw. Benutzer',   icon:'fa-users-cog',       tab:10 },
     { key:'reviews',     label:'Bewertungen',     icon:'fa-star',            tab:11 },
+    { key:'clicktrack',  label:'Click-Tracking',  icon:'fa-mouse-pointer',   tab:15 },
 ];
 
 let saUnlocked = false;
@@ -9056,6 +9199,217 @@ async function saDangerDeleteAllOrders() {
     }
     await logAction('danger_delete_orders', 'orders', { count: snap.size });
     showToast(`☢️ ${snap.size} Bestellungen gelöscht`);
+}
+
+// ═══════════════════════════════════════════════════════
+//  CLICK-TRACKING (Tab 15)
+// ═══════════════════════════════════════════════════════
+let _ctPeriod   = 7;        // aktiver Zeitraum in Tagen (0 = alle)
+let _ctView     = 'all';    // 'all' | 'users' | 'guests'
+let _ctAllDocs  = [];       // alle geladenen Docs
+let _ctChart    = null;     // Chart.js Instanz
+let _ctUnsub    = null;     // onSnapshot unsubscribe
+
+function loadClickTracking() {
+    if (_ctUnsub) { _ctUnsub(); _ctUnsub = null; }
+
+    // Live-Listener auf die letzten 500 Klick-Events
+    _ctUnsub = db.collection('click_events')
+        .orderBy('ts', 'desc')
+        .limit(500)
+        .onSnapshot(snap => {
+            _ctAllDocs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            ctRender();
+            ctLoadFeed();
+        }, () => {});
+}
+
+function ctSetPeriod(days) {
+    _ctPeriod = days;
+    document.querySelectorAll('.ct-period-btn').forEach(b => {
+        const active = b.id === `ct-btn-${days}`;
+        b.style.borderColor  = active ? 'rgba(103,232,249,.5)'  : 'rgba(255,255,255,.1)';
+        b.style.background   = active ? 'rgba(103,232,249,.15)' : 'rgba(255,255,255,.04)';
+        b.style.color        = active ? '#67e8f9'               : 'rgba(255,255,255,.5)';
+    });
+    const el = document.getElementById('ct-chart-label');
+    if (el) el.textContent = days === 0 ? 'alle Daten' : `letzte ${days} Tage`;
+    ctRender();
+}
+
+function ctSetView(view) {
+    _ctView = view;
+    ['all','users','guests'].forEach(v => {
+        const btn = document.getElementById(`ct-tab-${v}`);
+        if (!btn) return;
+        const active = v === view;
+        btn.style.borderColor  = active ? 'rgba(103,232,249,.5)'  : 'transparent';
+        btn.style.background   = active ? 'rgba(103,232,249,.12)' : 'transparent';
+        btn.style.color        = active ? '#67e8f9'               : 'rgba(255,255,255,.4)';
+    });
+    const lbl = document.getElementById('ct-table-label');
+    if (lbl) lbl.textContent = view === 'users' ? 'eingeloggte User' : view === 'guests' ? 'nur Gäste' : 'alle Nutzer';
+    ctRender();
+}
+
+function ctFilteredDocs() {
+    const now = Date.now();
+    const cutoff = _ctPeriod > 0 ? now - _ctPeriod * 86400000 : 0;
+    return _ctAllDocs.filter(d => {
+        const tsMs = d.ts?.toMillis ? d.ts.toMillis() : 0;
+        if (cutoff && tsMs < cutoff) return false;
+        if (_ctView === 'users'  && d.isGuest)  return false;
+        if (_ctView === 'guests' && !d.isGuest) return false;
+        return true;
+    });
+}
+
+function ctRender() {
+    const docs = ctFilteredDocs();
+
+    // ── KPIs ──
+    const total  = docs.length;
+    const users  = docs.filter(d => !d.isGuest).length;
+    const guests = docs.filter(d =>  d.isGuest).length;
+
+    // Top label
+    const freq = {};
+    docs.forEach(d => { const l = d.label || '?'; freq[l] = (freq[l] || 0) + 1; });
+    const sorted = Object.entries(freq).sort((a,b) => b[1]-a[1]);
+    const topLabel = sorted[0] ? sorted[0][0].replace(/^(Produkt|Detail|Kategorie): /, '') : '—';
+
+    const s = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    s('ct-kpi-total',  total.toLocaleString('de-DE'));
+    s('ct-kpi-users',  users.toLocaleString('de-DE'));
+    s('ct-kpi-guests', guests.toLocaleString('de-DE'));
+    s('ct-kpi-top',    topLabel.length > 18 ? topLabel.slice(0,16)+'…' : topLabel);
+
+    // ── Top-Klicks Tabelle ──
+    const tbody = document.getElementById('ct-table-body');
+    if (tbody) {
+        if (!sorted.length) {
+            tbody.innerHTML = '<div style="padding:40px;text-align:center;color:rgba(255,255,255,.2);font-size:13px"><i class="fa-solid fa-ghost" style="display:block;font-size:28px;margin-bottom:10px;opacity:.3"></i>Noch keine Klicks in diesem Zeitraum</div>';
+        } else {
+            const max = sorted[0][1];
+            tbody.innerHTML = sorted.slice(0, 20).map(([label, count], i) => {
+                const pct = Math.round(count / max * 100);
+                // Breakdown: wie viele User vs Gäste
+                const uCount = docs.filter(d => d.label === label && !d.isGuest).length;
+                const gCount = docs.filter(d => d.label === label &&  d.isGuest).length;
+                const badgeHTML = uCount > 0 && gCount > 0
+                    ? `<span class="ct-badge ct-badge-user">${uCount}U</span><span class="ct-badge ct-badge-guest">${gCount}G</span>`
+                    : uCount > 0
+                        ? `<span class="ct-badge ct-badge-user">${uCount} User</span>`
+                        : `<span class="ct-badge ct-badge-guest">${gCount} Gäste</span>`;
+                const safeLabel = label.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+                return `<div class="ct-row">
+                    <div class="ct-rank">${i+1}</div>
+                    <div class="ct-label" title="${safeLabel}">${safeLabel}</div>
+                    <div style="display:flex;gap:4px;flex-shrink:0">${badgeHTML}</div>
+                    <div class="ct-bar-wrap"><div class="ct-bar-bg"><div class="ct-bar" style="width:${pct}%"></div></div></div>
+                    <div class="ct-count">${count}</div>
+                </div>`;
+            }).join('');
+        }
+    }
+
+    // ── Verlauf Chart ──
+    ctDrawChart(docs);
+}
+
+function ctDrawChart(docs) {
+    const canvas = document.getElementById('ct-chart');
+    if (!canvas) return;
+
+    // Gruppiere nach Tag
+    const days = _ctPeriod > 0 ? _ctPeriod : 30;
+    const buckets = {};
+    const now = Date.now();
+    for (let i = days - 1; i >= 0; i--) {
+        const d = new Date(now - i * 86400000);
+        const key = d.toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit' });
+        buckets[key] = { user: 0, guest: 0 };
+    }
+    docs.forEach(d => {
+        const tsMs = d.ts?.toMillis ? d.ts.toMillis() : 0;
+        if (!tsMs) return;
+        const age = now - tsMs;
+        if (_ctPeriod > 0 && age > days * 86400000) return;
+        const key = new Date(tsMs).toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit' });
+        if (!buckets[key]) return;
+        if (d.isGuest) buckets[key].guest++;
+        else           buckets[key].user++;
+    });
+
+    const labels = Object.keys(buckets);
+    const userData  = labels.map(k => buckets[k].user);
+    const guestData = labels.map(k => buckets[k].guest);
+
+    if (_ctChart) { _ctChart.destroy(); _ctChart = null; }
+    _ctChart = new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [
+                { label: 'User', data: userData,  backgroundColor: 'rgba(167,139,250,.7)', borderRadius: 4 },
+                { label: 'Gäste', data: guestData, backgroundColor: 'rgba(52,211,153,.55)',  borderRadius: 4 }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { labels: { color: 'rgba(255,255,255,.5)', font: { size: 11 } } }
+            },
+            scales: {
+                x: { stacked: true, ticks: { color: 'rgba(255,255,255,.3)', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,.05)' } },
+                y: { stacked: true, ticks: { color: 'rgba(255,255,255,.3)', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,.05)' } }
+            }
+        }
+    });
+}
+
+function ctLoadFeed() {
+    const feed = document.getElementById('ct-feed');
+    if (!feed) return;
+
+    const recent = [..._ctAllDocs]
+        .filter(d => d.ts?.toMillis)
+        .sort((a,b) => b.ts.toMillis() - a.ts.toMillis())
+        .slice(0, 50);
+
+    if (!recent.length) {
+        feed.innerHTML = '<div style="padding:30px;text-align:center;color:rgba(255,255,255,.2);font-size:12px">Noch keine Klick-Events</div>';
+        return;
+    }
+
+    feed.innerHTML = recent.map(d => {
+        const ago   = lgRelTime ? lgRelTime(d.ts.toDate()) : d.ts.toDate().toLocaleTimeString('de-DE');
+        const who   = d.isGuest ? '👻 Gast' : '👤 User';
+        const color = d.isGuest ? '#34d399' : '#a78bfa';
+        const name  = d.isGuest ? 'Gast' : (d.userEmail ? d.userEmail.split('@')[0] : 'User');
+        const safeLabel = (d.label || '?').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+        const safeName  = name.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+        return `<div class="ct-feed-row">
+            <div class="ct-feed-time">${ago}</div>
+            <div class="ct-feed-who" style="color:${color}" title="${d.userEmail||'Gast'}">${who} ${safeName}</div>
+            <div class="ct-feed-what">${safeLabel}</div>
+            <div class="ct-feed-page">${(d.page||'').replace('/','') || 'shop'}</div>
+        </div>`;
+    }).join('');
+}
+
+async function ctClearAll() {
+    if (!confirm('Alle Click-Tracking Daten wirklich löschen? Diese Aktion ist nicht rückgängig zu machen.')) return;
+    const snap = await db.collection('click_events').limit(500).get();
+    if (snap.empty) { showToast('Keine Daten vorhanden'); return; }
+    for (let i = 0; i < snap.docs.length; i += 499) {
+        const batch = db.batch();
+        snap.docs.slice(i, i + 499).forEach(d => batch.delete(d.ref));
+        await batch.commit();
+    }
+    await logAction('click_tracking_cleared', '', { count: snap.size });
+    showToast(`✅ ${snap.size} Klick-Events gelöscht`);
 }
 
 // ── Override saOpenTab to load dashboard on open ──────

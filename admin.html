@@ -11003,12 +11003,13 @@ Antworte NUR auf Deutsch, direkt und konkret, in diesem exakten Format:
 🚀 Marketingtipp: [1 konkreter Tipp wie du das Bundle bewirbst]`;
 
     try {
-        const res=await fetch('https://api.anthropic.com/v1/messages',{
+        const res=await fetch('https://wavevapes.clever-selling-station.workers.dev',{
             method:'POST',
             headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:600,messages:[{role:'user',content:prompt}]})
+            body:JSON.stringify({max_tokens:600,messages:[{role:'user',content:prompt}]})
         });
         const data=await res.json();
+        if(data.error) throw new Error(data.error.message||data.error);
         const text=(data.content||[]).map(c=>c.text||'').join('');
 
         el.innerHTML='';

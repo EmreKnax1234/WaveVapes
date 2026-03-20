@@ -3790,9 +3790,15 @@
         }
         function showMysteryToast() {
             const toast = document.getElementById('notification-toast');
+            // BUG FIX: Zentralen _toastTimer verwenden — wie showToast() und showDealToast().
+            // Ein anonymer setTimeout kollidiert mit laufenden Timern und blendet den
+            // falschen Toast aus.
+            clearTimeout(_toastTimer);
+            toast.style.background = '';
+            toast.style.color = '';
             toast.innerHTML = `🎉 <strong>Mystery Vape gratis hinzugefügt!</strong>`;
             toast.classList.add('visible');
-            setTimeout(() => {
+            _toastTimer = setTimeout(() => {
                 toast.classList.remove('visible');
             }, 4800);
         }
@@ -4029,7 +4035,12 @@
                 pendingNicotine = {};
                 document.getElementById("discount-status").innerHTML = "";
                 document.getElementById("discount-input").value = "";
-                await saveUserCart();
+                // BUG FIX: saveUserCart() ist debounced (setTimeout 600ms) und gibt undefined
+                // zurück — ein await darauf hat keine Wirkung. Nach einer Bestellung direkt
+                // schreiben, damit der Warenkorb sofort geleert ist.
+                try {
+                    await db.collection("users").doc(currentUser.uid).update({ cart: [] });
+                } catch(e) { console.error("Cart-Reset fehlgeschlagen:", e.message); }
                 showSuccessModal(orderNumber, verifiedTotal, loyaltyEarned);
                 loadProducts();
                 updateCartDisplay();
@@ -4257,7 +4268,9 @@
                 // BUG FIX: Use MYSTERY_ID constant instead of hardcoded 999
                 if (!item.id || item.id == MYSTERY_ID) { skippedCount++; continue; }
 
-                const productId = Number(item.id);
+                // BUG FIX: Firestore-IDs sind Strings — Number() würde NaN erzeugen,
+                // wodurch _productMap.get(NaN) immer undefined zurückgibt.
+                const productId = item.id;
                 const product   = _productMap.get(productId);
 
                 // Produkt unbekannt oder nicht verfügbar → überspringen
@@ -4879,12 +4892,15 @@
             history.pushState({ productId: id }, product.name, `?product=${slug}`);
             document.title = `${product.name} – WaveVapes`;
             const isVape = product.category === "WaveVapes Tornado 30000";
+            // BUG FIX: Vorausgewählte Nikotinstärke aus pendingNicotine oder Warenkorb lesen,
+            // statt immer "20 mg" hardcoded zu nehmen.
+            const cartItemForModal = cart.find(i => i.id === product.id);
+            const currentNic = pendingNicotine[product.id] || cartItemForModal?.nicotine || "20 mg";
             const nicotineHTML = (!isVape && product.hasNicotine) ? `
                 <div class="mt-8">
                     <p class="text-xs text-gray-400 mb-3 tracking-widest">NIKOTINSTÄRKE</p>
                     <select id="modal-nicotine" class="nicotine-select w-full text-lg py-4">
-                        <option value="10 mg">10 mg/ml</option>
-                        <option value="20 mg" selected>20 mg/ml</option>
+                        ${NICOTINE_OPTIONS.map(opt => `<option value="${opt}"${currentNic === opt ? ' selected' : ''}>${opt}/ml</option>`).join('')}
                     </select>
                 </div>` : '';
             const stockHTML = product.stock > 0
@@ -5336,7 +5352,9 @@
                 const params = new URLSearchParams(window.location.search);
                 const ref = params.get('ref');
                 const cleanUrl = window.location.pathname + (ref ? '?ref=' + encodeURIComponent(ref) : '');
-                history.pushState({}, 'WaveVapes', cleanUrl);
+                // BUG FIX: replaceState statt pushState — sonst muss der Nutzer zweimal
+                // „Zurück" klicken, weil das Schließen des Modals einen eigenen History-Eintrag erzeugt.
+                history.replaceState({}, 'WaveVapes', cleanUrl);
                 document.title = 'WaveVapes – Disposable Vapes & Premium Liquids';
             }
         }

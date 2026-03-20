@@ -2425,7 +2425,20 @@
                 return;
             }
             const link = `https://wavevapes.de/?ref=${myReferralCode}`;
-            await navigator.clipboard.writeText(link);
+            // BUG FIX: clipboard.writeText() requires a secure context (HTTPS) and
+            // a user gesture. Falls back to the legacy execCommand on failure.
+            try {
+                await navigator.clipboard.writeText(link);
+            } catch(e) {
+                // Fallback for HTTP or browsers that block clipboard without gesture
+                const ta = document.createElement('textarea');
+                ta.value = link;
+                ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+            }
             showToast(`✅ Referral-Link kopiert!<br><span class="text-xs">${link}</span>`);
         }
         async function showMyReferrals() {
@@ -2437,28 +2450,41 @@
             modal.classList.remove("hidden"); modal.classList.add("flex");
             const listEl = document.getElementById("referrals-list");
             listEl.innerHTML = `<p class="text-center py-8 text-gray-400">Lade deine Referrals...</p>`;
-            const snapshot = await db.collection("users").where("referredBy", "==", myReferralCode).get();
-            if (snapshot.empty) {
-                document.getElementById("no-referrals").classList.remove("hidden");
-                listEl.innerHTML = "";
+            // BUG FIX: Guard against empty referral code (would query all users without a referrer).
+            if (!myReferralCode) {
+                listEl.innerHTML = `<p class="text-center py-8 text-gray-400">Referral-Code wird geladen – bitte kurz warten.</p>`;
                 return;
             }
-            document.getElementById("no-referrals").classList.add("hidden");
-            let html = "";
-            snapshot.forEach(doc => {
-                const u = doc.data();
-                html += `
-                    <div class="bg-zinc-950 border border-emerald-400/30 rounded-3xl p-6 flex justify-between items-center">
-                        <div>
-                            <div class="font-medium">${u.username || u.email}</div>
-                            <div class="text-xs text-emerald-400">Registriert • +100 Punkte für dich</div>
-                        </div>
-                        <div class="text-right">
-                            <span class="text-emerald-400 text-xl font-bold">+100</span>
-                        </div>
-                    </div>`;
-            });
-            listEl.innerHTML = html;
+            // BUG FIX: No try/catch — a Firestore error left the modal stuck on
+            // the spinner forever and threw an unhandled promise rejection.
+            try {
+                const snapshot = await db.collection("users").where("referredBy", "==", myReferralCode).get();
+                if (snapshot.empty) {
+                    document.getElementById("no-referrals").classList.remove("hidden");
+                    listEl.innerHTML = "";
+                    return;
+                }
+                document.getElementById("no-referrals").classList.add("hidden");
+                let html = "";
+                snapshot.forEach(doc => {
+                    const u = doc.data();
+                    const safeName = (u.username || u.email || '').replace(/</g, '&lt;');
+                    html += `
+                        <div class="bg-zinc-950 border border-emerald-400/30 rounded-3xl p-6 flex justify-between items-center">
+                            <div>
+                                <div class="font-medium">${safeName}</div>
+                                <div class="text-xs text-emerald-400">Registriert • +100 Punkte für dich</div>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-emerald-400 text-xl font-bold">+100</span>
+                            </div>
+                        </div>`;
+                });
+                listEl.innerHTML = html;
+            } catch(e) {
+                console.error("showMyReferrals:", e);
+                listEl.innerHTML = `<p class="text-center py-8 text-red-400">Fehler beim Laden: ${e.message}</p>`;
+            }
         }
         function closeReferralsModal() {
             const modal = document.getElementById("referrals-modal");
@@ -2487,15 +2513,22 @@
                 const guestCart  = cart.filter(i => i.id !== MYSTERY_ID); // BUG FIX: use MYSTERY_ID constant instead of hardcoded 999
 
                 if (guestCart.length > 0 && serverCart.length === 0) {
-                    // Only guest items — just use them
-                    cart = guestCart;
+                    // Only guest items — clamp each to current stock
+                    cart = guestCart.map(i => {
+                        const p = _productMap.get(i.id);
+                        if (p && p.stock > 0) i.qty = Math.min(i.qty, p.stock);
+                        return i;
+                    });
                 } else if (guestCart.length > 0 && serverCart.length > 0) {
                     // Merge: add guest items that aren't already in server cart
+                    // BUG FIX: cap merged qty at product.stock to prevent over-ordering
                     cart = [...serverCart];
                     guestCart.forEach(guestItem => {
                         const existing = cart.find(i => i.id === guestItem.id);
                         if (existing) {
-                            existing.qty += guestItem.qty;
+                            const p = _productMap.get(existing.id);
+                            const maxStock = p ? (p.stock || 0) : Infinity;
+                            existing.qty = Math.min(existing.qty + guestItem.qty, maxStock);
                             if (guestItem.nicotine) existing.nicotine = guestItem.nicotine;
                         } else {
                             cart.push(guestItem);
@@ -2669,9 +2702,9 @@
                 document.getElementById("auth-title").textContent = "E-Mail bestätigen";
                 document.getElementById("tab-login").classList.remove("auth-tab-active");
                 document.getElementById("tab-register").classList.remove("auth-tab-active");
-                // Store credentials for resend
+                // Store email only — password intentionally NOT stored (security fix).
+                // resendVerificationFromBanner() uses auth.currentUser directly.
                 window._verifyEmail = email;
-                window._verifyPassword = password;
             } catch (e) {
                 const msg = e.code === 'auth/email-already-in-use' ? 'Diese E-Mail ist bereits registriert.'
                           : e.code === 'auth/invalid-email' ? 'Ungültige E-Mail-Adresse.'
@@ -2738,14 +2771,14 @@
         }
 
         async function resendVerificationFromBanner() {
-            const email    = window._verifyEmail;
-            const password = window._verifyPassword;
-            if (!email || !password) { showToast("Bitte neu registrieren", "error"); return; }
+            // BUG FIX: Use auth.currentUser directly — no stored password needed.
+            // createUserWithEmailAndPassword() keeps the user signed in, so
+            // sendEmailVerification() works without re-authenticating.
             try {
-                const cred = await auth.signInWithEmailAndPassword(email, password);
-                await cred.user.sendEmailVerification();
-                await auth.signOut();
-                showToast("E-Mail erneut gesendet! Bitte auch Spam-Ordner pruefen.");
+                const user = auth.currentUser;
+                if (!user) { showToast("Bitte neu registrieren", "error"); return; }
+                await user.sendEmailVerification();
+                showToast("E-Mail erneut gesendet! Bitte auch Spam-Ordner prüfen.");
             } catch(e) {
                 showToast("Fehler: " + e.message, "error");
             }
@@ -3003,7 +3036,11 @@
                 if (item.id == MYSTERY_ID) return sum;
                 const product = _productMap.get(item.id);
                 const effPrice = product ? (getPromoPrice(product) ?? item.price) : item.price;
-                return sum + item.qty * (effPrice || 7.99);
+                // BUG FIX: fallback was 7.99 — if effPrice is legitimately 0
+                // (e.g. a free promotional item) it was incorrectly charged 7.99.
+                // Use 0 as the safe fallback; out-of-stock / unavailable products
+                // shouldn't appear in the cart anyway.
+                return sum + item.qty * (effPrice ?? 0);
             }, 0);
         }
         function getProductTotal() {
@@ -3024,14 +3061,20 @@
                     const totalCatQty = catItems.reduce((s,i) => s + i.qty, 0);
                     const freeCount   = Math.floor(totalCatQty / buyQty) * (buyQty - payQty);
                     if (freeCount > 0) {
-                        // Deduct cheapest items first
-                        // BUG FIX: Use effective promo price, not i.price (cart price), to avoid
-                        // over-deducting when a product has an active promotion running.
-                        const cheapestPrice = Math.min(...catItems.map(i => {
+                        // BUG FIX: Build a flat sorted price list (one entry per unit qty)
+                        // and sum the cheapest `freeCount` prices. The old code used
+                        // Math.min() of per-product prices — when freeCount > 1 and there
+                        // are multiple distinct prices, only the globally cheapest was used
+                        // instead of the actual N cheapest units.
+                        const unitPrices = [];
+                        catItems.forEach(i => {
                             const p = _productMap.get(i.id);
-                            return p ? (getPromoPrice(p) ?? i.price ?? 0) : (i.price || 0);
-                        }));
-                        subtotal -= freeCount * cheapestPrice;
+                            const effP = p ? (getPromoPrice(p) ?? i.price ?? 0) : (i.price || 0);
+                            for (let q = 0; q < i.qty; q++) unitPrices.push(effP);
+                        });
+                        unitPrices.sort((a, b) => a - b); // ascending — cheapest first
+                        const deduction = unitPrices.slice(0, freeCount).reduce((s, p) => s + p, 0);
+                        subtotal -= deduction;
                     }
                 } else if (offer.offerType === 'percent') {
                     // % off all items in category — use effective price (promo-aware)
@@ -3480,13 +3523,17 @@
         function upsellAddToCart(id) {
             const product = _productMap.get(id);
             if (!product || !product.available) return;
-            const ok = _addToCart(id, 1);
+            // BUG FIX: pass the chosen nicotine strength to _addToCart.
+            // Without it, _addToCart used the default ('20 mg') even if the user
+            // had already selected '10 mg' on the product card.
+            const nic = product.hasNicotine ? (pendingNicotine[id] || '20 mg') : null;
+            const ok = _addToCart(id, 1, nic);
             if (!ok) return;
+            if (nic) pendingNicotine[id] = nic; // keep in sync
             manageMysteryVape();
             saveUserCart();
             updateCartDisplay();
             patchProductCardQty(id);
-            const nic = pendingNicotine[id] || '20 mg';
             const nicLabel = product.hasNicotine ? ` (${nic})` : '';
             showToast(`✅ ${product.name}${nicLabel} hinzugefügt!`);
         }
@@ -3727,7 +3774,10 @@
             window.scrollTo({ top: _cartScrollY, behavior: "instant" });
         }
         function manageMysteryVape() {
-            const subtotal = getSubtotal();
+            // BUG FIX: Use getProductTotal() instead of getSubtotal().
+            // getSubtotal() ignores appliedDiscount — so a coupon that brings
+            // the total below 100 € would leave the Mystery Vape in the cart.
+            const subtotal = getProductTotal();
             const hasMystery = cart.some(item => item.id == MYSTERY_ID);
             const _mysteryThreshold = window._FREE_THRESHOLD !== undefined ? window._FREE_THRESHOLD : 100;
             if (subtotal >= _mysteryThreshold && !hasMystery) {

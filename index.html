@@ -2908,13 +2908,20 @@
                         status.innerHTML = `<span class="text-red-400">Dieser Loyalty-Code wurde bereits eingelöst!</span>`;
                         return;
                     }
+                    // BUG FIX: check that the user actually has enough points to redeem this code.
+                    // VALID_DISCOUNTS[code].points is the threshold — previously never checked here.
+                    if (loyaltyPoints < d.points) {
+                        const missing = d.points - loyaltyPoints;
+                        status.innerHTML = `<span class="text-red-400">Nicht genug Punkte – noch <strong>${missing}</strong> Punkte bis zu diesem Gutschein.</span>`;
+                        return;
+                    }
                     appliedDiscount = { code: input, type: d.type, value: d.value };
-                    await userRef.update({
-                        redeemedLoyaltyCodes: firebase.firestore.FieldValue.arrayUnion(input)
-                    });
+                    // NOTE: Code is NOT marked as used here.
+                    // placeOrder() does the atomic check + mark inside a transaction
+                    // after the order is successfully saved — avoids marking on abandoned carts.
                     const display = d.type === "fixed" ? `${d.value} €` : `${d.value}%`;
                     status.innerHTML = `<span class="text-emerald-400">✓ ${input} (${display}) eingelöst!</span>`;
-                    manageMysteryVape(); // BUG 4 FIX
+                    manageMysteryVape();
                     updateCartDisplay();
                 } catch (err) {
                     console.error(err);
@@ -3886,9 +3893,17 @@
                     if (!loyalDef) throw new Error("Ungültiger Loyalty-Code.");
 
                     const freshUserDoc = await db.collection("users").doc(currentUser.uid).get();
-                    const redeemed = freshUserDoc.data()?.redeemedLoyaltyCodes || [];
+                    const freshUserData = freshUserDoc.data() || {};
+                    const redeemed = freshUserData.redeemedLoyaltyCodes || [];
                     if (redeemed.includes(appliedDiscount.code))
                         throw new Error("Dieser Loyalty-Code wurde bereits eingelöst.");
+
+                    // BUG FIX: re-validate points server-side at order time.
+                    // The client-side loyaltyPoints variable could be stale or manipulated.
+                    // totalBonusPoints is the authoritative value from Firestore.
+                    const freshPoints = freshUserData.totalBonusPoints || 0;
+                    if (freshPoints < loyalDef.points)
+                        throw new Error(`Nicht genug Punkte für diesen Gutschein (${freshPoints}/${loyalDef.points}).`);
 
                     // SECURITY: Use value from VALID_DISCOUNTS (server-of-record for loyalty),
                     // never from appliedDiscount.value which could be manipulated in console.
@@ -3941,6 +3956,15 @@
                     orderData.discountAmount = parseFloat(verifiedDiscountAmount.toFixed(2));
                 }
                 await db.collection("orders").add(orderData);
+
+                // Mark LOYAL code as redeemed AFTER the order is successfully saved.
+                // This is the only place it gets written — applyDiscountCode() no longer
+                // does it early, preventing the "already redeemed" error on checkout.
+                if (savedCouponInfo?.code?.startsWith("LOYAL")) {
+                    await db.collection("users").doc(currentUser.uid).update({
+                        redeemedLoyaltyCodes: firebase.firestore.FieldValue.arrayUnion(savedCouponInfo.code)
+                    });
+                }
 
                 await sendOrderConfirmationEmail({
                     userEmail: currentUser.email,

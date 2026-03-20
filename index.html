@@ -2309,12 +2309,12 @@
         function initEmailJS() {
             if (typeof emailjs !== "undefined") {
                 emailjs.init(EMAILJS_PUBLIC_KEY);
-                console.log("✅ EmailJS initialisiert");
+                // console.log("✅ EmailJS initialisiert");
             }
         }
         // ====================== E-MAIL SENDEN ======================
         async function sendOrderConfirmationEmail(orderData) {
-            console.log("📧 Versuche E-Mail zu senden...");
+            // console.log("📧 Versuche E-Mail zu senden...");
             showToast("📧 E-Mail wird gesendet...", "success");
             try {
                 const orderItems = orderData.items.map(item => {
@@ -2339,7 +2339,7 @@
                     },
                     loyalty_earned: orderData.loyaltyEarned || 0
                 });
-                console.log("✅ E-Mail erfolgreich gesendet!");
+                // console.log("✅ E-Mail erfolgreich gesendet!");
                 showToast("✅ Bestellbestätigung per E-Mail versendet!", "success");
             } catch (e) {
                 console.error("❌ E-Mail Fehler:", e);
@@ -2633,7 +2633,7 @@
                         }
                     }
                 } catch(e) {
-                    console.log("IP konnte nicht ermittelt werden");
+                    // console.log("IP konnte nicht ermittelt werden");
                 }
             } else {
                 cart = [];
@@ -3056,8 +3056,8 @@
 
                 if (offer.offerType === 'nforn') {
                     // X for N: buy offerN, pay offerM (cheapest ones free)
-                    const buyQty  = parseInt(offer.offerN) || 4;
-                    const payQty  = parseInt(offer.offerM) || 3;
+                    const buyQty  = parseInt(offer.offerN, 10) || 4;
+                    const payQty  = parseInt(offer.offerM, 10) || 3;
                     const totalCatQty = catItems.reduce((s,i) => s + i.qty, 0);
                     const freeCount   = Math.floor(totalCatQty / buyQty) * (buyQty - payQty);
                     if (freeCount > 0) {
@@ -3448,7 +3448,10 @@
             clearTimeout(_toastTimer);
             toast.style.background = '';
             toast.style.color = '';
-            toast.innerHTML = `⚡ <strong>${label || '4 FÜR 3'} EINGELÖST!</strong>`;
+            // BUG FIX: label kommt aus offer.specialText (Firestore) — vor innerHTML-Einfügen escapen
+            // um Admin-stored XSS zu verhindern (z.B. <img onerror=...> als specialText).
+            const safeLabel = (label || '4 FÜR 3').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            toast.innerHTML = `⚡ <strong>${safeLabel} EINGELÖST!</strong>`;
             toast.classList.add('visible');
             _toastTimer = setTimeout(() => {
                 toast.classList.remove('visible');
@@ -3628,7 +3631,7 @@
             } else {
                 loyaltyCartInfo.innerHTML = "";
             }
-            if (userAddress.street) {
+            if (userAddress.street && userAddress.zip && userAddress.city) {
                 // BUG FIX: Sanitize address fields before inserting into innerHTML
                 // to prevent XSS if a user typed HTML/script tags into the address form.
                 const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -3821,8 +3824,8 @@
                 return;
             }
             if (cart.length === 0) { showToast("❌ Dein Warenkorb ist leer.", "error"); return; }
-            if (!userAddress.street) {
-                showToast("❌ Bitte zuerst Lieferadresse angeben!", "error");
+            if (!userAddress.street || !userAddress.zip || !userAddress.city) {
+                showToast("❌ Bitte zuerst vollständige Lieferadresse angeben!", "error");
                 showAddressModal();
                 return;
             }

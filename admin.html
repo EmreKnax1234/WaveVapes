@@ -5181,14 +5181,17 @@ function cpnRenderGrid(coupons) {
     const now = new Date();
     let html = '';
     coupons.forEach((c, idx) => {
-        const expired    = c.expiresAt.toDate() < now;
+        // BUG FIX: expiresAt kann undefined sein (manuell angelegte Gutscheine).
+        // Ohne Null-Check wirft .toDate() einen TypeError und die gesamte Tabelle rendert nicht.
+        const expiryDate = c.expiresAt ? c.expiresAt.toDate() : null;
+        const expired    = expiryDate ? expiryDate < now : false;
         const uses       = c.totalUsages !== undefined ? c.totalUsages : (c.usedBy ? c.usedBy.length : 0);
         const maxUses    = c.oneTimeUse ? 1 : (uses > 0 ? uses * 2 : 10);
         const pct        = c.oneTimeUse ? Math.min(100, uses * 100) : Math.min(100, Math.round(uses / Math.max(maxUses, 1) * 100));
         const discount   = c.type === 'percent' ? c.value + '%' : c.value.toFixed(2) + ' €';
         const typeLabel  = c.type === 'percent' ? 'Prozent-Rabatt' : 'Festbetrag';
-        const expiryStr  = c.expiresAt.toDate().toLocaleDateString('de-DE');
-        const daysLeft   = Math.ceil((c.expiresAt.toDate() - now) / 86400000);
+        const expiryStr  = expiryDate ? expiryDate.toLocaleDateString('de-DE') : '—';
+        const daysLeft   = expiryDate ? Math.ceil((expiryDate - now) / 86400000) : null;
         const accent     = expired ? 'rgba(248,113,113,.4)' : 'rgba(251,191,36,.5)';
 
         html += `<div class="cpn-card${expired ? ' expired' : ''}" style="--cpn-card-accent:${accent};animation-delay:${Math.min(idx,10)*.03}s">
@@ -5196,7 +5199,7 @@ function cpnRenderGrid(coupons) {
                 <div>
                     <div class="cpn-card-code">${c.code}</div>
                     <div style="margin-top:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-                        <span class="cpn-pill ${expired ? 'cpn-pill-expired' : 'cpn-pill-active'}">${expired ? '⏱ ABGELAUFEN' : daysLeft <= 7 ? `⚠ ${daysLeft}T` : '● AKTIV'}</span>
+                        <span class="cpn-pill ${expired ? 'cpn-pill-expired' : 'cpn-pill-active'}">${expired ? '⏱ ABGELAUFEN' : (daysLeft !== null && daysLeft <= 7) ? `⚠ ${daysLeft}T` : '● AKTIV'}</span>
                         <span class="cpn-pill ${c.oneTimeUse ? 'cpn-pill-once' : 'cpn-pill-multi'}">${c.oneTimeUse ? '1× einmalig' : '∞ mehrfach'}</span>
                     </div>
                 </div>
@@ -5262,7 +5265,8 @@ async function showCouponHistory(couponId) {
     document.getElementById('cpn-hist-code').textContent     = coupon.code;
     document.getElementById('cpn-hist-stat-uses').textContent = uses + '×';
     document.getElementById('cpn-hist-stat-val').textContent  = discount;
-    document.getElementById('cpn-hist-stat-exp').textContent  = coupon.expiresAt.toDate().toLocaleDateString('de-DE');
+    // BUG FIX: expiresAt kann undefined sein — Null-Check vor .toDate()
+    document.getElementById('cpn-hist-stat-exp').textContent  = coupon.expiresAt ? coupon.expiresAt.toDate().toLocaleDateString('de-DE') : '—';
 
     const body = document.getElementById('cpn-hist-body');
     body.innerHTML = '<div class="cpn-hist-empty"><span class="eu-spinner"></span><br><br>Lade...</div>';
@@ -6863,16 +6867,38 @@ let euSortCol       = 'email';
 let euSortDir       = 'asc';
 
 async function loadExtendedUsers() {
-    db.collection('users').onSnapshot(async snap => {
-        const docs = snap.docs;
-        const statPromises = docs.map(doc =>
-            db.collection('orders').where('userId','==',doc.id).get()
-              .then(oSnap=>{ let c=0,s=0; oSnap.forEach(o=>{c++;s+=o.data().total||0;}); return {orderCount:c,totalSpent:s}; })
-              .catch(()=>({orderCount:0,totalSpent:0}))
-        );
-        const stats = await Promise.all(statPromises);
-        euAllUsers = docs.map((doc,i)=>({ id:doc.id, ...doc.data(), orderCount:stats[i].orderCount, totalSpent:stats[i].totalSpent }));
+    // BUG FIX: Statt N parallele Order-Queries bei JEDEM User-Snapshot zu feuern,
+    // werden Orders einmalig geladen und in einer Map gecacht. User-Snapshots
+    // nutzen diesen Cache. Orders werden einmalig zusätzlich live gehört.
+    let _orderStatsCache = new Map(); // uid → { orderCount, totalSpent }
+
+    async function buildOrderCache() {
+        try {
+            const snap = await db.collection('orders').get();
+            _orderStatsCache = new Map();
+            snap.forEach(doc => {
+                const o = doc.data();
+                if (!o.userId) return;
+                const cur = _orderStatsCache.get(o.userId) || { orderCount: 0, totalSpent: 0 };
+                cur.orderCount++;
+                cur.totalSpent += o.total || 0;
+                _orderStatsCache.set(o.userId, cur);
+            });
+        } catch(e) { console.warn('loadExtendedUsers: order cache failed', e); }
+    }
+
+    function applyStats(docs) {
+        euAllUsers = docs.map(doc => {
+            const stats = _orderStatsCache.get(doc.id) || { orderCount: 0, totalSpent: 0 };
+            return { id: doc.id, ...doc.data(), ...stats };
+        });
         euUpdateKPIs(); euFilter();
+    }
+
+    await buildOrderCache();
+
+    db.collection('users').onSnapshot(snap => {
+        applyStats(snap.docs);
     });
 }
 

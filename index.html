@@ -4105,10 +4105,29 @@
                 // Produkt unbekannt oder nicht verfügbar → überspringen
                 if (!product || !product.available) { skippedCount++; continue; }
 
-                // _addToCart(id, delta, nicotine) — direkt mit der gesamten Menge
                 const qty      = item.qty || 1;
                 const nicotine = product.hasNicotine ? (item.nicotine || '20 mg') : null;
-                const ok = _addToCart(productId, qty, nicotine);
+
+                // BUG FIX: qty als absoluten Zielwert setzen, nicht als Delta addieren.
+                // Erst prüfen ob Artikel schon im Cart ist und ggf. auf 0 setzen,
+                // dann die gewünschte Menge als Delta übergeben.
+                const existing = cart.find(i => i.id === productId);
+                const currentQty = existing ? existing.qty : 0;
+                // Ziel-Delta berechnen: gewünschte Menge minus bereits im Cart
+                const delta = qty - currentQty;
+                if (delta <= 0) {
+                    // Bereits genug oder mehr im Cart → als hinzugefügt zählen
+                    addedCount++;
+                    continue;
+                }
+                // Stock-Check: product.stock kann 0 oder undefined sein
+                const stock = product.stock ?? 999;
+                if (stock === 0) { skippedCount++; continue; }
+                const targetQty = Math.min(currentQty + delta, stock);
+                const actualDelta = targetQty - currentQty;
+                if (actualDelta <= 0) { skippedCount++; continue; }
+
+                const ok = _addToCart(productId, actualDelta, nicotine);
                 if (ok) { addedCount++; } else { skippedCount++; }
             }
 

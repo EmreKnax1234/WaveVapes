@@ -5942,8 +5942,14 @@
                         page:      window.location.pathname,
                         ts:        firebase.firestore.FieldValue.serverTimestamp(),
                         ...extra
-                    }).catch(() => {});
-                } catch(e) { /* non-blocking */ }
+                    }).then(() => {
+                        console.log('[ClickTrack] ✅ Event gespeichert:', label);
+                    }).catch(err => {
+                        console.error('[ClickTrack] ❌ Fehler beim Schreiben:', err.code, err.message);
+                    });
+                } catch(e) {
+                    console.error('[ClickTrack] ❌ Exception:', e);
+                }
             }
 
             // Delegierter Listener — ein einziger Handler für die ganze Seite

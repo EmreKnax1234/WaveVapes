@@ -5937,14 +5937,26 @@ async function loadUnauthorizedLogs() {
             </div>`;
         });
         container.innerHTML = html;
-    } catch(e) { container.innerHTML=`<div class="lg-empty" style="color:var(--lg-red)"><i class="fa-solid fa-circle-exclamation"></i>Fehler: ${e.message}</div>`; }
+    } catch(e) {
+        // BUG FIX: Use textContent for e.message to prevent XSS via Firestore error strings
+        const d = document.createElement('div');
+        d.className = 'lg-empty';
+        d.style.color = 'var(--lg-red)';
+        d.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Fehler: ';
+        d.appendChild(document.createTextNode(e.message));
+        container.innerHTML = '';
+        container.appendChild(d);
+    }
 }
 
 async function clearUnauthorizedLogs() {
     if (!confirm("Alle Zugriffsversuche löschen?")) return;
-    const snap=await db.collection("unauthorized_access").get();
-    const batch=db.batch(); snap.forEach(doc=>batch.delete(doc.ref)); await batch.commit();
-    showToast("✅ Zugriffsversuche gelöscht","success"); loadUnauthorizedLogs();
+    const snap = await db.collection("unauthorized_access").get();
+    const batch = db.batch();
+    snap.forEach(doc => batch.delete(doc.ref));
+    await batch.commit();
+    showToast("✅ Zugriffsversuche gelöscht", "success");
+    loadUnauthorizedLogs();
 }
 
 function openBanIPModal(ip) {
@@ -6055,7 +6067,16 @@ async function loadBannedIPs() {
             html += `</div>`;
         }
         container.innerHTML = html;
-    } catch(e) { container.innerHTML=`<div class="lg-empty" style="color:var(--lg-red)"><i class="fa-solid fa-circle-exclamation"></i>Fehler: ${e.message}</div>`; }
+    } catch(e) {
+        // BUG FIX: Use textContent for e.message to prevent XSS
+        const d = document.createElement('div');
+        d.className = 'lg-empty';
+        d.style.color = 'var(--lg-red)';
+        d.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Fehler: ';
+        d.appendChild(document.createTextNode(e.message));
+        container.innerHTML = '';
+        container.appendChild(d);
+    }
 }
 
 async function manualBanIp() {
@@ -6385,8 +6406,9 @@ async function saveProductOrder() {
     const visibleItems = Array.from(document.querySelectorAll('#sort-list .sortable-item')).map(i => i.dataset.id);
 
     if (srtCurrentCat === 'Alle') {
-        // Save full order directly
-        await db.collection('settings').doc('product_order').set({ order: visibleItems }, { merge: true });
+        // BUG FIX: Use set() without merge in 'Alle' mode — we own the entire order array
+        // and merge:true could leave stale keys if the document structure ever changes.
+        await db.collection('settings').doc('product_order').set({ order: visibleItems });
     } else {
         // Merge: keep existing order for other categories, replace order for current category
         const otherIds = productOrder.filter(id => {
@@ -6441,7 +6463,12 @@ function showToast(msg, type='success') {
     const bg = type === 'error' ? 'bg-red-600' : type === 'warning' ? 'bg-amber-600' : 'bg-emerald-600';
     const icon = type === 'error' ? 'fa-xmark' : type === 'warning' ? 'fa-triangle-exclamation' : 'fa-check';
     toast.className = `toast flex items-center gap-3 px-8 py-4 rounded-3xl shadow-2xl text-sm font-medium ${bg}`;
-    toast.innerHTML = `<i class="fa-solid ${icon}"></i> ${msg}`;
+    // BUG FIX: Use createTextNode for msg to prevent XSS when e.message from Firestore
+    // errors is passed directly into showToast (e.g. showToast('Fehler: ' + e.message))
+    const iconEl = document.createElement('i');
+    iconEl.className = `fa-solid ${icon}`;
+    toast.appendChild(iconEl);
+    toast.appendChild(document.createTextNode(' ' + msg));
     container.appendChild(toast);
     setTimeout(() => toast.remove(), 3500);
 }
@@ -8045,7 +8072,11 @@ function rvAdminLoad(mode) {
             listEl.appendChild(card);
         });
     }, err => {
-        listEl.innerHTML = `<div class="rv-admin-empty">Fehler: ${err.message}</div>`;
+        listEl.textContent = '';
+        const d = document.createElement('div');
+        d.className = 'rv-admin-empty';
+        d.textContent = 'Fehler: ' + err.message;
+        listEl.appendChild(d);
     });
 }
 
@@ -8727,7 +8758,7 @@ async function saLoadActivityLog() {
             return tb - ta;
         });
         saRenderFilteredLog();
-    } catch(e) { el.innerHTML = `<div style="color:rgba(248,113,113,.5);font-size:12px;padding:12px">Fehler: ${e.message}</div>`; }
+    } catch(e) { el.textContent = ''; const d=document.createElement('div');d.style.cssText='color:rgba(248,113,113,.5);font-size:12px;padding:12px';d.textContent='Fehler: '+e.message;el.appendChild(d); }
 }
 
 function saFilterLog(filter, el) {
@@ -8876,7 +8907,7 @@ async function saLoadSessions() {
                     : `<div style="font-size:11px;color:rgba(255,255,255,.2);margin-left:auto">vor ${Math.round(msAgo/60000)} Min</div>`}
             </div>`;
         }).join('');
-    } catch(e) { el.innerHTML = `<div style="color:rgba(248,113,113,.5);font-size:12px;padding:16px">Fehler: ${e.message}</div>`; }
+    } catch(e) { el.textContent = ''; const d=document.createElement('div');d.style.cssText='color:rgba(248,113,113,.5);font-size:12px;padding:16px';d.textContent='Fehler: '+e.message;el.appendChild(d); }
 }
 
 // ── Backup & Export ───────────────────────────────────

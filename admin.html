@@ -10079,7 +10079,8 @@ async function bkpSaveConfig() {
     if (!_bkpConfig.collections.length) _bkpConfig.collections = [...BKP_ALL_COLS];
 
     try {
-        await db.collection('settings').doc('backup_config').set(_bkpConfig, { merge: true });
+        const { lastBackupAt: _lba, ...configToSave } = _bkpConfig;
+        await db.collection('settings').doc('backup_config').set(configToSave, { merge: true });
         bkpRenderStatus();
         bkpScheduleAutoCheck();
         showToast('✅ Backup-Konfiguration gespeichert');

@@ -3497,14 +3497,19 @@
                         </div>
                     </div>`;
             });
-            container.innerHTML = html || `<p class="col-span-full text-center py-16 text-gray-400">Keine Produkte gefunden.</p>`;
-
             // ── Bundle-Karten hinzufügen ──────────────────────────────────
             const activeBundles = allBundles.filter(b => {
                 if (!b.active) return false;
                 if (currentCategoryFilter === 'Alle') return true;
                 return b.category === currentCategoryFilter;
             });
+
+            // Nur "Keine Produkte gefunden" zeigen wenn auch keine Bundles da sind
+            if (!html && activeBundles.length === 0) {
+                container.innerHTML = `<p class="col-span-full text-center py-16 text-gray-400">Keine Produkte gefunden.</p>`;
+                return;
+            }
+            container.innerHTML = html;
             if (activeBundles.length > 0) {
                 let bundleHtml = '';
                 activeBundles.forEach(b => {

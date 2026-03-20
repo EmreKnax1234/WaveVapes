@@ -2187,6 +2187,11 @@
     <div id="product-detail-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-[9999] p-4 overflow-y-auto">
         <div id="detail-content" class="w-full"></div>
     </div>
+
+    <!-- Bundle Detail Modal -->
+    <div id="bundle-detail-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-[9999] p-4 overflow-y-auto">
+        <div id="bundle-detail-content" class="w-full max-w-2xl mx-auto"></div>
+    </div>
     <div id="notification-toast"></div>
 
     <!-- ═══════════════════════════════════════════
@@ -2317,6 +2322,102 @@
             updateCartDisplay();
             showToast(`🎁 „${bundle.name}" zum Warenkorb hinzugefügt!`);
             renderProducts();
+        }
+
+        function showBundleDetail(bundleId) {
+            const b = allBundles.find(x => x.id === bundleId);
+            if (!b) return;
+
+            // Scroll lock
+            _modalScrollY = window.scrollY;
+            document.body.style.top = `-${_modalScrollY}px`;
+            document.body.style.position = 'fixed';
+            document.body.style.width = '100%';
+            document.body.classList.add('modal-open');
+
+            const inCart = cart.some(i => i.bundleId === bundleId);
+            const orig = (b.originalTotal || 0).toFixed(2).replace('.', ',');
+            const sale = (b.bundlePrice || 0).toFixed(2).replace('.', ',');
+            const saveAmt = b.originalTotal > b.bundlePrice
+                ? (b.originalTotal - b.bundlePrice).toFixed(2).replace('.', ',') : null;
+            const discPct = b.originalTotal > 0 && b.bundlePrice < b.originalTotal
+                ? Math.round((b.originalTotal - b.bundlePrice) / b.originalTotal * 100) : 0;
+
+            const imgHTML = b.image
+                ? `<img src="${b.image}" alt="${b.name}" style="width:100%;max-height:320px;object-fit:cover;border-radius:20px;margin-bottom:8px">`
+                : `<div style="width:100%;height:200px;border-radius:20px;background:linear-gradient(135deg,rgba(167,139,250,.15),rgba(244,114,182,.1));display:flex;align-items:center;justify-content:center;font-size:72px;margin-bottom:8px">🎁</div>`;
+
+            const itemsHTML = (b.items || []).map(it => {
+                const prod = _productMap.get(it.productId);
+                const itemImg = prod?.image
+                    ? `<img src="${prod.image}" style="width:44px;height:44px;border-radius:10px;object-fit:cover;flex-shrink:0">`
+                    : `<div style="width:44px;height:44px;border-radius:10px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px">🧪</div>`;
+                const unitPrice = it.price?.toFixed(2).replace('.', ',');
+                return `
+                <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:14px">
+                    ${itemImg}
+                    <div style="flex:1;min-width:0">
+                        <div style="font-size:13px;font-weight:600;color:rgba(255,255,255,.9);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${it.name}</div>
+                        <div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:2px">${unitPrice ? unitPrice + ' € / Stück' : ''}</div>
+                    </div>
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#a78bfa;flex-shrink:0">×${it.qty}</div>
+                </div>`;
+            }).join('');
+
+            document.getElementById('bundle-detail-content').innerHTML = `
+                <div class="modal-inner" style="background:linear-gradient(160deg,#13131f,#1a0f2e);border:1px solid rgba(167,139,250,.25);border-radius:28px;overflow:hidden">
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:18px 22px;border-bottom:1px solid rgba(167,139,250,.12)">
+                        <div style="display:flex;align-items:center;gap:8px">
+                            <span style="background:linear-gradient(135deg,#a78bfa,#7c3aed);color:#fff;font-size:10px;font-weight:800;padding:3px 10px;border-radius:99px;letter-spacing:.06em">🎁 BUNDLE</span>
+                            ${discPct > 0 ? `<span style="background:rgba(239,68,68,.15);color:#f87171;font-size:10px;font-weight:800;padding:3px 10px;border-radius:99px;border:1px solid rgba(239,68,68,.25)">−${discPct}%</span>` : ''}
+                        </div>
+                        <button onclick="closeBundleDetail()" style="width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.5);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:color .2s" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,.5)'">✕</button>
+                    </div>
+                    <div style="padding:22px 22px 28px;overflow-y:auto;max-height:calc(90dvh - 70px)">
+                        ${imgHTML}
+                        <h2 style="font-size:22px;font-weight:800;color:#fff;margin-bottom:6px;line-height:1.2">${b.name}</h2>
+                        ${b.description ? `<p style="font-size:14px;color:rgba(255,255,255,.5);margin-bottom:16px;line-height:1.6">${b.description}</p>` : ''}
+
+                        <!-- Enthaltene Produkte -->
+                        <div style="font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:10px">Im Bundle enthalten</div>
+                        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:22px">${itemsHTML}</div>
+
+                        <!-- Preis-Bereich -->
+                        <div style="padding:16px 18px;background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.15);border-radius:18px;margin-bottom:20px">
+                            <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+                                ${b.originalTotal > b.bundlePrice ? `<span style="font-size:16px;color:rgba(255,255,255,.3);text-decoration:line-through;font-family:'JetBrains Mono',monospace">${orig} €</span>` : ''}
+                                <span style="font-size:36px;font-weight:800;color:#fbbf24;font-family:'JetBrains Mono',monospace;line-height:1">${sale} €</span>
+                            </div>
+                            ${saveAmt ? `<div style="font-size:13px;color:#a78bfa;font-weight:600;margin-top:6px">✨ Du sparst ${saveAmt} € gegenüber Einzelkauf</div>` : ''}
+                        </div>
+
+                        <!-- Kaufen-Button -->
+                        <button id="bnd-detail-add-btn" onclick="addBundleToCart('${b.id}', event); document.getElementById('bnd-detail-add-btn').innerHTML='✅ Im Warenkorb'; document.getElementById('bnd-detail-add-btn').style.background='linear-gradient(135deg,rgba(52,211,153,.2),rgba(103,232,249,.15))'; document.getElementById('bnd-detail-add-btn').style.borderColor='rgba(52,211,153,.4)'; document.getElementById('bnd-detail-add-btn').style.color='#34d399'"
+                            style="width:100%;padding:16px;border-radius:18px;border:1px solid rgba(167,139,250,.4);background:linear-gradient(135deg,rgba(167,139,250,.2),rgba(244,114,182,.12));color:#a78bfa;font-size:16px;font-weight:800;cursor:pointer;transition:all .25s;letter-spacing:.02em;display:flex;align-items:center;justify-content:center;gap:10px"
+                            onmouseover="if(!this.innerHTML.includes('✅')){this.style.background='linear-gradient(135deg,rgba(167,139,250,.35),rgba(244,114,182,.22))';this.style.color='#fff'}"
+                            onmouseout="if(!this.innerHTML.includes('✅')){this.style.background='linear-gradient(135deg,rgba(167,139,250,.2),rgba(244,114,182,.12))';this.style.color='#a78bfa'}">
+                            ${inCart ? '✅ Im Warenkorb' : '🛒 Bundle kaufen'}
+                        </button>
+                        <button onclick="closeBundleDetail()" style="width:100%;padding:12px;margin-top:10px;background:transparent;border:none;color:rgba(255,255,255,.3);font-size:13px;cursor:pointer;transition:color .2s" onmouseover="this.style.color='rgba(255,255,255,.6)'" onmouseout="this.style.color='rgba(255,255,255,.3)'">← Zurück zum Shop</button>
+                    </div>
+                </div>`;
+
+            const modal = document.getElementById('bundle-detail-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeBundleDetail() {
+            const modal = document.getElementById('bundle-detail-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            // Restore scroll
+            document.body.style.position = '';
+            document.body.style.top = '';
+            document.body.style.width = '';
+            document.body.classList.remove('modal-open');
+            window.scrollTo(0, _modalScrollY || 0);
+            renderProducts(); // refresh button states
         }
         let cart = [];
         let currentUser = null;
@@ -3418,12 +3519,16 @@
                     ).join('');
                     const moreTags = b.items && b.items.length > 3
                         ? `<span class="bundle-tag">+${b.items.length - 3} mehr</span>` : '';
+                    const imgHTML = b.image
+                        ? `<div class="img-wrap loaded" style="aspect-ratio:1;border-radius:14px;overflow:hidden;margin-bottom:8px"><img src="${b.image}" alt="${b.name}" style="width:100%;height:100%;object-fit:cover" loading="lazy"></div>`
+                        : `<div class="img-wrap loaded" style="aspect-ratio:1;border-radius:14px;background:linear-gradient(135deg,rgba(167,139,250,.12),rgba(244,114,182,.08));display:flex;align-items:center;justify-content:center;margin-bottom:8px;font-size:40px">🎁</div>`;
                     bundleHtml += `
-                    <div class="bundle-card" onclick="addBundleToCart('${b.id}', event)">
+                    <div class="bundle-card" onclick="showBundleDetail('${b.id}')">
                         <div class="bundle-card-bar"></div>
                         <div class="p-5 flex flex-col h-full gap-3">
                             <span class="bundle-badge">🎁 Bundle</span>
-                            <div style="margin-top:22px">
+                            <div style="margin-top:22px">${imgHTML}</div>
+                            <div>
                                 <h4 class="font-bold text-base leading-tight text-white mb-1">${b.name}</h4>
                                 ${b.description ? `<p style="font-size:11px;color:rgba(255,255,255,.4)">${b.description}</p>` : ''}
                             </div>
@@ -3433,8 +3538,8 @@
                                 <span class="bundle-sale-price">${sale} €</span>
                                 ${save ? `<span class="bundle-save-badge">−${save} € sparen</span>` : ''}
                             </div>
-                            <button class="bundle-add-btn ${inCart ? 'in-cart' : ''}" onclick="addBundleToCart('${b.id}', event)">
-                                ${inCart ? '✅ Im Warenkorb' : '🛒 Bundle kaufen'}
+                            <button class="bundle-add-btn ${inCart ? 'in-cart' : ''}" onclick="event.stopImmediatePropagation();showBundleDetail('${b.id}')">
+                                ${inCart ? '✅ Im Warenkorb' : '🔍 Details & kaufen'}
                             </button>
                         </div>
                     </div>`;

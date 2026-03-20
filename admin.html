@@ -11174,42 +11174,77 @@ async function bndAICalc(strategy) {
 
     const orig = _bundleItems.reduce((s,it)=>s+it.price*it.qty, 0);
     const cost = _bundleItems.reduce((s,it)=>s+bndRealCost(it)*it.qty, 0);
-    const minProfit = cost; // Bundle-Preis MUSS über dem EK liegen
     const name = document.getElementById('bnd-f-name')?.value||'Bundle';
 
+    // Maximaler sinnvoller Bundle-Preis = leicht unter dem Einzelkauf (mind. 1% günstiger)
+    const maxBundlePrice = orig * 0.99;
+
+    // Prüfen ob mit dieser Strategie überhaupt Profit UND Kundenersparnis möglich ist
+    const minMarginByStrategy = { conservative: 0.35, balanced: 0.25, aggressive: 0.15 };
+    const minMargin = minMarginByStrategy[strategy] || 0.25;
+    // Mindestpreis für Ziel-Marge: cost / (1 - margin)
+    const minPriceForMargin = cost / (1 - minMargin);
+
+    // Wenn Ziel-Marge nur durch Preis ÜBER dem Einzelkauf erreichbar → Warnung + reduziertes Ziel
+    let actualMaxMargin = maxBundlePrice > cost ? ((maxBundlePrice - cost) / maxBundlePrice * 100) : 0;
+    let feasibilityWarning = '';
+
+    if (minPriceForMargin >= orig) {
+        // Ziel-Marge nicht erreichbar ohne Bundle zu verteuern
+        feasibilityWarning = `
+<div style="margin-bottom:12px;padding:10px 14px;border-radius:12px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.2);font-size:12px;color:#fbbf24">
+  <i class="fa-solid fa-triangle-exclamation" style="margin-right:6px"></i>
+  <strong>Hinweis:</strong> Die ${Math.round(minMargin*100)}%-Marge ist bei diesem Bundle nicht erreichbar ohne den Preis über den Einzelkauf (${bndFmt(orig)}) zu heben.<br>
+  <span style="opacity:.75;margin-top:4px;display:block">Maximal mögliche Marge: <strong style="color:#fbbf24">${actualMaxMargin.toFixed(1)}%</strong> bei ${bndFmt(maxBundlePrice)}. Die KI empfiehlt den besten Kompromiss.</span>
+</div>`;
+    }
+
+    if (actualMaxMargin <= 0) {
+        // EK bereits über dem Einzelkaufpreis — gar kein sinnvolles Bundle möglich
+        el.innerHTML = `<div style="color:#f87171;font-size:12px"><i class="fa-solid fa-triangle-exclamation" style="margin-right:6px"></i>
+            <strong>Bundle nicht profitabel möglich:</strong> Dein Einkaufspreis (${bndFmt(cost)}) ist bereits höher als oder gleich dem Einzelkaufpreis (${bndFmt(orig)}).<br>
+            <span style="opacity:.7;margin-top:4px;display:block">Jeder Bundle-Preis der für den Kunden attraktiv ist würde zu Verlust führen. Überprüfe deine Einkaufspreise.</span>
+        </div>`;
+        btns.forEach(b=>{if(b)b.disabled=false;});
+        return;
+    }
+
     const labels = {
-        conservative: 'konservativ — Ziel: mindestens 35% Marge auf den Bundle-Preis',
-        balanced:     'ausgewogen — Ziel: mindestens 25% Marge auf den Bundle-Preis',
-        aggressive:   'aggressiv — Ziel: mindestens 15% Marge auf den Bundle-Preis (maximale Kundenattraktivität)'
+        conservative: `konservativ — maximiere Marge, bleibe aber UNTER ${bndFmt(orig)} (Einzelkauf)`,
+        balanced:     `ausgewogen — balance Marge und Attraktivität, bleibe UNTER ${bndFmt(orig)}`,
+        aggressive:   `aggressiv — maximale Kundenersparnis, bleibe UNTER ${bndFmt(orig)}`
     };
 
     const prompt=`Du bist Pricing-Experte für WaveVapes, einen deutschen Disposable-Vape Online-Shop.
 
-WICHTIG: Der empfohlene Bundle-Preis MUSS IMMER deutlich über dem Einkaufspreis (${cost.toFixed(2)} €) liegen. Ein Bundle-Preis unter dem Einkaufspreis ist absolut inakzeptabel.
+ABSOLUTE REGEL: Der Bundle-Preis MUSS KLEINER sein als ${orig.toFixed(2)} € (Summe Einzelkauf). Sonst kauft kein Kunde das Bundle!
+ABSOLUTE REGEL: Der Bundle-Preis MUSS GRÖSSER sein als ${cost.toFixed(2)} € (Einkaufspreis). Sonst machst du Verlust!
+Erlaubter Preisbereich: ${cost.toFixed(2)} € bis maximal ${maxBundlePrice.toFixed(2)} €
 
 Bundle: "${name}"
 Strategie: ${labels[strategy]}
 
-Produkte im Bundle (mit ECHTEN Einkaufspreisen):
-${_bundleItems.map(it=>`- ${it.name} ×${it.qty}: Einzelpreis im Shop ${(it.price*it.qty).toFixed(2)} € | ECHTER Einkaufspreis ${(bndRealCost(it)*it.qty).toFixed(2)} €`).join('\n')}
+Produkte (mit echten Einkaufspreisen):
+${_bundleItems.map(it=>`- ${it.name} ×${it.qty}: Einzelpreis ${(it.price*it.qty).toFixed(2)} € | Einkaufspreis ${(bndRealCost(it)*it.qty).toFixed(2)} €`).join('\n')}
 
-Summe Einzelpreise im Shop: ${orig.toFixed(2)} €
-ECHTER Gesamteinkaufspreis: ${cost.toFixed(2)} €
-Mindest-Bundle-Preis (Break-Even): ${cost.toFixed(2)} €
+Summe Einzelpreise: ${orig.toFixed(2)} €
+Gesamteinkaufspreis: ${cost.toFixed(2)} €
+Maximale erreichbare Marge (bei ${maxBundlePrice.toFixed(2)} €): ${actualMaxMargin.toFixed(1)}%
 
-Berechne einen Bundle-Preis, der:
-1. IMMER über ${cost.toFixed(2)} € liegt (sonst Verlust!)
-2. Die gewählte Margenstrategie erfüllt
-3. Für den Kunden attraktiv ist (günstiger als Einzelkauf)
+Wähle einen Bundle-Preis im Bereich ${cost.toFixed(2)} € – ${maxBundlePrice.toFixed(2)} €, der die Strategie möglichst gut erfüllt.
+Falls die Ziel-Marge (${Math.round(minMargin*100)}%) nicht erreichbar ist, nimm den bestmöglichen Preis innerhalb des Bereichs.
 
-Antworte NUR auf Deutsch, direkt und konkret, in diesem exakten Format:
+Antworte NUR auf Deutsch, in diesem Format:
 💡 Empfohlener Bundle-Preis: XX,XX €
 🏷️ Rabatt: X,X% (Kundenersparnis: XX,XX €)
-💰 Dein Profit: XX,XX € | Marge: XX% (auf Basis ECHTER Einkaufspreise)
-📊 Begründung: [1-2 Sätze warum dieser Preis Sinn macht]
-🚀 Marketingtipp: [1 konkreter Tipp wie du das Bundle bewirbst]`;
+💰 Dein Profit: XX,XX € | Marge: XX%
+📊 Begründung: [1-2 Sätze]
+🚀 Marketingtipp: [1 konkreter Tipp]`;
 
     try {
+        if (feasibilityWarning) {
+            el.innerHTML = feasibilityWarning + '<i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>KI berechnet besten Kompromiss…';
+        }
         const res=await fetch('https://wavevapes.clever-selling-station.workers.dev',{
             method:'POST',
             headers:{'Content-Type':'application/json'},
@@ -11219,20 +11254,23 @@ Antworte NUR auf Deutsch, direkt und konkret, in diesem exakten Format:
         if(data.error) throw new Error(data.error.message||data.error);
         const text=(data.content||[]).map(c=>c.text||'').join('');
 
-        el.innerHTML='';
+        el.innerHTML = feasibilityWarning; // Warnung beibehalten, Spinner entfernen
 
-        // Preis extrahieren & Auto-Fill Button
+        // Preis extrahieren & Auto-Fill Button — nur wenn im gültigen Bereich
         const m=text.match(/Bundle-Preis[:\s]+(\d+)[,.](\d+)\s*€/i);
         if(m){
             const suggested=parseFloat(m[1]+'.'+m[2]);
+            // Sicherheitsprüfung: vorgeschlagener Preis muss im erlaubten Bereich sein
+            const safePrice = Math.min(Math.max(suggested, cost + 0.01), maxBundlePrice);
+            const priceWasAdjusted = Math.abs(safePrice - suggested) > 0.01;
             const applyBtn=document.createElement('button');
             applyBtn.className='bnd-btn bnd-btn-green';
             applyBtn.style.cssText='font-size:11px;padding:6px 14px;margin-bottom:12px';
-            applyBtn.innerHTML=`<i class="fa-solid fa-check"></i> Preis übernehmen: ${bndFmt(suggested)}`;
+            applyBtn.innerHTML=`<i class="fa-solid fa-check"></i> Preis übernehmen: ${bndFmt(safePrice)}${priceWasAdjusted?' (korrigiert)':''}`;
             applyBtn.onclick=()=>{
                 const inp=document.getElementById('bnd-f-price');
-                if(inp){inp.value=suggested.toFixed(2);bndUpdateSummary();}
-                showToast('💡 Bundle-Preis auf '+bndFmt(suggested)+' gesetzt');
+                if(inp){inp.value=safePrice.toFixed(2);bndUpdateSummary();}
+                showToast('💡 Bundle-Preis auf '+bndFmt(safePrice)+' gesetzt');
                 applyBtn.innerHTML='<i class="fa-solid fa-check"></i> Übernommen!';
                 applyBtn.disabled=true;
             };

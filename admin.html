@@ -7011,14 +7011,17 @@ async function resetAllStatistics() {
 }
 
 let bundleOrder = [];
+let combinedOrder = [];
 
 async function loadProductOrder() {
-    const [prodDoc, bndDoc] = await Promise.all([
+    const [prodDoc, bndDoc, cmbDoc] = await Promise.all([
         db.collection('settings').doc('product_order').get(),
-        db.collection('settings').doc('bundle_order').get()
+        db.collection('settings').doc('bundle_order').get(),
+        db.collection('settings').doc('combined_order').get()
     ]);
     productOrder = prodDoc.exists ? (prodDoc.data().order || []) : [];
     bundleOrder  = bndDoc.exists  ? (bndDoc.data().order  || []) : [];
+    combinedOrder = cmbDoc.exists ? (cmbDoc.data().order || []) : [];
     renderSrtCatBar();
     renderSortList();
 }
@@ -7136,24 +7139,23 @@ function renderSortList() {
         ? allProducts
         : allProducts.filter(p => p.category === srtCurrentCat);
 
-    // In "Alle": Produkte und Bundles zu einer einzigen Liste zusammenführen
     const sourceBundles = srtCurrentCat === 'Alle' ? _bundles : [];
 
-    // Jedes Item bekommt einen kombinierten Order-Index:
-    // Produkte aus productOrder, Bundles aus bundleOrder, neue Items ans Ende
+    // In "Alle": combinedOrder hält die gespeicherte interleaved Reihenfolge
+    // Falls noch kein combined_order existiert, Produkte zuerst dann Bundles
+    const orderRef = srtCurrentCat === 'Alle'
+        ? (combinedOrder.length ? combinedOrder : [...productOrder, ...bundleOrder])
+        : productOrder;
+
     const combined = [
         ...sourceProducts.map(p => ({ item: p, type: 'product' })),
         ...sourceBundles.map(b => ({ item: b, type: 'bundle' }))
     ].sort((a, b) => {
-        const orderA = a.type === 'bundle' ? bundleOrder.indexOf(a.item.id) : productOrder.indexOf(a.item.id);
-        const orderB = b.type === 'bundle' ? bundleOrder.indexOf(b.item.id) : productOrder.indexOf(b.item.id);
-        // Beide haben gespeicherte Position → nach Index
+        const orderA = orderRef.indexOf(a.item.id);
+        const orderB = orderRef.indexOf(b.item.id);
         if (orderA !== -1 && orderB !== -1) return orderA - orderB;
-        // Nur A hat Position → A kommt zuerst
         if (orderA !== -1) return -1;
-        // Nur B hat Position → B kommt zuerst
         if (orderB !== -1) return 1;
-        // Beide neu → alphabetisch
         return (a.item.name||'').localeCompare(b.item.name||'');
     });
 
@@ -7237,8 +7239,8 @@ function autoSortPriority(){
     items.sort((a,b)=>{
         const isBundle_A = a.dataset.type === 'bundle';
         const isBundle_B = b.dataset.type === 'bundle';
-        const pA = isBundle_A ? _bundles.find(b=>b.id===a.dataset.id) : allProducts.find(p=>p.id===a.dataset.id);
-        const pB = isBundle_B ? _bundles.find(b=>b.id===b.dataset.id) : allProducts.find(p=>p.id===b.dataset.id);
+        const pA = isBundle_A ? _bundles.find(bnd=>bnd.id===a.dataset.id) : allProducts.find(p=>p.id===a.dataset.id);
+        const pB = isBundle_B ? _bundles.find(bnd=>bnd.id===b.dataset.id) : allProducts.find(p=>p.id===b.dataset.id);
         const getPriority = (item, isBundle) => {
             if (isBundle) return item?.active === false ? 4 : 2;
             if (!item) return 3;
@@ -7251,82 +7253,74 @@ function autoSortPriority(){
         return (pA?.name||'').localeCompare(pB?.name||'');
     });
     items.forEach(item=>container.appendChild(item));
-    // Renumber ranks
     Array.from(container.children).filter(i=>i.dataset.id).forEach((el,i)=>{
         const r=el.querySelector('.srt-rank'); if(r) r.textContent=i+1;
     });
     showToast('✅ Auto-Priorität angewendet!','success');
 }
 async function saveProductOrder() {
-    const visibleItems = Array.from(document.querySelectorAll('#sort-list .sortable-item')).map(i => i.dataset.id);
-
-    // ── BUNDLES ───────────────────────────────────────────────────────
-    if (srtCurrentCat === 'Bundles') {
-        bundleOrder = visibleItems;
-        await db.collection('settings').doc('bundle_order').set({ order: visibleItems });
-        showToast('✅ Bundle-Sortierung gespeichert!', 'success');
-        await logAction('bundle_order_saved', '', { count: visibleItems.length });
-        return;
-    }
-
-    // ── PRODUCTS ──────────────────────────────────────────────────────
-    if (srtCurrentCat === 'Alle') {
-        // Split by type — bundles and products are mixed in the list but saved separately
+    const btn = document.querySelector('.srt-save-btn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Speichert…'; }
+    try {
         const allItems = Array.from(document.querySelectorAll('#sort-list .sortable-item'));
-        const productIds = allItems.filter(i => i.dataset.type !== 'bundle').map(i => i.dataset.id);
-        const bundleIds  = allItems.filter(i => i.dataset.type === 'bundle').map(i => i.dataset.id);
 
-        await Promise.all([
-            db.collection('settings').doc('product_order').set({ order: productIds }),
-            bundleIds.length ? db.collection('settings').doc('bundle_order').set({ order: bundleIds }) : Promise.resolve()
-        ]);
-        productOrder = productIds;
-        if (bundleIds.length) bundleOrder = bundleIds;
-    } else {
-        // Merge: keep existing order for other categories, replace order for current category
-        const otherIds = productOrder.filter(id => {
+        // ── BUNDLES-only Tab ─────────────────────────────────────────────
+        if (srtCurrentCat === 'Bundles') {
+            const bundleIds = allItems.map(i => i.dataset.id);
+            bundleOrder = bundleIds;
+            await db.collection('settings').doc('bundle_order').set({ order: bundleIds });
+            showToast('✅ Bundle-Sortierung gespeichert!', 'success');
+            await logAction('bundle_order_saved', '', { count: bundleIds.length });
+            return;
+        }
+
+        // ── Alle-Ansicht (Produkte + Bundles gemischt) ───────────────────
+        if (srtCurrentCat === 'Alle') {
+            const productIds = allItems.filter(i => i.dataset.type !== 'bundle').map(i => i.dataset.id);
+            const bundleIds  = allItems.filter(i => i.dataset.type === 'bundle').map(i => i.dataset.id);
+            // combined_order: hält die interleaved Reihenfolge für den Admin
+            // product_order:  nur Produkt-IDs in relativer Reihenfolge für den Shop
+            const combinedIds = allItems.map(i => i.dataset.id);
+            await Promise.all([
+                db.collection('settings').doc('product_order').set({ order: productIds }),
+                db.collection('settings').doc('bundle_order').set({ order: bundleIds }),
+                db.collection('settings').doc('combined_order').set({ order: combinedIds })
+            ]);
+            productOrder = productIds;
+            bundleOrder  = bundleIds;
+            showToast('✅ Sortierung gespeichert & live!', 'success');
+            await logAction('product_order_saved', '', { category: 'Alle', products: productIds.length, bundles: bundleIds.length });
+            return;
+        }
+
+        // ── Kategorie-Ansicht ────────────────────────────────────────────
+        const catIds   = allItems.map(i => i.dataset.id);
+        // Merge: Produkte dieser Kategorie an ihrer Stelle ersetzen, Rest behalten
+        const withoutCat = productOrder.filter(id => {
             const p = allProducts.find(p => p.id === id);
-            return p && p.category !== srtCurrentCat;
+            return !p || p.category !== srtCurrentCat;
         });
-        // Also include any products not yet in productOrder
-        const allOtherIds = allProducts
-            .filter(p => p.category !== srtCurrentCat)
-            .map(p => p.id)
-            .filter(id => !otherIds.includes(id));
-        const fullOtherIds = [...otherIds, ...allOtherIds];
-
-        // Build merged order: interleave keeping relative positions
-        // Strategy: insert the reordered category items back at their original slot positions
-        const merged = [...productOrder];
-        // Get original positions of current cat items
         const catSlots = productOrder
             .map((id, idx) => ({ id, idx }))
             .filter(({ id }) => allProducts.find(p => p.id === id && p.category === srtCurrentCat))
             .map(({ idx }) => idx);
-
-        // Remove old cat items from merged
-        const withoutCat = merged.filter(id => {
-            const p = allProducts.find(p => p.id === id);
-            return !p || p.category !== srtCurrentCat;
-        });
-
-        // Insert new order at original slots (or append if no previous position)
         let result = [...withoutCat];
-        const insertPositions = catSlots.slice().sort((a,b)=>a-b);
-        visibleItems.forEach((id, i) => {
-            const pos = insertPositions[i] !== undefined ? insertPositions[i] : result.length + i;
+        catIds.forEach((id, i) => {
+            const pos = catSlots[i] !== undefined ? catSlots[i] : result.length;
             result.splice(Math.min(pos, result.length), 0, id);
         });
-
-        // Append any new products not yet tracked
+        // Neue Produkte anhängen
         allProducts.forEach(p => { if (!result.includes(p.id)) result.push(p.id); });
-
-        await db.collection('settings').doc('product_order').set({ order: result }, { merge: true });
+        await db.collection('settings').doc('product_order').set({ order: result });
         productOrder = result;
-    }
+        showToast('✅ Sortierung gespeichert & live!', 'success');
+        await logAction('product_order_saved', '', { category: srtCurrentCat });
 
-    showToast('Sortierung gespeichert!', 'success');
-    await logAction('product_order_saved', '', { category: srtCurrentCat });
+    } catch(e) {
+        showToast('❌ Fehler beim Speichern: ' + e.message, 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> SORTIERUNG SPEICHERN & LIVE ÜBERNEHMEN'; }
+    }
 }
 
 function showToast(msg, type='success') {

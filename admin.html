@@ -7146,10 +7146,10 @@ function renderSortList() {
     // Update count
     const cnt = document.getElementById('srt-count');
     if (cnt) cnt.textContent = srtCurrentCat === 'Alle'
-        ? sorted.length + ' Produkte'
+        ? sorted.length + ' Produkte' + (_bundles.length ? ` + ${_bundles.length} Bundles` : '')
         : `${sorted.length} in „${srtCurrentCat}"`;
 
-    if (!sorted.length) {
+    if (!sorted.length && !(srtCurrentCat === 'Alle' && _bundles.length)) {
         container.innerHTML = `<div class="srt-list-empty"><i class="fa-solid fa-box-open"></i>Keine Produkte in dieser Kategorie.</div>`;
         return;
     }
@@ -7158,6 +7158,7 @@ function renderSortList() {
         const div = document.createElement('div');
         div.className = 'srt-item sortable-item';
         div.dataset.id = p.id;
+        div.dataset.type = 'product';
         div.style.animationDelay = Math.min(idx, 20) * 0.018 + 's';
 
         const stock = p.stock || 0;
@@ -7189,6 +7190,53 @@ function renderSortList() {
 
         container.appendChild(div);
     });
+
+    // ── BUNDLES in "Alle"-Ansicht anhängen ───────────────────────────
+    if (srtCurrentCat === 'Alle' && _bundles.length) {
+        const sep = document.createElement('div');
+        sep.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 4px;pointer-events:none;user-select:none';
+        sep.innerHTML = `<div style="flex:1;height:1px;background:rgba(167,139,250,.2)"></div>
+            <span style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#a78bfa;display:flex;align-items:center;gap:6px"><i class="fa-solid fa-boxes-stacked"></i> Bundles</span>
+            <div style="flex:1;height:1px;background:rgba(167,139,250,.2)"></div>`;
+        container.appendChild(sep);
+
+        const sortedBundles = [..._bundles].sort((a, b) => {
+            const iA = bundleOrder.indexOf(a.id), iB = bundleOrder.indexOf(b.id);
+            if (iA === -1 && iB === -1) return (a.name||'').localeCompare(b.name||'');
+            if (iA === -1) return 1; if (iB === -1) return -1;
+            return iA - iB;
+        });
+
+        sortedBundles.forEach((b, idx) => {
+            const div = document.createElement('div');
+            div.className = 'srt-item sortable-item';
+            div.dataset.id = b.id;
+            div.dataset.type = 'bundle';
+            div.style.animationDelay = Math.min(idx, 20) * 0.018 + 's';
+
+            const chips = [];
+            if (!b.active) chips.push(`<span class="srt-chip srt-chip-off">INAKTIV</span>`);
+            if (b.discountPct > 0) chips.push(`<span class="srt-chip srt-chip-new">-${Math.round(b.discountPct)}%</span>`);
+            if (b.soldCount > 0)   chips.push(`<span class="srt-chip srt-chip-cat">${b.soldCount}× verkauft</span>`);
+            chips.push(`<span class="srt-chip" style="background:rgba(167,139,250,.12);color:#a78bfa;border-color:rgba(167,139,250,.3)">Bundle</span>`);
+
+            const imgHTML = b.image
+                ? `<img src="${b.image}" class="srt-img" loading="lazy">`
+                : `<div class="srt-img-ph">📦</div>`;
+
+            div.innerHTML = `
+                <span class="srt-rank">${sorted.length + idx + 1}</span>
+                ${imgHTML}
+                <div class="srt-body">
+                    <div class="srt-name">${b.name || '—'}</div>
+                    <div class="srt-chips">${chips.join('')}</div>
+                </div>
+                <div class="srt-stock" style="color:var(--srt-purple)">${(b.bundlePrice||0).toFixed(2)} €</div>
+                <i class="fa-solid fa-grip-lines srt-handle"></i>`;
+
+            container.appendChild(div);
+        });
+    }
 
     if (sortableInstance) sortableInstance.destroy();
     sortableInstance = new Sortable(container, {
@@ -7222,9 +7270,17 @@ async function saveProductOrder() {
 
     // ── PRODUCTS ──────────────────────────────────────────────────────
     if (srtCurrentCat === 'Alle') {
-        // BUG FIX: Use set() without merge in 'Alle' mode — we own the entire order array
-        // and merge:true could leave stale keys if the document structure ever changes.
-        await db.collection('settings').doc('product_order').set({ order: visibleItems });
+        // Split by type — bundles and products are mixed in the list but saved separately
+        const allItems = Array.from(document.querySelectorAll('#sort-list .sortable-item'));
+        const productIds = allItems.filter(i => i.dataset.type !== 'bundle').map(i => i.dataset.id);
+        const bundleIds  = allItems.filter(i => i.dataset.type === 'bundle').map(i => i.dataset.id);
+
+        await Promise.all([
+            db.collection('settings').doc('product_order').set({ order: productIds }),
+            bundleIds.length ? db.collection('settings').doc('bundle_order').set({ order: bundleIds }) : Promise.resolve()
+        ]);
+        productOrder = productIds;
+        if (bundleIds.length) bundleOrder = bundleIds;
     } else {
         // Merge: keep existing order for other categories, replace order for current category
         const otherIds = productOrder.filter(id => {

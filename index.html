@@ -2503,20 +2503,22 @@
         }
         // ====================== E-MAIL SENDEN ======================
         async function sendOrderConfirmationEmail(orderData) {
-            // console.log("📧 Versuche E-Mail zu senden...");
             showToast("📧 E-Mail wird gesendet...", "success");
             try {
-                const orderItems = orderData.items.map(item => {
-                    const prod      = _productMap.get(item.id);
-                    const promoP    = prod ? getPromoPrice(prod) : null;
-                    const effPrice  = promoP !== null ? promoP : item.price;
-                    return {
-                        name: item.name,
-                        units: item.qty,
-                        price: (effPrice * item.qty).toFixed(2),
-                        image_url: prod && prod.image ? prod.image : "https://wavevapes.de/logo.png"
-                    };
-                });
+                const orderItems = orderData.items
+                    // M-NEW-04 FIX: Filter Mystery Vape and bundle meta-items from email
+                    .filter(item => item.id !== MYSTERY_ID && !item.isBundle)
+                    .map(item => {
+                        const prod     = _productMap.get(item.id);
+                        const promoP   = prod ? getPromoPrice(prod) : null;
+                        const effPrice = promoP !== null ? promoP : (item.price || 0);
+                        return {
+                            name:      item.name,
+                            units:     item.qty,
+                            price:     (effPrice * (item.qty || 1)).toFixed(2),
+                            image_url: prod && prod.image ? prod.image : "https://wavevapes.de/logo.png"
+                        };
+                    });
                 await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_ORDER_TEMPLATE, {
                     order_id: orderData.orderNumber,
                     email: orderData.userEmail,
@@ -3434,6 +3436,48 @@
             if (p.isNew) return 2;
             return 3;
         }
+        // Hilfsfunktion: Bundle-Karte HTML bauen (vermeidet doppelten Code im Render)
+        function _buildBundleCardHtml(b) {
+            const inCart  = cart.some(i => i.bundleId === b.id);
+            const orig    = (b.originalTotal || 0).toFixed(2).replace('.', ',');
+            const sale    = (b.bundlePrice   || 0).toFixed(2).replace('.', ',');
+            const save    = b.originalTotal > b.bundlePrice
+                ? ((b.originalTotal - b.bundlePrice)).toFixed(2).replace('.', ',') : null;
+            const tags    = (b.items || []).slice(0, 3).map(it =>
+                `<span class="bundle-tag">${it.name.length > 20 ? it.name.slice(0, 18) + '…' : it.name} ×${it.qty}</span>`
+            ).join('');
+            const moreTags = b.items && b.items.length > 3
+                ? `<span class="bundle-tag">+${b.items.length - 3} mehr</span>` : '';
+            const imgHTML = b.image
+                ? `<div class="img-wrap loaded" style="border-radius:14px;overflow:hidden;margin-bottom:10px;background:#111">
+                       <img src="${b.image}" alt="${b.name}" style="width:100%;height:100%;object-fit:cover" loading="lazy"
+                            onload="this.classList.add('img-loaded');this.closest('.img-wrap').classList.add('loaded')"
+                            onerror="this.closest('.img-wrap').innerHTML='<div style=\'display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:48px\'>🎁</div>'">
+                   </div>`
+                : `<div class="img-wrap loaded" style="border-radius:14px;background:linear-gradient(135deg,rgba(167,139,250,.12),rgba(244,114,182,.08));display:flex;align-items:center;justify-content:center;margin-bottom:10px;font-size:56px">🎁</div>`;
+            return `
+            <div class="bundle-card" onclick="showBundleDetail('${b.id}')">
+                <div class="bundle-card-bar"></div>
+                <div class="p-5 flex flex-col h-full gap-3">
+                    <span class="bundle-badge">🎁 Bundle</span>
+                    <div style="margin-top:22px">${imgHTML}</div>
+                    <div>
+                        <h4 class="font-bold text-base leading-tight text-white mb-1">${b.name}</h4>
+                        ${b.description ? `<p style="font-size:11px;color:rgba(255,255,255,.4)">${b.description}</p>` : ''}
+                    </div>
+                    <div style="display:flex;flex-wrap:wrap;gap:5px">${tags}${moreTags}</div>
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:auto">
+                        ${b.originalTotal > b.bundlePrice ? `<span class="bundle-orig-price">${orig} €</span>` : ''}
+                        <span class="bundle-sale-price">${sale} €</span>
+                        ${save ? `<span class="bundle-save-badge">−${save} € sparen</span>` : ''}
+                    </div>
+                    <button class="bundle-add-btn ${inCart ? 'in-cart' : ''}" onclick="event.stopImmediatePropagation();showBundleDetail('${b.id}')">
+                        ${inCart ? '✅ Im Warenkorb' : '🔍 Details & kaufen'}
+                    </button>
+                </div>
+            </div>`;
+        }
+
         function renderProducts() {
             const container = document.getElementById("products-grid");
             const searchTerm = document.getElementById("search-input").value.toLowerCase().trim();
@@ -3466,50 +3510,7 @@
                 if (currentCategoryFilter === 'Alle') return true;
                 return b.category === currentCategoryFilter;
             });
-            let bundleHtml = '';
-            if (activeBundles.length > 0) {
-                activeBundles.forEach(b => {
-                    const inCart = cart.some(i => i.bundleId === b.id);
-                    const orig = (b.originalTotal || 0).toFixed(2).replace('.', ',');
-                    const sale = (b.bundlePrice || 0).toFixed(2).replace('.', ',');
-                    const save = b.originalTotal > b.bundlePrice
-                        ? ((b.originalTotal - b.bundlePrice)).toFixed(2).replace('.', ',')
-                        : null;
-                    const tags = (b.items || []).slice(0, 3).map(it =>
-                        `<span class="bundle-tag">${it.name.length > 20 ? it.name.slice(0, 18) + '…' : it.name} ×${it.qty}</span>`
-                    ).join('');
-                    const moreTags = b.items && b.items.length > 3
-                        ? `<span class="bundle-tag">+${b.items.length - 3} mehr</span>` : '';
-                    const imgHTML = b.image
-                        ? `<div class="img-wrap loaded" style="border-radius:14px;overflow:hidden;margin-bottom:10px;background:#111">
-                               <img src="${b.image}" alt="${b.name}" style="width:100%;height:100%;object-fit:cover" loading="lazy"
-                                    onload="this.classList.add('img-loaded');this.closest('.img-wrap').classList.add('loaded')"
-                                    onerror="this.closest('.img-wrap').innerHTML='<div style=\'display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:48px\'>🎁</div>'">
-                           </div>`
-                        : `<div class="img-wrap loaded" style="border-radius:14px;background:linear-gradient(135deg,rgba(167,139,250,.12),rgba(244,114,182,.08));display:flex;align-items:center;justify-content:center;margin-bottom:10px;font-size:56px">🎁</div>`;
-                    bundleHtml += `
-                    <div class="bundle-card" onclick="showBundleDetail('${b.id}')">
-                        <div class="bundle-card-bar"></div>
-                        <div class="p-5 flex flex-col h-full gap-3">
-                            <span class="bundle-badge">🎁 Bundle</span>
-                            <div style="margin-top:22px">${imgHTML}</div>
-                            <div>
-                                <h4 class="font-bold text-base leading-tight text-white mb-1">${b.name}</h4>
-                                ${b.description ? `<p style="font-size:11px;color:rgba(255,255,255,.4)">${b.description}</p>` : ''}
-                            </div>
-                            <div style="display:flex;flex-wrap:wrap;gap:5px">${tags}${moreTags}</div>
-                            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:auto">
-                                ${b.originalTotal > b.bundlePrice ? `<span class="bundle-orig-price">${orig} €</span>` : ''}
-                                <span class="bundle-sale-price">${sale} €</span>
-                                ${save ? `<span class="bundle-save-badge">−${save} € sparen</span>` : ''}
-                            </div>
-                            <button class="bundle-add-btn ${inCart ? 'in-cart' : ''}" onclick="event.stopImmediatePropagation();showBundleDetail('${b.id}')">
-                                ${inCart ? '✅ Im Warenkorb' : '🔍 Details & kaufen'}
-                            </button>
-                        </div>
-                    </div>`;
-                });
-            }
+            let bundleHtml = activeBundles.map(b => _buildBundleCardHtml(b)).join('');
 
             let html = "";
             // E-07 FIX: Dynamic desktop detection instead of hardcoded true
@@ -3609,10 +3610,43 @@
                 container.innerHTML = `<p class="col-span-full text-center py-16 text-gray-400">Keine Produkte gefunden.</p>`;
                 return;
             }
-            // Bundles zuerst, dann reguläre Produkte
-            container.innerHTML = bundleHtml + html;
+
+            // Bundles nur bei Kategorie "Alle" + Standard-Sortierung + kein Favoriten-Filter
+            // ganz oben anzeigen. Bei Preis-Sortierung oder Favoriten-Filter normal einsortieren.
+            const bundlesFirst = currentCategoryFilter === 'Alle'
+                && currentPriceSort === 'default'
+                && !showWishlistOnly;
+
+            if (bundlesFirst) {
+                // Standard: Bundles an erster Stelle
+                container.innerHTML = bundleHtml + html;
+
+            } else if (showWishlistOnly) {
+                // Favoriten-Modus: Bundles nur zeigen wenn im Warenkorb (als "favorisiert" gewertet)
+                const wishBundleHtml = activeBundles
+                    .filter(b => cart.some(i => i.bundleId === b.id))
+                    .map(b => _buildBundleCardHtml(b)).join('');
+                container.innerHTML = wishBundleHtml + html;
+
+            } else {
+                // Preis-Sortierung: Bundles nach bundlePrice in die Produktliste einsortieren.
+                // Alle Karten ins DOM, dann per DOM-Sort nach Preis umsortieren.
+                container.innerHTML = bundleHtml + html;
+                const cards = Array.from(container.children);
+                cards.sort((a, b) => {
+                    const getPrice = el => parseFloat((
+                        el.querySelector('.bundle-sale-price')?.textContent ||
+                        el.querySelector('.sale-price')?.textContent ||
+                        el.querySelector('.promo-sale-price')?.textContent || '0'
+                    ).replace(',', '.')) || 0;
+                    return currentPriceSort === 'price-asc'
+                        ? getPrice(a) - getPrice(b)
+                        : getPrice(b) - getPrice(a);
+                });
+                cards.forEach(card => container.appendChild(card));
+            }
         }
-        function updateNicotine(id, value) {
+                function updateNicotine(id, value) {
             pendingNicotine[id] = value;
             let item = cart.find(i => i.id === id);
             if (item) item.nicotine = value;
@@ -3977,7 +4011,7 @@
                                 ${item.name}
                             </div>
                             <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">${itemList}${moreItems}</div>
-                            <div class="text-xs text-gray-400 mt-1">${item.qty} × ${item.price.toFixed(2).replace('.', ',')} €</div>
+                            <div class="text-xs text-gray-400 mt-1">${item.qty} × ${(item.price||0).toFixed(2).replace('.', ',')} €</div>
                         </div>
                         <div class="flex items-center gap-4" style="flex-shrink:0;margin-left:12px">
                             <div class="font-bold text-xl whitespace-nowrap" style="color:#fbbf24">${bundleTotal} €</div>
@@ -4521,7 +4555,7 @@
                                 </div>
                                 <div class="text-right">
                                     <p class="text-xs text-gray-400">Gesamt</p>
-                                    <p class="text-xl font-bold">${order.total.toFixed(2).replace('.', ',')} €</p>
+                                    <p class="text-xl font-bold">${(order.total||0).toFixed(2).replace('.', ',')} €</p>
                                 </div>
                             </div>
                             ${timelineHTML}

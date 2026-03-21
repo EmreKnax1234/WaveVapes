@@ -2411,23 +2411,31 @@
                     let slotsHTML = '';
                     for (let q = 0; q < (it.qty || 1); q++) {
                         const sid = slotIdx++;
-                        const flavorOpts = elfliqProducts.map(p =>
-                            `<option value="${p.name}" ${p.name === it.name ? 'selected' : ''}>${p.name.replace(/^Elfliq\s*/i, '')}</option>`
+                        // Standardsorte: das ursprüngliche Item – Fallback auf ersten Elfliq
+                        const defaultProd  = elfliqProducts.find(p => p.name === it.name) || elfliqProducts[0];
+                        const defaultImg   = defaultProd?.image || '';
+                        const flavorOpts   = elfliqProducts.map(p =>
+                            `<option value="${p.name}" data-img="${p.image || ''}" ${p.name === it.name ? 'selected' : ''}>${p.name.replace(/^Elfliq\s*/i, '')}</option>`
                         ).join('');
                         slotsHTML += `
-                        <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(103,232,249,.18);border-radius:14px">
-                            <div style="width:30px;height:30px;background:rgba(103,232,249,.12);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0">🧪</div>
+                        <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(103,232,249,.18);border-radius:14px">
+                            <!-- Produktbild – wird beim Sortenwechsel aktualisiert -->
+                            <div id="bnd-img-${sid}" style="width:52px;height:52px;border-radius:10px;overflow:hidden;flex-shrink:0;background:rgba(103,232,249,.08);display:flex;align-items:center;justify-content:center">
+                                ${defaultImg
+                                    ? `<img src="${defaultImg}" style="width:100%;height:100%;object-fit:cover" loading="lazy">`
+                                    : `<span style="font-size:22px">🧪</span>`}
+                            </div>
                             <div style="flex:1;min-width:0">
                                 <div style="font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(103,232,249,.5);margin-bottom:4px">Slot ${sid + 1}</div>
                                 <select id="bnd-flavor-${sid}" data-slot="${sid}"
                                     style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(103,232,249,.3);border-radius:8px;padding:5px 28px 5px 8px;color:#fff;font-size:12px;font-weight:600;outline:none;cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%228%22 height=%228%22 viewBox=%220 0 8 8%22><path fill=%22%2367e8f9%22 d=%22M0 2l4 4 4-4z%22/></svg>');background-repeat:no-repeat;background-position:right 8px center"
-                                    onchange="bndUpdateFlavorPreview('${b.id}')">
+                                    onchange="bndOnFlavorChange(this, '${b.id}', ${sid})">
                                     ${flavorOpts}
                                 </select>
                                 ${hasNic ? `<select id="bnd-nic-${sid}" data-slot="${sid}"
                                     style="margin-top:5px;background:rgba(255,255,255,.06);border:1px solid rgba(167,139,250,.3);border-radius:8px;padding:4px 8px;color:#a78bfa;font-size:11px;font-weight:700;outline:none;cursor:pointer;-webkit-appearance:none;appearance:none"
                                     onchange="bndUpdateFlavorPreview('${b.id}')">
-                                    ${NICOTINE_OPTIONS.map(o => `<option value="${o}">${o}</option>`).join('')}
+                                    ${NICOTINE_OPTIONS.map(o => `<option value="${o}" ${o === '20 mg' ? 'selected' : ''}>${o}</option>`).join('')}
                                 </select>` : ''}
                             </div>
                         </div>`;
@@ -2513,6 +2521,20 @@
             document.body.classList.remove('modal-open');
             window.scrollTo(0, _modalScrollY || 0);
             renderProducts();
+        }
+
+        // Wird aufgerufen wenn der Nutzer eine andere Sorte wählt – Bild + Vorschau aktualisieren
+        function bndOnFlavorChange(selectEl, bundleId, sid) {
+            // Bild des gewählten Produkts laden
+            const selectedOpt = selectEl.options[selectEl.selectedIndex];
+            const imgUrl      = selectedOpt ? selectedOpt.dataset.img : '';
+            const imgWrap     = document.getElementById('bnd-img-' + sid);
+            if (imgWrap) {
+                imgWrap.innerHTML = imgUrl
+                    ? `<img src="${imgUrl}" style="width:100%;height:100%;object-fit:cover" loading="lazy">`
+                    : `<span style="font-size:22px">🧪</span>`;
+            }
+            bndUpdateFlavorPreview(bundleId);
         }
 
         // Aktualisiert die Vorschau der gewählten Sorten im Bundle-Modal

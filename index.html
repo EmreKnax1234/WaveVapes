@@ -143,7 +143,7 @@
     <!-- ═══════════════════════════════════════════
          SCHEMA.ORG – LocalBusiness / Store
     ═══════════════════════════════════════════ -->
-    <script type="application/ld+json">
+    <script type="application/ld+json" id="ld-json-store">
     {
       "@context": "https://schema.org",
       "@type": "Store",
@@ -173,8 +173,8 @@
       "paymentAccepted": "Bank transfer",
       "aggregateRating": {
         "@type": "AggregateRating",
-        "ratingValue": "4.92",
-        "reviewCount": "1347",
+        "ratingValue": "0",
+        "reviewCount": "0",
         "bestRating": "5",
         "worstRating": "1"
       },
@@ -1689,13 +1689,13 @@
 
         <!-- REVIEWS -->
         <section class="mt-24 border-t border-white/10 pt-16" aria-label="Kundenbewertungen WaveVapes" itemscope itemtype="https://schema.org/AggregateRating">
-            <meta itemprop="ratingValue" content="4.92">
-            <meta itemprop="reviewCount" content="1347">
+            <meta itemprop="ratingValue" id="meta-ratingValue" content="0">
+            <meta itemprop="reviewCount" id="meta-reviewCount" content="0">
             <meta itemprop="bestRating" content="5">
             <div class="text-center mb-12">
                 <div class="inline-flex items-center gap-3 bg-emerald-500/10 text-emerald-400 px-6 py-2 rounded-3xl text-sm font-medium mb-4">
                     <i class="fa-solid fa-star" aria-hidden="true"></i>
-                    <span>4,92 von 5 Sternen • 1.347 Bewertungen</span>
+                    <span id="rating-display-text">Wird geladen…</span>
                 </div>
                 <h2 class="text-5xl sm:text-6xl font-bold tracking-tighter neon-text">Was unsere Kunden sagen</h2>
                 <p class="text-xl text-cyan-200 mt-3 max-w-md mx-auto">Echte Erfahrungen – 100 % von glücklichen Vapern</p>
@@ -3149,7 +3149,10 @@
 
         function checkAndAutoRedeemLoyalty() {
             if (_loyaltyPromptShown || appliedDiscount) return;
-            for (let r of REWARDS) {
+            // BUG 10 FIX: Iterate in reverse so the highest available reward
+            // is offered first. REWARDS is sorted ascending (300→5000 pts),
+            // so iterating forward stopped at the first (cheapest) match.
+            for (let r of [...REWARDS].reverse()) {
                 if (loyaltyPoints >= r.points) {
                     const alreadyRedeemed = _redeemedLoyaltyCodes.includes(r.code);
                     if (!alreadyRedeemed) {
@@ -3172,7 +3175,9 @@
         function redeemLoyaltyCode(code) {
             document.getElementById("discount-input").value = code;
             applyDiscountCode();
-            localStorage.setItem(`redeemed_${code}`, "true");
+            // BUG 11 FIX: Removed dead localStorage.setItem() — after the migration
+            // to Firestore, _redeemedLoyaltyCodes is the single source of truth.
+            // The localStorage entry was never read anywhere and is now obsolete.
             dismissLoyaltyPrompt();
         }
         function dismissLoyaltyPrompt() {
@@ -3198,7 +3203,7 @@
             const zip = document.getElementById("addr-zip").value.trim();
             const city = document.getElementById("addr-city").value.trim();
             if (!street || !zip || !city) { showToast("❌ Bitte alle Felder ausfüllen!", "error"); return; }
-            if (!/^\d{4,6}$/.test(zip)) { showToast("❌ Ungültige PLZ (4–6 Ziffern)", "error"); return; }
+            if (!/^\d{5}$/.test(zip)) { showToast("❌ Ungültige PLZ (5 Ziffern erforderlich)", "error"); return; }
             userAddress = {street, zip, city};
             localStorage.setItem("wavevapes_address", JSON.stringify(userAddress));
             closeAddressModal();
@@ -4330,7 +4335,7 @@
                  <span class="text-amber-300 text-sm">werden gutgeschrieben, sobald die Bestellung auf „Wird bearbeitet" steht</span>`;
             document.getElementById("bank-payment-info").innerHTML = `
                 <div class="space-y-3">
-                    <div><strong>Bank:</strong> ${BANK_NAME}</div>
+                    <div><strong>Bank:</strong> ${window._BANK_NAME || BANK_NAME}</div>
                     <div><strong>Empfänger:</strong> ${window._BANK_OWNER || BANK_OWNER}</div>
                     <div><strong>IBAN:</strong> <span class="font-mono break-all">${window._BANK_IBAN || BANK_IBAN}</span></div>
                     ${(window._BANK_BIC || BANK_BIC) ? `<div><strong>BIC:</strong> ${window._BANK_BIC || BANK_BIC}</div>` : ''}
@@ -4586,9 +4591,11 @@
             const bankOwner = window._BANK_OWNER || BANK_OWNER;
             const bankIban  = window._BANK_IBAN  || BANK_IBAN;
             const bankBic   = window._BANK_BIC   || BANK_BIC;
+            // BUG 8 FIX: bankName was the only field not using the window._BANK_* override system
+            const bankName  = window._BANK_NAME  || BANK_NAME;
             const infoHTML = `
                 <div class="space-y-4 text-sm">
-                    <div><strong>Bank:</strong> ${BANK_NAME}</div>
+                    <div><strong>Bank:</strong> ${bankName}</div>
                     <div><strong>Empfänger:</strong> ${bankOwner}</div>
                     <div><strong>IBAN:</strong> <span class="font-mono break-all">${bankIban}</span></div>
                     ${bankBic ? `<div><strong>BIC:</strong> ${bankBic}</div>` : ''}
@@ -5908,8 +5915,48 @@
             renderRecentlyViewed();
             loadLeaderboard();
             subscribeGlobalListeners(); // Opt 4: start Firestore listeners after app is ready
+            updateAggregateRatingSchema(); // BUG 12 FIX: keep schema.org rating in sync with Firestore
         }
 
+
+        // ====================== SCHEMA.ORG LIVE RATING UPDATE ======================
+        // BUG 12 FIX: Replaces the hardcoded AggregateRating values (ratingValue: "4.92",
+        // reviewCount: "1347") with live data from Firestore to avoid a Google Manual
+        // Action penalty for mismatched structured data.
+        async function updateAggregateRatingSchema() {
+            try {
+                const snap = await db.collection("reviews").where("approved", "==", true).get();
+                const count = snap.size;
+                if (count === 0) return;
+                const avg = (snap.docs.reduce((s, d) => s + (d.data().rating || 0), 0) / count);
+                const avgStr = avg.toFixed(2);
+                const countStr = String(count);
+                // Update JSON-LD
+                const ldScript = document.getElementById("ld-json-store");
+                if (ldScript) {
+                    try {
+                        const json = JSON.parse(ldScript.textContent);
+                        if (json.aggregateRating) {
+                            json.aggregateRating.ratingValue = avgStr;
+                            json.aggregateRating.reviewCount = countStr;
+                            ldScript.textContent = JSON.stringify(json, null, 2);
+                        }
+                    } catch(e) { /* malformed JSON-LD — skip */ }
+                }
+                // Update itemprop meta tags
+                const metaRating = document.getElementById("meta-ratingValue");
+                const metaCount  = document.getElementById("meta-reviewCount");
+                if (metaRating) metaRating.setAttribute("content", avgStr);
+                if (metaCount)  metaCount.setAttribute("content", countStr);
+                // Update visible display text
+                const displayEl = document.getElementById("rating-display-text");
+                if (displayEl) {
+                    const avgDisplay = avg.toFixed(2).replace(".", ",");
+                    const countDisplay = count.toLocaleString("de-DE");
+                    displayEl.textContent = `${avgDisplay} von 5 Sternen • ${countDisplay} Bewertung${count !== 1 ? "en" : ""}`;
+                }
+            } catch(e) { console.warn("updateAggregateRatingSchema:", e); }
+        }
 
         // ====================== AGB + WIDERRUFSBELEHRUNG ======================
         function showAgbModal() {

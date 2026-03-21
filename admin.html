@@ -7005,10 +7005,13 @@ async function handleStockOnStatusChange(orderId, newStatus) {
     if (newStatus === 'Wird bearbeitet' && !wasAlreadySold) {
         const batch = db.batch();
         for (const item of order.items) {
+            // FIX: Skip Mystery Vape and Bundle items — bundles have no product doc in
+            // the products collection (their ID starts with 'bundle_' or isBundle=true).
             if (item.id === MYSTERY_ID) continue;
+            if (item.isBundle || String(item.id).startsWith('bundle_')) continue;
             const update = order.stockReserved
-                ? { sold: firebase.firestore.FieldValue.increment(item.qty) }          // stock already reserved at placement
-                : { stock: firebase.firestore.FieldValue.increment(-item.qty),         // legacy: decrement stock too
+                ? { sold: firebase.firestore.FieldValue.increment(item.qty) }
+                : { stock: firebase.firestore.FieldValue.increment(-item.qty),
                     sold:  firebase.firestore.FieldValue.increment(item.qty) };
             batch.update(db.collection('products').doc(String(item.id)), update);
         }
@@ -7017,21 +7020,19 @@ async function handleStockOnStatusChange(orderId, newStatus) {
     }
 
     // ── STORNIERT ────────────────────────────────────────────────────────────
-    // Bug Fix #1: guard against oldStatus already being 'Storniert'
-    // (caught by the idempotency check above, but be explicit for clarity).
-    // stockReserved=true  → stock was taken at placement, always give it back.
-    // legacy orders       → only restore if stock was ever decremented.
     const wasProcessed = ['Wird bearbeitet', 'Versendet', 'Zugestellt'].includes(oldStatus);
     const shouldRestoreStock = newStatus === 'Storniert'
-        && oldStatus !== 'Storniert'          // Bug Fix #1: never restore twice
+        && oldStatus !== 'Storniert'
         && (order.stockReserved || wasProcessed);
     if (shouldRestoreStock) {
         const batch = db.batch();
         for (const item of order.items) {
+            // FIX: Skip Mystery Vape and Bundle items — same reason as above
             if (item.id === MYSTERY_ID) continue;
+            if (item.isBundle || String(item.id).startsWith('bundle_')) continue;
             const update = (order.stockReserved && !wasProcessed)
-                ? { stock: firebase.firestore.FieldValue.increment(item.qty) }         // reserved but not yet processed — only restore stock
-                : { stock: firebase.firestore.FieldValue.increment(item.qty),          // processed or legacy — restore stock + undo sold
+                ? { stock: firebase.firestore.FieldValue.increment(item.qty) }
+                : { stock: firebase.firestore.FieldValue.increment(item.qty),
                     sold:  firebase.firestore.FieldValue.increment(-item.qty) };
             batch.update(db.collection('products').doc(String(item.id)), update);
         }

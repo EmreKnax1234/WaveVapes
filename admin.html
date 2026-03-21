@@ -6094,19 +6094,27 @@ async function euDrawerDanger(action){
         const { ipsBanned } = await banUserWithIPs(euCurrentUid, u?.email || euCurrentUid, 'Account gelöscht');
         await db.collection('users').doc(euCurrentUid).delete();
         const orders = await db.collection('orders').where('userId','==',euCurrentUid).get();
-        // Reverse stats for processed orders before deleting them
+        // Bug A Fix: restore stock for ALL orders that ever touched inventory:
+        // 1) stockReserved=true orders (stock taken at placement, any status)
+        // 2) legacy processed orders without the stockReserved flag
         const statsBatch = db.batch();
         let statsReversed = 0;
         orders.forEach(doc => {
             const o = doc.data();
             const wasProcessed = ['Wird bearbeitet','Versendet','Zugestellt'].includes(o.status);
-            if (wasProcessed && o.items?.length) {
+            const isCancelled  = o.status === 'Storniert';
+            // stockReserved + not yet cancelled → stock was taken, give it back
+            // legacy processed + not cancelled → stock was decremented, give it back
+            const shouldRestoreStock = !isCancelled && (o.stockReserved || wasProcessed);
+            if (shouldRestoreStock && o.items?.length) {
                 o.items.forEach(item => {
                     if (item.id == MYSTERY_ID) return;
-                    statsBatch.update(db.collection('products').doc(String(item.id)), {
-                        stock: firebase.firestore.FieldValue.increment(item.qty),
-                        sold:  firebase.firestore.FieldValue.increment(-item.qty)
-                    });
+                    const wasAlreadySold = wasProcessed;
+                    const update = wasAlreadySold
+                        ? { stock: firebase.firestore.FieldValue.increment(item.qty),
+                           sold:   firebase.firestore.FieldValue.increment(-item.qty) }
+                        : { stock: firebase.firestore.FieldValue.increment(item.qty) };
+                    statsBatch.update(db.collection('products').doc(String(item.id)), update);
                     statsReversed++;
                 });
             }
@@ -6126,18 +6134,22 @@ async function deleteUser(uid, email) {
     try {
         await db.collection('users').doc(uid).delete();
         const orders = await db.collection('orders').where('userId','==',uid).get();
-        // Reverse stats for processed orders
+        // Bug A Fix: same logic as euDrawerDanger — restore stock for stockReserved
+        // AND legacy processed orders, but skip already-cancelled orders.
         const statsBatch = db.batch();
         orders.forEach(doc => {
             const o = doc.data();
             const wasProcessed = ['Wird bearbeitet','Versendet','Zugestellt'].includes(o.status);
-            if (wasProcessed && o.items?.length) {
+            const isCancelled  = o.status === 'Storniert';
+            const shouldRestoreStock = !isCancelled && (o.stockReserved || wasProcessed);
+            if (shouldRestoreStock && o.items?.length) {
                 o.items.forEach(item => {
                     if (item.id == MYSTERY_ID) return;
-                    statsBatch.update(db.collection('products').doc(String(item.id)), {
-                        stock: firebase.firestore.FieldValue.increment(item.qty),
-                        sold:  firebase.firestore.FieldValue.increment(-item.qty)
-                    });
+                    const update = wasProcessed
+                        ? { stock: firebase.firestore.FieldValue.increment(item.qty),
+                           sold:   firebase.firestore.FieldValue.increment(-item.qty) }
+                        : { stock: firebase.firestore.FieldValue.increment(item.qty) };
+                    statsBatch.update(db.collection('products').doc(String(item.id)), update);
                 });
             }
         });
@@ -6254,7 +6266,7 @@ async function loadAnalytics() {
         dailyRevenue[day]=(dailyRevenue[day]||0)+o.total;
         dailyOrdersCount[day]=(dailyOrdersCount[day]||0)+1;
         totalRevenue+=o.total; totalOrders++;
-        o.items.forEach(item=>productMap.set(item.name,(productMap.get(item.name)||0)+item.qty));
+        (o.items||[]).forEach(item=>productMap.set(item.name,(productMap.get(item.name)||0)+item.qty));
         if(o.userEmail) userMap.set(o.userEmail,(userMap.get(o.userEmail)||0)+1);
     });
 
@@ -6323,11 +6335,15 @@ async function loadAnalytics() {
     };
     const statusEl = document.getElementById('an-status-list');
     const totalStatusEl = document.getElementById('an-status-total-badge');
-    if(totalStatusEl) totalStatusEl.textContent = totalOrders+' gesamt';
-    if(statusEl && totalOrders>0) {
+    // Bug E Fix: totalOrders excludes cancelled orders, but statusMap includes ALL statuses.
+    // Using totalOrders as the denominator inflates the % for cancelled orders and means
+    // percentages never sum to 100. Use the sum of all statusMap values instead.
+    const totalAllOrders = Array.from(statusMap.values()).reduce((s,v)=>s+v, 0);
+    if(totalStatusEl) totalStatusEl.textContent = totalAllOrders+' gesamt';
+    if(statusEl && totalAllOrders>0) {
         statusEl.innerHTML = Object.entries(STATUS_CFG).map(([label,cfg])=>{
             const cnt = statusMap.get(label)||0;
-            const pct = Math.round(cnt/totalOrders*100);
+            const pct = Math.round(cnt/totalAllOrders*100);
             return `<div class="an-status-row">
                 <div class="an-status-dot" style="background:${cfg.dot}"></div>
                 <div class="an-status-label">${label}</div>

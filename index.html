@@ -2274,7 +2274,9 @@
             "LOYAL25": { type: "fixed", value: 25, points: 2500 },
             "LOYAL50": { type: "fixed", value: 50, points: 5000 }
         };
-        const MYSTERY_ID = 999;
+        // E-03 FIX: Define as string so strict equality (===) works consistently
+        // Firestore document IDs and item.id are always strings
+        const MYSTERY_ID = '999';
 
         const NICOTINE_OPTIONS = ["10 mg", "20 mg"];
         const BANK_OWNER = "Jakob Hellrung";
@@ -2309,7 +2311,13 @@
             const bundle = allBundles.find(b => b.id === bundleId);
             if (!bundle) return;
             const existing = cart.find(i => i.bundleId === bundleId);
+            // M-01 FIX: Cap bundle quantity at 10 to prevent unlimited stacking
+            const BUNDLE_MAX_QTY = 10;
             if (existing) {
+                if (existing.qty >= BUNDLE_MAX_QTY) {
+                    showToast(`⚠️ Maximal ${BUNDLE_MAX_QTY}× pro Bundle`, "error");
+                    return;
+                }
                 existing.qty = (existing.qty || 1) + 1;
             } else {
                 cart.push({
@@ -2442,7 +2450,10 @@
         let pendingNicotine = {};
         let sessionId = localStorage.getItem("wavevapes_sessionId");
         if (!sessionId) {
-            sessionId = "guest_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+            // E-02 FIX: Use crypto.getRandomValues instead of Math.random for unpredictable session IDs
+            const arr = new Uint8Array(12);
+            crypto.getRandomValues(arr);
+            sessionId = "guest_" + Date.now() + "_" + Array.from(arr).map(b => b.toString(36)).join('').slice(0, 10);
             localStorage.setItem("wavevapes_sessionId", sessionId);
         }
         // ====================== FIREBASE ======================
@@ -2791,9 +2802,21 @@
                         }
                     }
                     renderRecentlyViewed();
-                    // Bug 4 fix: load wishlist from Firestore for cross-device sync
-                    if (Array.isArray(data.wishlist) && data.wishlist.length > 0) {
-                        wishlist = data.wishlist;
+                    // K-05 FIX: Load address from Firestore (source of truth for cross-device)
+                    if (data.address && data.address.street) {
+                        userAddress = data.address;
+                        localStorage.setItem("wavevapes_address", JSON.stringify(userAddress));
+                    }
+                    // M-05 FIX: Merge guest wishlist with Firestore data instead of overwriting
+                    // Previously the local guest wishlist was silently discarded on login
+                    if (Array.isArray(data.wishlist)) {
+                        const guestWishlist = JSON.parse(localStorage.getItem("wavevapes_wishlist") || "[]");
+                        const merged = [...new Set([...guestWishlist, ...data.wishlist])];
+                        if (merged.length !== data.wishlist.length) {
+                            // Persist merged wishlist back to Firestore
+                            db.collection("users").doc(user.uid).update({ wishlist: merged }).catch(() => {});
+                        }
+                        wishlist = merged;
                         localStorage.setItem("wavevapes_wishlist", JSON.stringify(wishlist));
                         updateWishlistBadge();
                         renderProducts();
@@ -3220,13 +3243,18 @@
             if (!/^\d{5}$/.test(zip)) { showToast("❌ Ungültige PLZ (5 Ziffern erforderlich)", "error"); return; }
             userAddress = {street, zip, city};
             localStorage.setItem("wavevapes_address", JSON.stringify(userAddress));
+            // K-05 FIX: Sync address to Firestore so it's available on all devices
+            if (currentUser) {
+                db.collection("users").doc(currentUser.uid).update({ address: userAddress })
+                    .catch(e => console.warn("Adresse Firestore-Sync fehlgeschlagen:", e));
+            }
             closeAddressModal();
             updateCartDisplay();
             showToast("✅ Adresse gespeichert!");
         }
         function getSubtotal() {
             return cart.reduce((sum, item) => {
-                if (item.id == MYSTERY_ID) return sum;
+                if (item.id === MYSTERY_ID) return sum;
                 if (item.isBundle) return sum + item.qty * (item.price || 0);
                 const product = _productMap.get(item.id);
                 const effPrice = product ? (getPromoPrice(product) ?? item.price) : item.price;
@@ -3484,7 +3512,8 @@
             }
 
             let html = "";
-            const isDesktop = true; // product detail works on all devices
+            // E-07 FIX: Dynamic desktop detection instead of hardcoded true
+            const isDesktop = window.innerWidth >= 768;
             filtered.forEach(product => {
                 const cartItem = cart.find(i => i.id === product.id);
                 const qty = cartItem ? cartItem.qty : 0;
@@ -3930,7 +3959,7 @@
             cart.forEach(item => {
                 const prod = _productMap.get(item.id);
                 const nicDisplay = (item.nicotine && prod && prod.hasNicotine) ? ` (${item.nicotine})` : '';
-                if (item.id == MYSTERY_ID) {
+                if (item.id === MYSTERY_ID) {
                     htmlParts.push(`<div class="mystery-item cart-item flex justify-between items-center rounded-3xl p-5"><div class="flex items-center gap-3"><i class="fa-solid fa-gift text-3xl"></i><div><div class="font-medium">${item.name}</div><div class="text-xs bg-white/30 px-3 py-0.5 rounded-full inline-block">GRATIS AB 100€</div></div></div><div class="text-right"><div class="font-bold text-xl text-emerald-900 whitespace-nowrap">0,00 €</div></div></div>`);
                 } else if (item.isBundle) {
                     // Bundle-Item im Warenkorb
@@ -3989,7 +4018,7 @@
         }
         function removeCartItem(id) {
             // id comes as string from HTML onclick — normalize both sides
-            if (String(id) == String(MYSTERY_ID)) return;
+            if (id === MYSTERY_ID) return;
             cart = cart.filter(item => String(item.id) !== String(id));
             delete pendingNicotine[id];
             manageMysteryVape();
@@ -4060,13 +4089,13 @@
             // getSubtotal() ignores appliedDiscount — so a coupon that brings
             // the total below 100 € would leave the Mystery Vape in the cart.
             const subtotal = getProductTotal();
-            const hasMystery = cart.some(item => item.id == MYSTERY_ID);
+            const hasMystery = cart.some(item => item.id === MYSTERY_ID);
             const _mysteryThreshold = window._FREE_THRESHOLD !== undefined ? window._FREE_THRESHOLD : 100;
             if (subtotal >= _mysteryThreshold && !hasMystery) {
                 cart.push({ id: MYSTERY_ID, name: "Mystery Vape", qty: 1, price: 0 });
                 showMysteryToast();
             } else if (subtotal < _mysteryThreshold && hasMystery) {
-                cart = cart.filter(item => item.id != MYSTERY_ID);
+                cart = cart.filter(item => item.id !== MYSTERY_ID);
             }
             // Caller handles saveUserCart — avoids redundant double writes
         }
@@ -4089,10 +4118,11 @@
             const dateStr = now.getFullYear().toString().slice(2)
                 + String(now.getMonth()+1).padStart(2,'0')
                 + String(now.getDate()).padStart(2,'0');
-            // Opt 1: 6-digit random + last 3 ms digits → collision probability near zero
-            const rand = Math.floor(100000 + Math.random() * 900000);
-            const ms   = String(now.getMilliseconds()).padStart(3,'0');
-            return `WV-${dateStr}-${rand}${ms}`;
+            // E-05 FIX: Use crypto.getRandomValues for collision-resistant order numbers
+            const buf = new Uint32Array(1);
+            crypto.getRandomValues(buf);
+            const rand = String(buf[0]).slice(0, 7).padStart(7, '0');
+            return `WV-${dateStr}-${rand}`;
         }
         let _orderInProgress = false;
         async function placeOrder() {
@@ -4121,8 +4151,10 @@
             } catch(e) { /* non-blocking: proceed even if check fails */ }
 
             _orderInProgress = true;
-            trackClick('place_order', { cartSize: cart.filter(i => i.id != MYSTERY_ID).reduce((s,i) => s+i.qty, 0) });
+            trackClick('place_order', { cartSize: cart.filter(i => i.id !== MYSTERY_ID).reduce((s,i) => s+i.qty, 0) });
             const orderButton = document.querySelector('[onclick="placeOrder()"]');
+            // E-09 FIX: Save original text so finally block can restore it exactly
+            const _orderBtnOrigText = orderButton ? orderButton.textContent : 'BESTELLUNG ABSCHICKEN';
             if (orderButton) { orderButton.disabled = true; orderButton.textContent = "Bestellung wird verarbeitet..."; }
 
             try {
@@ -4161,7 +4193,7 @@
                     id: item.id,
                     name: item.name,
                     qty: item.qty,
-                    price: item.id == MYSTERY_ID ? (item.price || 0)
+                    price: item.id === MYSTERY_ID ? (item.price || 0)
                          : item.isBundle ? bundlePriceMap[item.bundleId]
                          : serverPriceMap[String(item.id)],
                     nicotine: item.nicotine || "",
@@ -4195,7 +4227,7 @@
                 });
                 // Server-side subtotal (mystery vape excluded from subtotal)
                 let serverSubtotal = verifiedItems.reduce((sum, item) => {
-                    return item.id == MYSTERY_ID ? sum : sum + item.qty * item.price;
+                    return item.id === MYSTERY_ID ? sum : sum + item.qty * item.price;
                 }, 0);
 
                 // ═══════════════════════════════════════════════════════
@@ -4338,16 +4370,18 @@
                     await db.collection("users").doc(currentUser.uid).update({ cart: [] });
                 } catch(e) { console.error("Cart-Reset fehlgeschlagen:", e.message); }
                 showSuccessModal(orderNumber, verifiedTotal, loyaltyEarned);
+                // M-02 FIX: loadProducts() triggers renderProductsDebounced() internally via onSnapshot
+                // calling renderProducts() again immediately after is redundant and causes a double render
                 loadProducts();
                 updateCartDisplay();
-                renderProducts();
                 toggleCart();
             } catch (e) {
                 showToast("❌ " + (e.message || "Fehler beim Speichern"), "error");
             } finally {
                 _orderInProgress = false;
                 const ob = document.querySelector('[onclick="placeOrder()"]');
-                if (ob) { ob.disabled = false; ob.textContent = "BESTELLUNG ABSCHICKEN"; }
+                // E-09 FIX: Restore original button text instead of hardcoded string
+                if (ob) { ob.disabled = false; ob.textContent = _orderBtnOrigText; }
             }
         }
         function showSuccessModal(orderNumber, total, loyaltyEarned) {
@@ -4521,6 +4555,11 @@
                             } catch(e) { console.warn('reorder-btn parse error', e); }
                         });
                     });
+                }, (err) => {
+                    // M-04 FIX: Release lock on Firestore error so history modal can be reopened
+                    _ordersLoading = false;
+                    console.error("loadUserOrders Fehler:", err);
+                    container.innerHTML = `<p class="text-center text-red-400 py-8"><i class="fa-solid fa-circle-exclamation mr-2"></i>Bestellungen konnten nicht geladen werden. Bitte Seite neu laden.</p>`;
                 });
         }
         function showOrderHistory() {
@@ -4562,7 +4601,7 @@
             for (const item of items) {
                 // Mystery-Vape und sonstige Sonderpositionen überspringen
                 // BUG FIX: Use MYSTERY_ID constant instead of hardcoded 999
-                if (!item.id || item.id == MYSTERY_ID) { skippedCount++; continue; }
+                if (!item.id || item.id === MYSTERY_ID) { skippedCount++; continue; }
 
                 // BUG FIX: Firestore-IDs sind Strings — Number() würde NaN erzeugen,
                 // wodurch _productMap.get(NaN) immer undefined zurückgibt.

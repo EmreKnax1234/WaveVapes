@@ -111,6 +111,22 @@
         }
         .sa-error { color:#f87171; font-size:12px; text-align:center; margin-top:8px; min-height:18px; }
 
+        /* ═══════════════════════════════════════════
+           KI-FEATURES – gemeinsame Styles
+        ═══════════════════════════════════════════ */
+        .ord-ai-email-btn {
+            display:inline-flex; align-items:center; gap:5px;
+            padding:5px 10px; border-radius:8px; cursor:pointer;
+            background:rgba(167,139,250,.1); border:1px solid rgba(167,139,250,.25);
+            color:#a78bfa; font-size:11px; font-weight:700;
+            transition:all .18s;
+        }
+        .ord-ai-email-btn:hover { background:rgba(167,139,250,.22); border-color:rgba(167,139,250,.45); }
+        .ai-typing { display:inline-block; }
+        .ai-typing::after { content:' ▌'; animation:aiCursor .6s step-end infinite; }
+        @keyframes aiCursor { 0%,100%{opacity:1} 50%{opacity:0} }
+
+
         /* Superadmin Tab Content */
         .sa-shell { display:flex; flex-direction:column; gap:20px; max-width:1100px; }
         .sa-header {
@@ -2057,8 +2073,16 @@
                 </div>
             </div>
             <div class="ped-section">
-                <div class="ped-section-title">Beschreibung</div>
+                <div class="ped-section-title" style="display:flex;align-items:center;justify-content:space-between">
+                    Beschreibung
+                    <button type="button" onclick="aiGenerateDescription()" id="ai-desc-btn"
+                        style="display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:8px;background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.3);color:#a78bfa;font-size:11px;font-weight:700;cursor:pointer;transition:all .2s"
+                        onmouseover="this.style.background='rgba(167,139,250,.22)'" onmouseout="this.style.background='rgba(167,139,250,.12)'">
+                        <i class="fa-solid fa-wand-magic-sparkles" style="font-size:11px"></i> KI schreiben
+                    </button>
+                </div>
                 <textarea class="ped-input ped-textarea" id="edit-description" rows="4" placeholder="Produktbeschreibung..."></textarea>
+                <div id="ai-desc-result" style="display:none;margin-top:8px;padding:10px 13px;background:rgba(167,139,250,.07);border:1px solid rgba(167,139,250,.2);border-radius:10px;font-size:12px;color:rgba(255,255,255,.7);line-height:1.6"></div>
             </div>
             <div class="ped-section">
                 <div class="ped-section-title">Interne Notizen</div>
@@ -2324,8 +2348,16 @@
                                 <label class="prd-add-sw"><input id="prod-has-nicotine" type="checkbox" checked><span class="prd-add-sw-sl"></span></label>
                             </div>
                             <div class="prd-add-field" style="grid-column:span 3">
-                                <label class="prd-add-label">Beschreibung</label>
+                                <label class="prd-add-label" style="display:flex;align-items:center;justify-content:space-between">
+                                    Beschreibung
+                                    <button type="button" onclick="aiGenerateDescriptionAdd()" id="ai-desc-add-btn"
+                                        style="display:flex;align-items:center;gap:5px;padding:3px 10px;border-radius:6px;background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.3);color:#a78bfa;font-size:10px;font-weight:700;cursor:pointer;transition:all .2s"
+                                        onmouseover="this.style.background='rgba(167,139,250,.22)'" onmouseout="this.style.background='rgba(167,139,250,.12)'">
+                                        <i class="fa-solid fa-wand-magic-sparkles" style="font-size:10px"></i> KI
+                                    </button>
+                                </label>
                                 <textarea id="prod-description" rows="3" class="prd-add-input" style="resize:vertical" placeholder="Intensiver Blue Raspberry Geschmack..."></textarea>
+                                <div id="ai-desc-add-result" style="display:none;margin-top:6px;padding:8px 11px;background:rgba(167,139,250,.07);border:1px solid rgba(167,139,250,.2);border-radius:8px;font-size:11px;color:rgba(255,255,255,.7);line-height:1.6"></div>
                             </div>
                             <div id="dropzone" class="prd-dropzone" style="grid-column:span 3">
                                 <i class="fa-solid fa-cloud-arrow-up" style="font-size:28px;color:var(--prd-cyan);display:block;margin-bottom:8px"></i>
@@ -2552,6 +2584,23 @@
                             <label class="ord-d-label">Tracking-Nummer</label>
                             <input id="modal-tracking" class="ord-d-input" placeholder="JD000000000000000000">
                         </div>
+                    </div>
+                </div>
+
+                <!-- KI E-Mail -->
+                <div class="ord-d-section">
+                    <div class="ord-d-section-title" style="display:flex;align-items:center;justify-content:space-between">
+                        <span>KI-E-Mail-Entwurf</span>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap">
+                            <button onclick="aiOrderEmail('delay')" class="ord-ai-email-btn" title="Verzögerung">⏳ Verzögerung</button>
+                            <button onclick="aiOrderEmail('thanks')" class="ord-ai-email-btn" title="Dankeschön">🙏 Danke</button>
+                            <button onclick="aiOrderEmail('question')" class="ord-ai-email-btn" title="Rückfrage">❓ Rückfrage</button>
+                        </div>
+                    </div>
+                    <div id="ord-ai-email-result" style="display:none;margin-top:10px;padding:12px 14px;background:rgba(167,139,250,.07);border:1px solid rgba(167,139,250,.2);border-radius:12px;font-size:12px;color:rgba(255,255,255,.8);line-height:1.7;white-space:pre-wrap"></div>
+                    <div id="ord-ai-email-actions" style="display:none;margin-top:8px;display:none;gap:8px">
+                        <button onclick="aiEmailCopy()" style="padding:6px 14px;border-radius:8px;background:rgba(103,232,249,.12);border:1px solid rgba(103,232,249,.25);color:#67e8f9;font-size:11px;font-weight:700;cursor:pointer"><i class="fa-solid fa-copy" style="margin-right:5px"></i>Kopieren</button>
+                        <button onclick="aiEmailIntoNotes()" style="padding:6px 14px;border-radius:8px;background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.25);color:#34d399;font-size:11px;font-weight:700;cursor:pointer"><i class="fa-solid fa-arrow-down" style="margin-right:5px"></i>In Notizen</button>
                     </div>
                 </div>
 
@@ -2841,6 +2890,19 @@
                         <button type="submit" class="cpn-submit">
                             <i class="fa-solid fa-ticket"></i> Gutschein erstellen
                         </button>
+
+                        <!-- KI Gutschein-Beratung -->
+                        <div style="margin-top:16px;padding:14px;background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.18);border-radius:12px">
+                            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+                                <div style="font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#a78bfa;display:flex;align-items:center;gap:6px"><i class="fa-solid fa-wand-magic-sparkles"></i> KI-Beratung</div>
+                                <div style="display:flex;gap:6px;flex-wrap:wrap">
+                                    <button onclick="aiCouponAdvice('winback')" class="ord-ai-email-btn">🔄 Rückgewinnung</button>
+                                    <button onclick="aiCouponAdvice('firstorder')" class="ord-ai-email-btn">🆕 Erstbestellung</button>
+                                    <button onclick="aiCouponAdvice('vip')" class="ord-ai-email-btn">⭐ VIP-Belohnung</button>
+                                </div>
+                            </div>
+                            <div id="cpn-ai-result" style="font-size:12px;color:rgba(255,255,255,.35);line-height:1.6">← Ziel wählen für KI-Empfehlung zu Rabatt, Gültigkeitsdauer und Nutzungstyp.</div>
+                        </div>
                     </form>
                 </div>
 
@@ -2993,6 +3055,25 @@
                     </div>
                     <div class="an-chart-inner"><canvas id="referralChart"></canvas></div>
                 </div>
+            </div>
+
+            <!-- KI-Zusammenfassung -->
+            <div id="an-ai-box" style="margin-top:16px;padding:20px;background:linear-gradient(135deg,rgba(167,139,250,.08),rgba(103,232,249,.05));border:1px solid rgba(167,139,250,.25);border-radius:20px">
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px">
+                    <div style="display:flex;align-items:center;gap:10px">
+                        <div style="width:34px;height:34px;border-radius:10px;background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.3);display:flex;align-items:center;justify-content:center;color:#a78bfa;font-size:14px;flex-shrink:0"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+                        <div>
+                            <div style="font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#a78bfa">KI-Analyse</div>
+                            <div style="font-size:11px;color:rgba(255,255,255,.3);margin-top:1px">Was lief gut? Was solltest du tun?</div>
+                        </div>
+                    </div>
+                    <button onclick="aiAnalyticsSummary()" id="an-ai-btn"
+                        style="display:flex;align-items:center;gap:8px;padding:9px 18px;border-radius:12px;background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.35);color:#a78bfa;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s"
+                        onmouseover="this.style.background='rgba(167,139,250,.28)'" onmouseout="this.style.background='rgba(167,139,250,.15)'">
+                        <i class="fa-solid fa-wand-magic-sparkles" style="font-size:12px"></i> Jetzt analysieren
+                    </button>
+                </div>
+                <div id="an-ai-result" style="font-size:13px;color:rgba(255,255,255,.3);line-height:1.7">← Klicke "Jetzt analysieren" für eine KI-Zusammenfassung des aktuellen Zeitraums.</div>
             </div>
 
             <!-- PDF Button -->
@@ -3415,6 +3496,21 @@
                         </label>
                     </div>
                 </div>
+                <!-- KI Strategie -->
+                <div style="margin-top:20px;padding:16px;background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.2);border-radius:14px">
+                    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px">
+                        <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#a78bfa;display:flex;align-items:center;gap:7px">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> KI-Strategie-Assistent
+                        </div>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap">
+                            <button onclick="aiPromoStrategy('clearance')" class="ord-ai-email-btn">🏷️ Lagerräumung</button>
+                            <button onclick="aiPromoStrategy('newcustomer')" class="ord-ai-email-btn">🎯 Neukundenbonus</button>
+                            <button onclick="aiPromoStrategy('retention')" class="ord-ai-email-btn">💎 Stammkunden</button>
+                        </div>
+                    </div>
+                    <div id="promo-ai-result" style="font-size:12px;color:rgba(255,255,255,.35);line-height:1.6">← Ziel wählen — KI empfiehlt Rabatthöhe, Kategorie und Laufzeit.</div>
+                </div>
+
                 <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end">
                     <button onclick="promoCloseForm()" style="padding:10px 20px;border-radius:12px;background:rgba(255,255,255,.07);color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.1);font-size:13px;font-weight:600;cursor:pointer">Abbrechen</button>
                     <button onclick="promoSave()" style="padding:10px 24px;border-radius:12px;background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;border:none;font-size:13px;font-weight:700;cursor:pointer"><i class="fa-solid fa-check" style="margin-right:6px"></i>Speichern & Live schalten</button>
@@ -3486,6 +3582,25 @@
         </div>
         <div id="tab-content-13" class="hidden">
         <div class="cu-shell">
+
+            <!-- KI Kundensegment -->
+            <div style="padding:20px;background:linear-gradient(135deg,rgba(167,139,250,.07),rgba(103,232,249,.04));border:1px solid rgba(167,139,250,.22);border-radius:20px">
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px">
+                    <div style="display:flex;align-items:center;gap:10px">
+                        <div style="width:36px;height:36px;border-radius:11px;background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.3);display:flex;align-items:center;justify-content:center;color:#a78bfa;font-size:15px;flex-shrink:0"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+                        <div>
+                            <div style="font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#a78bfa">KI-Kundensegmentierung</div>
+                            <div style="font-size:11px;color:rgba(255,255,255,.3);margin-top:1px">Wer kauft oft? Wer ist inaktiv? Was soll man tun?</div>
+                        </div>
+                    </div>
+                    <button onclick="aiCustomerSegments()" id="cu-ai-btn"
+                        style="display:flex;align-items:center;gap:8px;padding:9px 18px;border-radius:12px;background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.35);color:#a78bfa;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s"
+                        onmouseover="this.style.background='rgba(167,139,250,.28)'" onmouseout="this.style.background='rgba(167,139,250,.15)'">
+                        <i class="fa-solid fa-users-viewfinder"></i> Jetzt analysieren
+                    </button>
+                </div>
+                <div id="cu-ai-result" style="font-size:13px;color:rgba(255,255,255,.3);line-height:1.7">← Klicke "Jetzt analysieren" — KI clustert deine Kunden und gibt konkrete Handlungsempfehlungen.</div>
+            </div>
 
             <!-- KPI Strip -->
             <div class="cu-kpi-row" id="cu-kpi-row">
@@ -8777,7 +8892,9 @@ function rvAdminLoad(mode) {
                 <div class="rv-admin-actions">
                     ${mode !== 'approved' ? `<button class="rv-admin-btn approve" onclick="rvAdminApprove('${r.id}')" title="Freigeben"><i class="fa-solid fa-check"></i></button>` : ''}
                     ${mode !== 'rejected' ? `<button class="rv-admin-btn reject"  onclick="rvAdminReject('${r.id}')"  title="Ablehnen"><i class="fa-solid fa-xmark"></i></button>` : ''}
-                </div>`;
+                    <button class="rv-admin-btn" onclick="aiReviewReply('${r.id}',${r.rating||0},${JSON.stringify((r.text||'').replace(/'/g,'\'').slice(0,200))},${JSON.stringify((r.username||'Anonym').replace(/'/g,'\''))})" title="KI-Antwort" style="background:rgba(167,139,250,.15);border-color:rgba(167,139,250,.35);color:#a78bfa"><i class="fa-solid fa-wand-magic-sparkles"></i></button>
+                </div>
+                <div id="rv-ai-${r.id}" style="display:none;margin-top:10px;width:100%"></div>`;
             listEl.appendChild(card);
         });
     }, err => {
@@ -11296,6 +11413,383 @@ function bndUpdateSummary() {
 }
 
 // ── KI-Rabatt-Empfehlung ──────────────────────────────────────────────────
+
+
+// ═══════════════════════════════════════════════════════════════════
+//  WAVEVAPES KI-FEATURES – gemeinsame Hilfsfunktion + alle 7 Features
+// ═══════════════════════════════════════════════════════════════════
+
+const AI_ENDPOINT = 'https://wavevapes.clever-selling-station.workers.dev';
+
+async function aiCall(prompt, maxTokens = 600) {
+    const res = await fetch(AI_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, max_tokens: maxTokens })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message || data.error);
+    return (data.content || []).map(c => c.text || '').join('');
+}
+
+function aiSetLoading(el, text = 'KI analysiert…') {
+    el.style.display = 'block';
+    el.innerHTML = `<span class="ai-typing" style="color:#a78bfa;font-size:12px"><i class="fa-solid fa-wand-magic-sparkles" style="margin-right:6px"></i>${text}</span>`;
+}
+
+// ── FEATURE 1a: Beschreibung in Edit-Drawer generieren ────────────────────
+async function aiGenerateDescription() {
+    const name     = document.getElementById('edit-name')?.value?.trim() || '';
+    const cat      = document.getElementById('edit-category-select')?.value || '';
+    const hasNic   = document.getElementById('edit-has-nicotine')?.checked;
+    const btn      = document.getElementById('ai-desc-btn');
+    const result   = document.getElementById('ai-desc-result');
+    const textarea = document.getElementById('edit-description');
+    if (!name) { showToast('⚠️ Bitte zuerst den Produktnamen eingeben', 'warning'); return; }
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> KI schreibt…'; }
+    aiSetLoading(result);
+    try {
+        const text = await aiCall(
+            `Du schreibst kurze, verkaufsstarke Produktbeschreibungen für WaveVapes, einen deutschen Disposable-Vape Shop.
+Produktname: "${name}"
+Kategorie: "${cat || 'Disposable Vape'}"
+${hasNic ? 'Nikotinhaltig: ja (10 mg / 20 mg)' : 'Nikotinfrei'}
+Ton: jugendlich, modern, auf Deutsch. Maximal 2 Sätze. Keine Klammern, kein Markdown.
+Schreibe NUR die Beschreibung, ohne Einleitung.`, 200
+        );
+        result.style.display = 'block';
+        result.innerHTML = `<div style="color:rgba(255,255,255,.8)">${text.trim()}</div>
+            <div style="margin-top:10px;display:flex;gap:8px">
+                <button onclick="aiDescApply('edit')" style="padding:5px 12px;border-radius:7px;background:rgba(52,211,153,.15);border:1px solid rgba(52,211,153,.3);color:#34d399;font-size:11px;font-weight:700;cursor:pointer"><i class="fa-solid fa-check" style="margin-right:4px"></i>Übernehmen</button>
+                <button onclick="aiGenerateDescription()" style="padding:5px 12px;border-radius:7px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.5);font-size:11px;cursor:pointer">↺ Neu</button>
+            </div>`;
+        result._text = text.trim();
+    } catch(e) {
+        result.innerHTML = `<span style="color:#f87171">❌ ${e.message}</span>`;
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles" style="font-size:11px"></i> KI schreiben'; }
+    }
+}
+
+function aiDescApply(mode) {
+    const result = document.getElementById(mode === 'edit' ? 'ai-desc-result' : 'ai-desc-add-result');
+    const target = document.getElementById(mode === 'edit' ? 'edit-description' : 'prod-description');
+    if (target && result?._text) {
+        target.value = result._text;
+        result.style.display = 'none';
+        showToast('✅ Beschreibung übernommen!');
+    }
+}
+
+// ── FEATURE 1b: Beschreibung im Anlegen-Formular generieren ──────────────
+async function aiGenerateDescriptionAdd() {
+    const name     = document.getElementById('prod-name')?.value?.trim() || '';
+    const catSel   = document.getElementById('prod-category');
+    const cat      = catSel?.value || '';
+    const hasNic   = document.getElementById('prod-has-nicotine')?.checked;
+    const btn      = document.getElementById('ai-desc-add-btn');
+    const result   = document.getElementById('ai-desc-add-result');
+    if (!name) { showToast('⚠️ Bitte zuerst den Produktnamen eingeben', 'warning'); return; }
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
+    aiSetLoading(result, 'KI schreibt…');
+    try {
+        const text = await aiCall(
+            `Du schreibst kurze, verkaufsstarke Produktbeschreibungen für WaveVapes, einen deutschen Disposable-Vape Shop.
+Produktname: "${name}"
+Kategorie: "${cat || 'Disposable Vape'}"
+${hasNic ? 'Nikotinhaltig: ja (10 mg / 20 mg)' : 'Nikotinfrei'}
+Ton: jugendlich, modern, auf Deutsch. Maximal 2 Sätze. Keine Klammern, kein Markdown.
+Schreibe NUR die Beschreibung, ohne Einleitung.`, 200
+        );
+        result.style.display = 'block';
+        result.innerHTML = `<div style="color:rgba(255,255,255,.8)">${text.trim()}</div>
+            <div style="margin-top:8px;display:flex;gap:7px">
+                <button onclick="aiDescApply('add')" style="padding:4px 10px;border-radius:6px;background:rgba(52,211,153,.15);border:1px solid rgba(52,211,153,.3);color:#34d399;font-size:10px;font-weight:700;cursor:pointer"><i class="fa-solid fa-check" style="margin-right:3px"></i>Übernehmen</button>
+                <button onclick="aiGenerateDescriptionAdd()" style="padding:4px 10px;border-radius:6px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.5);font-size:10px;cursor:pointer">↺ Neu</button>
+            </div>`;
+        result._text = text.trim();
+    } catch(e) {
+        result.innerHTML = `<span style="color:#f87171">❌ ${e.message}</span>`;
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles" style="font-size:10px"></i> KI'; }
+    }
+}
+
+// ── FEATURE 2: KI-Antwort auf Bewertungen ─────────────────────────────────
+async function aiReviewReply(reviewId, rating, text, username) {
+    const box = document.getElementById('rv-ai-' + reviewId);
+    if (!box) return;
+    box.style.display = 'block';
+    aiSetLoading(box, 'KI formuliert Antwort…');
+    try {
+        const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+        const sentiment = rating >= 4 ? 'positiv' : rating === 3 ? 'gemischt' : 'negativ/kritisch';
+        const reply = await aiCall(
+            `Du bist der freundliche Shopbetreiber von WaveVapes (Disposable Vapes & Liquids, Deutschland).
+Schreibe eine persönliche, kurze Antwort auf diese Kundenbewertung auf Deutsch.
+Bewertung: ${stars} (${rating}/5, ${sentiment})
+Kundenname: ${username}
+Bewertungstext: "${text || '(kein Text)'}"
+
+Regeln:
+- Max. 3 Sätze
+- Persönlich und warm, nicht generisch
+- Bei negativer Bewertung: deeskalierend, Lösung anbieten
+- Bei positiver: herzlich danken, kurz auf ein Detail eingehen
+- Kein Markdown, keine Anführungszeichen
+Schreibe NUR die Antwort, ohne "Antwort:" o.ä.`, 250
+        );
+        box.innerHTML = `<div style="background:rgba(103,232,249,.06);border:1px solid rgba(103,232,249,.15);border-radius:10px;padding:10px 13px">
+            <div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(103,232,249,.5);margin-bottom:6px">KI-Antwortvorschlag</div>
+            <div style="font-size:12px;color:rgba(255,255,255,.8);line-height:1.65">${reply.trim().replace(/</g,'&lt;')}</div>
+            <div style="margin-top:8px;display:flex;gap:7px">
+                <button onclick="navigator.clipboard.writeText(this.closest('div').previousElementSibling.textContent.trim()).then(()=>showToast('✅ Kopiert!'))" style="padding:4px 10px;border-radius:6px;background:rgba(103,232,249,.1);border:1px solid rgba(103,232,249,.25);color:#67e8f9;font-size:10px;font-weight:700;cursor:pointer"><i class="fa-solid fa-copy" style="margin-right:3px"></i>Kopieren</button>
+                <button onclick="this.closest('[id^=rv-ai-]').style.display='none'" style="padding:4px 10px;border-radius:6px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:rgba(255,255,255,.4);font-size:10px;cursor:pointer">✕</button>
+            </div>
+        </div>`;
+    } catch(e) {
+        box.innerHTML = `<span style="color:#f87171;font-size:12px">❌ ${e.message}</span>`;
+    }
+}
+
+// ── FEATURE 3: Analytics-KI-Zusammenfassung ───────────────────────────────
+async function aiAnalyticsSummary() {
+    const result = document.getElementById('an-ai-result');
+    const btn    = document.getElementById('an-ai-btn');
+    if (!result) return;
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Analysiert…'; }
+    aiSetLoading(result, 'KI liest die Zahlen…');
+    try {
+        // Gather current KPI values from DOM
+        const revenue  = document.getElementById('metric-revenue')?.textContent || '—';
+        const orders   = document.getElementById('metric-orders')?.textContent  || '—';
+        const users    = document.getElementById('metric-users')?.textContent   || '—';
+        const avg      = document.getElementById('metric-avg')?.textContent     || '—';
+        const period   = document.getElementById('an-period-lbl')?.textContent  || '30 Tage';
+        // Top products list
+        const prodRows = Array.from(document.querySelectorAll('.an-prod-name')).slice(0,5).map(el => el.textContent.trim());
+        const topProds = prodRows.length ? prodRows.join(', ') : '—';
+
+        const summary = await aiCall(
+            `Du bist Unternehmensberater für WaveVapes, einen deutschen Disposable-Vape Online-Shop.
+Analysiere diese KPIs und gib auf Deutsch eine klare Zusammenfassung in 4–5 Sätzen.
+
+Zeitraum: ${period}
+Gesamtumsatz: ${revenue}
+Bestellungen: ${orders}
+Unique Kunden: ${users}
+Ø Warenkorb: ${avg}
+Top-Produkte: ${topProds}
+
+Struktur:
+1. Was lief gut (1 Satz)
+2. Was fällt auf / Risiko (1 Satz)
+3. Konkrete Handlungsempfehlung (1–2 Sätze)
+Ton: direkt, professionell, kein Bullshit. Kein Markdown.`, 400
+        );
+        result.style.cssText = 'font-size:13px;color:rgba(255,255,255,.8);line-height:1.75';
+        result.textContent = summary.trim();
+    } catch(e) {
+        result.style.color = '#f87171';
+        result.textContent = '❌ ' + e.message;
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles" style="font-size:12px"></i> Jetzt analysieren'; }
+    }
+}
+
+// ── FEATURE 4: KI-E-Mail-Entwurf im Order-Drawer ─────────────────────────
+let _aiEmailText = '';
+async function aiOrderEmail(type) {
+    const result  = document.getElementById('ord-ai-email-result');
+    const actions = document.getElementById('ord-ai-email-actions');
+    if (!result) return;
+    const email   = document.getElementById('ord-d-email')?.textContent || '—';
+    const ordNum  = document.getElementById('ord-d-num')?.textContent   || '—';
+    const total   = document.getElementById('ord-d-total')?.textContent || '—';
+    const status  = document.getElementById('modal-status')?.value      || '—';
+    const itemsEls = document.querySelectorAll('#ord-d-items .ord-d-item-name');
+    const items   = Array.from(itemsEls).map(el => el.textContent.trim()).join(', ') || '—';
+
+    const typeLabels = { delay:'Versandverzögerung', thanks:'persönliches Dankeschön', question:'Rückfrage zur Bestellung' };
+    aiSetLoading(result, `Schreibe E-Mail (${typeLabels[type]})…`);
+    result.style.display = 'block';
+    if (actions) actions.style.display = 'none';
+
+    const prompts = {
+        delay: `Schreibe eine kurze, persönliche E-Mail (auf Deutsch) an einen WaveVapes-Kunden wegen einer Versandverzögerung.
+Bestellnummer: ${ordNum} | Artikel: ${items} | Betrag: ${total}
+Max. 5 Sätze. Entschuldige dich aufrichtig, erkläre kurz (keine Details), verspreche baldige Lieferung.
+Beginne mit "Hallo,". Kein Betreff, nur E-Mail-Text.`,
+        thanks: `Schreibe eine herzliche, kurze Dankes-E-Mail (auf Deutsch) an einen WaveVapes-Kunden.
+Bestellnummer: ${ordNum} | Artikel: ${items} | Betrag: ${total} | Status: ${status}
+Max. 4 Sätze. Persönlich, warm, nicht generisch. Erwähne ein konkretes Produkt wenn möglich.
+Beginne mit "Hallo,". Kein Betreff, nur E-Mail-Text.`,
+        question: `Schreibe eine freundliche Rückfrage-E-Mail (auf Deutsch) an einen WaveVapes-Kunden wegen unklarer Bestelldetails.
+Bestellnummer: ${ordNum} | Artikel: ${items} | Betrag: ${total}
+Max. 4 Sätze. Freundlich, klar welche Info gebraucht wird (Lass einen Platzhalter [FRAGE]).
+Beginne mit "Hallo,". Kein Betreff, nur E-Mail-Text.`
+    };
+
+    try {
+        const text = await aiCall(prompts[type] || prompts.thanks, 300);
+        _aiEmailText = text.trim();
+        result.textContent = _aiEmailText;
+        result.style.color = 'rgba(255,255,255,.82)';
+        if (actions) { actions.style.display = 'flex'; }
+    } catch(e) {
+        result.textContent = '❌ ' + e.message;
+        result.style.color = '#f87171';
+    }
+}
+
+function aiEmailCopy() {
+    if (!_aiEmailText) return;
+    navigator.clipboard.writeText(_aiEmailText).then(() => showToast('✅ E-Mail kopiert!')).catch(() => showToast('❌ Kopieren fehlgeschlagen', 'error'));
+}
+
+function aiEmailIntoNotes() {
+    if (!_aiEmailText) return;
+    const notes = document.getElementById('modal-internal-notes');
+    if (notes) { notes.value = _aiEmailText; showToast('✅ E-Mail in Notizen eingefügt!'); }
+}
+
+// ── FEATURE 5: Aktions-Strategie-Assistent ───────────────────────────────
+async function aiPromoStrategy(goal) {
+    const result = document.getElementById('promo-ai-result');
+    if (!result) return;
+    aiSetLoading(result, 'KI entwickelt Strategie…');
+
+    // Gather shop context
+    const totalProducts = allProducts?.length || 0;
+    const lowStock = allProducts?.filter(p => (p.stock || 0) <= 5 && p.available).length || 0;
+    const cats = [...new Set((allProducts||[]).map(p=>p.category).filter(Boolean))].join(', ') || '—';
+    const goalLabels = { clearance:'Lagerräumung (hoher Bestand loswerden)', newcustomer:'Neukundengewinnung', retention:'Stammkundenbindung / Reaktivierung' };
+
+    try {
+        const advice = await aiCall(
+            `Du bist Pricing-Stratege für WaveVapes, einen deutschen Disposable-Vape Online-Shop.
+Empfehle eine konkrete Aktions-Strategie auf Deutsch.
+
+Shop-Daten:
+- Produkte gesamt: ${totalProducts}
+- Produkte mit Niedrigbestand (≤5 Stk): ${lowStock}
+- Kategorien: ${cats}
+
+Ziel dieser Aktion: ${goalLabels[goal]}
+
+Antworte NUR in diesem Format:
+🎯 Strategie: [1 Satz was die Aktion soll]
+🏷️ Empfohlener Rabatt: [z.B. "10–15% Prozent-Rabatt" oder "2 € Festbetrag"]
+📂 Empfohlene Kategorie: [konkrete Kategorie oder "Alle Produkte"]
+⏱️ Empfohlene Laufzeit: [z.B. "5–7 Tage" oder "Wochenende"]
+💡 Badge-Text für den Shop: [kurzer Text für Produktkarte, max. 12 Zeichen]
+📊 Begründung: [1–2 Sätze warum]`, 350
+        );
+        result.style.color = 'rgba(255,255,255,.82)';
+        result.style.fontSize = '12px';
+        result.style.lineHeight = '1.75';
+        result.textContent = advice.trim();
+    } catch(e) {
+        result.style.color = '#f87171';
+        result.textContent = '❌ ' + e.message;
+    }
+}
+
+// ── FEATURE 6: Gutschein-Strategie-Beratung ───────────────────────────────
+async function aiCouponAdvice(goal) {
+    const result = document.getElementById('cpn-ai-result');
+    if (!result) return;
+    aiSetLoading(result, 'KI berechnet optimale Parameter…');
+
+    // Grab average order value from analytics KPI if visible
+    const avgOrderEl = document.getElementById('metric-avg');
+    const avgOrder   = avgOrderEl ? avgOrderEl.textContent.replace(/[^0-9,.]/g,'').replace(',','.') : '—';
+    const goalLabels = { winback:'Inaktive Kunden zurückgewinnen', firstorder:'Erstbestellung-Anreiz', vip:'VIP-Stammkunden belohnen' };
+
+    try {
+        const advice = await aiCall(
+            `Du berätst WaveVapes (Disposable Vapes, Deutschland) bei Gutschein-Strategie.
+Ø Warenkorb: ${avgOrder} €
+Ziel: ${goalLabels[goal]}
+
+Antworte NUR in diesem Format auf Deutsch:
+💸 Empfohlener Rabatt: [z.B. "10 € Festbetrag" oder "15% auf den Gesamtbetrag"]
+🔁 Nutzungstyp: ["Einmalnutzung" oder "Mehrfachnutzung (max. X×)"]
+📅 Gültigkeitsdauer: [z.B. "14 Tage" oder "30 Tage"]
+🎯 Zielgruppe: [wen genau ansprechen]
+💡 Code-Vorschlag: [einprägsamer Code wie COMEBACK15]
+📊 Begründung: [1–2 Sätze warum diese Parameter]`, 300
+        );
+        result.style.color = 'rgba(255,255,255,.82)';
+        result.style.fontSize = '12px';
+        result.style.lineHeight = '1.75';
+        result.textContent = advice.trim();
+    } catch(e) {
+        result.style.color = '#f87171';
+        result.textContent = '❌ ' + e.message;
+    }
+}
+
+// ── FEATURE 7: KI-Kundensegmentierung ─────────────────────────────────────
+async function aiCustomerSegments() {
+    const result = document.getElementById('cu-ai-result');
+    const btn    = document.getElementById('cu-ai-btn');
+    if (!result) return;
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Analysiert…'; }
+    aiSetLoading(result, 'KI segmentiert deine Kunden…');
+
+    try {
+        // Pull data from the already-loaded euAllUsers and customer analytics
+        const users = euAllUsers || [];
+        const total = users.length;
+        if (total === 0) throw new Error('Keine Kundendaten geladen — öffne zuerst Tab "Erw. Benutzer".');
+
+        const withOrders  = users.filter(u => (u.orderCount || 0) > 0).length;
+        const noOrders    = total - withOrders;
+        const avgPts      = total ? Math.round(users.reduce((s,u)=>s+(u.totalBonusPoints||0),0)/total) : 0;
+        const avgSpend    = withOrders ? (users.reduce((s,u)=>s+(u.totalSpent||0),0)/withOrders).toFixed(2) : '0';
+        const vip         = users.filter(u => (u.totalSpent||0) > 100).length;
+        const disabled    = users.filter(u => u.disabled).length;
+
+        // Rough inactivity: users with orders but 0 recent activity (no Firestore date available client-side, so approximate)
+        const oneOrderOnly = users.filter(u => (u.orderCount||0) === 1).length;
+
+        const analysis = await aiCall(
+            `Du analysierst die Kundenbasis von WaveVapes (Disposable Vapes, Deutschland) und gibst strategische Empfehlungen.
+
+Kundendaten:
+- Registrierte Kunden gesamt: ${total}
+- Kunden mit mindestens 1 Bestellung: ${withOrders}
+- Kunden ohne Bestellung: ${noOrders}
+- VIP-Kunden (>100 € Gesamtumsatz): ${vip}
+- Nur-einmal-Käufer: ${oneOrderOnly}
+- Gesperrte Accounts: ${disabled}
+- Ø Loyalty-Punkte: ${avgPts}
+- Ø Ausgaben pro Bestellkunde: ${avgSpend} €
+
+Erstelle eine Kundensegment-Analyse auf Deutsch mit GENAU diesen Abschnitten:
+
+📊 SEGMENTE:
+[Liste 3–4 Segmente mit Anzahl und %-Anteil, z.B. "Stammkunden (X, Y%): ..."]
+
+🚨 GRÖSSTES RISIKO:
+[1 konkretes Problem benennen]
+
+🎯 TOP-3 MASSNAHMEN:
+[3 konkrete, umsetzbare Handlungsempfehlungen mit direktem Bezug zu den Zahlen]
+
+Kein Markdown außer den Emoji-Überschriften.`, 500
+        );
+
+        result.style.cssText = 'font-size:13px;color:rgba(255,255,255,.82);line-height:1.75;white-space:pre-wrap';
+        result.textContent = analysis.trim();
+    } catch(e) {
+        result.style.color = '#f87171';
+        result.textContent = '❌ ' + e.message;
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-users-viewfinder"></i> Jetzt analysieren'; }
+    }
+}
 
 async function bndAICalc(strategy) {
     const el=document.getElementById('bnd-ai-result');

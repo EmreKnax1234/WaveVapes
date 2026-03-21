@@ -4616,25 +4616,35 @@
 
                 // ── Bundle-Item ───────────────────────────────────────────
                 if (item.isBundle || String(item.id).startsWith('bundle_')) {
-                    const bundleId = item.bundleId || String(item.id).replace('bundle_', '');
-                    const bundle   = allBundles.find(b => b.id === bundleId);
-                    if (!bundle || !bundle.active) {
-                        skippedCount++;
-                        continue;
-                    }
+                    const bundleId = item.bundleId || String(item.id).replace(/^bundle_/, '');
+
+                    // Erst in allBundles suchen (falls bereits geladen)
+                    const liveBundle = allBundles.find(b => b.id === bundleId);
+
+                    // Fallback: Bundle aus den gespeicherten Bestelldaten rekonstruieren.
+                    // Wird benötigt wenn allBundles noch nicht geladen ist (Timing)
+                    // oder das Bundle inzwischen gelöscht wurde – die Bestelldaten
+                    // enthalten Name, Preis und Items bereits vollständig.
+                    const bundleName  = liveBundle ? liveBundle.name  : (item.name  || 'Bundle');
+                    const bundlePrice = liveBundle ? liveBundle.bundlePrice : (item.price || 0);
+                    const bundleItems = liveBundle ? liveBundle.items  : (item.bundleItems || []);
+                    const isActive    = liveBundle ? liveBundle.active !== false : true;
+
+                    if (!isActive) { skippedCount++; continue; }
+
                     const existing = cart.find(i => i.bundleId === bundleId);
                     const BUNDLE_MAX_QTY = 10;
                     if (existing) {
                         existing.qty = Math.min((existing.qty || 1) + (item.qty || 1), BUNDLE_MAX_QTY);
                     } else {
                         cart.push({
-                            id: 'bundle_' + bundleId,
+                            id:          'bundle_' + bundleId,
                             bundleId,
-                            name:        bundle.name,
-                            price:       bundle.bundlePrice,
+                            name:        bundleName,
+                            price:       bundlePrice,
                             qty:         Math.min(item.qty || 1, BUNDLE_MAX_QTY),
                             isBundle:    true,
-                            bundleItems: bundle.items || []
+                            bundleItems: bundleItems
                         });
                     }
                     addedCount++;

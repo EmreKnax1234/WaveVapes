@@ -5955,9 +5955,6 @@ async function saveOrderChanges() {
 async function deleteOrder() {
     if (!confirm('Bestellung IRREVERSIBEL löschen?')) return;
 
-    // Before deleting: reverse any stock/sold changes this order caused.
-    // For new orders (stockReserved=true): stock was decremented at placement — always restore.
-    // For legacy orders: only restore if was already processed (Wird bearbeitet / Versendet / Zugestellt).
     const orderDoc = await db.collection('orders').doc(currentOrderId).get();
     if (orderDoc.exists) {
         const order = orderDoc.data();
@@ -5967,7 +5964,9 @@ async function deleteOrder() {
         if (shouldRestoreStock && order.items?.length) {
             const batch = db.batch();
             for (const item of order.items) {
+                // FIX: Skip Mystery Vape and Bundle items — same as handleStockOnStatusChange
                 if (item.id === MYSTERY_ID) continue;
+                if (item.isBundle || String(item.id).startsWith('bundle_')) continue;
                 const ref = db.collection('products').doc(String(item.id));
                 const update = (order.stockReserved && !wasProcessed)
                     ? { stock: firebase.firestore.FieldValue.increment(item.qty) }
@@ -5976,11 +5975,10 @@ async function deleteOrder() {
                 batch.update(ref, update);
             }
             await batch.commit();
-            showToast(`↩ Lager für ${order.items.length} Artikel wiederhergestellt`, 'warning');
+            showToast(`↩ Lager wiederhergestellt`, 'warning');
         }
     }
 
-    // BUG FIX: No try/catch — a Firestore error left the modal open with no feedback.
     try {
         await db.collection('orders').doc(currentOrderId).delete();
         await logAction('order_deleted', currentOrderId);
@@ -6275,6 +6273,7 @@ async function euDrawerDanger(action){
             if (shouldRestoreStock && o.items?.length) {
                 o.items.forEach(item => {
                     if (item.id === MYSTERY_ID) return;
+                    if (item.isBundle || String(item.id).startsWith('bundle_')) return;
                     const wasAlreadySold = wasProcessed;
                     const update = wasAlreadySold
                         ? { stock: firebase.firestore.FieldValue.increment(item.qty),
@@ -6311,6 +6310,7 @@ async function deleteUser(uid, email) {
             if (shouldRestoreStock && o.items?.length) {
                 o.items.forEach(item => {
                     if (item.id === MYSTERY_ID) return;
+                    if (item.isBundle || String(item.id).startsWith('bundle_')) return;
                     const update = wasProcessed
                         ? { stock: firebase.firestore.FieldValue.increment(item.qty),
                            sold:   firebase.firestore.FieldValue.increment(-item.qty) }

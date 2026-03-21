@@ -4603,7 +4603,6 @@
         function reorderItems(items, btn) {
             if (!items || items.length === 0) return;
 
-            // Button-Feedback
             const originalHTML = btn.innerHTML;
             btn.disabled = true;
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Wird geladen…';
@@ -4612,26 +4611,46 @@
             let skippedCount = 0;
 
             for (const item of items) {
-                // Mystery-Vape und sonstige Sonderpositionen überspringen
-                // BUG FIX: Use MYSTERY_ID constant instead of hardcoded 999
+                // Mystery-Vape überspringen
                 if (!item.id || item.id === MYSTERY_ID) { skippedCount++; continue; }
 
-                // BUG FIX: Firestore-IDs sind Strings — Number() würde NaN erzeugen,
-                // wodurch _productMap.get(NaN) immer undefined zurückgibt.
-                const productId = item.id;
-                const product   = _productMap.get(productId);
+                // ── Bundle-Item ───────────────────────────────────────────
+                if (item.isBundle || String(item.id).startsWith('bundle_')) {
+                    const bundleId = item.bundleId || String(item.id).replace('bundle_', '');
+                    const bundle   = allBundles.find(b => b.id === bundleId);
+                    if (!bundle || !bundle.active) {
+                        skippedCount++;
+                        continue;
+                    }
+                    const existing = cart.find(i => i.bundleId === bundleId);
+                    const BUNDLE_MAX_QTY = 10;
+                    if (existing) {
+                        existing.qty = Math.min((existing.qty || 1) + (item.qty || 1), BUNDLE_MAX_QTY);
+                    } else {
+                        cart.push({
+                            id: 'bundle_' + bundleId,
+                            bundleId,
+                            name:        bundle.name,
+                            price:       bundle.bundlePrice,
+                            qty:         Math.min(item.qty || 1, BUNDLE_MAX_QTY),
+                            isBundle:    true,
+                            bundleItems: bundle.items || []
+                        });
+                    }
+                    addedCount++;
+                    continue;
+                }
 
-                // Produkt unbekannt oder nicht verfügbar → überspringen
+                // ── Reguläres Produkt ─────────────────────────────────────
+                const product = _productMap.get(item.id);
                 if (!product || !product.available) { skippedCount++; continue; }
 
-                // _addToCart(id, delta, nicotine) — direkt mit der gesamten Menge
                 const qty      = item.qty || 1;
                 const nicotine = product.hasNicotine ? (item.nicotine || '20 mg') : null;
-                const ok = _addToCart(productId, qty, nicotine);
+                const ok = _addToCart(item.id, qty, nicotine);
                 if (ok) { addedCount++; } else { skippedCount++; }
             }
 
-            // Button zurücksetzen
             btn.disabled = false;
             btn.innerHTML = originalHTML;
 
@@ -4640,7 +4659,6 @@
                 return;
             }
 
-            // Mystery-Vape-Schwelle prüfen, Warenkorb aktualisieren & speichern
             manageMysteryVape();
             saveUserCart();
             updateCartDisplay();
@@ -4650,7 +4668,6 @@
                 : `🛒 Alle ${addedCount} Artikel wieder im Warenkorb!`;
             showToast(msg, 'success');
 
-            // History-Modal schließen & Warenkorb öffnen (nur wenn noch zu)
             closeHistoryModal();
             const sidebar = document.getElementById('cart-sidebar');
             if (sidebar && sidebar.classList.contains('translate-x-full')) {

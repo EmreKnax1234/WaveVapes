@@ -2065,7 +2065,7 @@
                 </div>
                 <div class="ped-toggle-row">
                     <span class="ped-toggle-lbl">Nicht verfügbar</span>
-                    <label class="ped-sw red"><input type="checkbox" id="edit-unavailable"><span class="ped-sw-sl"></span></label>
+                    <label class="ped-sw red"><input type="checkbox" id="edit-unavailable" onchange="if(this.checked){ const s=document.getElementById('edit-stock'); if(s) s.value=0; }"><span class="ped-sw-sl"></span></label>
                 </div>
                 <div class="ped-toggle-row">
                     <span class="ped-toggle-lbl">Nikotin enthalten</span>
@@ -4868,10 +4868,11 @@ async function updateStats() {
             totalRevenue += o.total || 0;
             if (Array.isArray(o.items)) {
                 o.items.forEach(item => {
-                    if (item.id !== MYSTERY_ID) {
-                        totalSold += item.qty || 0;
-                        soldMap.set(item.name, (soldMap.get(item.name) || 0) + (item.qty || 0));
-                    }
+                    // M-NEW-03 FIX: Exclude Mystery Vape and Bundle items from unit counts
+                    if (item.id === MYSTERY_ID) return;
+                    if (item.isBundle || String(item.id).startsWith('bundle_')) return;
+                    totalSold += item.qty || 0;
+                    soldMap.set(item.name, (soldMap.get(item.name) || 0) + (item.qty || 0));
                 });
             }
         });
@@ -5057,12 +5058,12 @@ async function toggleAvailable(id, val) {
     const pill = cb ? cb.parentElement.querySelector('.prd-avail-pill') : null;
     // Optimistic UI update — revert on error
     if (pill) pill.textContent = val ? 'Aktiv' : 'Inaktiv';
-    // BUG FIX: No try/catch — Firestore errors were silently swallowed, leaving the
-    // UI showing the wrong state (checkbox flipped, pill updated, but DB unchanged).
     try {
-        await db.collection('products').doc(id).update({ available: val });
+        // FIX: When marking as unavailable, also reset stock to 0
+        const update = val ? { available: true } : { available: false, stock: 0 };
+        await db.collection('products').doc(id).update(update);
         await logAction("product_availability_changed", id, { available: val });
-        showToast('Verfügbarkeit aktualisiert');
+        showToast(val ? '✅ Produkt aktiviert' : '⏸ Produkt deaktiviert – Lagerbestand auf 0 gesetzt');
     } catch(e) {
         // Revert optimistic UI change
         if (pill) pill.textContent = val ? 'Inaktiv' : 'Aktiv';
@@ -5415,9 +5416,12 @@ async function catSaveInlineEdit() {
     showToast('✅ Kategorie gespeichert!');
 }
 
+// E-NEW-03 FIX: Track listener for consistency with other loaders
+let _categoriesUnsub = null;
 function loadCategories() {
+    if (_categoriesUnsub) { _categoriesUnsub(); _categoriesUnsub = null; }
     let _firstCatLoad = true; // E-08 FIX
-    db.collection('categories').orderBy('order').onSnapshot(snap => {
+    _categoriesUnsub = db.collection('categories').orderBy('order').onSnapshot(snap => {
         allCategories = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         renderCategoryTable();
         populateCategorySelects();
@@ -5573,7 +5577,7 @@ function cpnRenderGrid(coupons) {
         // K-06 FIX: Use real maxUsages from Firestore, not uses*2 which always produced ~50%
         const maxUses    = c.oneTimeUse ? 1 : (c.maxUsages || null);
         const pct        = maxUses !== null ? Math.min(100, Math.round(uses / Math.max(maxUses, 1) * 100)) : null;
-        const discount   = c.type === 'percent' ? c.value + '%' : c.value.toFixed(2) + ' €';
+        const discount   = c.type === 'percent' ? (c.value||0) + '%' : (c.value||0).toFixed(2) + ' €';
         const typeLabel  = c.type === 'percent' ? 'Prozent-Rabatt' : 'Festbetrag';
         const expiryStr  = expiryDate ? expiryDate.toLocaleDateString('de-DE') : '—';
         const daysLeft   = expiryDate ? Math.ceil((expiryDate - now) / 86400000) : null;
@@ -5795,7 +5799,7 @@ function ordRenderTable() {
                     <div class="ord-customer-email">${email}</div>
                 </div>
             </td>
-            <td style="text-align:right;font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--ord-green)">${o.total.toFixed(2)} €</td>
+            <td style="text-align:right;font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--ord-green)">${(o.total||0).toFixed(2)} €</td>
             <td style="text-align:center"><span class="ord-status ${stCls}">${status}</span></td>
             <td style="text-align:right;padding-right:18px">
                 <div class="ord-actions" onclick="event.stopPropagation()">
@@ -5863,11 +5867,11 @@ async function showOrderModal(orderId) {
     (order.items||[]).forEach(item => {
         itemsHTML += `<div class="ord-d-item">
             <span class="ord-d-item-name">${item.name} × ${item.qty}${item.nicotine ? ` <span style="color:var(--ord-muted)">(${item.nicotine})</span>` : ''}</span>
-            <span class="ord-d-item-price">${(item.price * item.qty).toFixed(2)} €</span>
+            <span class="ord-d-item-price">${((item.price||0) * (item.qty||1)).toFixed(2)} €</span>
         </div>`;
     });
     document.getElementById('ord-d-items').innerHTML = itemsHTML;
-    document.getElementById('ord-d-total').textContent = order.total.toFixed(2) + ' €';
+    document.getElementById('ord-d-total').textContent = (order.total||0).toFixed(2) + ' €';
     // Show discount row if order has a verified coupon
     const discRow = document.getElementById('ord-d-discount');
     if (order.discountCode && order.discountAmount > 0) {
@@ -5875,7 +5879,7 @@ async function showOrderModal(orderId) {
             ? `${order.discountCode} (${order.discountValue}%)`
             : `${order.discountCode} (${order.discountValue} € fix)`;
         document.getElementById('ord-d-discount-code').textContent = discLabel;
-        document.getElementById('ord-d-discount-val').textContent  = '−' + order.discountAmount.toFixed(2) + ' €';
+        document.getElementById('ord-d-discount-val').textContent  = '−' + (order.discountAmount||0).toFixed(2) + ' €';
         discRow.style.display = 'flex';
     } else {
         discRow.style.display = 'none';
@@ -6005,8 +6009,11 @@ function usrAvColor(email='') {
 
 let _usrAllDocs = [];
 
+// K-NEW-01 FIX: Track listener to prevent stacking on repeated calls
+let _usersUnsub = null;
 function loadUsers() {
-    db.collection('users').onSnapshot(snapshot => {
+    if (_usersUnsub) { _usersUnsub(); _usersUnsub = null; }
+    _usersUnsub = db.collection('users').onSnapshot(snapshot => {
         _usrAllDocs = snapshot.docs;
         usrRenderTable();
     });
@@ -7259,7 +7266,16 @@ function renderSortList() {
     });
 }
 async function toggleIsNew(id,e){e.stopImmediatePropagation();const doc=await db.collection('products').doc(id).get();const newVal=!(doc.data().isNew||false);await db.collection('products').doc(id).update({isNew:newVal});showToast(`NEW-Status → ${newVal?'aktiv':'deaktiviert'}`);renderSortList();}
-async function toggleAvailableInSort(id,e){e.stopImmediatePropagation();const doc=await db.collection('products').doc(id).get();const cur=doc.data().available!==false;await db.collection('products').doc(id).update({available:!cur});showToast(`Verfügbarkeit → ${!cur?'NICHT verfügbar':'verfügbar'}`);renderSortList();}
+async function toggleAvailableInSort(id, e) {
+    e.stopImmediatePropagation();
+    const doc = await db.collection('products').doc(id).get();
+    const cur = doc.data().available !== false;
+    // FIX: When marking as unavailable, also reset stock to 0
+    const update = cur ? { available: false, stock: 0 } : { available: true };
+    await db.collection('products').doc(id).update(update);
+    showToast(cur ? '⏸ Deaktiviert – Lagerbestand auf 0 gesetzt' : '✅ Produkt aktiviert');
+    renderSortList();
+}
 function autoSort(mode){const container=document.getElementById('sort-list');let items=Array.from(container.children).filter(i=>i.dataset.id);items.sort((a,b)=>{const pA=allProducts.find(p=>p.id===a.dataset.id);const pB=allProducts.find(p=>p.id===b.dataset.id);if(!pA||!pB)return 0;switch(mode){case'alpha':return pA.name.localeCompare(pB.name);case'new':return(pB.isNew?1:0)-(pA.isNew?1:0);case'tornado':return((pA.category==="WaveVapes Tornado 30000")?0:1)-((pB.category==="WaveVapes Tornado 30000")?0:1);case'available':return((pB.available!==false)?0:1)-((pA.available!==false)?0:1);case'stock':return(pB.stock||0)-(pA.stock||0);default:return 0;}});items.forEach(item=>container.appendChild(item));showToast('✅ Liste sortiert!','success');}
 function autoSortPriority(){
     const container=document.getElementById('sort-list');
@@ -7461,10 +7477,15 @@ const EU_PAGE_SIZE  = 15;
 let euSortCol       = 'email';
 let euSortDir       = 'asc';
 
+// K-NEW-02 FIX: Track both listeners so repeated tab-switches don't stack them
+let _euOrdersUnsub = null;
+let _euUsersUnsub  = null;
+
 async function loadExtendedUsers() {
-    // BUG FIX: Statt N parallele Order-Queries bei JEDEM User-Snapshot zu feuern,
-    // werden Orders einmalig geladen und in einer Map gecacht. User-Snapshots
-    // nutzen diesen Cache. Orders werden einmalig zusätzlich live gehört.
+    // Tear down previous listeners before creating new ones
+    if (_euOrdersUnsub) { _euOrdersUnsub(); _euOrdersUnsub = null; }
+    if (_euUsersUnsub)  { _euUsersUnsub();  _euUsersUnsub  = null; }
+
     let _orderStatsCache = new Map(); // uid → { orderCount, totalSpent }
 
     async function buildOrderCache() {
@@ -7492,16 +7513,13 @@ async function loadExtendedUsers() {
 
     await buildOrderCache();
 
-    // BUG FIX: Also subscribe to orders via onSnapshot so that new orders
-    // placed while the admin panel is open automatically update the per-user
-    // statistics (order count, total spent) without requiring a page reload.
     let _latestUserDocs = [];
-    db.collection('orders').onSnapshot(async () => {
+    _euOrdersUnsub = db.collection('orders').onSnapshot(async () => {
         await buildOrderCache();
         if (_latestUserDocs.length) applyStats(_latestUserDocs);
     }, err => console.warn('loadExtendedUsers orders listener:', err));
 
-    db.collection('users').onSnapshot(snap => {
+    _euUsersUnsub = db.collection('users').onSnapshot(snap => {
         _latestUserDocs = snap.docs;
         applyStats(snap.docs);
     });
@@ -7973,6 +7991,8 @@ function toggleSidebar(){
 // ═══════════════════════════════════════════════════════
 let _promos = [];
 let _promoEditId = null;
+// M-NEW-01 FIX: Track listener to prevent stacking
+let _promosUnsub = null;
 
 function loadPromos() {
     // Timer-Einstellungen laden
@@ -7988,7 +8008,8 @@ function loadPromos() {
         cdAdminPreview();
     }).catch(() => {});
 
-    db.collection('promotions').onSnapshot(snap => {
+    if (_promosUnsub) { _promosUnsub(); _promosUnsub = null; }
+    _promosUnsub = db.collection('promotions').onSnapshot(snap => {
         _promos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         promoRenderList();
         promoRenderKPIs();
@@ -8344,7 +8365,7 @@ function cuExportCSV() {
         const avg = u.orderCount ? (u.totalSpent / u.orderCount).toFixed(2) : '0.00';
         const lastDate = u.lastDate ? u.lastDate.toLocaleDateString('de-DE') : '—';
         const status = u._guestOnly ? 'Gast' : u.disabled ? 'Gesperrt' : 'Aktiv';
-        rows.push([i+1, u.email||'', u.username||'', u.orderCount, u.totalSpent.toFixed(2), avg, u.totalBonusPoints||0, lastDate, status]);
+        rows.push([i+1, u.email||'', u.username||'', u.orderCount, (u.totalSpent||0).toFixed(2), avg, u.totalBonusPoints||0, lastDate, status]);
     });
 
     const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(';')).join('\n');
@@ -8426,7 +8447,7 @@ function globalSearchInput() {
         results.products.slice(0,4).forEach(p => {
             html += `<div class="hdr-search-item" onclick="switchTab(0);setTimeout(()=>{const s=document.getElementById('product-search');if(s){s.value='${p.name.replace(/'/g,"\\'")}';applyAdminFilters();}},100);document.getElementById('global-search').value='';document.getElementById('global-search-dd').classList.remove('open')">
                 <div class="hdr-search-item-icon" style="background:rgba(103,232,249,.1);color:#67e8f9">${p.image?`<img src="${p.image}" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`:'<i class="fa-solid fa-box"></i>'}</div>
-                <div><div class="hdr-search-item-main">${p.name}</div><div class="hdr-search-item-sub">${p.price.toFixed(2)} € · Lager: ${p.stock||0}</div></div>
+                <div><div class="hdr-search-item-main">${p.name}</div><div class="hdr-search-item-sub">${(p.price||0).toFixed(2)} € · Lager: ${p.stock||0}</div></div>
             </div>`;
         });
         html += `</div>`;
@@ -8601,6 +8622,9 @@ const PRS_AV_COLORS=[
 ];
 function prsAvColor(s=''){let h=0;for(let c of s)h=(h*31+c.charCodeAt(0))&0xfff;return PRS_AV_COLORS[h%PRS_AV_COLORS.length];}
 
+// M-NEW-01 FIX: Track listener to prevent stacking on repeated Aktualisieren clicks
+let _presenceUnsub = null;
+
 function loadPresence() {
     const container = document.getElementById("presence-list");
     const liveDot   = document.getElementById('prs-live-dot');
@@ -8659,7 +8683,8 @@ function loadPresence() {
         container.innerHTML = html;
     }
 
-    db.collection("presence").onSnapshot(snap => {
+    if (_presenceUnsub) { _presenceUnsub(); _presenceUnsub = null; }
+    _presenceUnsub = db.collection("presence").onSnapshot(snap => {
         const now = Date.now();
         const active = [];
         snap.forEach(doc => {
@@ -8835,7 +8860,9 @@ async function saveEdit() {
     const cs             = document.getElementById('edit-category-select');
     const category       = cs && cs.value ? cs.value : (isNew ? "Neue Sorten" : "Normale Sorten");
 
-    let data = { name, price, originalPrice, stock, category, description:description||"", isNew, available:!unavailable, hasNicotine,
+    // FIX: When saving as unavailable, force stock to 0
+    const effectiveStock = unavailable ? 0 : stock;
+    let data = { name, price, originalPrice, stock: effectiveStock, category, description:description||"", isNew, available:!unavailable, hasNicotine,
                  adminNotes: adminNotes || firebase.firestore.FieldValue.delete(),
                  costPrice: costPrice !== null ? costPrice : firebase.firestore.FieldValue.delete() };
 
@@ -9598,7 +9625,7 @@ window.onload = () => {
         const btn = e.target.closest('.rv-ki-btn');
         if (!btn) return;
         const id     = btn.dataset.rvId;
-        const rating = parseInt(btn.dataset.rvRating) || 0;
+        const rating = parseInt(btn.dataset.rvRating, 10) || 0;
         const text   = btn.dataset.rvText   || '';
         const user   = btn.dataset.rvUser   || 'Anonym';
         aiReviewReply(id, rating, text, user);
@@ -10486,7 +10513,7 @@ async function saDangerRejectAllReviews() {
 async function saDangerPurgeLogs() {
     if (!confirm('Alle Admin-Logs älter als 90 Tage löschen?')) return;
     const cutoff = Date.now() - 90 * 24 * 60 * 60 * 1000;
-    const snap = await db.collection('admin_logs').limit(2000).get();
+    const snap = await db.collection('admin_logs').get(); // E-NEW-04 FIX: no limit — delete ALL old logs
     const old = snap.docs.filter(d => {
         const t = d.data().timestamp?.toDate?.()?.getTime?.() || 0;
         return t > 0 && t < cutoff;
@@ -10639,9 +10666,9 @@ async function bkpLoadConfig() {
 
 async function bkpSaveConfig() {
     _bkpConfig.enabled       = document.getElementById('bkp-cfg-enabled')?.checked   ?? false;
-    _bkpConfig.intervalHours = parseInt(document.getElementById('bkp-cfg-interval')?.value)   || 24;
-    _bkpConfig.retentionDays = parseInt(document.getElementById('bkp-cfg-retention')?.value)  || 30;
-    _bkpConfig.maxCount      = parseInt(document.getElementById('bkp-cfg-maxcount')?.value)   || 10;
+    _bkpConfig.intervalHours = parseInt(document.getElementById('bkp-cfg-interval')?.value, 10) || 24;
+    _bkpConfig.retentionDays = parseInt(document.getElementById('bkp-cfg-retention')?.value, 10) || 30;
+    _bkpConfig.maxCount      = parseInt(document.getElementById('bkp-cfg-maxcount')?.value, 10) || 10;
     // Collections aus Toggles lesen
     _bkpConfig.collections = BKP_ALL_COLS.filter(c => document.getElementById('bkp-col-' + c)?.classList.contains('active'));
     if (!_bkpConfig.collections.length) _bkpConfig.collections = [...BKP_ALL_COLS];
@@ -11231,7 +11258,7 @@ async function bndLoadProducts() {
     const snap = await db.collection('products').get();
     _allProducts = snap.docs.map(d => {
         const x = d.data();
-        return { id:d.id, name:x.name||'–', price:parseFloat(x.price)||0, cost:parseFloat(x.cost)||0, stock:parseInt(x.stock)||0, category:x.category||'' };
+        return { id:d.id, name:x.name||'–', price:parseFloat(x.price)||0, cost:parseFloat(x.cost)||0, stock:parseInt(x.stock, 10)||0, category:x.category||'' };
     });
 }
 
@@ -12153,8 +12180,8 @@ async function aiStockReorder() {
 
     try {
         const products = allProducts || [];
-        const critThreshold = parseInt(document.getElementById('set-stock-critical')?.value || '3');
-        const warnThreshold = parseInt(document.getElementById('set-stock-warning')?.value || '10');
+        const critThreshold = parseInt(document.getElementById('set-stock-critical')?.value || '3', 10);
+        const warnThreshold = parseInt(document.getElementById('set-stock-warning')?.value || '10', 10);
 
         const critical = products.filter(p => (p.stock||0) <= critThreshold && p.available !== false);
         const warning  = products.filter(p => (p.stock||0) > critThreshold && (p.stock||0) <= warnThreshold && p.available !== false);

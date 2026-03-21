@@ -2296,6 +2296,8 @@
         const MYSTERY_ID = '999';
 
         const NICOTINE_OPTIONS = ["10 mg", "20 mg"];
+        // Nikotinstärke-Auswahl pro Liquid-Item in Liquid-Bundles
+        let pendingBundleNicotine = {}; // { bundleId: { productId: '20 mg', ... } }
         const BANK_OWNER = "Jakob Hellrung";
         const BANK_IBAN = "DE38360200300003395812";
         const BANK_BIC = "NBAGDE3EXXX";
@@ -2353,6 +2355,47 @@
             renderProducts();
         }
 
+        // Baut eine lesbare Nikotin-Wunsch-Vorschau aus den Selects im Bundle-Modal
+        function updateBundleNotePreview(bundleId) {
+            const preview = document.getElementById('bnd-nic-preview');
+            if (!preview) return;
+            const selects = document.querySelectorAll('[id^="bnd-nic-"]');
+            if (!selects.length) { preview.style.display = 'none'; return; }
+            const lines = [];
+            selects.forEach(sel => {
+                const name = sel.dataset.itemName;
+                const qty  = sel.dataset.itemQty;
+                const nic  = sel.value;
+                lines.push(`${name}${qty > 1 ? ` (×${qty})` : ''}: ${nic}`);
+            });
+            preview.innerHTML = `<i class="fa-solid fa-pen-to-square" style="margin-right:5px;color:#fbbf24"></i><strong style="color:#fbbf24">Deine Nikotinstärken:</strong><br>${lines.join('<br>')}`;
+            preview.style.display = 'block';
+        }
+
+        // Liest alle Nikotin-Selects aus dem Bundle-Modal und schreibt den Wunsch ins Notiz-Feld
+        function applyBundleNicotineToNote(bundleName) {
+            const selects = document.querySelectorAll('[id^="bnd-nic-"]');
+            if (!selects.length) return;
+            const lines = [];
+            selects.forEach(sel => {
+                const name = sel.dataset.itemName;
+                const qty  = sel.dataset.itemQty;
+                const nic  = sel.value;
+                lines.push(`${name}${qty > 1 ? ` ×${qty}` : ''}: ${nic}`);
+            });
+            const noteInput   = document.getElementById('order-note-input');
+            const noteCounter = document.getElementById('order-note-counter');
+            if (!noteInput) return;
+            const prefix = `Bundle „${bundleName}" – Nikotinstärken:\n`;
+            // Bestehendes behalten wenn schon was drin steht, sonst neu setzen
+            const existing = noteInput.value.trim();
+            const newEntry = prefix + lines.join('\n');
+            noteInput.value = existing
+                ? existing + '\n\n' + newEntry
+                : newEntry;
+            if (noteCounter) noteCounter.textContent = noteInput.value.length;
+        }
+
         function showBundleDetail(bundleId) {
             const b = allBundles.find(x => x.id === bundleId);
             if (!b) return;
@@ -2364,7 +2407,7 @@
             document.body.style.width = '100%';
             document.body.classList.add('modal-open');
 
-            // Track als "zuletzt angesehen" – Bundles mit "bundle_" Präfix
+            // Track als "zuletzt angesehen"
             const rvKey = 'bundle_' + bundleId;
             recentlyViewed = recentlyViewed.filter(i => i !== rvKey);
             recentlyViewed.unshift(rvKey);
@@ -2376,40 +2419,98 @@
             }
             renderRecentlyViewed();
 
-            const inCart = cart.some(i => i.bundleId === bundleId);
-            const orig = (b.originalTotal || 0).toFixed(2).replace('.', ',');
-            const sale = (b.bundlePrice || 0).toFixed(2).replace('.', ',');
+            const inCart  = cart.some(i => i.bundleId === bundleId);
+            const orig    = (b.originalTotal || 0).toFixed(2).replace('.', ',');
+            const sale    = (b.bundlePrice   || 0).toFixed(2).replace('.', ',');
             const saveAmt = b.originalTotal > b.bundlePrice
                 ? (b.originalTotal - b.bundlePrice).toFixed(2).replace('.', ',') : null;
             const discPct = b.originalTotal > 0 && b.bundlePrice < b.originalTotal
                 ? Math.round((b.originalTotal - b.bundlePrice) / b.originalTotal * 100) : 0;
 
-            const imgHTML = b.image
-                ? `<img src="${b.image}" alt="${b.name}" style="width:100%;max-height:320px;object-fit:cover;border-radius:20px;margin-bottom:8px">`
-                : `<div style="width:100%;height:200px;border-radius:20px;background:linear-gradient(135deg,rgba(167,139,250,.15),rgba(244,114,182,.1));display:flex;align-items:center;justify-content:center;font-size:72px;margin-bottom:8px">🎁</div>`;
+            // Alle verfügbaren Elfliq-Sorten
+            const elfliqProducts = allProducts.filter(p =>
+                p.available && p.stock > 0 && p.name.toLowerCase().startsWith('elfliq')
+            ).sort((a, b) => a.name.localeCompare(b.name));
 
-            const itemsHTML = (b.items || []).map(it => {
-                const prod = _productMap.get(it.productId);
-                const itemImg = prod?.image
-                    ? `<img src="${prod.image}" style="width:44px;height:44px;border-radius:10px;object-fit:cover;flex-shrink:0">`
-                    : `<div style="width:44px;height:44px;border-radius:10px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px">🧪</div>`;
-                const unitPrice = it.price?.toFixed(2).replace('.', ',');
-                return `
-                <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:14px">
-                    ${itemImg}
-                    <div style="flex:1;min-width:0">
-                        <div style="font-size:13px;font-weight:600;color:rgba(255,255,255,.9);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${it.name}</div>
-                        <div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:2px">${unitPrice ? unitPrice + ' € / Stück' : ''}</div>
-                    </div>
-                    <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#a78bfa;flex-shrink:0">×${it.qty}</div>
-                </div>`;
+            // Reines Liquid-Bundle = alle Items sind Elfliq
+            const bundleItems = b.items || [];
+            const isPureLiquidBundle = bundleItems.length > 0 && bundleItems.every(it =>
+                (it.name || '').toLowerCase().startsWith('elfliq')
+            );
+
+            const imgHTML = b.image
+                ? `<img src="${b.image}" alt="${b.name}" style="width:100%;max-height:280px;object-fit:cover;border-radius:20px;margin-bottom:8px">`
+                : `<div style="width:100%;height:180px;border-radius:20px;background:linear-gradient(135deg,rgba(167,139,250,.15),rgba(244,114,182,.1));display:flex;align-items:center;justify-content:center;font-size:72px;margin-bottom:8px">🎁</div>`;
+
+            // Items rendern
+            let slotIdx = 0;
+            const itemsHTML = bundleItems.map(it => {
+                const prod     = _productMap.get(it.productId);
+                const isElfliq = (it.name || '').toLowerCase().startsWith('elfliq');
+                const hasNic   = prod ? prod.hasNicotine !== false : true;
+
+                if (isPureLiquidBundle && isElfliq) {
+                    let slotsHTML = '';
+                    for (let q = 0; q < (it.qty || 1); q++) {
+                        const sid = slotIdx++;
+                        const flavorOpts = elfliqProducts.map(p =>
+                            `<option value="${p.name}" ${p.name === it.name ? 'selected' : ''}>${p.name.replace(/^Elfliq\s*/i, '')}</option>`
+                        ).join('');
+                        slotsHTML += `
+                        <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(103,232,249,.18);border-radius:14px">
+                            <div style="width:30px;height:30px;background:rgba(103,232,249,.12);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0">🧪</div>
+                            <div style="flex:1;min-width:0">
+                                <div style="font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(103,232,249,.5);margin-bottom:4px">Slot ${sid + 1}</div>
+                                <select id="bnd-flavor-${sid}" data-slot="${sid}"
+                                    style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(103,232,249,.3);border-radius:8px;padding:5px 28px 5px 8px;color:#fff;font-size:12px;font-weight:600;outline:none;cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%228%22 height=%228%22 viewBox=%220 0 8 8%22><path fill=%22%2367e8f9%22 d=%22M0 2l4 4 4-4z%22/></svg>');background-repeat:no-repeat;background-position:right 8px center"
+                                    onchange="bndUpdateFlavorPreview('${b.id}')">
+                                    ${flavorOpts}
+                                </select>
+                                ${hasNic ? `<select id="bnd-nic-${sid}" data-slot="${sid}"
+                                    style="margin-top:5px;background:rgba(255,255,255,.06);border:1px solid rgba(167,139,250,.3);border-radius:8px;padding:4px 8px;color:#a78bfa;font-size:11px;font-weight:700;outline:none;cursor:pointer;-webkit-appearance:none;appearance:none"
+                                    onchange="bndUpdateFlavorPreview('${b.id}')">
+                                    ${NICOTINE_OPTIONS.map(o => `<option value="${o}">${o}</option>`).join('')}
+                                </select>` : ''}
+                            </div>
+                        </div>`;
+                    }
+                    return slotsHTML;
+                } else {
+                    const itemImg = prod?.image
+                        ? `<img src="${prod.image}" style="width:44px;height:44px;border-radius:10px;object-fit:cover;flex-shrink:0">`
+                        : `<div style="width:44px;height:44px;border-radius:10px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px">🧪</div>`;
+                    const unitPrice = it.price?.toFixed(2).replace('.', ',');
+                    return `
+                    <div style="display:flex;align-items:flex-start;gap:12px;padding:11px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:14px">
+                        ${itemImg}
+                        <div style="flex:1;min-width:0">
+                            <div style="font-size:13px;font-weight:600;color:rgba(255,255,255,.9)">${it.name}</div>
+                            <div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:2px">${unitPrice ? unitPrice + ' € / Stück' : ''}${it.qty > 1 ? ' · ' + it.qty + '×' : ''}</div>
+                        </div>
+                        <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#a78bfa;flex-shrink:0;margin-top:2px">×${it.qty}</div>
+                    </div>`;
+                }
             }).join('');
+
+            const totalSlots = slotIdx;
+
+            const liquidHint = isPureLiquidBundle ? `
+                <div style="display:flex;align-items:flex-start;gap:9px;padding:11px 14px;background:rgba(103,232,249,.07);border:1px solid rgba(103,232,249,.2);border-radius:12px;margin-bottom:16px">
+                    <i class="fa-solid fa-shuffle" style="color:#67e8f9;font-size:12px;margin-top:1px;flex-shrink:0"></i>
+                    <span style="font-size:11px;color:rgba(255,255,255,.55);line-height:1.55">
+                        <strong style="color:#67e8f9">Sorten frei wählbar!</strong> Wähle für jeden Slot deine Lieblingssorte und Nikotinstärke — wir packen genau das ein.
+                    </span>
+                </div>` : '';
+
+            const previewBox = isPureLiquidBundle ? `
+                <div id="bnd-flavor-preview" style="display:none;padding:12px 14px;background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.18);border-radius:12px;margin-bottom:16px;font-size:11px;color:rgba(255,255,255,.65);line-height:1.7"></div>` : '';
 
             document.getElementById('bundle-detail-content').innerHTML = `
                 <div class="modal-inner" style="background:linear-gradient(160deg,#13131f,#1a0f2e);border:1px solid rgba(167,139,250,.25);border-radius:28px;overflow:hidden">
                     <div style="display:flex;justify-content:space-between;align-items:center;padding:18px 22px;border-bottom:1px solid rgba(167,139,250,.12)">
                         <div style="display:flex;align-items:center;gap:8px">
                             <span style="background:linear-gradient(135deg,#a78bfa,#7c3aed);color:#fff;font-size:10px;font-weight:800;padding:3px 10px;border-radius:99px;letter-spacing:.06em">🎁 BUNDLE</span>
+                            ${isPureLiquidBundle ? '<span style="background:rgba(103,232,249,.12);color:#67e8f9;font-size:10px;font-weight:800;padding:3px 10px;border-radius:99px;border:1px solid rgba(103,232,249,.25)">🧪 LIQUID</span>' : ''}
                             ${discPct > 0 ? `<span style="background:rgba(239,68,68,.15);color:#f87171;font-size:10px;font-weight:800;padding:3px 10px;border-radius:99px;border:1px solid rgba(239,68,68,.25)">−${discPct}%</span>` : ''}
                         </div>
                         <button onclick="closeBundleDetail()" style="width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.5);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:color .2s" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,.5)'">✕</button>
@@ -2418,12 +2519,10 @@
                         ${imgHTML}
                         <h2 style="font-size:22px;font-weight:800;color:#fff;margin-bottom:6px;line-height:1.2">${b.name}</h2>
                         ${b.description ? `<p style="font-size:14px;color:rgba(255,255,255,.5);margin-bottom:16px;line-height:1.6">${b.description}</p>` : ''}
-
-                        <!-- Enthaltene Produkte -->
-                        <div style="font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:10px">Im Bundle enthalten</div>
-                        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:22px">${itemsHTML}</div>
-
-                        <!-- Preis-Bereich -->
+                        <div style="font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:10px">${isPureLiquidBundle ? 'Wähle deine Sorten' : 'Im Bundle enthalten'}</div>
+                        ${liquidHint}
+                        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">${itemsHTML}</div>
+                        ${previewBox}
                         <div style="padding:16px 18px;background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.15);border-radius:18px;margin-bottom:20px">
                             <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
                                 ${b.originalTotal > b.bundlePrice ? `<span style="font-size:16px;color:rgba(255,255,255,.3);text-decoration:line-through;font-family:'JetBrains Mono',monospace">${orig} €</span>` : ''}
@@ -2431,10 +2530,9 @@
                             </div>
                             ${saveAmt ? `<div style="font-size:13px;color:#a78bfa;font-weight:600;margin-top:6px">✨ Du sparst ${saveAmt} € gegenüber Einzelkauf</div>` : ''}
                         </div>
-
-                        <!-- Kaufen-Button -->
-                        <button id="bnd-detail-add-btn" onclick="addBundleToCart('${b.id}', event); document.getElementById('bnd-detail-add-btn').innerHTML='✅ Im Warenkorb'; document.getElementById('bnd-detail-add-btn').style.background='linear-gradient(135deg,rgba(52,211,153,.2),rgba(103,232,249,.15))'; document.getElementById('bnd-detail-add-btn').style.borderColor='rgba(52,211,153,.4)'; document.getElementById('bnd-detail-add-btn').style.color='#34d399'"
-                            style="width:100%;padding:16px;border-radius:18px;border:1px solid rgba(167,139,250,.4);background:linear-gradient(135deg,rgba(167,139,250,.2),rgba(244,114,182,.12));color:#a78bfa;font-size:16px;font-weight:800;cursor:pointer;transition:all .25s;letter-spacing:.02em;display:flex;align-items:center;justify-content:center;gap:10px"
+                        <button id="bnd-detail-add-btn"
+                            onclick="bndAddWithFlavors('${b.id}', ${totalSlots}, ${isPureLiquidBundle})"
+                            style="width:100%;padding:16px;border-radius:18px;border:1px solid rgba(167,139,250,.4);background:linear-gradient(135deg,rgba(167,139,250,.2),rgba(244,114,182,.12));color:#a78bfa;font-size:16px;font-weight:800;cursor:pointer;transition:all .25s;display:flex;align-items:center;justify-content:center;gap:10px"
                             onmouseover="if(!this.innerHTML.includes('✅')){this.style.background='linear-gradient(135deg,rgba(167,139,250,.35),rgba(244,114,182,.22))';this.style.color='#fff'}"
                             onmouseout="if(!this.innerHTML.includes('✅')){this.style.background='linear-gradient(135deg,rgba(167,139,250,.2),rgba(244,114,182,.12))';this.style.color='#a78bfa'}">
                             ${inCart ? '✅ Im Warenkorb' : '🛒 Bundle kaufen'}
@@ -2443,22 +2541,74 @@
                     </div>
                 </div>`;
 
-            const modal = document.getElementById('bundle-detail-modal');
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
+            document.getElementById('bundle-detail-modal').classList.remove('hidden');
+            document.getElementById('bundle-detail-modal').classList.add('flex');
+            if (isPureLiquidBundle) bndUpdateFlavorPreview(b.id);
         }
-
         function closeBundleDetail() {
             const modal = document.getElementById('bundle-detail-modal');
             modal.classList.add('hidden');
             modal.classList.remove('flex');
-            // Restore scroll
             document.body.style.position = '';
             document.body.style.top = '';
             document.body.style.width = '';
             document.body.classList.remove('modal-open');
             window.scrollTo(0, _modalScrollY || 0);
-            renderProducts(); // refresh button states
+            renderProducts();
+        }
+
+        // Aktualisiert die Vorschau der gewählten Sorten im Bundle-Modal
+        function bndUpdateFlavorPreview(bundleId) {
+            const preview = document.getElementById('bnd-flavor-preview');
+            if (!preview) return;
+            const slots = document.querySelectorAll('[id^="bnd-flavor-"]');
+            if (!slots.length) { preview.style.display = 'none'; return; }
+            const lines = Array.from(slots).map((sel, i) => {
+                const nicEl = document.getElementById('bnd-nic-' + sel.dataset.slot);
+                const flavor = sel.value.replace(/^Elfliq\s*/i, '');
+                const nic    = nicEl ? ` · ${nicEl.value}` : '';
+                return `<span style="color:rgba(255,255,255,.85)">Slot ${i + 1}:</span> ${flavor}${nic}`;
+            });
+            preview.innerHTML = `<div style="font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(251,191,36,.7);margin-bottom:6px">Deine Auswahl</div>` + lines.join('<br>');
+            preview.style.display = 'block';
+        }
+
+        // Bundle in den Warenkorb legen + Sortenauswahl als Bestellwunsch speichern
+        function bndAddWithFlavors(bundleId, totalSlots, isPureLiquid) {
+            addBundleToCart(bundleId, event);
+
+            if (isPureLiquid && totalSlots > 0) {
+                const lines = [];
+                for (let i = 0; i < totalSlots; i++) {
+                    const flavorEl = document.getElementById('bnd-flavor-' + i);
+                    const nicEl    = document.getElementById('bnd-nic-' + i);
+                    if (!flavorEl) continue;
+                    const flavor = flavorEl.value.replace(/^Elfliq\s*/i, '');
+                    const nic    = nicEl ? ` (${nicEl.value})` : '';
+                    lines.push(`Slot ${i + 1}: ${flavor}${nic}`);
+                }
+                if (lines.length) {
+                    const b = allBundles.find(x => x.id === bundleId);
+                    const noteField = document.getElementById('order-note-input');
+                    if (noteField) {
+                        const bundleLine = `${b ? b.name + ': ' : ''}${lines.join(', ')}`;
+                        // Anhängen falls schon ein Wunsch vorhanden
+                        noteField.value = noteField.value
+                            ? noteField.value + '\n' + bundleLine
+                            : bundleLine;
+                        const counter = document.getElementById('order-note-counter');
+                        if (counter) counter.textContent = noteField.value.length;
+                    }
+                }
+            }
+
+            const btn = document.getElementById('bnd-detail-add-btn');
+            if (btn) {
+                btn.innerHTML = '✅ Im Warenkorb';
+                btn.style.background = 'linear-gradient(135deg,rgba(52,211,153,.2),rgba(103,232,249,.15))';
+                btn.style.borderColor = 'rgba(52,211,153,.4)';
+                btn.style.color = '#34d399';
+            }
         }
         let cart = [];
         let currentUser = null;

@@ -7255,7 +7255,32 @@ function renderSortList() {
 async function toggleIsNew(id,e){e.stopImmediatePropagation();const doc=await db.collection('products').doc(id).get();const newVal=!(doc.data().isNew||false);await db.collection('products').doc(id).update({isNew:newVal});showToast(`NEW-Status → ${newVal?'aktiv':'deaktiviert'}`);renderSortList();}
 async function toggleAvailableInSort(id,e){e.stopImmediatePropagation();const doc=await db.collection('products').doc(id).get();const cur=doc.data().available!==false;await db.collection('products').doc(id).update({available:!cur});showToast(`Verfügbarkeit → ${!cur?'NICHT verfügbar':'verfügbar'}`);renderSortList();}
 function autoSort(mode){const container=document.getElementById('sort-list');let items=Array.from(container.children).filter(i=>i.dataset.id);items.sort((a,b)=>{const pA=allProducts.find(p=>p.id===a.dataset.id);const pB=allProducts.find(p=>p.id===b.dataset.id);if(!pA||!pB)return 0;switch(mode){case'alpha':return pA.name.localeCompare(pB.name);case'new':return(pB.isNew?1:0)-(pA.isNew?1:0);case'tornado':return((pA.category==="WaveVapes Tornado 30000")?0:1)-((pB.category==="WaveVapes Tornado 30000")?0:1);case'available':return((pB.available!==false)?0:1)-((pA.available!==false)?0:1);case'stock':return(pB.stock||0)-(pA.stock||0);default:return 0;}});items.forEach(item=>container.appendChild(item));showToast('✅ Liste sortiert!','success');}
-function autoSortPriority(){const container=document.getElementById('sort-list');let items=Array.from(container.children);items.sort((a,b)=>{const pA=allProducts.find(p=>p.id===a.dataset.id);const pB=allProducts.find(p=>p.id===b.dataset.id);if(!pA||!pB)return 0;const getPriority=p=>{if(p.available===false||(p.stock||0)<=0)return 4;if(p.isNew===true)return 1;if(p.category!=="WaveVapes Tornado 30000")return 2;return 3;};const prioA=getPriority(pA),prioB=getPriority(pB);if(prioA!==prioB)return prioA-prioB;return pA.name.localeCompare(pB.name);});items.forEach(item=>container.appendChild(item));showToast('✅ Auto-Priorität angewendet!','success');}
+function autoSortPriority(){
+    const container=document.getElementById('sort-list');
+    let items=Array.from(container.children).filter(i=>i.dataset.id);
+    items.sort((a,b)=>{
+        const isBundle_A = a.dataset.type === 'bundle';
+        const isBundle_B = b.dataset.type === 'bundle';
+        const pA = isBundle_A ? _bundles.find(b=>b.id===a.dataset.id) : allProducts.find(p=>p.id===a.dataset.id);
+        const pB = isBundle_B ? _bundles.find(b=>b.id===b.dataset.id) : allProducts.find(p=>p.id===b.dataset.id);
+        const getPriority = (item, isBundle) => {
+            if (isBundle) return item?.active === false ? 4 : 2;
+            if (!item) return 3;
+            if (item.available===false||(item.stock||0)<=0) return 5;
+            if (item.isNew===true) return 1;
+            return 3;
+        };
+        const prioA=getPriority(pA,isBundle_A), prioB=getPriority(pB,isBundle_B);
+        if(prioA!==prioB) return prioA-prioB;
+        return (pA?.name||'').localeCompare(pB?.name||'');
+    });
+    items.forEach(item=>container.appendChild(item));
+    // Renumber ranks
+    Array.from(container.children).filter(i=>i.dataset.id).forEach((el,i)=>{
+        const r=el.querySelector('.srt-rank'); if(r) r.textContent=i+1;
+    });
+    showToast('✅ Auto-Priorität angewendet!','success');
+}
 async function saveProductOrder() {
     const visibleItems = Array.from(document.querySelectorAll('#sort-list .sortable-item')).map(i => i.dataset.id);
 
@@ -7917,7 +7942,7 @@ function switchTab(n) {
     if(n===4)loadCoupons();
     if(n===5)loadAnalytics();
     if(n===6)loadAdminLogs();
-    if(n===8){ if(!_bundles.length) loadBundles(); loadProductOrder(); }
+    if(n===8){ (async()=>{ if(!_bundles.length) await loadBundles(); await loadProductOrder(); })(); }
     if(n===11){ rvAdminLoad('pending'); rvAdminLoadStats(); }
     if(n===9){
         loadPresence();
@@ -11204,6 +11229,12 @@ async function loadBundles() {
         await bndLoadProducts();
         const snap = await db.collection(BND_COL).orderBy('createdAt','desc').get();
         _bundles = snap.docs.map(d => ({id:d.id,...d.data()}));
+
+        // Refresh Sortierung cat bar if that tab is currently open
+        if (document.getElementById('tab-content-8') && !document.getElementById('tab-content-8').classList.contains('hidden')) {
+            renderSrtCatBar();
+            renderSortList();
+        }
 
         // Badge in Sidebar
         const badge = document.getElementById('sb-bundles-badge');

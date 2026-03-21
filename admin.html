@@ -8915,7 +8915,13 @@ function rvAdminLoad(mode) {
                         <div class="rv-admin-actions">
                             ${mode !== 'approved' ? `<button class="rv-admin-btn approve" onclick="rvAdminApprove('${r.id}')" title="Freigeben"><i class="fa-solid fa-check"></i></button>` : ''}
                             ${mode !== 'rejected' ? `<button class="rv-admin-btn reject"  onclick="rvAdminReject('${r.id}')"  title="Ablehnen"><i class="fa-solid fa-xmark"></i></button>` : ''}
-                            <button class="rv-admin-btn" onclick="aiReviewReply('${r.id}',${r.rating||0},${JSON.stringify((r.text||'').replace(/'/g,'\'').slice(0,200))},${JSON.stringify((r.username||'Anonym').replace(/'/g,'\''))})" title="KI-Antwort" style="background:rgba(167,139,250,.15);border-color:rgba(167,139,250,.35);color:#a78bfa"><i class="fa-solid fa-wand-magic-sparkles"></i></button>
+                            <button class="rv-admin-btn rv-ki-btn" title="KI-Antwort"
+                        data-rv-id="${r.id}"
+                        data-rv-rating="${r.rating||0}"
+                        data-rv-text="${(r.text||'').replace(/"/g,'&quot;').replace(/'/g,'&#39;').slice(0,200)}"
+                        data-rv-user="${(r.username||'Anonym').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}"
+                        style="background:rgba(167,139,250,.15);border-color:rgba(167,139,250,.35);color:#a78bfa"
+                    ><i class="fa-solid fa-wand-magic-sparkles"></i></button>
                         </div>
                     </div>
                     <div id="rv-ai-${r.id}" style="display:none;margin-top:12px"></div>
@@ -9403,7 +9409,17 @@ function caExportCSV() {
 // All data loading is triggered from auth.onAuthStateChanged after admin check
 // window.onload only handles UI init that doesn't need auth
 window.onload = () => {
-    // Nothing here — data loading happens in auth callback after admin verification
+    // Delegated listener for KI-Antwort buttons in Bewertungen tab
+    // Using data attributes avoids HTML-escaping issues with inline onclick JSON
+    document.addEventListener('click', e => {
+        const btn = e.target.closest('.rv-ki-btn');
+        if (!btn) return;
+        const id     = btn.dataset.rvId;
+        const rating = parseInt(btn.dataset.rvRating) || 0;
+        const text   = btn.dataset.rvText   || '';
+        const user   = btn.dataset.rvUser   || 'Anonym';
+        aiReviewReply(id, rating, text, user);
+    });
 };
 
 // OPT 5: Clean up all active Firestore listeners on page unload to prevent

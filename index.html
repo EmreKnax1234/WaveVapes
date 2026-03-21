@@ -4212,9 +4212,16 @@
                     qtyMap[String(i.id)] = (qtyMap[String(i.id)] || 0) + i.qty;
                 });
                 await db.runTransaction(async (tx) => {
-                    for (const id of cartProductIds) {
-                        const ref = db.collection("products").doc(id);
-                        const snap = await tx.get(ref);
+                    // FIX: Firestore requires ALL reads before ANY writes.
+                    // Use Promise.all to fetch all product docs in parallel first,
+                    // then validate and write in a separate loop afterwards.
+                    const refs  = cartProductIds.map(id => db.collection("products").doc(id));
+                    const snaps = await Promise.all(refs.map(ref => tx.get(ref)));
+
+                    // Validate all products (reads only)
+                    for (let i = 0; i < cartProductIds.length; i++) {
+                        const snap = snaps[i];
+                        const id   = cartProductIds[i];
                         if (!snap.exists) throw new Error(`Ein Produkt ist nicht mehr im Sortiment.`);
                         const p = snap.data();
                         if (p.available === false) throw new Error(`„${p.name}" ist derzeit nicht verfügbar.`);
@@ -4222,7 +4229,13 @@
                         if ((p.stock || 0) < needed) {
                             throw new Error(`„${p.name}" ist leider nur noch ${p.stock || 0}× auf Lager.`);
                         }
-                        tx.update(ref, { stock: firebase.firestore.FieldValue.increment(-needed) });
+                    }
+
+                    // All reads done — now perform all writes
+                    for (let i = 0; i < cartProductIds.length; i++) {
+                        const id     = cartProductIds[i];
+                        const needed = qtyMap[id] || 0;
+                        tx.update(refs[i], { stock: firebase.firestore.FieldValue.increment(-needed) });
                     }
                 });
                 // Server-side subtotal (mystery vape excluded from subtotal)

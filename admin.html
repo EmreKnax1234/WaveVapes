@@ -4849,16 +4849,11 @@ async function checkStockWarnings() {
 
 async function updateStats() {
     const active = allProducts.filter(p => p.available !== false).length;
-    const top = [...allProducts].sort((a, b) => (b.sold || 0) - (a.sold || 0))[0];
-
-    // Active count & top seller zeigen sofort
     document.getElementById('active-products').textContent = active;
-    document.getElementById('top-seller').textContent = top ? `${top.name} (${top.sold || 0}×)` : '—';
+    document.getElementById('top-seller').textContent    = '…';
     document.getElementById('total-sold').textContent    = '…';
     document.getElementById('total-revenue').textContent = '…';
 
-    // Umsatz & Verkaufte Einheiten aus Orders (gleiche Quelle wie Analytics-Tab)
-    // Stornierte Bestellungen werden nicht gezählt
     try {
         const snap = await db.collection('orders')
             .where('status', '!=', 'Storniert')
@@ -4866,22 +4861,34 @@ async function updateStats() {
 
         let totalRevenue = 0;
         let totalSold    = 0;
+        // E-04 FIX: Compute top seller from real order data, not the stale p.sold product field
+        const soldMap = new Map();
         snap.forEach(doc => {
             const o = doc.data();
             totalRevenue += o.total || 0;
             if (Array.isArray(o.items)) {
                 o.items.forEach(item => {
-                    if (item.id != MYSTERY_ID) totalSold += item.qty || 0; // 999 = Mystery Vape
+                    if (item.id !== MYSTERY_ID) {
+                        totalSold += item.qty || 0;
+                        soldMap.set(item.name, (soldMap.get(item.name) || 0) + (item.qty || 0));
+                    }
                 });
             }
         });
 
+        // Top seller by units sold across all orders
+        let topName = '—', topQty = 0;
+        soldMap.forEach((qty, name) => { if (qty > topQty) { topQty = qty; topName = name; } });
+
+        document.getElementById('top-seller').textContent    = topQty > 0 ? `${topName} (${topQty}×)` : '—';
         document.getElementById('total-sold').textContent    = totalSold.toLocaleString('de-DE');
         document.getElementById('total-revenue').textContent = totalRevenue.toFixed(0) + ' €';
     } catch(e) {
         // Fallback auf Produktfelder wenn Orders-Query fehlschlägt
         const soldTotal = allProducts.reduce((sum, p) => sum + (p.sold || 0), 0);
         const revenue   = allProducts.reduce((sum, p) => sum + (p.sold || 0) * (p.price || 0), 0);
+        const top = [...allProducts].sort((a, b) => (b.sold || 0) - (a.sold || 0))[0];
+        document.getElementById('top-seller').textContent    = top ? `${top.name} (${top.sold || 0}×)` : '—';
         document.getElementById('total-sold').textContent    = soldTotal.toLocaleString('de-DE');
         document.getElementById('total-revenue').textContent = revenue.toFixed(0) + ' €';
         console.warn('updateStats: Orders-Query fehlgeschlagen, Fallback aktiv:', e);
@@ -4891,10 +4898,16 @@ async function updateStats() {
 }
 
 // ====================== PRODUKTE ======================
+// K-04 FIX: Track listener so repeated calls don't stack multiple onSnapshot listeners
+let _adminProductsUnsub = null;
 function loadProducts() {
-    db.collection('products').onSnapshot(snap => {
+    if (_adminProductsUnsub) { _adminProductsUnsub(); _adminProductsUnsub = null; }
+    let _firstProductLoad = true; // E-08 FIX
+    _adminProductsUnsub = db.collection('products').onSnapshot(snap => {
         allProducts = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        updateStats();
+        // E-08 FIX: Call updateStats on first snapshot so it always runs with real data
+        if (_firstProductLoad) { _firstProductLoad = false; updateStats(); }
+        else { updateStats(); }
         renderProductTable();
     });
 }
@@ -5393,7 +5406,7 @@ function catOpenInlineEdit(id) {
 async function catSaveInlineEdit() {
     if (!_catEditId) return;
     const name      = document.getElementById('edit-cat-name').value.trim();
-    const order     = parseInt(document.getElementById('edit-cat-order', 10).value) || 999;
+    const order     = parseInt(document.getElementById('edit-cat-order').value, 10) || 999;
     const offerData = catGetOfferData('edit');
     if (!name) return showToast('Name erforderlich','error');
     await db.collection('categories').doc(_catEditId).update({ name, order, ...offerData });
@@ -5403,11 +5416,14 @@ async function catSaveInlineEdit() {
 }
 
 function loadCategories() {
+    let _firstCatLoad = true; // E-08 FIX
     db.collection('categories').orderBy('order').onSnapshot(snap => {
         allCategories = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         renderCategoryTable();
         populateCategorySelects();
-        populateAdminCategoryFilter();
+        // E-08 FIX: Populate filter on first snapshot – replaces the removed setTimeout
+        if (_firstCatLoad) { _firstCatLoad = false; populateAdminCategoryFilter(); }
+        else { populateAdminCategoryFilter(); }
     });
 }
 
@@ -5454,7 +5470,7 @@ function renderCategoryTable() {
 document.getElementById('add-category-form').addEventListener('submit', async e => {
     e.preventDefault();
     const name   = document.getElementById('cat-name').value.trim();
-    const order  = parseInt(document.getElementById('cat-order', 10).value) || 999;
+    const order  = parseInt(document.getElementById('cat-order').value, 10) || 999;
     const offerData = catGetOfferData('add');
     if (!name) return showToast('Name erforderlich','error');
     await db.collection('categories').add({ name, order, ...offerData });
@@ -5554,8 +5570,9 @@ function cpnRenderGrid(coupons) {
         const expiryDate = c.expiresAt ? c.expiresAt.toDate() : null;
         const expired    = expiryDate ? expiryDate < now : false;
         const uses       = c.totalUsages !== undefined ? c.totalUsages : (c.usedBy ? c.usedBy.length : 0);
-        const maxUses    = c.oneTimeUse ? 1 : (uses > 0 ? uses * 2 : 10);
-        const pct        = c.oneTimeUse ? Math.min(100, uses * 100) : Math.min(100, Math.round(uses / Math.max(maxUses, 1) * 100));
+        // K-06 FIX: Use real maxUsages from Firestore, not uses*2 which always produced ~50%
+        const maxUses    = c.oneTimeUse ? 1 : (c.maxUsages || null);
+        const pct        = maxUses !== null ? Math.min(100, Math.round(uses / Math.max(maxUses, 1) * 100)) : null;
         const discount   = c.type === 'percent' ? c.value + '%' : c.value.toFixed(2) + ' €';
         const typeLabel  = c.type === 'percent' ? 'Prozent-Rabatt' : 'Festbetrag';
         const expiryStr  = expiryDate ? expiryDate.toLocaleDateString('de-DE') : '—';
@@ -5580,9 +5597,11 @@ function cpnRenderGrid(coupons) {
             <div style="display:flex;align-items:center;gap:10px;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.05)">
                 <div class="cpn-usage-wrap">
                     <div class="cpn-usage-label">Einlösungen</div>
-                    <div class="cpn-usage-bar-bg"><div class="cpn-usage-bar" style="width:${pct}%"></div></div>
+                    ${pct !== null
+                        ? `<div class="cpn-usage-bar-bg"><div class="cpn-usage-bar" style="width:${pct}%"></div></div>`
+                        : `<div style="font-size:10px;color:rgba(255,255,255,.3);font-style:italic">unbegrenzt</div>`}
                 </div>
-                <div class="cpn-usage-count">${uses}${c.oneTimeUse ? '/1' : ''}</div>
+                <div class="cpn-usage-count">${uses}${c.oneTimeUse ? '/1' : maxUses !== null ? '/'+maxUses : ''}</div>
                 <div class="cpn-card-actions">
                     <button class="cpn-act-btn amber" onclick="showCouponHistory('${c.id}')" title="Einlösungs-History"><i class="fa-solid fa-clock-rotate-left"></i></button>
                     <button class="cpn-act-btn red"   onclick="deleteCoupon('${c.id}')" title="Löschen"><i class="fa-solid fa-trash"></i></button>
@@ -5862,12 +5881,28 @@ async function showOrderModal(orderId) {
         discRow.style.display = 'none';
     }
 
-    // status selector
+    // M-06 FIX: Populate select with ALL status options (not just current)
     const curStatus = order.status || 'Zahlung erwartet';
+    // saved the original status regardless of which .ord-status-opt was clicked.
+    const ALL_STATUSES = ['Zahlung erwartet','Wird bearbeitet','Versendet','Zugestellt','Storniert'];
+    document.getElementById('modal-status').innerHTML = ALL_STATUSES.map(s =>
+        `<option value="${s}"${s === curStatus ? ' selected' : ''}>${s}</option>`
+    ).join('');
+    // Keep visual button highlight in sync when select changes
+    document.getElementById('modal-status').onchange = function() {
+        document.querySelectorAll('.ord-status-opt').forEach(o => {
+            o.classList.toggle('selected', o.dataset.s === this.value);
+        });
+    };
+    // Keep select in sync when status-opt buttons are clicked
     document.querySelectorAll('.ord-status-opt').forEach(o => {
         o.classList.toggle('selected', o.dataset.s === curStatus);
+        o.onclick = function() {
+            document.querySelectorAll('.ord-status-opt').forEach(x => x.classList.remove('selected'));
+            this.classList.add('selected');
+            document.getElementById('modal-status').value = this.dataset.s;
+        };
     });
-    document.getElementById('modal-status').innerHTML = `<option value="${curStatus}" selected>${curStatus}</option>`;
 
     // carrier + tracking
     document.getElementById('modal-carrier').value   = order.carrier || 'DHL';
@@ -5932,7 +5967,7 @@ async function deleteOrder() {
         if (shouldRestoreStock && order.items?.length) {
             const batch = db.batch();
             for (const item of order.items) {
-                if (item.id == MYSTERY_ID) continue;
+                if (item.id === MYSTERY_ID) continue;
                 const ref = db.collection('products').doc(String(item.id));
                 const update = (order.stockReserved && !wasProcessed)
                     ? { stock: firebase.firestore.FieldValue.increment(item.qty) }
@@ -6239,7 +6274,7 @@ async function euDrawerDanger(action){
             const shouldRestoreStock = !isCancelled && (o.stockReserved || wasProcessed);
             if (shouldRestoreStock && o.items?.length) {
                 o.items.forEach(item => {
-                    if (item.id == MYSTERY_ID) return;
+                    if (item.id === MYSTERY_ID) return;
                     const wasAlreadySold = wasProcessed;
                     const update = wasAlreadySold
                         ? { stock: firebase.firestore.FieldValue.increment(item.qty),
@@ -6275,7 +6310,7 @@ async function deleteUser(uid, email) {
             const shouldRestoreStock = !isCancelled && (o.stockReserved || wasProcessed);
             if (shouldRestoreStock && o.items?.length) {
                 o.items.forEach(item => {
-                    if (item.id == MYSTERY_ID) return;
+                    if (item.id === MYSTERY_ID) return;
                     const update = wasProcessed
                         ? { stock: firebase.firestore.FieldValue.increment(item.qty),
                            sold:   firebase.firestore.FieldValue.increment(-item.qty) }
@@ -6507,9 +6542,10 @@ async function generatePDFReport() {
     let totalRevenue=0,orderCount=0;const productMap=new Map(); ordersSnap.forEach(doc=>{const o=doc.data();if((o.status||'')===('Storniert'))return;totalRevenue+=o.total||0;orderCount++;o.items.forEach(item=>productMap.set(item.name,(productMap.get(item.name)||0)+item.qty));});
     const topProducts=Array.from(productMap.entries()).sort((a,b)=>b[1]-a[1]).slice(0,5);
     pdfDoc.setFontSize(14);pdfDoc.text("Zusammenfassung letzte 30 Tage",20,45); pdfDoc.setFontSize(11);pdfDoc.text(`Gesamtumsatz: ${totalRevenue.toFixed(2)} €`,20,55);pdfDoc.text(`Bestellungen: ${orderCount}`,20,62);pdfDoc.text("Top 5 Produkte:",20,75);
-    let y=82;topProducts.forEach(([name,qty])=>{pdfDoc.text(`${name}: ${qty} Stück`,25,y);y+=7;});
-    const usersSnap=await db.collection("users").orderBy("referralCount","desc").limit(10).get(); pdfDoc.text("Top Referrer:",20,y+10);y+=17;
-    usersSnap.forEach(doc=>{const u=doc.data();pdfDoc.text(`${u.username||u.email.split("@")[0]} – ${u.referralCount||0} Freunde`,25,y);y+=7;});
+    // M-03 FIX: Auto page break to prevent content overflow
+    let y=82;topProducts.forEach(([name,qty])=>{ if(y>260){pdfDoc.addPage();y=20;} pdfDoc.text(`${name}: ${qty} Stück`,25,y);y+=7;});
+    const usersSnap=await db.collection("users").orderBy("referralCount","desc").limit(10).get(); if(y>245){pdfDoc.addPage();y=20;} pdfDoc.text("Top Referrer:",20,y+10);y+=17;
+    usersSnap.forEach(doc=>{const u=doc.data(); if(y>260){pdfDoc.addPage();y=20;} pdfDoc.text(`${u.username||u.email.split("@")[0]} – ${u.referralCount||0} Freunde`,25,y);y+=7;});
     pdfDoc.setFontSize(10);pdfDoc.text("WaveVapes Admin Panel v2.0",20,280); pdfDoc.save(`wavevapes-monatsbericht_${new Date().toISOString().slice(0,10)}.pdf`);
     await logAction("monthly_report_generated"); showToast("✅ PDF heruntergeladen!","success");
 }
@@ -6571,8 +6607,7 @@ function lgRelTime(date) {
 }
 
 function loadAdminLogs() {
-    if (logsUnsubscribe) logsUnsubscribe();
-    // BUG FIX: Listener vor Neustart sauber beenden (verhindert Listener-Stacking)
+    // K-02 FIX: Teardown existing listener cleanly before restarting
     if (logsUnsubscribe) { logsUnsubscribe(); logsUnsubscribe = null; }
     logsUnsubscribe = db.collection("admin_logs").orderBy("timestamp","desc").limit(50).onSnapshot(snap => {
         const container = document.getElementById("logs-container");
@@ -6970,7 +7005,7 @@ async function handleStockOnStatusChange(orderId, newStatus) {
     if (newStatus === 'Wird bearbeitet' && !wasAlreadySold) {
         const batch = db.batch();
         for (const item of order.items) {
-            if (item.id == MYSTERY_ID) continue;
+            if (item.id === MYSTERY_ID) continue;
             const update = order.stockReserved
                 ? { sold: firebase.firestore.FieldValue.increment(item.qty) }          // stock already reserved at placement
                 : { stock: firebase.firestore.FieldValue.increment(-item.qty),         // legacy: decrement stock too
@@ -6993,7 +7028,7 @@ async function handleStockOnStatusChange(orderId, newStatus) {
     if (shouldRestoreStock) {
         const batch = db.batch();
         for (const item of order.items) {
-            if (item.id == MYSTERY_ID) continue;
+            if (item.id === MYSTERY_ID) continue;
             const update = (order.stockReserved && !wasProcessed)
                 ? { stock: firebase.firestore.FieldValue.increment(item.qty) }         // reserved but not yet processed — only restore stock
                 : { stock: firebase.firestore.FieldValue.increment(item.qty),          // processed or legacy — restore stock + undo sold
@@ -8435,12 +8470,17 @@ function globalSearchBlur() {
 let _notifications = [];
 let _notifUnread = 0;
 let _orderNotifPrevCount = null;
+// E-06 FIX: Restore last-read timestamp from localStorage so badge is correct after reload
+const _NOTIF_LS_KEY = 'wv_notif_lastRead';
+let _notifLastReadTs = parseInt(localStorage.getItem(_NOTIF_LS_KEY) || '0', 10);
 
 function pushNotification(type, msg, subMsg, onClickFn) {
     const id = Date.now();
-    _notifications.unshift({ id, type, msg, subMsg, time: new Date(), read: false, onClick: onClickFn });
+    // E-06 FIX: Mark as already-read if it predates the stored last-read timestamp
+    const read = id <= _notifLastReadTs;
+    _notifications.unshift({ id, type, msg, subMsg, time: new Date(), read, onClick: onClickFn });
     if (_notifications.length > 30) _notifications.pop();
-    _notifUnread++;
+    if (!read) _notifUnread++;
     renderNotifPanel();
     updateNotifDot();
     // Rich order toast — larger, auffälliger, mit Direktlink
@@ -8499,12 +8539,22 @@ function toggleNotifPanel() {
     const o = document.getElementById('notif-overlay');
     if (p.style.display === 'none' || !p.style.display) {
         p.style.display = 'block'; o.classList.add('open');
-        // mark all read
+        // mark all read + E-06 FIX: persist last-read time to localStorage
         _notifications.forEach(n => n.read = true);
+        _notifLastReadTs = Date.now();
+        localStorage.setItem(_NOTIF_LS_KEY, String(_notifLastReadTs));
         _notifUnread = 0; updateNotifDot(); renderNotifPanel();
     } else {
         closeNotifPanel();
     }
+}
+function clearNotifications() {
+    _notifications = [];
+    _notifUnread = 0;
+    // E-06 FIX: Also clear persisted last-read on explicit clear
+    localStorage.removeItem(_NOTIF_LS_KEY);
+    _notifLastReadTs = 0;
+    updateNotifDot(); renderNotifPanel();
 }
 function closeNotifPanel() {
     const p = document.getElementById('notif-panel');
@@ -8512,7 +8562,6 @@ function closeNotifPanel() {
     if (p) p.style.display = 'none';
     if (o) o.classList.remove('open');
 }
-function clearNotifications() { _notifications = []; _notifUnread = 0; updateNotifDot(); renderNotifPanel(); }
 
 // Auto-request browser notification permission
 function requestNotifPermission() {
@@ -8521,10 +8570,9 @@ function requestNotifPermission() {
 
 // Watch for new orders
 function watchNewOrders() {
+    // K-03 FIX: Single clean teardown before restarting listener
     if (_watchOrdersUnsub) { _watchOrdersUnsub(); _watchOrdersUnsub = null; }
     let firstLoad = true;
-    // BUG FIX: Listener vor Neustart sauber beenden (verhindert Listener-Stacking)
-    if (_watchOrdersUnsub) { _watchOrdersUnsub(); _watchOrdersUnsub = null; }
     _watchOrdersUnsub = db.collection('orders').orderBy('date','desc').limit(50).onSnapshot(snap => {
         if (firstLoad) { _orderNotifPrevCount = snap.size; firstLoad = false; return; }
         const newOrders = snap.docChanges().filter(c => c.type === 'added');
@@ -9110,7 +9158,9 @@ auth.onAuthStateChanged(async (user) => {
     loadCoupons();
     loadUsers();
     loadOrders();
-    setTimeout(() => { updateStats(); populateAdminCategoryFilter(); }, 500);
+    // E-08 FIX: updateStats() and populateAdminCategoryFilter() are now called inside
+    // loadProducts() and loadCategories() on their first snapshot, replacing the
+    // fragile setTimeout(500) that could fire before data arrived on slow connections.
     switchTab(0);
     // New features
     requestNotifPermission();
@@ -10274,8 +10324,8 @@ async function saLoadSecuritySettings() {
 
 async function saSaveSecuritySettings() {
     const settings = {
-        timeout:     parseInt(document.getElementById('sa-sec-timeout', 10).value) || 30,
-        maxAttempts: parseInt(document.getElementById('sa-sec-maxattempts', 10).value) || 5,
+        timeout:     parseInt(document.getElementById('sa-sec-timeout').value, 10) || 30,
+        maxAttempts: parseInt(document.getElementById('sa-sec-maxattempts').value, 10) || 5,
         notify:      document.getElementById('sa-sec-notify').checked,
         forceIP:     document.getElementById('sa-sec-force-ip').checked,
         verboseLog:  document.getElementById('sa-sec-verbose').checked,
@@ -10356,7 +10406,8 @@ async function saExport(collection, format) {
                 }).join(';'))
             ].join('\n');
             content = '\uFEFF' + csv; // BOM for Excel
-            mime = 'text/csv'; ext = 'csv';
+            // E-10 FIX: Include charset=utf-8 in MIME type to guarantee encoding
+            mime = 'text/csv;charset=utf-8'; ext = 'csv';
         }
         saDownload(`wavevapes_${collection}_${new Date().toISOString().slice(0,10)}.${ext}`, content, mime);
         await logAction('sa_export', collection, { format, count: safeData.length });

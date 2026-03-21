@@ -7131,112 +7131,88 @@ function renderSortList() {
         return;
     }
 
-    // ── PRODUCTS BRANCH (existing) ───────────────────────────────────
+    // ── PRODUCTS + BUNDLES gemeinsam ────────────────────────────────
     const sourceProducts = srtCurrentCat === 'Alle'
         ? allProducts
         : allProducts.filter(p => p.category === srtCurrentCat);
 
-    const sorted = [...sourceProducts].sort((a,b) => {
-        const idxA=productOrder.indexOf(a.id), idxB=productOrder.indexOf(b.id);
-        if(idxA===-1&&idxB===-1) return a.name.localeCompare(b.name);
-        if(idxA===-1) return 1; if(idxB===-1) return -1;
-        return idxA-idxB;
+    // In "Alle": Produkte und Bundles zu einer einzigen Liste zusammenführen
+    const sourceBundles = srtCurrentCat === 'Alle' ? _bundles : [];
+
+    // Jedes Item bekommt einen kombinierten Order-Index:
+    // Produkte aus productOrder, Bundles aus bundleOrder, neue Items ans Ende
+    const combined = [
+        ...sourceProducts.map(p => ({ item: p, type: 'product' })),
+        ...sourceBundles.map(b => ({ item: b, type: 'bundle' }))
+    ].sort((a, b) => {
+        const orderA = a.type === 'bundle' ? bundleOrder.indexOf(a.item.id) : productOrder.indexOf(a.item.id);
+        const orderB = b.type === 'bundle' ? bundleOrder.indexOf(b.item.id) : productOrder.indexOf(b.item.id);
+        // Beide haben gespeicherte Position → nach Index
+        if (orderA !== -1 && orderB !== -1) return orderA - orderB;
+        // Nur A hat Position → A kommt zuerst
+        if (orderA !== -1) return -1;
+        // Nur B hat Position → B kommt zuerst
+        if (orderB !== -1) return 1;
+        // Beide neu → alphabetisch
+        return (a.item.name||'').localeCompare(b.item.name||'');
     });
 
     // Update count
     const cnt = document.getElementById('srt-count');
     if (cnt) cnt.textContent = srtCurrentCat === 'Alle'
-        ? sorted.length + ' Produkte' + (_bundles.length ? ` + ${_bundles.length} Bundles` : '')
-        : `${sorted.length} in „${srtCurrentCat}"`;
+        ? `${sourceProducts.length} Produkte${sourceBundles.length ? ` + ${sourceBundles.length} Bundles` : ''}`
+        : `${sourceProducts.length} in „${srtCurrentCat}"`;
 
-    if (!sorted.length && !(srtCurrentCat === 'Alle' && _bundles.length)) {
-        container.innerHTML = `<div class="srt-list-empty"><i class="fa-solid fa-box-open"></i>Keine Produkte in dieser Kategorie.</div>`;
+    if (!combined.length) {
+        container.innerHTML = `<div class="srt-list-empty"><i class="fa-solid fa-box-open"></i>Keine Einträge.</div>`;
         return;
     }
 
-    sorted.forEach((p, idx) => {
+    combined.forEach(({ item, type }, idx) => {
         const div = document.createElement('div');
         div.className = 'srt-item sortable-item';
-        div.dataset.id = p.id;
-        div.dataset.type = 'product';
+        div.dataset.id = item.id;
+        div.dataset.type = type;
         div.style.animationDelay = Math.min(idx, 20) * 0.018 + 's';
 
-        const stock = p.stock || 0;
-        const isCrit = stock <= stockCriticalThreshold;
-        const isWarn = !isCrit && stock <= stockWarningThreshold;
-        const stockColor = isCrit ? 'var(--srt-red)' : isWarn ? 'var(--srt-amber)' : 'rgba(255,255,255,.3)';
-
-        // chips
         const chips = [];
-        if (p.isNew)            chips.push(`<span class="srt-chip srt-chip-new"  onclick="toggleIsNew('${p.id}',event)" title="Klick zum Deaktivieren">NEW</span>`);
-        if (p.available===false)chips.push(`<span class="srt-chip srt-chip-off"  onclick="toggleAvailableInSort('${p.id}',event)" title="Klick zum Aktivieren">NICHT VERFÜGBAR</span>`);
-        if (isCrit)             chips.push(`<span class="srt-chip srt-chip-crit">⚠ KRITISCH</span>`);
-        else if (isWarn)        chips.push(`<span class="srt-chip srt-chip-warn">⚠ NIEDRIG</span>`);
-        if (p.category)         chips.push(`<span class="srt-chip srt-chip-cat">${p.category.length>22?p.category.slice(0,20)+'…':p.category}</span>`);
-
-        const imgHTML = p.image
-            ? `<img src="${p.image}" class="srt-img" loading="lazy">`
+        const imgHTML = item.image
+            ? `<img src="${item.image}" class="srt-img" loading="lazy">`
             : `<div class="srt-img-ph">📦</div>`;
+
+        let rightCol = '';
+
+        if (type === 'bundle') {
+            if (!item.active)        chips.push(`<span class="srt-chip srt-chip-off">INAKTIV</span>`);
+            if (item.discountPct > 0) chips.push(`<span class="srt-chip srt-chip-new">-${Math.round(item.discountPct)}%</span>`);
+            if (item.soldCount > 0)   chips.push(`<span class="srt-chip srt-chip-cat">${item.soldCount}× verkauft</span>`);
+            chips.push(`<span class="srt-chip" style="background:rgba(167,139,250,.12);color:#a78bfa;border-color:rgba(167,139,250,.3)">Bundle</span>`);
+            rightCol = `<div class="srt-stock" style="color:var(--srt-purple)">${(item.bundlePrice||0).toFixed(2)} €</div>`;
+        } else {
+            const stock = item.stock || 0;
+            const isCrit = stock <= stockCriticalThreshold;
+            const isWarn = !isCrit && stock <= stockWarningThreshold;
+            const stockColor = isCrit ? 'var(--srt-red)' : isWarn ? 'var(--srt-amber)' : 'rgba(255,255,255,.3)';
+            if (item.isNew)             chips.push(`<span class="srt-chip srt-chip-new" onclick="toggleIsNew('${item.id}',event)" title="Klick zum Deaktivieren">NEW</span>`);
+            if (item.available===false) chips.push(`<span class="srt-chip srt-chip-off" onclick="toggleAvailableInSort('${item.id}',event)" title="Klick zum Aktivieren">NICHT VERFÜGBAR</span>`);
+            if (isCrit)                 chips.push(`<span class="srt-chip srt-chip-crit">⚠ KRITISCH</span>`);
+            else if (isWarn)            chips.push(`<span class="srt-chip srt-chip-warn">⚠ NIEDRIG</span>`);
+            if (item.category)          chips.push(`<span class="srt-chip srt-chip-cat">${item.category.length>22?item.category.slice(0,20)+'…':item.category}</span>`);
+            rightCol = `<div class="srt-stock" style="color:${stockColor}">${stock} Stk.</div>`;
+        }
 
         div.innerHTML = `
             <span class="srt-rank">${idx+1}</span>
             ${imgHTML}
             <div class="srt-body">
-                <div class="srt-name">${p.name}</div>
+                <div class="srt-name">${item.name||'—'}</div>
                 <div class="srt-chips">${chips.join('')}</div>
             </div>
-            <div class="srt-stock" style="color:${stockColor}">${stock} Stk.</div>
+            ${rightCol}
             <i class="fa-solid fa-grip-lines srt-handle"></i>`;
 
         container.appendChild(div);
     });
-
-    // ── BUNDLES in "Alle"-Ansicht anhängen ───────────────────────────
-    if (srtCurrentCat === 'Alle' && _bundles.length) {
-        const sep = document.createElement('div');
-        sep.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 4px;pointer-events:none;user-select:none';
-        sep.innerHTML = `<div style="flex:1;height:1px;background:rgba(167,139,250,.2)"></div>
-            <span style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#a78bfa;display:flex;align-items:center;gap:6px"><i class="fa-solid fa-boxes-stacked"></i> Bundles</span>
-            <div style="flex:1;height:1px;background:rgba(167,139,250,.2)"></div>`;
-        container.appendChild(sep);
-
-        const sortedBundles = [..._bundles].sort((a, b) => {
-            const iA = bundleOrder.indexOf(a.id), iB = bundleOrder.indexOf(b.id);
-            if (iA === -1 && iB === -1) return (a.name||'').localeCompare(b.name||'');
-            if (iA === -1) return 1; if (iB === -1) return -1;
-            return iA - iB;
-        });
-
-        sortedBundles.forEach((b, idx) => {
-            const div = document.createElement('div');
-            div.className = 'srt-item sortable-item';
-            div.dataset.id = b.id;
-            div.dataset.type = 'bundle';
-            div.style.animationDelay = Math.min(idx, 20) * 0.018 + 's';
-
-            const chips = [];
-            if (!b.active) chips.push(`<span class="srt-chip srt-chip-off">INAKTIV</span>`);
-            if (b.discountPct > 0) chips.push(`<span class="srt-chip srt-chip-new">-${Math.round(b.discountPct)}%</span>`);
-            if (b.soldCount > 0)   chips.push(`<span class="srt-chip srt-chip-cat">${b.soldCount}× verkauft</span>`);
-            chips.push(`<span class="srt-chip" style="background:rgba(167,139,250,.12);color:#a78bfa;border-color:rgba(167,139,250,.3)">Bundle</span>`);
-
-            const imgHTML = b.image
-                ? `<img src="${b.image}" class="srt-img" loading="lazy">`
-                : `<div class="srt-img-ph">📦</div>`;
-
-            div.innerHTML = `
-                <span class="srt-rank">${sorted.length + idx + 1}</span>
-                ${imgHTML}
-                <div class="srt-body">
-                    <div class="srt-name">${b.name || '—'}</div>
-                    <div class="srt-chips">${chips.join('')}</div>
-                </div>
-                <div class="srt-stock" style="color:var(--srt-purple)">${(b.bundlePrice||0).toFixed(2)} €</div>
-                <i class="fa-solid fa-grip-lines srt-handle"></i>`;
-
-            container.appendChild(div);
-        });
-    }
 
     if (sortableInstance) sortableInstance.destroy();
     sortableInstance = new Sortable(container, {

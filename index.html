@@ -658,10 +658,6 @@
         .rv-empty { text-align:center; padding:28px 16px; font-size:12px; color:rgba(255,255,255,.25); }
         .rv-more-btn { width:100%; padding:10px; border-radius:12px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); color:rgba(255,255,255,.4); font-size:12px; cursor:pointer; transition:background .15s; margin-top:10px; }
         .rv-more-btn:hover { background:rgba(255,255,255,.08); color:#fff; }
-        .rv-admin-reply { margin-top:12px; padding:12px 14px; background:rgba(103,232,249,.06); border:1px solid rgba(103,232,249,.15); border-radius:12px; position:relative; }
-        .rv-admin-reply::before { content:''; position:absolute; top:-7px; left:20px; width:12px; height:12px; background:rgba(103,232,249,.06); border-left:1px solid rgba(103,232,249,.15); border-top:1px solid rgba(103,232,249,.15); transform:rotate(45deg); }
-        .rv-admin-reply-badge { display:inline-flex; align-items:center; gap:5px; font-size:10px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:#67e8f9; margin-bottom:7px; }
-        .rv-admin-reply-text { font-size:12px; color:rgba(255,255,255,.75); line-height:1.65; }
         /* write form */
         .rv-form { background:rgba(103,232,249,.05); border:1px solid rgba(103,232,249,.15); border-radius:18px; padding:18px; margin-bottom:18px; display:none; flex-direction:column; gap:12px; }
         .rv-form.open { display:flex; }
@@ -3434,7 +3430,93 @@
             }
             let html = "";
             const isDesktop = true; // product detail works on all devices
-            filtered.forEach(product => {
+
+            // ── Bundles filtern ───────────────────────────────────────────
+            const activeBundles = allBundles.filter(b => {
+                if (!b.active) return false;
+                if (currentCategoryFilter === 'Alle') return true;
+                return b.category === currentCategoryFilter;
+            });
+
+            // ── Gemeinsame sortierte Liste aus Produkten + Bundles ────────
+            // Wenn kein Preisfilter aktiv: nach productOrder sortieren (enthält beide)
+            // Wenn Preisfilter aktiv: Bundles ans Ende (Preis-Sortierung gilt nur für Produkte)
+            const combinedItems = [
+                ...filtered.map(p => ({ type: 'product', item: p })),
+                ...activeBundles.map(b => ({ type: 'bundle', item: b }))
+            ];
+
+            if (currentPriceSort === 'price-asc' || currentPriceSort === 'price-desc') {
+                // Bei Preissortierung: Produkte bleiben vorne (schon sortiert), Bundles hinten
+                combinedItems.sort((a, b) => {
+                    if (a.type === 'bundle' && b.type !== 'bundle') return 1;
+                    if (a.type !== 'bundle' && b.type === 'bundle') return -1;
+                    return 0; // gleicher Typ: Reihenfolge beibehalten
+                });
+            } else {
+                // Normale Sortierung: beide nach productOrder interleaven
+                combinedItems.sort((a, b) => {
+                    const iA = productOrder.indexOf(a.item.id);
+                    const iB = productOrder.indexOf(b.item.id);
+                    if (iA !== -1 && iB !== -1) return iA - iB;
+                    if (iA !== -1) return -1;
+                    if (iB !== -1) return 1;
+                    // Beide ohne Position: Produkte nach getSortPriority, Bundles dahinter
+                    if (a.type === 'product' && b.type === 'product') {
+                        const prioA = getSortPriority(a.item), prioB = getSortPriority(b.item);
+                        if (prioA !== prioB) return prioA - prioB;
+                        return a.item.name.localeCompare(b.item.name);
+                    }
+                    if (a.type === 'bundle' && b.type === 'bundle') return 0;
+                    return a.type === 'bundle' ? 1 : -1;
+                });
+            }
+
+            // ── Rendern ───────────────────────────────────────────────────
+            combinedItems.forEach(({ type, item }) => {
+              if (type === 'bundle') {
+                const b = item;
+                const inCart = cart.some(i => i.bundleId === b.id);
+                const orig = (b.originalTotal || 0).toFixed(2).replace('.', ',');
+                const sale = (b.bundlePrice || 0).toFixed(2).replace('.', ',');
+                const save = b.originalTotal > b.bundlePrice
+                    ? ((b.originalTotal - b.bundlePrice)).toFixed(2).replace('.', ',')
+                    : null;
+                const tags = (b.items || []).slice(0, 3).map(it =>
+                    `<span class="bundle-tag">${it.name.length > 20 ? it.name.slice(0, 18) + '…' : it.name} ×${it.qty}</span>`
+                ).join('');
+                const moreTags = b.items && b.items.length > 3
+                    ? `<span class="bundle-tag">+${b.items.length - 3} mehr</span>` : '';
+                const imgHTML = b.image
+                    ? `<div class="img-wrap loaded" style="border-radius:14px;overflow:hidden;margin-bottom:10px;background:#111">
+                           <img src="${b.image}" alt="${b.name}" style="width:100%;height:100%;object-fit:cover" loading="lazy"
+                                onload="this.classList.add('img-loaded');this.closest('.img-wrap').classList.add('loaded')"
+                                onerror="this.closest('.img-wrap').innerHTML='<div style=\'display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:48px\'>🎁</div>'">
+                       </div>`
+                    : `<div class="img-wrap loaded" style="border-radius:14px;background:linear-gradient(135deg,rgba(167,139,250,.12),rgba(244,114,182,.08));display:flex;align-items:center;justify-content:center;margin-bottom:10px;font-size:56px">🎁</div>`;
+                html += `
+                    <div class="bundle-card" onclick="showBundleDetail('${b.id}')">
+                        <div class="bundle-card-bar"></div>
+                        <div class="p-5 flex flex-col h-full gap-3">
+                            <span class="bundle-badge">🎁 Bundle</span>
+                            <div style="margin-top:22px">${imgHTML}</div>
+                            <div>
+                                <h4 class="font-bold text-base leading-tight text-white mb-1">${b.name}</h4>
+                                ${b.description ? `<p style="font-size:11px;color:rgba(255,255,255,.4)">${b.description}</p>` : ''}
+                            </div>
+                            <div style="display:flex;flex-wrap:wrap;gap:5px">${tags}${moreTags}</div>
+                            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:auto">
+                                ${b.originalTotal > b.bundlePrice ? `<span class="bundle-orig-price">${orig} €</span>` : ''}
+                                <span class="bundle-sale-price">${sale} €</span>
+                                ${save ? `<span class="bundle-save-badge">−${save} € sparen</span>` : ''}
+                            </div>
+                            <button class="bundle-add-btn ${inCart ? 'in-cart' : ''}" onclick="event.stopImmediatePropagation();showBundleDetail('${b.id}')">
+                                ${inCart ? '✅ Im Warenkorb' : '🔍 Details & kaufen'}
+                            </button>
+                        </div>
+                    </div>`;
+              } else {
+                const product = item;
                 const cartItem = cart.find(i => i.id === product.id);
                 const qty = cartItem ? cartItem.qty : 0;
                 const nicotine = pendingNicotine[product.id] || cartItem?.nicotine || "20 mg";
@@ -3481,24 +3563,17 @@
                 const clickHandler = `onclick="showProductDetail('${product.id}')"`;
                 const cursorClass = 'cursor-pointer';
                 const isWished = wishlist.includes(product.id);
-
-                // Promo-Logik
                 const promo      = getPromoForProduct(product);
                 const promoPrice = promo ? getPromoPrice(product) : null;
                 const promoLabel = promo ? (promo.label || (promo.type === 'percent' ? `-${promo.value}%` : `-${promo.value}€`)) : null;
                 const displayPrice = promoPrice !== null ? promoPrice : product.price;
-
-                const promoBadgeHTML = promo
-                    ? `<div class="promo-badge">🔥 ${promoLabel}</div>`
-                    : '';
-
+                const promoBadgeHTML = promo ? `<div class="promo-badge">🔥 ${promoLabel}</div>` : '';
                 const priceRowHTML = promoPrice !== null
                     ? `<div class="price-row-promo">
                            <span class="promo-orig-price">${product.price.toFixed(2).replace('.', ',')}€</span>
                            <span class="promo-sale-price">${promoPrice.toFixed(2).replace('.', ',')}€</span>
                        </div>`
                     : `<div class="price-row"><span class="discount-price">${oldPrice}€</span> → <span class="sale-price">${salePrice}€</span></div>`;
-
                 html += `
                     <div ${clickHandler}
                          data-product-id="${product.id}"
@@ -3523,6 +3598,7 @@
                             ${nicotineHTML}
                         </div>
                     </div>`;
+              }
             });
             // ── Bundle-Karten hinzufügen ──────────────────────────────────
             const activeBundles = allBundles.filter(b => {
@@ -3531,57 +3607,22 @@
                 return b.category === currentCategoryFilter;
             });
 
+            // Bundles nach productOrder sortieren (enthält Bundle-IDs wenn aus Admin gespeichert)
+            activeBundles.sort((a, b) => {
+                const iA = productOrder.indexOf(a.id);
+                const iB = productOrder.indexOf(b.id);
+                if (iA !== -1 && iB !== -1) return iA - iB;
+                if (iA !== -1) return -1;
+                if (iB !== -1) return 1;
+                return 0;
+            });
+
             // Nur "Keine Produkte gefunden" zeigen wenn auch keine Bundles da sind
             if (!html && activeBundles.length === 0) {
                 container.innerHTML = `<p class="col-span-full text-center py-16 text-gray-400">Keine Produkte gefunden.</p>`;
                 return;
             }
             container.innerHTML = html;
-            if (activeBundles.length > 0) {
-                let bundleHtml = '';
-                activeBundles.forEach(b => {
-                    const inCart = cart.some(i => i.bundleId === b.id);
-                    const orig = (b.originalTotal || 0).toFixed(2).replace('.', ',');
-                    const sale = (b.bundlePrice || 0).toFixed(2).replace('.', ',');
-                    const save = b.originalTotal > b.bundlePrice
-                        ? ((b.originalTotal - b.bundlePrice)).toFixed(2).replace('.', ',')
-                        : null;
-                    const tags = (b.items || []).slice(0, 3).map(it =>
-                        `<span class="bundle-tag">${it.name.length > 20 ? it.name.slice(0, 18) + '…' : it.name} ×${it.qty}</span>`
-                    ).join('');
-                    const moreTags = b.items && b.items.length > 3
-                        ? `<span class="bundle-tag">+${b.items.length - 3} mehr</span>` : '';
-                    const imgHTML = b.image
-                        ? `<div class="img-wrap loaded" style="border-radius:14px;overflow:hidden;margin-bottom:10px;background:#111">
-                               <img src="${b.image}" alt="${b.name}" style="width:100%;height:100%;object-fit:cover" loading="lazy"
-                                    onload="this.classList.add('img-loaded');this.closest('.img-wrap').classList.add('loaded')"
-                                    onerror="this.closest('.img-wrap').innerHTML='<div style=\'display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:48px\'>🎁</div>'">
-                           </div>`
-                        : `<div class="img-wrap loaded" style="border-radius:14px;background:linear-gradient(135deg,rgba(167,139,250,.12),rgba(244,114,182,.08));display:flex;align-items:center;justify-content:center;margin-bottom:10px;font-size:56px">🎁</div>`;
-                    bundleHtml += `
-                    <div class="bundle-card" onclick="showBundleDetail('${b.id}')">
-                        <div class="bundle-card-bar"></div>
-                        <div class="p-5 flex flex-col h-full gap-3">
-                            <span class="bundle-badge">🎁 Bundle</span>
-                            <div style="margin-top:22px">${imgHTML}</div>
-                            <div>
-                                <h4 class="font-bold text-base leading-tight text-white mb-1">${b.name}</h4>
-                                ${b.description ? `<p style="font-size:11px;color:rgba(255,255,255,.4)">${b.description}</p>` : ''}
-                            </div>
-                            <div style="display:flex;flex-wrap:wrap;gap:5px">${tags}${moreTags}</div>
-                            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:auto">
-                                ${b.originalTotal > b.bundlePrice ? `<span class="bundle-orig-price">${orig} €</span>` : ''}
-                                <span class="bundle-sale-price">${sale} €</span>
-                                ${save ? `<span class="bundle-save-badge">−${save} € sparen</span>` : ''}
-                            </div>
-                            <button class="bundle-add-btn ${inCart ? 'in-cart' : ''}" onclick="event.stopImmediatePropagation();showBundleDetail('${b.id}')">
-                                ${inCart ? '✅ Im Warenkorb' : '🔍 Details & kaufen'}
-                            </button>
-                        </div>
-                    </div>`;
-                });
-                container.innerHTML += bundleHtml;
-            }
         }
         function updateNicotine(id, value) {
             pendingNicotine[id] = value;
@@ -5438,13 +5479,7 @@
                 listEl.innerHTML = reviews.map(r => {
                     const stars = [1,2,3,4,5].map(n=>`<span class="rv-star ${n<=(r.rating||0)?'':'empty'}">★</span>`).join('');
                     const date  = r.createdAt ? r.createdAt.toDate().toLocaleDateString('de-DE') : '';
-                    const replyHtml = r.adminReply
-                        ? `<div class="rv-admin-reply">
-                               <div class="rv-admin-reply-badge"><i class="fa-solid fa-wave-square"></i> WaveVapes Team</div>
-                               <div class="rv-admin-reply-text">${r.adminReply.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
-                           </div>`
-                        : '';
-                    return `<div class="rv-card"><div class="rv-card-header"><div style="display:flex;align-items:center;gap:8px"><div class="rv-stars-row">${stars}</div><span class="rv-card-user">${(r.username||'Anonym').replace(/</g,'&lt;')}</span></div><span class="rv-card-date">${date}</span></div>${r.text?`<div class="rv-card-text">${r.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`:''}</div>${replyHtml}</div>`;
+                    return `<div class="rv-card"><div class="rv-card-header"><div style="display:flex;align-items:center;gap:8px"><div class="rv-stars-row">${stars}</div><span class="rv-card-user">${(r.username||'Anonym').replace(/</g,'&lt;')}</span></div><span class="rv-card-date">${date}</span></div>${r.text?`<div class="rv-card-text">${r.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`:''}</div>`;
                 }).join('');
             }
 

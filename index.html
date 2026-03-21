@@ -658,6 +658,10 @@
         .rv-empty { text-align:center; padding:28px 16px; font-size:12px; color:rgba(255,255,255,.25); }
         .rv-more-btn { width:100%; padding:10px; border-radius:12px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); color:rgba(255,255,255,.4); font-size:12px; cursor:pointer; transition:background .15s; margin-top:10px; }
         .rv-more-btn:hover { background:rgba(255,255,255,.08); color:#fff; }
+        .rv-admin-reply { margin-top:12px; padding:12px 14px; background:rgba(103,232,249,.06); border:1px solid rgba(103,232,249,.15); border-radius:12px; position:relative; }
+        .rv-admin-reply::before { content:''; position:absolute; top:-7px; left:20px; width:12px; height:12px; background:rgba(103,232,249,.06); border-left:1px solid rgba(103,232,249,.15); border-top:1px solid rgba(103,232,249,.15); transform:rotate(45deg); }
+        .rv-admin-reply-badge { display:inline-flex; align-items:center; gap:5px; font-size:10px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:#67e8f9; margin-bottom:7px; }
+        .rv-admin-reply-text { font-size:12px; color:rgba(255,255,255,.75); line-height:1.65; }
         /* write form */
         .rv-form { background:rgba(103,232,249,.05); border:1px solid rgba(103,232,249,.15); border-radius:18px; padding:18px; margin-bottom:18px; display:none; flex-direction:column; gap:12px; }
         .rv-form.open { display:flex; }
@@ -5434,7 +5438,13 @@
                 listEl.innerHTML = reviews.map(r => {
                     const stars = [1,2,3,4,5].map(n=>`<span class="rv-star ${n<=(r.rating||0)?'':'empty'}">★</span>`).join('');
                     const date  = r.createdAt ? r.createdAt.toDate().toLocaleDateString('de-DE') : '';
-                    return `<div class="rv-card"><div class="rv-card-header"><div style="display:flex;align-items:center;gap:8px"><div class="rv-stars-row">${stars}</div><span class="rv-card-user">${(r.username||'Anonym').replace(/</g,'&lt;')}</span></div><span class="rv-card-date">${date}</span></div>${r.text?`<div class="rv-card-text">${r.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`:''}</div>`;
+                    const replyHtml = r.adminReply
+                        ? `<div class="rv-admin-reply">
+                               <div class="rv-admin-reply-badge"><i class="fa-solid fa-wave-square"></i> WaveVapes Team</div>
+                               <div class="rv-admin-reply-text">${r.adminReply.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+                           </div>`
+                        : '';
+                    return `<div class="rv-card"><div class="rv-card-header"><div style="display:flex;align-items:center;gap:8px"><div class="rv-stars-row">${stars}</div><span class="rv-card-user">${(r.username||'Anonym').replace(/</g,'&lt;')}</span></div><span class="rv-card-date">${date}</span></div>${r.text?`<div class="rv-card-text">${r.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`:''}</div>${replyHtml}</div>`;
                 }).join('');
             }
 

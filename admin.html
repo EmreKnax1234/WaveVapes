@@ -2270,9 +2270,11 @@
                     <button class="prd-warn-close" onclick="document.getElementById('stock-warning-banner').classList.add('hidden')">✕</button>
                 </div>
                 <div id="stock-warning-list" class="prd-warn-grid"></div>
-                <div class="prd-warn-footer">
-                    Schwellenwert in <button onclick="switchTab(7)" style="color:var(--prd-cyan);text-decoration:underline;background:none;border:none;cursor:pointer;font-size:10px">Settings</button> konfigurieren
+                <div class="prd-warn-footer" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+                    <span>Schwellenwert in <button onclick="switchTab(7)" style="color:var(--prd-cyan);text-decoration:underline;background:none;border:none;cursor:pointer;font-size:10px">Settings</button> konfigurieren</span>
+                    <button id="prd-ai-stock-btn" onclick="aiStockReorder()" style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:8px;background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.3);color:#a78bfa;font-size:11px;font-weight:700;cursor:pointer"><i class="fa-solid fa-wand-magic-sparkles"></i> KI-Nachbestellungsplan</button>
                 </div>
+                <div id="prd-ai-stock-result" style="display:none;margin-top:12px;padding:14px 16px;background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.18);border-radius:12px;font-size:12px;line-height:1.75;color:rgba(255,255,255,.82)"></div>
             </div>
 
             <!-- KPI strip -->
@@ -2657,8 +2659,12 @@
                 </div>
                 <button class="usr-btn usr-btn-green"  onclick="exportUsersToCSV()"><i class="fa-solid fa-file-csv"></i> Export</button>
                 <button class="usr-btn usr-btn-amber"  onclick="document.getElementById('csv-upload-users').click()"><i class="fa-solid fa-file-import"></i> Import</button>
+                <button class="usr-btn" id="usr-ai-churn-btn" onclick="aiChurnAnalysis()" style="background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.3);color:#a78bfa"><i class="fa-solid fa-wand-magic-sparkles"></i> KI-Churn-Analyse</button>
                 <button class="usr-btn usr-btn-ghost"  id="usr-count-badge" style="cursor:default;pointer-events:none">— User</button>
             </div>
+
+            <!-- KI Churn-Analyse Ergebnis -->
+            <div id="usr-ai-churn-result" style="display:none;background:rgba(167,139,250,.07);border:1px solid rgba(167,139,250,.2);border-radius:16px;padding:18px 20px;margin-bottom:4px"></div>
 
             <!-- Table -->
             <div class="usr-table-card">
@@ -3095,8 +3101,12 @@
                 <div style="display:flex;gap:8px;align-items:center">
                     <span class="lg-counter-badge" id="lg-log-count" style="background:rgba(103,232,249,.08);color:var(--lg-cyan)">— Einträge</span>
                     <button class="lg-btn lg-btn-ghost" onclick="loadAdminLogs()"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
+                    <button id="lg-ai-btn" onclick="aiLogAnomalies()" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:10px;background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.3);color:#a78bfa;font-size:12px;font-weight:700;cursor:pointer"><i class="fa-solid fa-wand-magic-sparkles"></i> KI-Anomalie-Check</button>
                 </div>
             </div>
+
+            <!-- KI Anomalie-Ergebnis -->
+            <div id="lg-ai-result" style="display:none;background:rgba(167,139,250,.07);border:1px solid rgba(167,139,250,.22);border-radius:16px;padding:18px 20px;margin-bottom:4px"></div>
 
             <!-- Activity Log -->
             <div class="lg-section">
@@ -3308,6 +3318,9 @@
                 <button class="srt-pill srt-pill-auto" onclick="autoSortPriority()">
                     <i class="fa-solid fa-wand-magic-sparkles"></i> AUTO-PRIORITÄT
                 </button>
+                <button class="srt-pill" id="srt-ai-btn" onclick="aiSortRecommendation()" style="background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.3);color:#a78bfa">
+                    <i class="fa-solid fa-robot"></i> KI-Empfehlung
+                </button>
             </div>
 
             <!-- Category filter bar -->
@@ -3316,6 +3329,9 @@
                     <i class="fa-solid fa-layer-group"></i> Alle
                 </button>
             </div>
+
+            <!-- KI Sortierungs-Empfehlung Ergebnis -->
+            <div id="srt-ai-result" style="display:none;background:rgba(167,139,250,.07);border:1px solid rgba(167,139,250,.2);border-radius:16px;padding:18px 20px;margin-bottom:8px"></div>
 
             <!-- Drag list -->
             <div class="srt-list-wrap">
@@ -8888,6 +8904,11 @@ function rvAdminLoad(mode) {
                         <span class="rv-admin-date">${date}</span>
                     </div>
                     ${r.text ? `<div class="rv-admin-text">${r.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>` : '<div class="rv-admin-text" style="font-style:italic;opacity:.4">Kein Text</div>'}
+                    ${r.adminReply ? `<div style="margin-top:10px;padding:10px 13px;background:rgba(103,232,249,.05);border:1px solid rgba(103,232,249,.15);border-radius:10px">
+                        <div style="font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#67e8f9;margin-bottom:5px"><i class="fa-solid fa-shop" style="margin-right:4px"></i>Shop-Antwort veröffentlicht</div>
+                        <div style="font-size:12px;color:rgba(255,255,255,.7);line-height:1.6">${r.adminReply.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+                        <button onclick="rvDeleteAdminReply('${r.id}')" style="margin-top:8px;padding:3px 9px;border-radius:6px;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.25);color:#f87171;font-size:10px;cursor:pointer"><i class="fa-solid fa-trash" style="margin-right:3px"></i>Antwort entfernen</button>
+                    </div>` : ''}
                 </div>
                 <div class="rv-admin-actions">
                     ${mode !== 'approved' ? `<button class="rv-admin-btn approve" onclick="rvAdminApprove('${r.id}')" title="Freigeben"><i class="fa-solid fa-check"></i></button>` : ''}
@@ -11539,16 +11560,52 @@ Regeln:
 - Kein Markdown, keine Anführungszeichen
 Schreibe NUR die Antwort, ohne "Antwort:" o.ä.`, 250
         );
+        const replyText = reply.trim();
         box.innerHTML = `<div style="background:rgba(103,232,249,.06);border:1px solid rgba(103,232,249,.15);border-radius:10px;padding:10px 13px">
             <div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(103,232,249,.5);margin-bottom:6px">KI-Antwortvorschlag</div>
-            <div style="font-size:12px;color:rgba(255,255,255,.8);line-height:1.65">${reply.trim().replace(/</g,'&lt;')}</div>
-            <div style="margin-top:8px;display:flex;gap:7px">
-                <button onclick="navigator.clipboard.writeText(this.closest('div').previousElementSibling.textContent.trim()).then(()=>showToast('✅ Kopiert!'))" style="padding:4px 10px;border-radius:6px;background:rgba(103,232,249,.1);border:1px solid rgba(103,232,249,.25);color:#67e8f9;font-size:10px;font-weight:700;cursor:pointer"><i class="fa-solid fa-copy" style="margin-right:3px"></i>Kopieren</button>
+            <div id="rv-ai-text-${reviewId}" style="font-size:12px;color:rgba(255,255,255,.8);line-height:1.65">${replyText.replace(/</g,'&lt;')}</div>
+            <div style="margin-top:8px;display:flex;gap:7px;flex-wrap:wrap">
+                <button onclick="rvSaveAdminReply('${reviewId}', document.getElementById('rv-ai-text-${reviewId}').textContent)" style="padding:4px 11px;border-radius:6px;background:rgba(52,211,153,.15);border:1px solid rgba(52,211,153,.3);color:#34d399;font-size:10px;font-weight:700;cursor:pointer"><i class="fa-solid fa-shop" style="margin-right:3px"></i>Im Shop veröffentlichen</button>
+                <button onclick="navigator.clipboard.writeText(document.getElementById('rv-ai-text-${reviewId}').textContent.trim()).then(()=>showToast('✅ Kopiert!'))" style="padding:4px 10px;border-radius:6px;background:rgba(103,232,249,.1);border:1px solid rgba(103,232,249,.25);color:#67e8f9;font-size:10px;font-weight:700;cursor:pointer"><i class="fa-solid fa-copy" style="margin-right:3px"></i>Kopieren</button>
                 <button onclick="this.closest('[id^=rv-ai-]').style.display='none'" style="padding:4px 10px;border-radius:6px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:rgba(255,255,255,.4);font-size:10px;cursor:pointer">✕</button>
             </div>
         </div>`;
     } catch(e) {
         box.innerHTML = `<span style="color:#f87171;font-size:12px">❌ ${e.message}</span>`;
+    }
+}
+
+async function rvSaveAdminReply(reviewId, replyText) {
+    if (!reviewId || !replyText?.trim()) return;
+    try {
+        await db.collection('reviews').doc(reviewId).update({
+            adminReply: replyText.trim(),
+            adminReplyAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        await logAction('review_reply_saved', reviewId, { preview: replyText.slice(0,60) });
+        showToast('✅ Antwort im Shop veröffentlicht!');
+        // Update button to show it's been saved
+        const box = document.getElementById('rv-ai-' + reviewId);
+        if (box) {
+            const publishBtn = box.querySelector('button');
+            if (publishBtn) { publishBtn.innerHTML = '<i class="fa-solid fa-check" style="margin-right:3px"></i>Veröffentlicht'; publishBtn.disabled = true; publishBtn.style.opacity = '.6'; }
+        }
+    } catch(e) {
+        showToast('❌ Fehler: ' + e.message, 'error');
+    }
+}
+
+async function rvDeleteAdminReply(reviewId) {
+    if (!confirm('Shop-Antwort wirklich entfernen?')) return;
+    try {
+        await db.collection('reviews').doc(reviewId).update({
+            adminReply: firebase.firestore.FieldValue.delete(),
+            adminReplyAt: firebase.firestore.FieldValue.delete()
+        });
+        await logAction('review_reply_deleted', reviewId);
+        showToast('🗑️ Shop-Antwort entfernt');
+    } catch(e) {
+        showToast('❌ Fehler: ' + e.message, 'error');
     }
 }
 
@@ -11730,7 +11787,288 @@ Antworte NUR in diesem Format auf Deutsch:
     }
 }
 
-// ── FEATURE 7: KI-Kundensegmentierung ─────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+//  WAVEVAPES KI-FEATURES – NEUE FEATURES 8–11
+// ═══════════════════════════════════════════════════════════════════
+
+// ── FEATURE 8: KI-Churn-Analyse im Benutzer-Tab ───────────────────
+async function aiChurnAnalysis() {
+    const result = document.getElementById('usr-ai-churn-result');
+    const btn    = document.getElementById('usr-ai-churn-btn');
+    if (!result) return;
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Analysiert…'; }
+    result.style.display = 'block';
+    aiSetLoading(result, 'KI analysiert Churn-Risiko…');
+
+    try {
+        const users = allUsers || [];
+        if (users.length === 0) throw new Error('Keine Benutzerdaten geladen.');
+
+        const total        = users.length;
+        const blocked      = users.filter(u => u.disabled || u.blocked).length;
+        const withPoints   = users.filter(u => (u.loyaltyPoints || 0) > 0).length;
+        const avgPoints    = total ? Math.round(users.reduce((s, u) => s + (u.loyaltyPoints || 0), 0) / total) : 0;
+        const zeroPoints   = users.filter(u => (u.loyaltyPoints || 0) === 0).length;
+        const highPoints   = users.filter(u => (u.loyaltyPoints || 0) >= 100).length;
+        const referralUsers = users.filter(u => u.referralCode || u.referredBy).length;
+
+        const analysis = await aiCall(
+            `Du analysierst die Nutzerbasis von WaveVapes (Disposable Vapes, Deutschland) und erkennst Churn-Risiken.
+
+Nutzerdaten:
+- Nutzer gesamt: ${total}
+- Gesperrt/Blockiert: ${blocked}
+- Nutzer mit Bonuspunkten: ${withPoints}
+- Nutzer mit 0 Punkten (nie aktiv): ${zeroPoints}
+- VIP-Nutzer (≥100 Punkte): ${highPoints}
+- Ø Loyalitätspunkte: ${avgPoints}
+- Nutzer mit Referral-Aktivität: ${referralUsers}
+
+Antworte NUR in diesem Format auf Deutsch:
+🚨 Churn-Risiko: [Einschätzung: niedrig/mittel/hoch + 1 Satz Begründung]
+👥 Risiko-Gruppe: [welche Nutzergruppe ist am gefährdetsten, z.B. "Nutzer mit 0 Punkten"]
+📊 Geschätzte Churn-Quote: [z.B. "~${Math.round(zeroPoints/total*100)}% der Basis inaktiv"]
+📧 Reaktivierungs-Empfehlung: [konkrete E-Mail-Strategie, 1–2 Sätze]
+🎁 Anreiz-Vorschlag: [konkreter Gutschein oder Bonus-Vorschlag]
+💡 Sofort-Maßnahme: [was du heute noch tun solltest]`, 400
+        );
+
+        result.innerHTML = `
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+                <div style="width:32px;height:32px;border-radius:10px;background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.3);display:flex;align-items:center;justify-content:center;color:#a78bfa;font-size:14px"><i class="fa-solid fa-robot"></i></div>
+                <div style="font-size:13px;font-weight:700;color:#a78bfa">KI-Churn-Analyse</div>
+            </div>
+            <div style="font-size:12px;line-height:1.85;color:rgba(255,255,255,.82);white-space:pre-line">${analysis.trim().replace(/</g,'&lt;')}</div>
+            <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+                <button onclick="aiChurnMail()" style="padding:6px 14px;border-radius:8px;background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.3);color:#a78bfa;font-size:11px;font-weight:700;cursor:pointer"><i class="fa-solid fa-envelope" style="margin-right:4px"></i>Reaktivierungsmail schreiben</button>
+                <button onclick="document.getElementById('usr-ai-churn-result').style.display='none'" style="padding:6px 12px;border-radius:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:rgba(255,255,255,.4);font-size:11px;cursor:pointer">✕ Schließen</button>
+            </div>`;
+    } catch(e) {
+        result.innerHTML = `<span style="color:#f87171;font-size:12px">❌ ${e.message}</span>`;
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> KI-Churn-Analyse'; }
+    }
+}
+
+async function aiChurnMail() {
+    const users = allUsers || [];
+    const zeroPoints = users.filter(u => (u.loyaltyPoints || 0) === 0).length;
+    const result = document.getElementById('usr-ai-churn-result');
+    const existing = result.innerHTML;
+    const mailBox = document.createElement('div');
+    mailBox.style.cssText = 'margin-top:12px;padding:14px 16px;background:rgba(103,232,249,.06);border:1px solid rgba(103,232,249,.15);border-radius:12px';
+    mailBox.innerHTML = `<span class="ai-typing" style="color:#a78bfa;font-size:12px"><i class="fa-solid fa-wand-magic-sparkles" style="margin-right:6px"></i>Schreibe Reaktivierungsmail…</span>`;
+    result.appendChild(mailBox);
+    try {
+        const mail = await aiCall(
+            `Schreibe eine kurze Reaktivierungs-E-Mail (auf Deutsch) für WaveVapes (Disposable Vapes).
+Zielgruppe: Kunden, die bisher keine Bonuspunkte gesammelt haben (noch nie bestellt oder sehr inaktiv).
+Max. 5 Sätze. Persönlich, mit konkretem Anreiz (z.B. Erstbestellungs-Gutschein).
+Beginne mit "Hey,". Kein Betreff, nur E-Mail-Text.`, 250
+        );
+        mailBox.innerHTML = `
+            <div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(103,232,249,.5);margin-bottom:8px">Reaktivierungsmail-Entwurf</div>
+            <div id="churn-mail-text" style="font-size:12px;color:rgba(255,255,255,.82);line-height:1.7;white-space:pre-line">${mail.trim().replace(/</g,'&lt;')}</div>
+            <button onclick="navigator.clipboard.writeText(document.getElementById('churn-mail-text').textContent).then(()=>showToast('✅ Mail kopiert!'))" style="margin-top:10px;padding:5px 12px;border-radius:7px;background:rgba(103,232,249,.1);border:1px solid rgba(103,232,249,.25);color:#67e8f9;font-size:10px;font-weight:700;cursor:pointer"><i class="fa-solid fa-copy" style="margin-right:3px"></i>Kopieren</button>`;
+    } catch(e) {
+        mailBox.innerHTML = `<span style="color:#f87171;font-size:12px">❌ ${e.message}</span>`;
+    }
+}
+
+// ── FEATURE 9: KI-Sortierungsempfehlung ──────────────────────────
+async function aiSortRecommendation() {
+    const result = document.getElementById('srt-ai-result');
+    const btn    = document.getElementById('srt-ai-btn');
+    if (!result) return;
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Analysiert…'; }
+    result.style.display = 'block';
+    aiSetLoading(result, 'KI berechnet optimale Reihenfolge…');
+
+    try {
+        const products = allProducts || [];
+        if (products.length === 0) throw new Error('Keine Produktdaten geladen.');
+
+        const available   = products.filter(p => p.available !== false);
+        const topSellers  = [...products].sort((a,b) => (b.soldCount||0)-(a.soldCount||0)).slice(0,5).map(p=>`"${p.name}" (${p.soldCount||0}×)`).join(', ');
+        const newOnes     = products.filter(p => p.isNew).map(p => `"${p.name}"`).join(', ') || '—';
+        const lowStock    = products.filter(p => (p.stock||0) <= 5 && p.available !== false).map(p => `"${p.name}" (${p.stock||0} Stk)`).join(', ') || '—';
+        const categories  = [...new Set(products.map(p=>p.category).filter(Boolean))].join(', ') || '—';
+        const unavailable = products.filter(p => p.available === false).length;
+
+        const advice = await aiCall(
+            `Du optimierst die Produktreihenfolge für WaveVapes (Disposable Vapes Shop, Deutschland).
+Ziel: Konversionsrate maximieren durch optimale Sichtbarkeit der richtigen Produkte.
+
+Produktdaten:
+- Produkte gesamt: ${products.length} (${available.length} verfügbar, ${unavailable} vergriffen)
+- Kategorien: ${categories}
+- Top-Seller (nach Verkäufen): ${topSellers}
+- Neu-Sorten: ${newOnes}
+- Niedrigbestand (bald vergriffen): ${lowStock}
+
+Antworte NUR in diesem Format auf Deutsch:
+🥇 Erste Priorität: [welche Produkt-Gruppe ganz oben stehen sollte + warum]
+🥈 Zweite Priorität: [zweite Gruppe + warum]
+🥉 Dritte Priorität: [dritte Gruppe + warum]
+⬇️ Ans Ende: [was nach hinten sollte + warum]
+💡 Strategie-Tipp: [1–2 Sätze übergeordnete Empfehlung]
+⚡ Schnell-Aktion: [was du mit einem Klick jetzt tun solltest: z.B. "AUTO-PRIORITÄT Button nutzen"]`, 380
+        );
+
+        result.innerHTML = `
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+                <div style="width:32px;height:32px;border-radius:10px;background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.3);display:flex;align-items:center;justify-content:center;color:#a78bfa;font-size:14px"><i class="fa-solid fa-robot"></i></div>
+                <div style="font-size:13px;font-weight:700;color:#a78bfa">KI-Sortierungsempfehlung</div>
+            </div>
+            <div style="font-size:12px;line-height:1.85;color:rgba(255,255,255,.82);white-space:pre-line">${advice.trim().replace(/</g,'&lt;')}</div>
+            <div style="margin-top:14px;display:flex;gap:8px">
+                <button onclick="autoSortPriority();showToast('✅ AUTO-PRIORITÄT angewendet!')" style="padding:6px 14px;border-radius:8px;background:rgba(103,232,249,.1);border:1px solid rgba(103,232,249,.25);color:#67e8f9;font-size:11px;font-weight:700;cursor:pointer"><i class="fa-solid fa-wand-magic-sparkles" style="margin-right:4px"></i>AUTO-PRIORITÄT anwenden</button>
+                <button onclick="document.getElementById('srt-ai-result').style.display='none'" style="padding:6px 12px;border-radius:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:rgba(255,255,255,.4);font-size:11px;cursor:pointer">✕ Schließen</button>
+            </div>`;
+    } catch(e) {
+        result.innerHTML = `<span style="color:#f87171;font-size:12px">❌ ${e.message}</span>`;
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-robot"></i> KI-Empfehlung'; }
+    }
+}
+
+// ── FEATURE 10: KI-Nachbestellungsplan ───────────────────────────
+async function aiStockReorder() {
+    const result = document.getElementById('prd-ai-stock-result');
+    const btn    = document.getElementById('prd-ai-stock-btn');
+    if (!result) return;
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Analysiert…'; }
+    aiSetLoading(result, 'KI berechnet Nachbestellungsplan…');
+    result.style.display = 'block';
+
+    try {
+        const products = allProducts || [];
+        const critThreshold = parseInt(document.getElementById('set-stock-critical')?.value || '3');
+        const warnThreshold = parseInt(document.getElementById('set-stock-warning')?.value || '10');
+
+        const critical = products.filter(p => (p.stock||0) <= critThreshold && p.available !== false);
+        const warning  = products.filter(p => (p.stock||0) > critThreshold && (p.stock||0) <= warnThreshold && p.available !== false);
+
+        if (critical.length === 0 && warning.length === 0) {
+            result.innerHTML = '<span style="color:#34d399">✅ Kein Nachbestellungsbedarf — alle Bestände im grünen Bereich!</span>';
+            return;
+        }
+
+        const critList = critical.map(p => `"${p.name}" (${p.stock||0} Stk, ${p.soldCount||0}× verkauft)`).join('\n') || '—';
+        const warnList = warning.map(p => `"${p.name}" (${p.stock||0} Stk, ${p.soldCount||0}× verkauft)`).join('\n') || '—';
+
+        const plan = await aiCall(
+            `Du erstellst einen Nachbestellungsplan für WaveVapes (Disposable Vapes, Deutschland).
+
+KRITISCHE Produkte (≤${critThreshold} Stk, sofort bestellen):
+${critList}
+
+WARNUNG-Produkte (≤${warnThreshold} Stk, bald bestellen):
+${warnList}
+
+Antworte NUR in diesem Format auf Deutsch:
+⚠️ Sofort bestellen (${critical.length} Produkte): [Priorisierung der kritischen Produkte nach Verkaufszahlen]
+📦 Demnächst bestellen (${warning.length} Produkte): [kurze Empfehlung]
+🔢 Empfohlene Bestellmenge: [Faustregel für Mindestbestand, z.B. "mind. 20 Einheiten pro SKU"]
+⏱️ Zeitfenster: [wie dringend ist die Bestellung]
+💡 Tipp: [ein konkreter Ratschlag zur Lagerhaltung]`, 400
+        );
+
+        result.innerHTML = `
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+                <div style="width:28px;height:28px;border-radius:8px;background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.3);display:flex;align-items:center;justify-content:center;color:#a78bfa;font-size:12px"><i class="fa-solid fa-robot"></i></div>
+                <div style="font-size:12px;font-weight:700;color:#a78bfa">KI-Nachbestellungsplan</div>
+            </div>
+            <div style="white-space:pre-line;line-height:1.85">${plan.trim().replace(/</g,'&lt;')}</div>
+            <div style="margin-top:12px;display:flex;gap:8px">
+                <button onclick="navigator.clipboard.writeText(document.querySelector('#prd-ai-stock-result div:nth-child(2)').textContent.trim()).then(()=>showToast('✅ Plan kopiert!'))" style="padding:5px 12px;border-radius:7px;background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.25);color:#a78bfa;font-size:10px;font-weight:700;cursor:pointer"><i class="fa-solid fa-copy" style="margin-right:3px"></i>Kopieren</button>
+                <button onclick="document.getElementById('prd-ai-stock-result').style.display='none'" style="padding:5px 10px;border-radius:7px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:rgba(255,255,255,.4);font-size:10px;cursor:pointer">✕</button>
+            </div>`;
+    } catch(e) {
+        result.innerHTML = `<span style="color:#f87171;font-size:12px">❌ ${e.message}</span>`;
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> KI-Nachbestellungsplan'; }
+    }
+}
+
+// ── FEATURE 11: KI-Anomalie-Erkennung in Admin Logs ───────────────
+async function aiLogAnomalies() {
+    const result = document.getElementById('lg-ai-result');
+    const btn    = document.getElementById('lg-ai-btn');
+    if (!result) return;
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Analysiert…'; }
+    result.style.display = 'block';
+    aiSetLoading(result, 'KI prüft Logs auf Anomalien…');
+
+    try {
+        // Collect log entries from DOM
+        const logEntries = [];
+        document.querySelectorAll('#logs-container .sa-log-entry, #logs-container [class*="lg-entry"], #logs-container > div').forEach(el => {
+            const text = el.textContent?.trim();
+            if (text && text.length > 5 && !text.includes('Lade')) logEntries.push(text.slice(0, 120));
+        });
+
+        const unauthorized = [];
+        document.querySelectorAll('#unauthorized-logs-container > div').forEach(el => {
+            const text = el.textContent?.trim();
+            if (text && text.length > 5 && !text.includes('Lade')) unauthorized.push(text.slice(0, 100));
+        });
+
+        const bannedCount = document.getElementById('lg-ban-badge')?.textContent?.replace(/[^0-9]/g,'') || '0';
+        const threatCount = document.getElementById('lg-threat-badge')?.textContent?.replace(/[^0-9]/g,'') || '0';
+        const logCount    = document.getElementById('lg-log-count')?.textContent?.replace(/[^0-9]/g,'') || '0';
+
+        const logSample   = logEntries.slice(0, 20).join('\n') || '(keine Logs sichtbar)';
+        const threatSample = unauthorized.slice(0, 10).join('\n') || '(keine unbefugten Zugriffsversuche)';
+
+        const analysis = await aiCall(
+            `Du bist Sicherheitsanalyst für WaveVapes (Admin-Panel, Deutschland). Analysiere die folgenden Admin-Log-Daten auf Anomalien.
+
+Statistiken:
+- Log-Einträge gesamt: ${logCount}
+- Unbefugte Zugriffsversuche: ${threatCount}
+- Gebannte IPs: ${bannedCount}
+
+Aktuelle Log-Einträge (Auszug):
+${logSample}
+
+Unbefugte Zugriffsversuche (Auszug):
+${threatSample}
+
+Antworte NUR in diesem Format auf Deutsch:
+🛡️ Sicherheitsstatus: [grün/gelb/rot + 1 Satz Einschätzung]
+🔍 Erkannte Muster: [was fällt auf, z.B. "gehäufte Zugriffsversuche", "ungewöhnliche Aktionen"]
+⚠️ Risiko-Einschätzung: [konkrete Beschreibung des größten Risikos oder "kein erhöhtes Risiko erkennbar"]
+🚨 Empfohlene Maßnahme: [was jetzt zu tun ist]
+💡 Präventions-Tipp: [eine konkrete Empfehlung zur Verbesserung der Sicherheit]`, 380
+        );
+
+        // Color-code based on status
+        const isRed    = analysis.toLowerCase().includes('rot');
+        const isYellow = analysis.toLowerCase().includes('gelb');
+        const statusColor = isRed ? '#f87171' : isYellow ? '#fbbf24' : '#34d399';
+        const statusBg    = isRed ? 'rgba(248,113,113,.08)' : isYellow ? 'rgba(251,191,36,.08)' : 'rgba(52,211,153,.08)';
+        const statusBorder = isRed ? 'rgba(248,113,113,.25)' : isYellow ? 'rgba(251,191,36,.25)' : 'rgba(52,211,153,.25)';
+
+        result.innerHTML = `
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+                <div style="width:32px;height:32px;border-radius:10px;background:${statusBg};border:1px solid ${statusBorder};display:flex;align-items:center;justify-content:center;color:${statusColor};font-size:14px"><i class="fa-solid fa-shield-halved"></i></div>
+                <div style="font-size:13px;font-weight:700;color:${statusColor}">KI-Sicherheitsanalyse</div>
+                <div style="margin-left:auto;font-size:10px;color:rgba(255,255,255,.25);font-family:'JetBrains Mono',monospace">${new Date().toLocaleTimeString('de-DE')}</div>
+            </div>
+            <div style="font-size:12px;line-height:1.85;color:rgba(255,255,255,.82);white-space:pre-line">${analysis.trim().replace(/</g,'&lt;')}</div>
+            <div style="margin-top:14px;display:flex;gap:8px">
+                <button onclick="loadAdminLogs();showToast('🔄 Logs aktualisiert')" style="padding:6px 14px;border-radius:8px;background:rgba(103,232,249,.1);border:1px solid rgba(103,232,249,.25);color:#67e8f9;font-size:11px;font-weight:700;cursor:pointer"><i class="fa-solid fa-rotate-right" style="margin-right:4px"></i>Logs neu laden</button>
+                <button onclick="document.getElementById('lg-ai-result').style.display='none'" style="padding:6px 12px;border-radius:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:rgba(255,255,255,.4);font-size:11px;cursor:pointer">✕ Schließen</button>
+            </div>`;
+    } catch(e) {
+        result.innerHTML = `<span style="color:#f87171;font-size:12px">❌ ${e.message}</span>`;
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> KI-Anomalie-Check'; }
+    }
+}
+
+
 async function aiCustomerSegments() {
     const result = document.getElementById('cu-ai-result');
     const btn    = document.getElementById('cu-ai-btn');

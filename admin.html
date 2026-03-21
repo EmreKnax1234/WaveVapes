@@ -2606,6 +2606,14 @@
                     </div>
                 </div>
 
+                <!-- Customer Note -->
+                <div class="ord-d-section" id="ord-d-note-section" style="display:none">
+                    <div class="ord-d-section-title" style="color:#f59e0b">
+                        <i class="fa-solid fa-comment-dots" style="margin-right:5px"></i>Kundenwunsch
+                    </div>
+                    <div id="ord-d-note" style="background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.2);border-radius:10px;padding:10px 14px;font-size:12px;color:rgba(255,255,255,.8);line-height:1.6;white-space:pre-wrap"></div>
+                </div>
+
                 <!-- Notes -->
                 <div class="ord-d-section">
                     <div class="ord-d-section-title">Interne Notizen</div>
@@ -5204,14 +5212,14 @@ async function importProductsFromCSV(e) {
 async function exportOrdersToCSV() {
     const snapshot = await db.collection("orders").orderBy("date", "desc").get();
     if (snapshot.empty) { showToast('Keine Bestellungen vorhanden', 'error'); return; }
-    let csv = "docId,orderNumber,datum,email,gesamt,status,items,street,zip,city\n";
+    let csv = "docId,orderNumber,datum,email,gesamt,status,items,street,zip,city,kundenwunsch\n";
     snapshot.forEach(doc => {
         const o = doc.data(); const dateStr = o.date ? o.date.toDate().toISOString().slice(0,19).replace('T',' ') : '';
         const itemsStr = (o.items||[]).map(i=>`${i.name} x${i.qty}${i.nicotine?' ('+i.nicotine+')':''}`).join(' | ');
         const safeStreet = (o.address.street||"").replace(/"/g,'""')
         const safeZip    = (o.address.zip||"").replace(/"/g,'""')
         const safeCity   = (o.address.city||"").replace(/"/g,'""')
-        csv += [`"${doc.id}"`,`"${o.orderNumber||''}"`,`"${dateStr}"`,`"${o.userEmail||''}"`,o.total||0,`"${o.status||'Zahlung erwartet'}"`,`"${itemsStr.replace(/"/g,'""')}"`,`"${safeStreet}"`,`"${safeZip}"`,`"${safeCity}"`].join(",") + "\n";
+        csv += [`"${doc.id}"`,`"${o.orderNumber||''}"`,`"${dateStr}"`,`"${o.userEmail||''}"`,o.total||0,`"${o.status||'Zahlung erwartet'}"`,`"${itemsStr.replace(/"/g,'""')}"`,`"${safeStreet}"`,`"${safeZip}"`,`"${safeCity}"`,`"${(o.orderNote||'').replace(/"/g,'""')}"`].join(",") + "\n";
     });
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a"); link.href = URL.createObjectURL(blob);
@@ -5795,6 +5803,7 @@ function ordRenderTable() {
             <td style="padding-left:18px">
                 <div class="ord-num">#${o.orderNumber||'—'}</div>
                 ${hasTracking ? `<div style="font-size:9px;color:var(--ord-purple);margin-top:2px;font-family:'JetBrains Mono',monospace">${o.carrier||''} ${o.trackingNumber}</div>` : ''}
+                ${o.orderNote ? `<div style="font-size:9px;color:#f59e0b;margin-top:2px" title="${(o.orderNote||'').replace(/"/g,'&quot;')}"><i class="fa-solid fa-comment-dots" style="margin-right:3px"></i>Wunsch</div>` : ''}
             </td>
             <td style="white-space:nowrap;color:var(--ord-muted);font-size:11px">${date}</td>
             <td>
@@ -5918,6 +5927,18 @@ async function showOrderModal(orderId) {
     document.getElementById('modal-carrier').value   = order.carrier || 'DHL';
     document.getElementById('modal-tracking').value  = order.trackingNumber || '';
     document.getElementById('modal-internal-notes').value = order.internalNotes || '';
+
+    // Kundenwunsch anzeigen (falls vorhanden)
+    const noteSection = document.getElementById('ord-d-note-section');
+    const noteEl      = document.getElementById('ord-d-note');
+    if (noteSection && noteEl) {
+        if (order.orderNote) {
+            noteEl.textContent  = order.orderNote;
+            noteSection.style.display = 'block';
+        } else {
+            noteSection.style.display = 'none';
+        }
+    }
 
     // open drawer
     document.getElementById('ord-overlay').classList.add('open');

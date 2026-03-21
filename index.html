@@ -3080,6 +3080,16 @@
                 const couponDocRef = couponSnap.docs[0];
                 const coupon = couponDocRef.data();
                 const now = new Date();
+                // Bug D Fix: check active flag — a deactivated coupon must be rejected here,
+                // not silently passed through to fail with a confusing error at checkout.
+                if (coupon.active === false) {
+                    status.innerHTML = `<span class="text-red-400">Gutschein ist nicht aktiv</span>`;
+                    return;
+                }
+                if (coupon.maxUsages && (coupon.totalUsages || 0) >= coupon.maxUsages) {
+                    status.innerHTML = `<span class="text-red-400">Gutschein ist aufgebraucht</span>`;
+                    return;
+                }
                 if (coupon.expiresAt && coupon.expiresAt.toDate() < now) {
                     status.innerHTML = `<span class="text-red-400">Gutschein abgelaufen</span>`;
                     return;
@@ -3378,11 +3388,19 @@
         }
 
         function getSortPriority(p) {
+            // Sort is ascending (lower = shown first).
+            // Bug C Fix: Vapes were priority 4 — they appeared AFTER new liquids (2)
+            // and normal liquids (1), despite being the main product. Corrected order:
+            // 1 = Vapes available (flagship product → front)
+            // 2 = New liquids
+            // 3 = Normal liquids available
+            // 4 = Unavailable non-vapes
+            // 5 = Unavailable vapes
             if (currentCategoryFilter !== "Alle") return p.available ? 0 : 1;
-            if (p.category === "WaveVapes Tornado 30000") return p.available ? 4 : 5;
-            if (!p.available) return 3;
+            if (p.category === "WaveVapes Tornado 30000") return p.available ? 1 : 5;
+            if (!p.available) return 4;
             if (p.isNew) return 2;
-            return 1;
+            return 3;
         }
         function renderProducts() {
             const container = document.getElementById("products-grid");

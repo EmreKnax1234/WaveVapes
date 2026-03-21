@@ -5410,10 +5410,12 @@ async function catSaveInlineEdit() {
     const order     = parseInt(document.getElementById('edit-cat-order').value, 10) || 999;
     const offerData = catGetOfferData('edit');
     if (!name) return showToast('Name erforderlich','error');
-    await db.collection('categories').doc(_catEditId).update({ name, order, ...offerData });
-    await logAction("category_updated", _catEditId, { name, ...offerData });
-    catCloseInlineEdit();
-    showToast('✅ Kategorie gespeichert!');
+    try {
+        await db.collection('categories').doc(_catEditId).update({ name, order, ...offerData });
+        await logAction("category_updated", _catEditId, { name, ...offerData });
+        catCloseInlineEdit();
+        showToast('✅ Kategorie gespeichert!');
+    } catch(e) { showToast('❌ Fehler: ' + e.message, 'error'); }
 }
 
 // E-NEW-03 FIX: Track listener for consistency with other loaders
@@ -5492,9 +5494,11 @@ async function saveEditCategory(id)      { await catSaveInlineEdit(); }
 async function deleteCategory(id) {
     if (!confirm('Kategorie wirklich löschen?')) return;
     if (_catEditId === id) catCloseInlineEdit();
-    await db.collection('categories').doc(id).delete();
-    await logAction("category_deleted", id);
-    showToast('✅ Kategorie gelöscht');
+    try {
+        await db.collection('categories').doc(id).delete();
+        await logAction("category_deleted", id);
+        showToast('✅ Kategorie gelöscht');
+    } catch(e) { showToast('❌ Fehler: ' + e.message, 'error'); }
 }
 
 function seedDefaultCategories() {
@@ -5651,7 +5655,7 @@ async function showCouponHistory(couponId) {
     if (!couponDoc.exists) return showToast("Gutschein nicht gefunden","error");
     const coupon = couponDoc.data();
     const uses   = coupon.totalUsages !== undefined ? coupon.totalUsages : (coupon.usedBy ? coupon.usedBy.length : 0);
-    const discount = coupon.type === 'percent' ? coupon.value + '%' : coupon.value.toFixed(2) + ' €';
+    const discount = coupon.type === 'percent' ? (coupon.value || 0) + '%' : (coupon.value || 0).toFixed(2) + ' €';
 
     document.getElementById('cpn-hist-code').textContent     = coupon.code;
     document.getElementById('cpn-hist-stat-uses').textContent = uses + '×';
@@ -5849,9 +5853,11 @@ async function quickStatus(id, status) {
 
 async function showOrderModal(orderId) {
     currentOrderId = orderId;
-    const doc   = await db.collection('orders').doc(orderId).get();
-    const order = doc.data();
-    const date  = order.date ? order.date.toDate().toLocaleString('de-DE') : '—';
+    try {
+        const doc   = await db.collection('orders').doc(orderId).get();
+        if (!doc.exists) return showToast('❌ Bestellung nicht gefunden', 'error');
+        const order = doc.data();
+        const date  = order.date ? order.date.toDate().toLocaleString('de-DE') : '—';
 
     // header
     document.getElementById('ord-d-num').textContent = '#' + (order.orderNumber || '—');
@@ -5916,6 +5922,7 @@ async function showOrderModal(orderId) {
     // open drawer
     document.getElementById('ord-overlay').classList.add('open');
     document.getElementById('ord-drawer').classList.add('open');
+    } catch(e) { showToast('❌ Bestellung konnte nicht geladen werden: ' + e.message, 'error'); }
 }
 
 function closeOrderModal() {
@@ -6893,26 +6900,27 @@ function cfgUpdatePreviews() {
 }
 
 async function loadSettings() {
-    const doc = await db.collection("settings").doc("main").get();
-    let data = doc.exists ? doc.data() : { bank_owner:"Jakob Hellrung", iban:"DE38360200300003395812", bic:"NBAGDE3EXXX", shipping_cost:4.99, free_shipping_threshold:100, email_template:"Deine Bestellung wurde bestätigt...", stock_critical:3, stock_warning:10 };
-    if (!doc.exists) await db.collection("settings").doc("main").set(data);
-    document.getElementById("set-bank-owner").value = data.bank_owner||"";
-    document.getElementById("set-iban").value = data.iban||"";
-    document.getElementById("set-bic").value = data.bic||"";
-    document.getElementById("set-shipping").value = data.shipping_cost||4.99;
-    document.getElementById("set-free-threshold").value = data.free_shipping_threshold||100;
-    document.getElementById("set-email-template").value = data.email_template||"";
-    document.getElementById("set-stock-critical").value = data.stock_critical !== undefined ? data.stock_critical : 3;
-    document.getElementById("set-stock-warning").value  = data.stock_warning  !== undefined ? data.stock_warning  : 10;
-    document.getElementById("set-notify-email").value   = data.admin_notify_email || "";
-    stockCriticalThreshold = parseInt(data.stock_critical, 10) || 3;
-    stockWarningThreshold  = parseInt(data.stock_warning, 10)  || 10;
-    window._adminNotifyEmail = data.admin_notify_email || "";
-    cfgUpdateStatusPill();
-    cfgUpdatePreviews();
-    // live preview on input
-    document.getElementById('set-stock-critical')?.addEventListener('input', cfgUpdatePreviews);
-    document.getElementById('set-stock-warning')?.addEventListener('input',  cfgUpdatePreviews);
+    try {
+        const doc = await db.collection("settings").doc("main").get();
+        let data = doc.exists ? doc.data() : { bank_owner:"Jakob Hellrung", iban:"DE38360200300003395812", bic:"NBAGDE3EXXX", shipping_cost:4.99, free_shipping_threshold:100, email_template:"Deine Bestellung wurde bestätigt...", stock_critical:3, stock_warning:10 };
+        if (!doc.exists) await db.collection("settings").doc("main").set(data);
+        document.getElementById("set-bank-owner").value = data.bank_owner||"";
+        document.getElementById("set-iban").value = data.iban||"";
+        document.getElementById("set-bic").value = data.bic||"";
+        document.getElementById("set-shipping").value = data.shipping_cost||4.99;
+        document.getElementById("set-free-threshold").value = data.free_shipping_threshold||100;
+        document.getElementById("set-email-template").value = data.email_template||"";
+        document.getElementById("set-stock-critical").value = data.stock_critical !== undefined ? data.stock_critical : 3;
+        document.getElementById("set-stock-warning").value  = data.stock_warning  !== undefined ? data.stock_warning  : 10;
+        document.getElementById("set-notify-email").value   = data.admin_notify_email || "";
+        stockCriticalThreshold = parseInt(data.stock_critical, 10) || 3;
+        stockWarningThreshold  = parseInt(data.stock_warning, 10)  || 10;
+        window._adminNotifyEmail = data.admin_notify_email || "";
+        cfgUpdateStatusPill();
+        cfgUpdatePreviews();
+        document.getElementById('set-stock-critical')?.addEventListener('input', cfgUpdatePreviews);
+        document.getElementById('set-stock-warning')?.addEventListener('input',  cfgUpdatePreviews);
+    } catch(e) { showToast('❌ Einstellungen konnten nicht geladen werden: ' + e.message, 'error'); }
 }
 
 async function saveSettings() {
@@ -6923,22 +6931,23 @@ async function saveSettings() {
         shipping_cost:           parseFloat(document.getElementById("set-shipping").value),
         free_shipping_threshold: parseFloat(document.getElementById("set-free-threshold").value),
         email_template:          document.getElementById("set-email-template").value,
-        stock_critical:          parseInt(document.getElementById("set-stock-critical", 10).value) || 3,
-        stock_warning:           parseInt(document.getElementById("set-stock-warning", 10).value)  || 10,
+        stock_critical:          parseInt(document.getElementById("set-stock-critical").value, 10) || 3,
+        stock_warning:           parseInt(document.getElementById("set-stock-warning").value, 10)  || 10,
         admin_notify_email:      document.getElementById("set-notify-email").value.trim() || null,
     };
-    await db.collection("settings").doc("main").set(data, {merge:true});
-    stockCriticalThreshold = data.stock_critical;
-    stockWarningThreshold  = data.stock_warning;
-    await logAction("settings_updated");
-    showToast("✅ Einstellungen gespeichert","success");
-    cfgUpdateStatusPill();
-    renderProductTable();
-    checkStockWarnings();
-    // Push to live cache so admin panel reflects new values immediately
-    window._FREE_THRESHOLD   = data.free_shipping_threshold;
-    window._SHIPPING_COST    = data.shipping_cost;
-    window._adminNotifyEmail = data.admin_notify_email || "";
+    try {
+        await db.collection("settings").doc("main").set(data, {merge:true});
+        stockCriticalThreshold = data.stock_critical;
+        stockWarningThreshold  = data.stock_warning;
+        await logAction("settings_updated");
+        showToast("✅ Einstellungen gespeichert","success");
+        cfgUpdateStatusPill();
+        renderProductTable();
+        checkStockWarnings();
+        window._FREE_THRESHOLD   = data.free_shipping_threshold;
+        window._SHIPPING_COST    = data.shipping_cost;
+        window._adminNotifyEmail = data.admin_notify_email || "";
+    } catch(e) { showToast('❌ Einstellungen konnten nicht gespeichert werden: ' + e.message, 'error'); }
 }
 
 function getStatusClass(s) {
@@ -6992,28 +7001,17 @@ async function reverseLoyaltyIfCredited(orderId) {
     if (points > 0) showToast(`↩ ${points} Loyalty-Punkte zurückgebucht (Storno)`, 'success');
 }
 async function handleStockOnStatusChange(orderId, newStatus) {
+    try {
     const doc = await db.collection('orders').doc(orderId).get();
     const order = doc.data();
     const oldStatus = order.status || 'Zahlung erwartet';
 
-    // ── IDEMPOTENCY GUARD (Bug Fix #1 + #2) ─────────────────────────────────
-    // If the status hasn't changed, do nothing at all.
-    // Without this: saving "Storniert" a second time would re-increment stock,
-    // and going Versendet → Wird bearbeitet would double-count sold.
     if (oldStatus === newStatus) return;
 
-    // ── "WIRD BEARBEITET" ────────────────────────────────────────────────────
-    // Only fire when transitioning INTO this status for the very first time.
-    // Bug Fix #2: we must also check that sold hasn't already been counted.
-    // We do this by checking that the previous status was NOT one of the
-    // already-processed states ('Versendet', 'Zugestellt') — those transitions
-    // mean the order cycled back, so sold was already incremented.
     const wasAlreadySold = ['Versendet', 'Zugestellt'].includes(oldStatus);
     if (newStatus === 'Wird bearbeitet' && !wasAlreadySold) {
         const batch = db.batch();
         for (const item of order.items) {
-            // FIX: Skip Mystery Vape and Bundle items — bundles have no product doc in
-            // the products collection (their ID starts with 'bundle_' or isBundle=true).
             if (item.id === MYSTERY_ID) continue;
             if (item.isBundle || String(item.id).startsWith('bundle_')) continue;
             const update = order.stockReserved
@@ -7026,7 +7024,6 @@ async function handleStockOnStatusChange(orderId, newStatus) {
         showToast('✅ Statistiken aktualisiert', 'success');
     }
 
-    // ── STORNIERT ────────────────────────────────────────────────────────────
     const wasProcessed = ['Wird bearbeitet', 'Versendet', 'Zugestellt'].includes(oldStatus);
     const shouldRestoreStock = newStatus === 'Storniert'
         && oldStatus !== 'Storniert'
@@ -7034,7 +7031,6 @@ async function handleStockOnStatusChange(orderId, newStatus) {
     if (shouldRestoreStock) {
         const batch = db.batch();
         for (const item of order.items) {
-            // FIX: Skip Mystery Vape and Bundle items — same reason as above
             if (item.id === MYSTERY_ID) continue;
             if (item.isBundle || String(item.id).startsWith('bundle_')) continue;
             const update = (order.stockReserved && !wasProcessed)
@@ -7046,24 +7042,34 @@ async function handleStockOnStatusChange(orderId, newStatus) {
         await batch.commit();
         showToast('↩ Lager wiederhergestellt', 'success');
     }
+    } catch(e) { throw e; } // Re-throw so quickStatus/saveOrderChanges can catch it
 }
 async function resetAllStatistics() {
     if (!confirm("⚠️ WIRKLICH ALLE STATISTIKEN ZURÜCKSETZEN?")) return;
-    const snapshot=await db.collection("products").get();const batch=db.batch();snapshot.forEach(doc=>batch.update(doc.ref,{sold:0}));await batch.commit();
-    showToast("✅ Alle Statistiken zurückgesetzt!","success");await logAction("all_statistics_reset");loadProducts();
+    try {
+        const snapshot=await db.collection("products").get();
+        const batch=db.batch();
+        snapshot.forEach(doc=>batch.update(doc.ref,{sold:0}));
+        await batch.commit();
+        showToast("✅ Alle Statistiken zurückgesetzt!","success");
+        await logAction("all_statistics_reset");
+        loadProducts();
+    } catch(e) { showToast('❌ Fehler: ' + e.message, 'error'); }
 }
 
 let bundleOrder = [];
 
 async function loadProductOrder() {
-    const [prodDoc, bndDoc] = await Promise.all([
-        db.collection('settings').doc('product_order').get(),
-        db.collection('settings').doc('bundle_order').get()
-    ]);
-    productOrder = prodDoc.exists ? (prodDoc.data().order || []) : [];
-    bundleOrder  = bndDoc.exists  ? (bndDoc.data().order  || []) : [];
-    renderSrtCatBar();
-    renderSortList();
+    try {
+        const [prodDoc, bndDoc] = await Promise.all([
+            db.collection('settings').doc('product_order').get(),
+            db.collection('settings').doc('bundle_order').get()
+        ]);
+        productOrder = prodDoc.exists ? (prodDoc.data().order || []) : [];
+        bundleOrder  = bndDoc.exists  ? (bndDoc.data().order  || []) : [];
+        renderSrtCatBar();
+        renderSortList();
+    } catch(e) { console.error('loadProductOrder:', e); }
 }
 
 let srtCurrentCat = 'Alle';
@@ -7265,16 +7271,26 @@ function renderSortList() {
         }
     });
 }
-async function toggleIsNew(id,e){e.stopImmediatePropagation();const doc=await db.collection('products').doc(id).get();const newVal=!(doc.data().isNew||false);await db.collection('products').doc(id).update({isNew:newVal});showToast(`NEW-Status → ${newVal?'aktiv':'deaktiviert'}`);renderSortList();}
+async function toggleIsNew(id,e){
+    e.stopImmediatePropagation();
+    try {
+        const doc=await db.collection('products').doc(id).get();
+        const newVal=!(doc.data().isNew||false);
+        await db.collection('products').doc(id).update({isNew:newVal});
+        showToast(`NEW-Status → ${newVal?'aktiv':'deaktiviert'}`);
+        renderSortList();
+    } catch(e2) { showToast('❌ Fehler: ' + e2.message, 'error'); }
+}
 async function toggleAvailableInSort(id, e) {
     e.stopImmediatePropagation();
-    const doc = await db.collection('products').doc(id).get();
-    const cur = doc.data().available !== false;
-    // FIX: When marking as unavailable, also reset stock to 0
-    const update = cur ? { available: false, stock: 0 } : { available: true };
-    await db.collection('products').doc(id).update(update);
-    showToast(cur ? '⏸ Deaktiviert – Lagerbestand auf 0 gesetzt' : '✅ Produkt aktiviert');
-    renderSortList();
+    try {
+        const doc = await db.collection('products').doc(id).get();
+        const cur = doc.data().available !== false;
+        const update = cur ? { available: false, stock: 0 } : { available: true };
+        await db.collection('products').doc(id).update(update);
+        showToast(cur ? '⏸ Deaktiviert – Lagerbestand auf 0 gesetzt' : '✅ Produkt aktiviert');
+        renderSortList();
+    } catch(e2) { showToast('❌ Fehler: ' + e2.message, 'error'); }
 }
 function autoSort(mode){const container=document.getElementById('sort-list');let items=Array.from(container.children).filter(i=>i.dataset.id);items.sort((a,b)=>{const pA=allProducts.find(p=>p.id===a.dataset.id);const pB=allProducts.find(p=>p.id===b.dataset.id);if(!pA||!pB)return 0;switch(mode){case'alpha':return pA.name.localeCompare(pB.name);case'new':return(pB.isNew?1:0)-(pA.isNew?1:0);case'tornado':return((pA.category==="WaveVapes Tornado 30000")?0:1)-((pB.category==="WaveVapes Tornado 30000")?0:1);case'available':return((pB.available!==false)?0:1)-((pA.available!==false)?0:1);case'stock':return(pB.stock||0)-(pA.stock||0);default:return 0;}});items.forEach(item=>container.appendChild(item));showToast('✅ Liste sortiert!','success');}
 function autoSortPriority(){
@@ -7693,35 +7709,33 @@ function euDrawerUpdateLockRow(isDisabled) {
 async function euDrawerToggleLock() {
     if (!euCurrentUid) return;
     const u         = euAllUsers.find(x => x.id === euCurrentUid);
-    const isNowLocked = !u?.disabled; // we're toggling: if currently not disabled → lock
+    const isNowLocked = !u?.disabled;
     const email     = u?.email || euCurrentUid;
-
-    if (isNowLocked) {
-        // SPERREN + IP-Ban
-        if (!confirm(`Account von ${email} SPERREN?\n\nBekannte IPs werden automatisch gebannt.`)) return;
-        const { ipsBanned } = await banUserWithIPs(euCurrentUid, email, 'Gesperrt via Erw. Benutzerverwaltung');
-        // update local cache
-        const idx = euAllUsers.findIndex(x => x.id === euCurrentUid);
-        if (idx !== -1) euAllUsers[idx].disabled = true;
-        euDrawerUpdateLockRow(true);
-        const msg = ipsBanned > 0
-            ? `🔒 Gesperrt + ${ipsBanned} IP${ipsBanned !== 1 ? 's' : ''} gebannt`
-            : '🔒 Gesperrt (keine bekannte IP gefunden)';
-        showToast(msg);
-        if (ipsBanned > 0) pushNotification('warning',
-            `User gesperrt + ${ipsBanned} IP${ipsBanned !== 1 ? 's' : ''} gebannt`,
-            email, () => switchTab(6));
-    } else {
-        // ENTSPERREN
-        if (!confirm(`Account von ${email} entsperren?`)) return;
-        await db.collection('users').doc(euCurrentUid).update({ disabled: false });
-        await logAction('user_enabled', euCurrentUid);
-        const idx = euAllUsers.findIndex(x => x.id === euCurrentUid);
-        if (idx !== -1) euAllUsers[idx].disabled = false;
-        euDrawerUpdateLockRow(false);
-        showToast('✅ Account entsperrt');
-    }
-    euRenderTable();
+    try {
+        if (isNowLocked) {
+            if (!confirm(`Account von ${email} SPERREN?\n\nBekannte IPs werden automatisch gebannt.`)) return;
+            const { ipsBanned } = await banUserWithIPs(euCurrentUid, email, 'Gesperrt via Erw. Benutzerverwaltung');
+            const idx = euAllUsers.findIndex(x => x.id === euCurrentUid);
+            if (idx !== -1) euAllUsers[idx].disabled = true;
+            euDrawerUpdateLockRow(true);
+            const msg = ipsBanned > 0
+                ? `🔒 Gesperrt + ${ipsBanned} IP${ipsBanned !== 1 ? 's' : ''} gebannt`
+                : '🔒 Gesperrt (keine bekannte IP gefunden)';
+            showToast(msg);
+            if (ipsBanned > 0) pushNotification('warning',
+                `User gesperrt + ${ipsBanned} IP${ipsBanned !== 1 ? 's' : ''} gebannt`,
+                email, () => switchTab(6));
+        } else {
+            if (!confirm(`Account von ${email} entsperren?`)) return;
+            await db.collection('users').doc(euCurrentUid).update({ disabled: false });
+            await logAction('user_enabled', euCurrentUid);
+            const idx = euAllUsers.findIndex(x => x.id === euCurrentUid);
+            if (idx !== -1) euAllUsers[idx].disabled = false;
+            euDrawerUpdateLockRow(false);
+            showToast('✅ Account entsperrt');
+        }
+        euRenderTable();
+    } catch(e) { showToast('❌ Fehler: ' + e.message, 'error'); }
 }
 
 async function euSaveDrawer(){
@@ -7731,7 +7745,7 @@ async function euSaveDrawer(){
     const data={
         username:         document.getElementById('eu-d-username').value.trim(),
         referralCode:     document.getElementById('eu-d-refcode').value.trim(),
-        totalBonusPoints: parseInt(document.getElementById('eu-d-pts', 10).value)||0,
+        totalBonusPoints: parseInt(document.getElementById('eu-d-pts').value, 10)||0,
         disabled:        nowDisabled,
         freeShipping:     document.getElementById('eu-d-freeship').checked,
         vip:              document.getElementById('eu-d-vip').checked,
@@ -7739,25 +7753,24 @@ async function euSaveDrawer(){
     };
     const isAdmin=document.getElementById('eu-d-admin').checked;
     data.role=isAdmin?'admin':firebase.firestore.FieldValue.delete();
-
-    // If account is being newly disabled → IP-Ban
-    if (nowDisabled && wasActive) {
-        const u = euAllUsers.find(x=>x.id===euCurrentUid);
-        const email = u?.email || euCurrentUid;
-        // update doc first (banUserWithIPs will skip the update since we handle it here)
-        await db.collection('users').doc(euCurrentUid).update(data);
-        const { ipsBanned } = await banUserWithIPs(euCurrentUid, email, 'Gesperrt via Erw. Benutzerverwaltung', true);
-        await logAction('extended_user_updated', euCurrentUid, {username:data.username,isAdmin,ipsBanned});
-        const msg = ipsBanned > 0
-            ? `✅ Gespeichert + ${ipsBanned} IP${ipsBanned!==1?'s':''} gebannt`
-            : '✅ Benutzer gespeichert (gesperrt, keine neue IP)';
-        showToast(msg,'success');
-    } else {
-        await db.collection('users').doc(euCurrentUid).update(data);
-        await logAction('extended_user_updated',euCurrentUid,{username:data.username,isAdmin});
-        showToast('✅ Benutzer gespeichert!','success');
-    }
-    euCloseDrawer();
+    try {
+        if (nowDisabled && wasActive) {
+            const u = euAllUsers.find(x=>x.id===euCurrentUid);
+            const email = u?.email || euCurrentUid;
+            await db.collection('users').doc(euCurrentUid).update(data);
+            const { ipsBanned } = await banUserWithIPs(euCurrentUid, email, 'Gesperrt via Erw. Benutzerverwaltung', true);
+            await logAction('extended_user_updated', euCurrentUid, {username:data.username,isAdmin,ipsBanned});
+            const msg = ipsBanned > 0
+                ? `✅ Gespeichert + ${ipsBanned} IP${ipsBanned!==1?'s':''} gebannt`
+                : '✅ Benutzer gespeichert (gesperrt, keine neue IP)';
+            showToast(msg,'success');
+        } else {
+            await db.collection('users').doc(euCurrentUid).update(data);
+            await logAction('extended_user_updated',euCurrentUid,{username:data.username,isAdmin});
+            showToast('✅ Benutzer gespeichert!','success');
+        }
+        euCloseDrawer();
+    } catch(e) { showToast('❌ Speichern fehlgeschlagen: ' + e.message, 'error'); }
 }
 
 let _bcMode = 'all';         // 'all' | 'select'
@@ -9146,17 +9159,19 @@ function rvAdminLoad(mode) {
 }
 
 async function rvAdminApprove(reviewId) {
-    await db.collection('reviews').doc(reviewId).update({ approved: true, rejected: false });
-    await logAction('review_approved', reviewId);
-    showToast('✅ Bewertung freigegeben!');
-    // onSnapshot listeners auto-update — no manual reload needed
+    try {
+        await db.collection('reviews').doc(reviewId).update({ approved: true, rejected: false });
+        await logAction('review_approved', reviewId);
+        showToast('✅ Bewertung freigegeben!');
+    } catch(e) { showToast('❌ Fehler: ' + e.message, 'error'); }
 }
 
 async function rvAdminReject(reviewId) {
-    await db.collection('reviews').doc(reviewId).update({ approved: false, rejected: true });
-    await logAction('review_rejected', reviewId);
-    showToast('Bewertung abgelehnt', 'warning');
-    // onSnapshot listeners auto-update — no manual reload needed
+    try {
+        await db.collection('reviews').doc(reviewId).update({ approved: false, rejected: true });
+        await logAction('review_rejected', reviewId);
+        showToast('Bewertung abgelehnt', 'warning');
+    } catch(e) { showToast('❌ Fehler: ' + e.message, 'error'); }
 }
 
 auth.onAuthStateChanged(async (user) => {
@@ -9193,8 +9208,8 @@ auth.onAuthStateChanged(async (user) => {
     // New features
     requestNotifPermission();
     watchNewOrders();
-    // Pre-fetch users for global search
-    db.collection('users').orderBy('email').limit(500).onSnapshot(snap => { window._usrAllDocs = snap.docs; });
+    // Pre-fetch users for global search — E3-01 FIX: track for cleanup
+    window._globalUsersUnsub = db.collection('users').orderBy('email').limit(500).onSnapshot(snap => { window._usrAllDocs = snap.docs; });
     // Note: _ordAllDocs is already kept in sync by loadOrders() above — no duplicate listener needed
 });
 
@@ -10475,68 +10490,79 @@ function saDownload(filename, content, mime) {
 // ── Danger Zone Actions ───────────────────────────────
 async function saDangerShopClose() {
     if (!confirm('Shop wirklich SOFORT für alle Kunden schließen?')) return;
-    await db.collection('settings').doc('main').set({ shop_closed: true }, { merge: true });
-    cfgUpdateStatusPill();
-    await logAction('danger_shop_close', 'main');
-    showToast('🔴 Shop ist jetzt geschlossen — Kunden sehen die Wartungsseite');
+    try {
+        await db.collection('settings').doc('main').set({ shop_closed: true }, { merge: true });
+        cfgUpdateStatusPill();
+        await logAction('danger_shop_close', 'main');
+        showToast('🔴 Shop ist jetzt geschlossen — Kunden sehen die Wartungsseite');
+    } catch(e) { showToast('❌ Fehler: ' + e.message, 'error'); }
 }
 
 async function saDangerShopOpen() {
     if (!confirm('Shop für alle Kunden wieder öffnen?')) return;
-    await db.collection('settings').doc('main').set({ shop_closed: false }, { merge: true });
-    cfgUpdateStatusPill();
-    await logAction('danger_shop_open', 'main');
-    showToast('🟢 Shop ist jetzt wieder geöffnet');
+    try {
+        await db.collection('settings').doc('main').set({ shop_closed: false }, { merge: true });
+        cfgUpdateStatusPill();
+        await logAction('danger_shop_open', 'main');
+        showToast('🟢 Shop ist jetzt wieder geöffnet');
+    } catch(e) { showToast('❌ Fehler: ' + e.message, 'error'); }
 }
 
 async function saDangerClearBannedIPs() {
     if (!confirm('Alle gesperrten IPs wirklich entsperren?')) return;
-    const snap = await db.collection('banned_ips').get();
-    const batch = db.batch();
-    snap.docs.forEach(d => batch.delete(d.ref));
-    await batch.commit();
-    await logAction('danger_clear_banned_ips', 'banned_ips', { count: snap.size });
-    showToast(`✅ ${snap.size} IP-Sperren aufgehoben`);
+    try {
+        const snap = await db.collection('banned_ips').get();
+        const batch = db.batch();
+        snap.docs.forEach(d => batch.delete(d.ref));
+        await batch.commit();
+        await logAction('danger_clear_banned_ips', 'banned_ips', { count: snap.size });
+        showToast(`✅ ${snap.size} IP-Sperren aufgehoben`);
+    } catch(e) { showToast('❌ Fehler: ' + e.message, 'error'); }
 }
 
 async function saDangerRejectAllReviews() {
     if (!confirm('Wirklich alle ausstehenden Bewertungen ablehnen?')) return;
-    const snap = await db.collection('reviews').where('approved','==',false).get();
-    const pending = snap.docs.filter(d => !d.data().rejected);
-    const batch = db.batch();
-    pending.forEach(d => batch.update(d.ref, { rejected: true }));
-    await batch.commit();
-    await logAction('danger_reject_reviews', 'reviews', { count: pending.length });
-    showToast(`✅ ${pending.length} Bewertungen abgelehnt`);
+    try {
+        const snap = await db.collection('reviews').where('approved','==',false).get();
+        const pending = snap.docs.filter(d => !d.data().rejected);
+        const batch = db.batch();
+        pending.forEach(d => batch.update(d.ref, { rejected: true }));
+        await batch.commit();
+        await logAction('danger_reject_reviews', 'reviews', { count: pending.length });
+        showToast(`✅ ${pending.length} Bewertungen abgelehnt`);
+    } catch(e) { showToast('❌ Fehler: ' + e.message, 'error'); }
 }
 
 async function saDangerPurgeLogs() {
     if (!confirm('Alle Admin-Logs älter als 90 Tage löschen?')) return;
-    const cutoff = Date.now() - 90 * 24 * 60 * 60 * 1000;
-    const snap = await db.collection('admin_logs').get(); // E-NEW-04 FIX: no limit — delete ALL old logs
-    const old = snap.docs.filter(d => {
-        const t = d.data().timestamp?.toDate?.()?.getTime?.() || 0;
-        return t > 0 && t < cutoff;
-    });
-    // Delete in batches of 400
-    for (let i = 0; i < old.length; i += 400) {
-        const batch = db.batch();
-        old.slice(i, i + 400).forEach(d => batch.delete(d.ref));
-        await batch.commit();
-    }
-    await logAction('danger_purge_logs', 'admin_logs', { count: old.length });
-    showToast(`✅ ${old.length} alte Logs gelöscht`);
+    try {
+        const cutoff = Date.now() - 90 * 24 * 60 * 60 * 1000;
+        const snap = await db.collection('admin_logs').get();
+        const old = snap.docs.filter(d => {
+            const t = d.data().timestamp?.toDate?.()?.getTime?.() || 0;
+            return t > 0 && t < cutoff;
+        });
+        for (let i = 0; i < old.length; i += 400) {
+            const batch = db.batch();
+            old.slice(i, i + 400).forEach(d => batch.delete(d.ref));
+            await batch.commit();
+        }
+        await logAction('danger_purge_logs', 'admin_logs', { count: old.length });
+        showToast(`✅ ${old.length} alte Logs gelöscht`);
+    } catch(e) { showToast('❌ Fehler: ' + e.message, 'error'); }
 }
 
 async function saDangerResetLoyalty() {
     const typed = prompt('Tippe "PUNKTE ZURÜCKSETZEN" um fortzufahren:');
     if (typed !== 'PUNKTE ZURÜCKSETZEN') { showToast('Abgebrochen', 'warning'); return; }
-    const snap = await db.collection('users').get();
-    const batch = db.batch();
-    snap.docs.forEach(d => batch.update(d.ref, { loyaltyPoints: 0, totalBonusPoints: 0 }));
-    await batch.commit();
-    await logAction('danger_reset_loyalty', 'users', { count: snap.size });
-    showToast(`✅ ${snap.size} Benutzer-Punkte zurückgesetzt`);
+    try {
+        const snap = await db.collection('users').get();
+        const batch = db.batch();
+        snap.docs.forEach(d => batch.update(d.ref, { loyaltyPoints: 0, totalBonusPoints: 0 }));
+        await batch.commit();
+        await logAction('danger_reset_loyalty', 'users', { count: snap.size });
+        showToast(`✅ ${snap.size} Benutzer-Punkte zurückgesetzt`);
+    } catch(e) { showToast('❌ Fehler: ' + e.message, 'error'); }
 }
 
 async function saDangerDeleteAllOrders() {
@@ -10544,17 +10570,16 @@ async function saDangerDeleteAllOrders() {
     if (typed !== 'ALLE BESTELLUNGEN LÖSCHEN') { showToast('Abgebrochen', 'warning'); return; }
     const confirm2 = prompt('Bist du ABSOLUT SICHER? Tippe nochmal "JA" zur Bestätigung:');
     if (confirm2 !== 'JA') { showToast('Abgebrochen', 'warning'); return; }
-    const snap = await db.collection('orders').get();
-    // BUG FIX: Chunk size aligned to 400 consistently (matches rest of codebase).
-    // Batches are now committed sequentially (for-of with await) to prevent
-    // parallel batch conflicts when deleting large datasets.
-    for (let i = 0; i < snap.docs.length; i += 400) {
-        const batch = db.batch();
-        snap.docs.slice(i, i + 400).forEach(d => batch.delete(d.ref));
-        await batch.commit();
-    }
-    await logAction('danger_delete_orders', 'orders', { count: snap.size });
-    showToast(`☢️ ${snap.size} Bestellungen gelöscht`);
+    try {
+        const snap = await db.collection('orders').get();
+        for (let i = 0; i < snap.docs.length; i += 400) {
+            const batch = db.batch();
+            snap.docs.slice(i, i + 400).forEach(d => batch.delete(d.ref));
+            await batch.commit();
+        }
+        await logAction('danger_delete_orders', 'orders', { count: snap.size });
+        showToast(`☢️ ${snap.size} Bestellungen gelöscht`);
+    } catch(e) { showToast('❌ Fehler: ' + e.message, 'error'); }
 }
 
 // ── Override saOpenTab to load dashboard on open ──────

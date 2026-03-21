@@ -1901,6 +1901,23 @@
                 <p id="loyalty-cart-info" class="text-emerald-400 text-xs flex items-center gap-2 font-medium mb-3"></p>
             </div>
 
+            <!-- Order Note -->
+            <div id="cart-note-row" class="mb-3">
+                <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px">
+                    <i class="fa-solid fa-comment-dots" style="color:rgba(103,232,249,.7);font-size:11px"></i>
+                    <span style="font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:rgba(255,255,255,.35)">Wunsch / Anmerkung</span>
+                </div>
+                <textarea id="order-note-input"
+                    placeholder="z.B. Bundle: Apple Peach statt Blueberry · oder allgemeine Anmerkungen zur Bestellung"
+                    maxlength="500"
+                    rows="2"
+                    style="width:100%;box-sizing:border-box;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:10px 14px;color:#fff;font-size:12px;font-family:inherit;outline:none;resize:none;transition:border-color .2s;line-height:1.5"
+                    onfocus="this.style.borderColor='rgba(103,232,249,.45)'"
+                    onblur="this.style.borderColor='rgba(255,255,255,.1)'"
+                ></textarea>
+                <div style="font-size:10px;color:rgba(255,255,255,.2);margin-top:4px;text-align:right"><span id="order-note-counter">0</span>/500</div>
+            </div>
+
             <!-- CTA Button -->
             <button onclick="placeOrder()" class="w-full py-4 bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 text-black font-bold text-lg rounded-2xl transition-all" style="min-height:56px">BESTELLUNG ABSCHICKEN</button>
             <button onclick="clearCart()" class="mt-2 text-red-400/60 hover:text-red-400 text-xs w-full py-2 transition">Warenkorb leeren</button>
@@ -2540,7 +2557,8 @@
                         tax: "0.00",
                         total: orderData.total.toFixed(2)
                     },
-                    loyalty_earned: orderData.loyaltyEarned || 0
+                    loyalty_earned: orderData.loyaltyEarned || 0,
+                    order_note: orderData.orderNote || ''
                 });
                 // console.log("✅ E-Mail erfolgreich gesendet!");
                 showToast("✅ Bestellbestätigung per E-Mail versendet!", "success");
@@ -4376,6 +4394,9 @@
                 const loyaltyEarned = Math.floor(verifiedProductTotal);
                 const orderNumber = generateOrderNumber();
 
+                // Kundenwunsch aus dem Textfeld lesen
+                const orderNote = (document.getElementById('order-note-input')?.value || '').trim().slice(0, 500);
+
                 // Save order with verified total and optional coupon info
                 const orderData = {
                     userId: currentUser.uid,
@@ -4390,7 +4411,8 @@
                     carrier: null,
                     loyaltyEarned: loyaltyEarned,
                     loyaltyCredited: false,
-                    stockReserved: true   // stock was already decremented at order placement
+                    stockReserved: true,
+                    ...(orderNote ? { orderNote } : {})   // nur speichern wenn nicht leer
                 };
                 if (savedCouponInfo) {
                     orderData.discountCode   = savedCouponInfo.code;
@@ -4413,15 +4435,19 @@
                     userEmail: currentUser.email,
                     orderNumber: orderNumber,
                     total: verifiedTotal,
-                    items: verifiedItems, // BUG FIX: use server-verified items, not raw cart
+                    items: verifiedItems,
                     shipping: shippingCost,
-                    loyaltyEarned: loyaltyEarned
+                    loyaltyEarned: loyaltyEarned,
+                    orderNote: orderNote || ''
                 });
                 cart = [];
                 appliedDiscount = null;
                 pendingNicotine = {};
                 document.getElementById("discount-status").innerHTML = "";
                 document.getElementById("discount-input").value = "";
+                // Bestellwunsch-Feld leeren
+                const noteField = document.getElementById('order-note-input');
+                if (noteField) { noteField.value = ''; const c = document.getElementById('order-note-counter'); if(c) c.textContent = '0'; }
                 // BUG FIX: saveUserCart() ist debounced (setTimeout 600ms) und gibt undefined
                 // zurück — ein await darauf hat keine Wirkung. Nach einer Bestellung direkt
                 // schreiben, damit der Warenkorb sofort geleert ist.
@@ -6089,8 +6115,17 @@
             updateWishlistBadge();
             renderRecentlyViewed();
             loadLeaderboard();
-            subscribeGlobalListeners(); // Opt 4: start Firestore listeners after app is ready
-            updateAggregateRatingSchema(); // BUG 12 FIX: keep schema.org rating in sync with Firestore
+            subscribeGlobalListeners();
+            updateAggregateRatingSchema();
+
+            // Zeichenzähler für Bestellwunsch
+            const noteInput   = document.getElementById('order-note-input');
+            const noteCounter = document.getElementById('order-note-counter');
+            if (noteInput && noteCounter) {
+                noteInput.addEventListener('input', () => {
+                    noteCounter.textContent = noteInput.value.length;
+                });
+            }
         }
 
 

@@ -2347,6 +2347,18 @@
             document.body.style.width = '100%';
             document.body.classList.add('modal-open');
 
+            // Track als "zuletzt angesehen" – Bundles mit "bundle_" Präfix
+            const rvKey = 'bundle_' + bundleId;
+            recentlyViewed = recentlyViewed.filter(i => i !== rvKey);
+            recentlyViewed.unshift(rvKey);
+            if (recentlyViewed.length > 6) recentlyViewed = recentlyViewed.slice(0, 6);
+            if (currentUser) {
+                db.collection("users").doc(currentUser.uid).update({ recentlyViewed }).catch(() => {});
+            } else {
+                localStorage.setItem("wavevapes_recently", JSON.stringify(recentlyViewed));
+            }
+            renderRecentlyViewed();
+
             const inCart = cart.some(i => i.bundleId === bundleId);
             const orig = (b.originalTotal || 0).toFixed(2).replace('.', ',');
             const sale = (b.bundlePrice || 0).toFixed(2).replace('.', ',');
@@ -4973,31 +4985,53 @@
             const track   = document.getElementById("recently-viewed-track");
             if (!section || !track) return;
 
-            // Filter to IDs that still exist in allProducts, skip current open product
-            const items = recentlyViewed
-                .map(id => _productMap.get(id))
-                .filter(Boolean);
+            // recentlyViewed enthält Produkt-IDs und Bundle-IDs (mit Präfix "bundle_")
+            const cards = recentlyViewed.map(id => {
+                if (String(id).startsWith('bundle_')) {
+                    const bundleId = String(id).replace('bundle_', '');
+                    const b = allBundles.find(x => x.id === bundleId);
+                    if (!b || !b.active) return null;
+                    return { type: 'bundle', b };
+                } else {
+                    const p = _productMap.get(id);
+                    if (!p) return null;
+                    return { type: 'product', p };
+                }
+            }).filter(Boolean);
 
-            if (items.length === 0) {
+            if (cards.length === 0) {
                 section.classList.remove("visible");
                 return;
             }
 
             section.classList.add("visible");
-            track.innerHTML = items.map(p => {
-                // BUG FIX: Show promo price if active, not always base price
-                const promoP = getPromoPrice(p);
-                const displayP = promoP !== null ? promoP : p.price;
-                const price = displayP.toFixed(2).replace('.', ',') + ' €';
-                const isPromo = promoP !== null;
-                const imgHTML = p.image
-                    ? `<img class="rv-mini-img" src="${p.image}" alt="${p.name}" loading="lazy">`
-                    : `<div class="rv-mini-placeholder">🧪</div>`;
-                return `<div class="rv-mini-card" onclick="showProductDetail('${p.id}')" title="${p.name}">
-                    ${imgHTML}
-                    <div class="rv-mini-name">${p.name}</div>
-                    <div class="rv-mini-price" style="${isPromo ? 'color:#ef4444;font-weight:800' : ''}">${price}</div>
-                </div>`;
+            track.innerHTML = cards.map(item => {
+                if (item.type === 'bundle') {
+                    const b = item.b;
+                    const price = (b.bundlePrice || 0).toFixed(2).replace('.', ',') + ' €';
+                    const imgHTML = b.image
+                        ? `<img class="rv-mini-img" src="${b.image}" alt="${b.name}" loading="lazy">`
+                        : `<div class="rv-mini-placeholder">🎁</div>`;
+                    return `<div class="rv-mini-card" onclick="showBundleDetail('${b.id}')" title="${b.name}">
+                        ${imgHTML}
+                        <div class="rv-mini-name">${b.name}</div>
+                        <div class="rv-mini-price" style="color:#a78bfa;font-weight:700">${price}</div>
+                    </div>`;
+                } else {
+                    const p = item.p;
+                    const promoP = getPromoPrice(p);
+                    const displayP = promoP !== null ? promoP : p.price;
+                    const price = displayP.toFixed(2).replace('.', ',') + ' €';
+                    const isPromo = promoP !== null;
+                    const imgHTML = p.image
+                        ? `<img class="rv-mini-img" src="${p.image}" alt="${p.name}" loading="lazy">`
+                        : `<div class="rv-mini-placeholder">🧪</div>`;
+                    return `<div class="rv-mini-card" onclick="showProductDetail('${p.id}')" title="${p.name}">
+                        ${imgHTML}
+                        <div class="rv-mini-name">${p.name}</div>
+                        <div class="rv-mini-price" style="${isPromo ? 'color:#ef4444;font-weight:800' : ''}">${price}</div>
+                    </div>`;
+                }
             }).join('');
         }
 

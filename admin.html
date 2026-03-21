@@ -5659,8 +5659,8 @@ function ordRenderTable() {
 }
 
 function loadOrders() {
-    if (_ordersUnsub) { _ordersUnsub(); _ordersUnsub = null; }
-    // BUG FIX: Listener vor Neustart sauber beenden (verhindert Listener-Stacking)
+    // Bug Fix #4: remove duplicate teardown — after the first block _ordersUnsub is
+    // always null, so the second identical check was always false (dead code).
     if (_ordersUnsub) { _ordersUnsub(); _ordersUnsub = null; }
     _ordersUnsub = db.collection('orders').orderBy('date','desc').onSnapshot(snap => {
         _ordAllDocs = snap.docs;
@@ -5670,9 +5670,14 @@ function loadOrders() {
 document.getElementById('order-search').addEventListener('input', ordRenderTable);
 document.getElementById('status-filter').addEventListener('change', ordSyncKpiFilter);
 
+// Bug Fix #3: Per-order lock Set prevents a race condition where two rapid
+// clicks fire handleStockOnStatusChange twice before Firestore has written
+// the new status — which would decrement/increment stock twice.
+const _quickStatusLocks = new Set();
+
 async function quickStatus(id, status) {
-    // BUG FIX: Wrapped in try/catch — any Firestore error now shows a
-    // user-friendly toast instead of a silent unhandled rejection.
+    if (_quickStatusLocks.has(id)) return; // already in flight for this order
+    _quickStatusLocks.add(id);
     try {
         await handleStockOnStatusChange(id, status);
         await db.collection('orders').doc(id).update({ status });
@@ -5683,6 +5688,8 @@ async function quickStatus(id, status) {
     } catch(e) {
         console.error('quickStatus error:', e);
         showToast('❌ Status konnte nicht gesetzt werden: ' + e.message, 'error');
+    } finally {
+        _quickStatusLocks.delete(id);
     }
 }
 
@@ -5746,13 +5753,20 @@ function closeOrderModal() {
     document.getElementById('ord-drawer').classList.remove('open');
 }
 
+let _saveOrderInProgress = false; // Bug Fix #3b: prevent double-submit on save button
+
 async function saveOrderChanges() {
+    if (_saveOrderInProgress) return;
+    _saveOrderInProgress = true;
+
+    // Disable save button for visual feedback
+    const saveBtn = document.querySelector('#ord-drawer button[onclick="saveOrderChanges()"]');
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Wird gespeichert…'; }
+
     const status       = document.getElementById('modal-status').value;
     const carrier      = document.getElementById('modal-carrier').value;
     const tracking     = document.getElementById('modal-tracking').value.trim();
     const internalNotes= document.getElementById('modal-internal-notes').value.trim();
-    // BUG FIX: Wrapped in try/catch so Firestore errors surface as toasts,
-    // not silent failures that leave the modal open with no feedback.
     try {
         await handleStockOnStatusChange(currentOrderId, status);
         const updateData = { status, carrier, trackingNumber: tracking || firebase.firestore.FieldValue.delete() };
@@ -5766,6 +5780,9 @@ async function saveOrderChanges() {
     } catch(e) {
         console.error('saveOrderChanges error:', e);
         showToast('❌ Speichern fehlgeschlagen: ' + e.message, 'error');
+    } finally {
+        _saveOrderInProgress = false;
+        if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Speichern'; }
     }
 }
 
@@ -6790,15 +6807,25 @@ async function handleStockOnStatusChange(orderId, newStatus) {
     const order = doc.data();
     const oldStatus = order.status || 'Zahlung erwartet';
 
-    // stockReserved=true means stock was already decremented when the order was placed.
-    // For new orders: "Wird bearbeitet" only increments sold (stock already gone).
-    // For old orders (no flag): keep legacy behaviour — decrement stock + increment sold.
-    if (newStatus === 'Wird bearbeitet' && oldStatus !== 'Wird bearbeitet') {
+    // ── IDEMPOTENCY GUARD (Bug Fix #1 + #2) ─────────────────────────────────
+    // If the status hasn't changed, do nothing at all.
+    // Without this: saving "Storniert" a second time would re-increment stock,
+    // and going Versendet → Wird bearbeitet would double-count sold.
+    if (oldStatus === newStatus) return;
+
+    // ── "WIRD BEARBEITET" ────────────────────────────────────────────────────
+    // Only fire when transitioning INTO this status for the very first time.
+    // Bug Fix #2: we must also check that sold hasn't already been counted.
+    // We do this by checking that the previous status was NOT one of the
+    // already-processed states ('Versendet', 'Zugestellt') — those transitions
+    // mean the order cycled back, so sold was already incremented.
+    const wasAlreadySold = ['Versendet', 'Zugestellt'].includes(oldStatus);
+    if (newStatus === 'Wird bearbeitet' && !wasAlreadySold) {
         const batch = db.batch();
         for (const item of order.items) {
             if (item.id == MYSTERY_ID) continue;
             const update = order.stockReserved
-                ? { sold: firebase.firestore.FieldValue.increment(item.qty) }          // new: stock already reserved
+                ? { sold: firebase.firestore.FieldValue.increment(item.qty) }          // stock already reserved at placement
                 : { stock: firebase.firestore.FieldValue.increment(-item.qty),         // legacy: decrement stock too
                     sold:  firebase.firestore.FieldValue.increment(item.qty) };
             batch.update(db.collection('products').doc(String(item.id)), update);
@@ -6807,18 +6834,22 @@ async function handleStockOnStatusChange(orderId, newStatus) {
         showToast('✅ Statistiken aktualisiert', 'success');
     }
 
-    // → Storniert: always restore stock.
-    // For new orders stock was reserved at placement, so restore regardless of old status.
-    // For legacy orders: only restore if stock was already decremented (wasProcessed).
+    // ── STORNIERT ────────────────────────────────────────────────────────────
+    // Bug Fix #1: guard against oldStatus already being 'Storniert'
+    // (caught by the idempotency check above, but be explicit for clarity).
+    // stockReserved=true  → stock was taken at placement, always give it back.
+    // legacy orders       → only restore if stock was ever decremented.
     const wasProcessed = ['Wird bearbeitet', 'Versendet', 'Zugestellt'].includes(oldStatus);
-    const shouldRestoreStock = newStatus === 'Storniert' && (order.stockReserved || wasProcessed);
+    const shouldRestoreStock = newStatus === 'Storniert'
+        && oldStatus !== 'Storniert'          // Bug Fix #1: never restore twice
+        && (order.stockReserved || wasProcessed);
     if (shouldRestoreStock) {
         const batch = db.batch();
         for (const item of order.items) {
             if (item.id == MYSTERY_ID) continue;
             const update = (order.stockReserved && !wasProcessed)
-                ? { stock: firebase.firestore.FieldValue.increment(item.qty) }                     // new order, not yet processed — only restore stock
-                : { stock: firebase.firestore.FieldValue.increment(item.qty),                      // processed or legacy — restore stock + undo sold
+                ? { stock: firebase.firestore.FieldValue.increment(item.qty) }         // reserved but not yet processed — only restore stock
+                : { stock: firebase.firestore.FieldValue.increment(item.qty),          // processed or legacy — restore stock + undo sold
                     sold:  firebase.firestore.FieldValue.increment(-item.qty) };
             batch.update(db.collection('products').doc(String(item.id)), update);
         }

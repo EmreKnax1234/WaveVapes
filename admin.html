@@ -7011,17 +7011,14 @@ async function resetAllStatistics() {
 }
 
 let bundleOrder = [];
-let combinedOrder = [];
 
 async function loadProductOrder() {
-    const [prodDoc, bndDoc, cmbDoc] = await Promise.all([
+    const [prodDoc, bndDoc] = await Promise.all([
         db.collection('settings').doc('product_order').get(),
-        db.collection('settings').doc('bundle_order').get(),
-        db.collection('settings').doc('combined_order').get()
+        db.collection('settings').doc('bundle_order').get()
     ]);
     productOrder = prodDoc.exists ? (prodDoc.data().order || []) : [];
     bundleOrder  = bndDoc.exists  ? (bndDoc.data().order  || []) : [];
-    combinedOrder = cmbDoc.exists ? (cmbDoc.data().order || []) : [];
     renderSrtCatBar();
     renderSortList();
 }
@@ -7141,18 +7138,13 @@ function renderSortList() {
 
     const sourceBundles = srtCurrentCat === 'Alle' ? _bundles : [];
 
-    // In "Alle": combinedOrder hält die gespeicherte interleaved Reihenfolge
-    // Falls noch kein combined_order existiert, Produkte zuerst dann Bundles
-    const orderRef = srtCurrentCat === 'Alle'
-        ? (combinedOrder.length ? combinedOrder : [...productOrder, ...bundleOrder])
-        : productOrder;
-
+    // Alle Items nach productOrder sortieren (enthält Produkt- und Bundle-IDs)
     const combined = [
         ...sourceProducts.map(p => ({ item: p, type: 'product' })),
         ...sourceBundles.map(b => ({ item: b, type: 'bundle' }))
     ].sort((a, b) => {
-        const orderA = orderRef.indexOf(a.item.id);
-        const orderB = orderRef.indexOf(b.item.id);
+        const orderA = productOrder.indexOf(a.item.id);
+        const orderB = productOrder.indexOf(b.item.id);
         if (orderA !== -1 && orderB !== -1) return orderA - orderB;
         if (orderA !== -1) return -1;
         if (orderB !== -1) return 1;
@@ -7262,64 +7254,66 @@ async function saveProductOrder() {
     const btn = document.querySelector('.srt-save-btn');
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Speichert…'; }
     try {
-        const allItems = Array.from(document.querySelectorAll('#sort-list .sortable-item'));
+        // Alle sichtbaren Items in der aktuellen Reihenfolge
+        const visibleItems = Array.from(document.querySelectorAll('#sort-list .sortable-item')).map(i => i.dataset.id);
 
-        // ── BUNDLES-only Tab ─────────────────────────────────────────────
+        // ── Bundles-only Tab ────────────────────────────────────────────
         if (srtCurrentCat === 'Bundles') {
-            const bundleIds = allItems.map(i => i.dataset.id);
-            bundleOrder = bundleIds;
-            await db.collection('settings').doc('bundle_order').set({ order: bundleIds });
+            bundleOrder = visibleItems;
+            await db.collection('settings').doc('bundle_order').set({ order: visibleItems });
             showToast('✅ Bundle-Sortierung gespeichert!', 'success');
-            await logAction('bundle_order_saved', '', { count: bundleIds.length });
+            await logAction('bundle_order_saved', '', { count: visibleItems.length });
             return;
         }
 
-        // ── Alle-Ansicht (Produkte + Bundles gemischt) ───────────────────
+        // ── Alle-Ansicht ────────────────────────────────────────────────
+        // visibleItems enthält Produkt- UND Bundle-IDs in der gewünschten Reihenfolge.
+        // Bundle-IDs im Array schaden dem Shop nicht – er rendert nur, was in allProducts ist.
+        // Bundle-IDs werden beim Sortieren schlicht ignoriert (indexOf gibt -1 zurück für
+        // alles, was nicht in allProducts ist → fällt auf getSortPriority-Fallback).
         if (srtCurrentCat === 'Alle') {
-            const productIds = allItems.filter(i => i.dataset.type !== 'bundle').map(i => i.dataset.id);
-            const bundleIds  = allItems.filter(i => i.dataset.type === 'bundle').map(i => i.dataset.id);
-            // combined_order: hält die interleaved Reihenfolge für den Admin
-            // product_order:  nur Produkt-IDs in relativer Reihenfolge für den Shop
-            const combinedIds = allItems.map(i => i.dataset.id);
-            await Promise.all([
-                db.collection('settings').doc('product_order').set({ order: productIds }),
-                db.collection('settings').doc('bundle_order').set({ order: bundleIds }),
-                db.collection('settings').doc('combined_order').set({ order: combinedIds })
-            ]);
-            productOrder = productIds;
-            bundleOrder  = bundleIds;
+            await db.collection('settings').doc('product_order').set({ order: visibleItems });
+            productOrder = visibleItems;
+            // Auch bundle_order separat aktualisieren
+            const bundleIds = visibleItems.filter(id => _bundles.some(b => b.id === id));
+            if (bundleIds.length) {
+                bundleOrder = bundleIds;
+                await db.collection('settings').doc('bundle_order').set({ order: bundleIds });
+            }
             showToast('✅ Sortierung gespeichert & live!', 'success');
-            await logAction('product_order_saved', '', { category: 'Alle', products: productIds.length, bundles: bundleIds.length });
+            await logAction('product_order_saved', '', { category: 'Alle', count: visibleItems.length });
             return;
         }
 
-        // ── Kategorie-Ansicht ────────────────────────────────────────────
-        const catIds   = allItems.map(i => i.dataset.id);
-        // Merge: Produkte dieser Kategorie an ihrer Stelle ersetzen, Rest behalten
+        // ── Kategorie-Ansicht ───────────────────────────────────────────
+        // Reihenfolge dieser Kategorie in die globale Reihenfolge einmergen
+        const catSlots = productOrder
+            .map((id, idx) => ({ id, idx }))
+            .filter(({ id }) => allProducts.find(p => p.id === id && p.category === srtCurrentCat))
+            .map(({ idx }) => idx)
+            .sort((a, b) => a - b);
+
         const withoutCat = productOrder.filter(id => {
             const p = allProducts.find(p => p.id === id);
             return !p || p.category !== srtCurrentCat;
         });
-        const catSlots = productOrder
-            .map((id, idx) => ({ id, idx }))
-            .filter(({ id }) => allProducts.find(p => p.id === id && p.category === srtCurrentCat))
-            .map(({ idx }) => idx);
+
         let result = [...withoutCat];
-        catIds.forEach((id, i) => {
-            const pos = catSlots[i] !== undefined ? catSlots[i] : result.length;
+        visibleItems.forEach((id, i) => {
+            const pos = catSlots[i] !== undefined ? catSlots[i] : result.length + i;
             result.splice(Math.min(pos, result.length), 0, id);
         });
-        // Neue Produkte anhängen
         allProducts.forEach(p => { if (!result.includes(p.id)) result.push(p.id); });
+
         await db.collection('settings').doc('product_order').set({ order: result });
         productOrder = result;
         showToast('✅ Sortierung gespeichert & live!', 'success');
         await logAction('product_order_saved', '', { category: srtCurrentCat });
 
     } catch(e) {
-        showToast('❌ Fehler beim Speichern: ' + e.message, 'error');
+        showToast('❌ Fehler: ' + e.message, 'error');
     } finally {
-        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> SORTIERUNG SPEICHERN & LIVE ÜBERNEHMEN'; }
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> SORTIERUNG SPEICHERN &amp; LIVE ÜBERNEHMEN'; }
     }
 }
 

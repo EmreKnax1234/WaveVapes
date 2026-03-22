@@ -2584,7 +2584,7 @@
                         </div>
                         <div class="ord-d-field">
                             <label class="ord-d-label">Tracking-Nummer</label>
-                            <input id="modal-tracking" class="ord-d-input" placeholder="JD000000000000000000">
+                            <input id="modal-tracking" class="ord-d-input" placeholder="JD000000000000000000" onkeydown="if(event.key==='Enter')saveOrderChanges()">
                         </div>
                     </div>
                 </div>
@@ -5215,10 +5215,18 @@ async function exportOrdersToCSV() {
     let csv = "docId,orderNumber,datum,email,gesamt,status,items,street,zip,city,kundenwunsch\n";
     snapshot.forEach(doc => {
         const o = doc.data(); const dateStr = o.date ? o.date.toDate().toISOString().slice(0,19).replace('T',' ') : '';
-        const itemsStr = (o.items||[]).map(i=>`${i.name} x${i.qty}${i.nicotine?' ('+i.nicotine+')':''}`).join(' | ');
-        const safeStreet = (o.address.street||"").replace(/"/g,'""')
-        const safeZip    = (o.address.zip||"").replace(/"/g,'""')
-        const safeCity   = (o.address.city||"").replace(/"/g,'""')
+        const itemsStr = (o.items||[]).map(i => {
+            if (i.isBundle) {
+                const flavors = i.selectedFlavors && i.selectedFlavors.length
+                    ? ' [' + i.selectedFlavors.map(sf => `${sf.slot}. ${sf.flavor}${sf.nicotine ? ' ' + sf.nicotine : ''}`).join(', ') + ']'
+                    : '';
+                return `🎁 ${i.name} x${i.qty}${flavors}`;
+            }
+            return `${i.name} x${i.qty}${i.nicotine ? ' (' + i.nicotine + ')' : ''}`;
+        }).join(' | ');
+        const safeStreet = (o.address?.street||"").replace(/"/g,'""')
+        const safeZip    = (o.address?.zip||"").replace(/"/g,'""')
+        const safeCity   = (o.address?.city||"").replace(/"/g,'""')
         csv += [`"${doc.id}"`,`"${o.orderNumber||''}"`,`"${dateStr}"`,`"${o.userEmail||''}"`,o.total||0,`"${o.status||'Zahlung erwartet'}"`,`"${itemsStr.replace(/"/g,'""')}"`,`"${safeStreet}"`,`"${safeZip}"`,`"${safeCity}"`,`"${(o.orderNote||'').replace(/"/g,'""')}"`].join(",") + "\n";
     });
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
@@ -5880,10 +5888,33 @@ async function showOrderModal(orderId) {
     // items
     let itemsHTML = '';
     (order.items||[]).forEach(item => {
-        itemsHTML += `<div class="ord-d-item">
-            <span class="ord-d-item-name">${item.name} × ${item.qty}${item.nicotine ? ` <span style="color:var(--ord-muted)">(${item.nicotine})</span>` : ''}</span>
-            <span class="ord-d-item-price">${((item.price||0) * (item.qty||1)).toFixed(2)} €</span>
-        </div>`;
+        if (item.isBundle) {
+            // Bundle: Sorten anzeigen wenn vorhanden
+            let flavorHTML = '';
+            if (item.selectedFlavors && item.selectedFlavors.length) {
+                const tags = item.selectedFlavors.map(sf =>
+                    `<span style="font-size:10px;background:rgba(103,232,249,.1);color:#67e8f9;border:1px solid rgba(103,232,249,.22);border-radius:99px;padding:1px 7px">${sf.slot}. ${sf.flavor}${sf.nicotine ? ' · ' + sf.nicotine : ''}</span>`
+                ).join(' ');
+                flavorHTML = `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px">${tags}</div>`;
+            } else if (item.bundleItems && item.bundleItems.length) {
+                const tags = item.bundleItems.slice(0,4).map(bi =>
+                    `<span style="font-size:10px;background:rgba(167,139,250,.1);color:#a78bfa;border:1px solid rgba(167,139,250,.2);border-radius:99px;padding:1px 7px">${bi.name} ×${bi.qty}</span>`
+                ).join(' ');
+                flavorHTML = `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px">${tags}</div>`;
+            }
+            itemsHTML += `<div class="ord-d-item" style="flex-direction:column;align-items:flex-start;gap:4px">
+                <div style="display:flex;justify-content:space-between;width:100%">
+                    <span class="ord-d-item-name"><span style="font-size:10px;background:linear-gradient(135deg,#a78bfa,#7c3aed);color:#fff;border-radius:99px;padding:1px 7px;font-weight:800;margin-right:6px">🎁 BUNDLE</span>${item.name} × ${item.qty}</span>
+                    <span class="ord-d-item-price">${((item.price||0) * (item.qty||1)).toFixed(2)} €</span>
+                </div>
+                ${flavorHTML}
+            </div>`;
+        } else {
+            itemsHTML += `<div class="ord-d-item">
+                <span class="ord-d-item-name">${item.name} × ${item.qty}${item.nicotine ? ` <span style="color:var(--ord-muted)">(${item.nicotine})</span>` : ''}</span>
+                <span class="ord-d-item-price">${((item.price||0) * (item.qty||1)).toFixed(2)} €</span>
+            </div>`;
+        }
     });
     document.getElementById('ord-d-items').innerHTML = itemsHTML;
     document.getElementById('ord-d-total').textContent = (order.total||0).toFixed(2) + ' €';
@@ -5943,6 +5974,7 @@ async function showOrderModal(orderId) {
     // open drawer
     document.getElementById('ord-overlay').classList.add('open');
     document.getElementById('ord-drawer').classList.add('open');
+    document.getElementById('ord-drawer').scrollTop = 0;
     } catch(e) { showToast('❌ Bestellung konnte nicht geladen werden: ' + e.message, 'error'); }
 }
 
@@ -7692,6 +7724,7 @@ async function euOpenDrawer(uid){
       }).catch(()=>{ol.innerHTML='<div style="color:var(--eu-red);font-size:12px;padding:8px">Fehler beim Laden</div>';});
     document.getElementById('eu-drawer').classList.add('open');
     document.getElementById('eu-overlay').classList.add('open');
+    document.getElementById('eu-drawer').scrollTop = 0;
 }
 function euCloseDrawer(){document.getElementById('eu-drawer').classList.remove('open');document.getElementById('eu-overlay').classList.remove('open');euCurrentUid=null;}
 
@@ -11731,6 +11764,7 @@ async function aiCall(prompt, maxTokens = 600) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt, max_tokens: maxTokens })
     });
+    if (!res.ok) throw new Error(`KI-Anfrage fehlgeschlagen (HTTP ${res.status})`);
     const data = await res.json();
     if (data.error) throw new Error(data.error.message || data.error);
     return (data.content || []).map(c => c.text || '').join('');

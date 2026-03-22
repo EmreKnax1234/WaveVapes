@@ -2547,7 +2547,7 @@
                             ${saveAmt ? `<div style="font-size:13px;color:#a78bfa;font-weight:600;margin-top:6px">✨ Du sparst ${saveAmt} € gegenüber Einzelkauf</div>` : ''}
                         </div>
                         <button id="bnd-detail-add-btn"
-                            onclick="${isEditMode ? `bndSaveFlavors('${b.id}', ${totalSlots})` : `bndAddWithFlavors('${b.id}', ${totalSlots}, ${isPureLiquidBundle})`}"
+                            onclick="${isEditMode ? `bndSaveFlavors('${b.id}', ${totalSlots})` : `bndAddWithFlavors('${b.id}', ${totalSlots}, ${isPureLiquidBundle}, event)`}"
                             style="width:100%;padding:16px;border-radius:18px;border:1px solid ${isEditMode ? 'rgba(103,232,249,.4)' : 'rgba(167,139,250,.4)'};background:${isEditMode ? 'linear-gradient(135deg,rgba(103,232,249,.18),rgba(103,232,249,.08))' : 'linear-gradient(135deg,rgba(167,139,250,.2),rgba(244,114,182,.12))'};color:${isEditMode ? '#67e8f9' : '#a78bfa'};font-size:16px;font-weight:800;cursor:pointer;transition:all .25s;display:flex;align-items:center;justify-content:center;gap:10px"
                             onmouseover="if(!this.innerHTML.includes('✅')){this.style.background='${isEditMode ? 'linear-gradient(135deg,rgba(103,232,249,.32),rgba(103,232,249,.18))' : 'linear-gradient(135deg,rgba(167,139,250,.35),rgba(244,114,182,.22))'}';this.style.color='#fff'}"
                             onmouseout="if(!this.innerHTML.includes('✅')){this.style.background='${isEditMode ? 'linear-gradient(135deg,rgba(103,232,249,.18),rgba(103,232,249,.08))' : 'linear-gradient(135deg,rgba(167,139,250,.2),rgba(244,114,182,.12))'}';this.style.color='${isEditMode ? '#67e8f9' : '#a78bfa'}'}">
@@ -2720,7 +2720,8 @@
         function editBundleFlavors(bundleId) {
             showBundleDetail(bundleId);
         }
-        function bndAddWithFlavors(bundleId, totalSlots, isPureLiquid) {
+        function bndAddWithFlavors(bundleId, totalSlots, isPureLiquid, ev) {
+            // NEU-03 FIX: ev wird jetzt explizit übergeben statt window.event (undefined in Firefox/Strict-Mode)
             // Sortenauswahl VOR addBundleToCart einlesen
             const selectedFlavors = [];
             if (isPureLiquid && totalSlots > 0) {
@@ -2737,7 +2738,7 @@
                 }
             }
 
-            addBundleToCart(bundleId, event);
+            addBundleToCart(bundleId, ev || null);
 
             // Ausgewählte Sorten direkt am Warenkorb-Item speichern
             if (selectedFlavors.length) {
@@ -5501,11 +5502,13 @@
                     const b = item.b;
                     const price = (b.bundlePrice || 0).toFixed(2).replace('.', ',') + ' €';
                     const imgHTML = b.image
-                        ? `<img class="rv-mini-img" src="${b.image}" alt="${b.name}" loading="lazy">`
+                        ? `<img class="rv-mini-img" src="${b.image}" alt="${(b.name||'').replace(/"/g,'&quot;')}" loading="lazy">`
                         : `<div class="rv-mini-placeholder">🎁</div>`;
-                    return `<div class="rv-mini-card" onclick="showBundleDetail('${b.id}')" title="${b.name}">
+                    // NEU-04 FIX: b.name in title-Attribut escapen — verhindert HTML-Bruch bei Sonderzeichen
+                    const safeTitle = (b.name||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/>/g,'&gt;');
+                    return `<div class="rv-mini-card" onclick="showBundleDetail('${b.id}')" title="${safeTitle}">
                         ${imgHTML}
-                        <div class="rv-mini-name">${b.name}</div>
+                        <div class="rv-mini-name">${(b.name||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
                         <div class="rv-mini-price" style="color:#a78bfa;font-weight:700">${price}</div>
                     </div>`;
                 } else {
@@ -5880,7 +5883,7 @@
                             </div>
                             <div class="flex flex-col">
                                 <div class="flex items-center justify-between">
-                                    <h2 class="neon-text">${product.name}</h2>
+                                    <h2 class="neon-text">${product.name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</h2>
                                     ${product.isNew ? `<span class="px-6 py-2 bg-lime-400 text-black text-xs font-black tracking-widest rounded-3xl">NEW DROP</span>` : ''}
                                 </div>
                                 <div class="mt-6 text-gray-300 leading-relaxed text-[15.5px] md:text-[17px] md:leading-loose">

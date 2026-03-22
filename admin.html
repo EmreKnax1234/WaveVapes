@@ -4594,6 +4594,11 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 const MYSTERY_ID = 999; // BUG FIX: single constant — mirrors index.html
 
+// ── Globale HTML-Escape — muss früh deklariert sein (vor openBanIPModal etc.) ──
+var escA = s => String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
 // EmailJS — same service/key as shop frontend
 const ADMIN_EMAILJS_SERVICE    = "service_lzvte0x";
 const ADMIN_EMAILJS_PUBLIC     = "t19pJAHgBpbKpZFGU";
@@ -6792,21 +6797,190 @@ async function clearUnauthorizedLogs() {
 }
 
 function openBanIPModal(ip) {
-    const safeIpDisplay = escA(ip); // XSS-Fix: ip kommt aus Firestore/API
-    document.getElementById('edit-modal').innerHTML = `<div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]"><div class="bg-zinc-900 rounded-3xl p-8 max-w-md w-full mx-4 modal"><div class="flex justify-between items-center mb-6"><h3 class="text-2xl font-bold text-red-400 flex items-center gap-2"><i class="fa-solid fa-ban"></i> IP Bannen</h3><button onclick="closeEditModal()" class="text-3xl text-gray-400 hover:text-white">✕</button></div><div class="bg-zinc-950 border border-white/10 rounded-2xl px-6 py-4 mb-6 font-mono text-cyan-300 text-lg text-center">${safeIpDisplay}</div><div class="space-y-4 mb-6"><label class="block text-sm text-gray-400 mb-2">Ban-Dauer</label><div class="grid grid-cols-2 gap-3"><label class="flex items-center gap-3 bg-zinc-800 rounded-2xl px-5 py-4 cursor-pointer border-2 border-red-400 transition"><input type="radio" name="ban-duration" value="permanent" class="accent-red-400" checked><div><div class="font-semibold text-sm">Permanent</div><div class="text-xs text-gray-400">Keine Ablaufzeit</div></div></label><label class="flex items-center gap-3 bg-zinc-800 rounded-2xl px-5 py-4 cursor-pointer border-2 border-transparent hover:border-amber-400/50 transition"><input type="radio" name="ban-duration" value="temporary" class="accent-amber-400"><div><div class="font-semibold text-sm">Zeitraum</div><div class="text-xs text-gray-400">Datum wählen</div></div></label></div><div id="ban-date-picker" class="hidden"><label class="block text-sm text-gray-400 mb-2">Gesperrt bis</label><input type="datetime-local" id="ban-until-date" class="w-full bg-zinc-800 border border-white/10 focus:border-amber-400 rounded-2xl px-6 py-4"></div><div><label class="block text-sm text-gray-400 mb-2">Grund (optional)</label><input id="ban-reason-input" type="text" placeholder="z. B. Wiederholter Angriff" class="w-full bg-zinc-800 border border-white/10 focus:border-red-400 rounded-2xl px-6 py-4"></div></div><div class="flex gap-4"><button id="ban-ip-execute-btn" class="flex-1 bg-red-600 hover:bg-red-500 py-5 rounded-3xl font-bold flex items-center justify-center gap-2"><i class="fa-solid fa-ban"></i> IP Bannen</button><button onclick="closeEditModal()" class="flex-1 bg-zinc-700 hover:bg-zinc-600 py-5 rounded-3xl">Abbrechen</button></div></div></div>`;
+    // Lokale Escape-Funktion — unabhängig von escA (Deklarationsreihenfolge)
+    const _e = s => String(s == null ? '' : s)
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    const safeIpDisplay = _e(ip);
+    document.getElementById('edit-modal').innerHTML = `
+    <div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]">
+      <div class="bg-zinc-900 rounded-3xl p-8 max-w-md w-full mx-4 modal" style="max-height:90vh;overflow-y:auto">
+        <div class="flex justify-between items-center mb-6">
+          <h3 class="text-2xl font-bold text-red-400 flex items-center gap-2">
+            <i class="fa-solid fa-ban"></i> IP Bannen
+          </h3>
+          <button onclick="closeEditModal()" class="text-3xl text-gray-400 hover:text-white">✕</button>
+        </div>
+
+        <!-- IP Anzeige -->
+        <div class="bg-zinc-950 border border-white/10 rounded-2xl px-6 py-4 mb-6 font-mono text-cyan-300 text-lg text-center">
+          ${safeIpDisplay}
+        </div>
+
+        <!-- Ban-Dauer -->
+        <div class="mb-5">
+          <label class="block text-sm text-gray-400 mb-3">Ban-Dauer</label>
+
+          <!-- Voreinstellungen -->
+          <div class="grid grid-cols-3 gap-2 mb-3" id="ban-preset-grid">
+            <button type="button" onclick="setBanPreset(1)"   class="ban-preset-btn py-3 rounded-2xl bg-zinc-800 border border-white/10 text-sm font-semibold hover:border-amber-400/60 transition">1 Tag</button>
+            <button type="button" onclick="setBanPreset(7)"   class="ban-preset-btn py-3 rounded-2xl bg-zinc-800 border border-white/10 text-sm font-semibold hover:border-amber-400/60 transition">7 Tage</button>
+            <button type="button" onclick="setBanPreset(30)"  class="ban-preset-btn py-3 rounded-2xl bg-zinc-800 border border-white/10 text-sm font-semibold hover:border-amber-400/60 transition">30 Tage</button>
+            <button type="button" onclick="setBanPreset(90)"  class="ban-preset-btn py-3 rounded-2xl bg-zinc-800 border border-white/10 text-sm font-semibold hover:border-amber-400/60 transition">90 Tage</button>
+            <button type="button" onclick="setBanPreset(180)" class="ban-preset-btn py-3 rounded-2xl bg-zinc-800 border border-white/10 text-sm font-semibold hover:border-amber-400/60 transition">180 Tage</button>
+            <button type="button" onclick="setBanPreset(0)"   class="ban-preset-btn py-3 rounded-2xl bg-zinc-800 border border-red-400/40 text-red-400 text-sm font-semibold hover:border-red-400 transition">Permanent</button>
+          </div>
+
+          <!-- Custom-Datum (ausgeblendet bis "Eigenes Datum" gewählt) -->
+          <button type="button" onclick="toggleBanCustomDate()" id="ban-custom-toggle"
+            class="w-full py-2 text-xs text-gray-500 hover:text-gray-300 transition flex items-center justify-center gap-2">
+            <i class="fa-solid fa-calendar-days" style="font-size:11px"></i>
+            Eigenes Datum wählen
+          </button>
+          <div id="ban-custom-date-wrap" class="hidden mt-3">
+            <input type="datetime-local" id="ban-until-date"
+              class="w-full bg-zinc-800 border border-amber-400/40 focus:border-amber-400 rounded-2xl px-5 py-3 text-sm outline-none"
+              style="color-scheme:dark">
+          </div>
+
+          <!-- Gewählte Dauer Anzeige -->
+          <div id="ban-duration-display" class="mt-3 text-center text-sm font-semibold text-amber-400" style="min-height:22px"></div>
+          <input type="hidden" id="ban-days-value" value="">
+        </div>
+
+        <!-- Grund -->
+        <div class="mb-6">
+          <label class="block text-sm text-gray-400 mb-2">Grund (optional)</label>
+          <input id="ban-reason-input" type="text" placeholder="z. B. Wiederholter Angriff"
+            class="w-full bg-zinc-800 border border-white/10 focus:border-red-400 rounded-2xl px-5 py-3 outline-none text-sm">
+        </div>
+
+        <!-- Buttons -->
+        <div class="flex gap-3">
+          <button id="ban-ip-execute-btn"
+            class="flex-1 bg-red-600 hover:bg-red-500 py-4 rounded-3xl font-bold flex items-center justify-center gap-2 transition">
+            <i class="fa-solid fa-ban"></i> IP Bannen
+          </button>
+          <button onclick="closeEditModal()" class="flex-1 bg-zinc-700 hover:bg-zinc-600 py-4 rounded-3xl transition">
+            Abbrechen
+          </button>
+        </div>
+      </div>
+    </div>`;
+
     document.getElementById('edit-modal').classList.remove('hidden');
-    document.querySelectorAll('input[name="ban-duration"]').forEach(radio => { radio.addEventListener('change', () => { document.getElementById('ban-date-picker').classList.toggle('hidden', radio.value !== 'temporary'); document.querySelectorAll('input[name="ban-duration"]').forEach(r => { r.closest('label').classList.toggle('border-red-400', r.value==='permanent'&&r.checked); r.closest('label').classList.toggle('border-amber-400', r.value==='temporary'&&r.checked); r.closest('label').classList.toggle('border-transparent', !r.checked); }); }); });
-    // XSS-Fix: ip wird über Closure sicher übergeben, nicht als onclick-String-Interpolation
+
+    // XSS-Fix: ip über Closure übergeben
     const banExecBtn = document.getElementById('ban-ip-execute-btn');
     if (banExecBtn) banExecBtn.addEventListener('click', () => executeBanIP(ip));
 }
+
+// Preset-Button Auswahl
+function setBanPreset(days) {
+    // Alle Buttons zurücksetzen
+    document.querySelectorAll('.ban-preset-btn').forEach(b => {
+        b.style.background = '';
+        b.style.borderColor = '';
+        b.style.color = '';
+    });
+
+    // Gewählten Button hervorheben
+    const allBtns = document.querySelectorAll('.ban-preset-btn');
+    const idx = days === 0 ? 5 : days === 1 ? 0 : days === 7 ? 1 : days === 30 ? 2 : days === 90 ? 3 : days === 180 ? 4 : -1;
+    if (idx >= 0 && allBtns[idx]) {
+        if (days === 0) {
+            allBtns[idx].style.background = 'rgba(239,68,68,.18)';
+            allBtns[idx].style.borderColor = 'rgba(239,68,68,.7)';
+            allBtns[idx].style.color = '#f87171';
+        } else {
+            allBtns[idx].style.background = 'rgba(251,191,36,.15)';
+            allBtns[idx].style.borderColor = 'rgba(251,191,36,.6)';
+            allBtns[idx].style.color = '#fbbf24';
+        }
+    }
+
+    document.getElementById('ban-days-value').value = days;
+
+    // Custom-Datum-Feld ausblenden wenn Preset gewählt
+    document.getElementById('ban-custom-date-wrap').classList.add('hidden');
+    document.getElementById('ban-until-date').value = '';
+
+    // Dauer-Anzeige
+    const display = document.getElementById('ban-duration-display');
+    if (days === 0) {
+        display.textContent = '🔴 Permanent gesperrt';
+        display.style.color = '#f87171';
+    } else {
+        const until = new Date(Date.now() + days * 86400000);
+        const untilStr = until.toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit', year:'numeric' });
+        display.textContent = `⏱ Gesperrt bis ${untilStr}`;
+        display.style.color = '#fbbf24';
+    }
+}
+
+function toggleBanCustomDate() {
+    const wrap = document.getElementById('ban-custom-date-wrap');
+    const isHidden = wrap.classList.toggle('hidden');
+    if (!isHidden) {
+        // Custom-Modus: Presets zurücksetzen
+        document.querySelectorAll('.ban-preset-btn').forEach(b => {
+            b.style.background = ''; b.style.borderColor = ''; b.style.color = '';
+        });
+        document.getElementById('ban-days-value').value = 'custom';
+        document.getElementById('ban-duration-display').textContent = '';
+        document.getElementById('ban-until-date').focus();
+    }
+}
 async function executeBanIP(ip) {
-    const isPermanent = document.querySelector('input[name="ban-duration"]:checked').value === 'permanent'; const reason = document.getElementById('ban-reason-input').value.trim(); let bannedUntil = null;
-    if (!isPermanent) { const dateVal = document.getElementById('ban-until-date').value; if (!dateVal) return showToast('Bitte ein Datum auswählen!','error'); bannedUntil = firebase.firestore.Timestamp.fromDate(new Date(dateVal)); }
-    const existing = await db.collection('banned_ips').where('ip','==',ip).limit(1).get();
-    if (!existing.empty) { if (!confirm(`IP ${ip} ist bereits gebannt. Überschreiben?`)) return; await existing.docs[0].ref.delete(); }
-    await db.collection('banned_ips').add({ ip, permanent: isPermanent, bannedUntil, reason: reason||'—', bannedAt: firebase.firestore.FieldValue.serverTimestamp(), bannedBy: auth.currentUser?.email||'Admin' });
-    await logAction("ip_banned", ip, { permanent: isPermanent, reason }); closeEditModal(); showToast(`🚫 IP ${ip} wurde ${isPermanent?'permanent':'temporär'} gebannt!`,'success'); loadBannedIPs();
+    const daysVal  = document.getElementById('ban-days-value')?.value;
+    const reason   = document.getElementById('ban-reason-input')?.value.trim() || '—';
+
+    // Pflichtfeld: Dauer muss gewählt sein
+    if (!daysVal) {
+        showToast('⚠️ Bitte erst eine Bann-Dauer auswählen!', 'error');
+        return;
+    }
+
+    let isPermanent = false;
+    let bannedUntil = null;
+
+    if (daysVal === '0') {
+        isPermanent = true;
+    } else if (daysVal === 'custom') {
+        const dateVal = document.getElementById('ban-until-date')?.value;
+        if (!dateVal) { showToast('⚠️ Bitte ein Datum eingeben!', 'error'); return; }
+        const parsed = new Date(dateVal);
+        if (isNaN(parsed.getTime()) || parsed <= new Date()) {
+            showToast('⚠️ Datum muss in der Zukunft liegen!', 'error'); return;
+        }
+        bannedUntil = firebase.firestore.Timestamp.fromDate(parsed);
+    } else {
+        const days = parseInt(daysVal, 10);
+        if (isNaN(days) || days < 1) { showToast('⚠️ Ungültige Dauer!', 'error'); return; }
+        bannedUntil = firebase.firestore.Timestamp.fromDate(
+            new Date(Date.now() + days * 86400000)
+        );
+    }
+
+    try {
+        const existing = await db.collection('banned_ips').where('ip', '==', ip).limit(1).get();
+        if (!existing.empty) {
+            if (!confirm(`IP ${ip} ist bereits gebannt. Überschreiben?`)) return;
+            await existing.docs[0].ref.delete();
+        }
+        await db.collection('banned_ips').add({
+            ip, permanent: isPermanent, bannedUntil, reason,
+            bannedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            bannedBy: auth.currentUser?.email || 'Admin'
+        });
+        await logAction('ip_banned', ip, { permanent: isPermanent, reason });
+        closeEditModal();
+        const durText = isPermanent ? 'permanent' : `${daysVal === 'custom' ? 'zeitlich' : daysVal + ' Tage'} gesperrt`;
+        showToast(`🚫 IP ${ip} wurde ${durText} gebannt!`, 'success');
+        loadBannedIPs();
+    } catch(e) {
+        showToast('❌ Fehler: ' + e.message, 'error');
+    }
 }
 async function unbanIP(docId, ip) { if (!confirm(`IP ${ip} wirklich entbannen?`)) return; await db.collection('banned_ips').doc(docId).delete(); await logAction("ip_unbanned", ip); showToast(`✅ IP ${ip} entbannt`,'success'); loadBannedIPs(); }
 async function loadBannedIPs() {
@@ -7516,13 +7690,7 @@ async function saveProductOrder() {
     }
 }
 
-// ── Globale HTML-Escape-Funktion (BUG-001-admin: XSS-Schutz für innerHTML) ──
-const escA = s => String(s == null ? '' : s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+// escA oben global deklariert (nach Firebase-Init)
 
 function showToast(msg, type='success') {
     const container = document.getElementById('toast-container');

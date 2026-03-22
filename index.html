@@ -3345,10 +3345,23 @@
             }
             const modal = document.getElementById("auth-modal");
             modal.classList.remove("hidden"); modal.classList.add("flex");
+            // iOS Scroll-Lock: verhindert dass der Hintergrund scrollt und
+            // der Modal-Inhalt außerhalb des Viewports landet (Bug: Login-Button nicht tappbar)
+            _modalScrollY = window.scrollY;
+            document.body.style.top = `-${_modalScrollY}px`;
+            document.body.style.position = "fixed";
+            document.body.style.width = "100%";
+            document.body.classList.add("modal-open");
         }
         function closeAuthModal() {
             const modal = document.getElementById("auth-modal");
             modal.classList.add("hidden"); modal.classList.remove("flex");
+            // Scroll-Lock aufheben
+            document.body.classList.remove("modal-open");
+            document.body.style.position = "";
+            document.body.style.top = "";
+            document.body.style.width = "";
+            window.scrollTo({ top: _modalScrollY, behavior: "instant" });
             // Reset verify banner state
             const v = document.getElementById("verify-email-view");
             if (v) v.classList.add("hidden");

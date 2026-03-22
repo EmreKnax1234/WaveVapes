@@ -4620,7 +4620,7 @@
                 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:4px" id="actlog-stats">
                     <div class="sa-kpi" style="padding:12px 16px"><div class="sa-kpi-label">Gesamt (200)</div><div class="sa-kpi-value" id="actlog-total" style="font-size:22px">—</div></div>
                     <div class="sa-kpi" style="padding:12px 16px"><div class="sa-kpi-label">Heute</div><div class="sa-kpi-value" id="actlog-today" style="font-size:22px;color:#67e8f9">—</div></div>
-                    <div class="sa-kpi" style="padding:12px 16px"><div class="sa-kpi-label">Danger</div><div class="sa-kpi-value" id="actlog-danger" style="font-size:22px;color:#f87171">—</div></div>
+                    <div class="sa-kpi" style="padding:12px 16px;cursor:pointer" onclick="saFilterLog('danger',document.querySelector('#sa-panel-actlog button[onclick*=danger]'))" title="Auf Danger filtern"><div class="sa-kpi-label">Danger</div><div class="sa-kpi-value" id="actlog-danger" style="font-size:22px;color:#f87171">—</div></div>
                     <div class="sa-kpi" style="padding:12px 16px"><div class="sa-kpi-label">Exports</div><div class="sa-kpi-value" id="actlog-exports" style="font-size:22px;color:#a78bfa">—</div></div>
                     <div class="sa-kpi" style="padding:12px 16px"><div class="sa-kpi-label">Letzter Zugriff</div><div class="sa-kpi-value" id="actlog-lastaccess" style="font-size:13px;color:#fbbf24;font-family:'JetBrains Mono',monospace">—</div></div>
                 </div>
@@ -11664,7 +11664,8 @@ function saRenderFilteredLog() {
     const ACCESS_ACTIONS = ['superadmin_zone_access'];
     const ADMIN_ACTIONS  = ['admin_added','admin_removed','admin_permissions_updated','ip_whitelist_updated','sa_security_settings'];
     const EXPORT_ACTIONS = ['sa_export','sa_fullexport'];
-    const DANGER_ACTIONS = ['sa_danger_action','danger_shop_close','danger_shop_open','danger_clear_banned_ips','danger_reject_reviews','danger_purge_logs','danger_reset_loyalty','danger_delete_orders'];
+    // Danger: gleiche Keywords wie actlogUpdateStats() - Zaehler und Filter zeigen immer dasselbe
+    const DANGER_KEYWORDS = ['danger','delete_all','purge','lockdown','revoke'];
 
     const filtered = _saLogAllDocs.filter(d => {
         const action = d.data().action || '';
@@ -11672,7 +11673,7 @@ function saRenderFilteredLog() {
         if (_saLogFilter === 'access') return ACCESS_ACTIONS.includes(action);
         if (_saLogFilter === 'admin')  return ADMIN_ACTIONS.includes(action);
         if (_saLogFilter === 'export') return EXPORT_ACTIONS.includes(action);
-        if (_saLogFilter === 'danger') return DANGER_ACTIONS.some(a => action.includes(a) || action.includes('danger'));
+        if (_saLogFilter === 'danger') return DANGER_KEYWORDS.some(k => action.includes(k));
         return true;
     });
     renderLogEntries(el, filtered, false);
@@ -12621,10 +12622,8 @@ async function saToggleLoginHistory(uid) {
     const inner = document.getElementById(`sa-loginhistory-inner-${uid}`);
     if (!inner) return;
     try {
-        const adminEmail = saAllAdmins.find(a => a.id === uid)?.email;
-        if (!adminEmail) { inner.innerHTML = '<div style="color:rgba(255,255,255,.2);font-size:11px">Admin-E-Mail nicht gefunden</div>'; return; }
         const snap = await db.collection('admin_logs')
-            .where('adminEmail', '==', adminEmail)
+            .where('adminEmail', '==', saAllAdmins.find(a => a.id === uid)?.email)
             .orderBy('timestamp', 'desc')
             .limit(10)
             .get();
@@ -12640,10 +12639,7 @@ async function saToggleLoginHistory(uid) {
             </div>`;
         }).join('');
     } catch(e) {
-        const msg = e.code === 'failed-precondition'
-            ? 'Index wird noch aufgebaut – bitte kurz warten und erneut versuchen.'
-            : escA(e.message);
-        inner.innerHTML = `<div style="color:#f87171;font-size:11px">${msg}</div>`;
+        inner.innerHTML = `<div style="color:#f87171;font-size:11px">${escA(e.message)}</div>`;
     }
 }
 
@@ -12930,7 +12926,6 @@ async function admOpenModal(adminData) {
     const actEl    = document.getElementById('adm-modal-actions');
     const lastEl   = document.getElementById('adm-modal-lastlogin');
     try {
-        if (!adminData.email) throw new Error('Admin-E-Mail fehlt');
         const snap = await db.collection('admin_logs').where('adminEmail','==',adminData.email).orderBy('timestamp','desc').limit(20).get();
         if (actEl) actEl.textContent = snap.size;
         if (snap.size>0 && lastEl) { const ts=snap.docs[0].data().timestamp?.toDate?.(); if(ts) lastEl.textContent=ts.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'2-digit'}); }
@@ -12939,12 +12934,7 @@ async function admOpenModal(adminData) {
             const isDanger=(dd.action||'').includes('danger');
             return `<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 12px;background:rgba(255,255,255,.03);border-radius:10px;border:1px solid rgba(255,255,255,.05)"><div style="width:8px;height:8px;border-radius:50%;background:${isDanger?'#f87171':'#67e8f9'};box-shadow:0 0 6px ${isDanger?'#f87171':'#67e8f9'};flex-shrink:0;margin-top:4px"></div><div><div style="font-size:12px;color:rgba(255,255,255,.75)">${typeof AUDIT_ACTION_LABELS!=='undefined'&&AUDIT_ACTION_LABELS[dd.action]?AUDIT_ACTION_LABELS[dd.action]:('⚡ '+(dd.action||''))}</div><div style="font-size:10px;color:rgba(255,255,255,.25);margin-top:2px;font-family:'JetBrains Mono',monospace">${dt}${dd.target?' · '+escA(dd.target.substring(0,20)):''}</div></div></div>`;
         }).join('') : '<div style="color:rgba(255,255,255,.2);font-size:12px;padding:10px;text-align:center">Noch keine Aktionen protokolliert</div>';
-    } catch(e) {
-        const msg = e.code === 'failed-precondition'
-            ? 'Index wird noch aufgebaut – bitte kurz warten und neu laden.'
-            : escA(e.message);
-        if(timeline) timeline.innerHTML=`<div style="color:rgba(248,113,113,.5);font-size:12px;padding:10px">Fehler: ${msg}</div>`;
-    }
+    } catch(e) { if(timeline) timeline.innerHTML=`<div style="color:rgba(248,113,113,.5);font-size:12px;padding:10px">Fehler: ${escA(e.message)}</div>`; }
 }
 
 async function admModalResetToken() {
@@ -13010,7 +13000,8 @@ function actlogUpdateStats() {
     const now=Date.now(); const todayStart=new Date(); todayStart.setHours(0,0,0,0);
     const cutoff=_actlogPeriod>0?now-_actlogPeriod*86400000:0;
     const filtered=cutoff?_saLogAllDocs.filter(d=>(d.data().timestamp?.toDate?.()?.getTime?.()||0)>cutoff):_saLogAllDocs;
-    const dangerC=filtered.filter(d=>['danger','delete','purge','reset','lockdown','close'].some(k=>(d.data().action||'').includes(k))).length;
+    // Gleiche Keywords wie saRenderFilteredLog() - damit Zaehler und Filter uebereinstimmen
+    const dangerC=filtered.filter(d=>['danger','delete_all','purge','lockdown','revoke'].some(k=>(d.data().action||'').includes(k))).length;
     const exportC=filtered.filter(d=>['export','backup'].some(k=>(d.data().action||'').includes(k))).length;
     const todayC=_saLogAllDocs.filter(d=>(d.data().timestamp?.toDate?.())||new Date(0)>=todayStart).length;
     const lastAccess=_saLogAllDocs.find(d=>(d.data().action||'').includes('access'));

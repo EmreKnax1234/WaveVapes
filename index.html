@@ -2641,33 +2641,31 @@
             preview.style.display = 'block';
         }
 
-        // Bundle in den Warenkorb legen + Sortenauswahl als Bestellwunsch speichern
+        // Bundle in den Warenkorb legen + Sortenauswahl direkt am Warenkorb-Item speichern
         function bndAddWithFlavors(bundleId, totalSlots, isPureLiquid) {
-            addBundleToCart(bundleId, event);
-
+            // Sortenauswahl VOR addBundleToCart einlesen
+            const selectedFlavors = [];
             if (isPureLiquid && totalSlots > 0) {
-                const lines = [];
                 for (let i = 0; i < totalSlots; i++) {
                     const flavorEl = document.getElementById('bnd-flavor-' + i);
                     const nicEl    = document.getElementById('bnd-nic-' + i);
                     if (!flavorEl) continue;
-                    const flavor = flavorEl.value.replace(/^Elfliq\s*/i, '');
-                    const nic    = nicEl ? ` (${nicEl.value})` : '';
-                    lines.push(`Slot ${i + 1}: ${flavor}${nic}`);
+                    selectedFlavors.push({
+                        slot:       i + 1,
+                        flavor:     flavorEl.value.replace(/^Elfliq\s*/i, ''),
+                        flavorFull: flavorEl.value,
+                        nicotine:   nicEl ? nicEl.value : null
+                    });
                 }
-                if (lines.length) {
-                    const b = allBundles.find(x => x.id === bundleId);
-                    const noteField = document.getElementById('order-note-input');
-                    if (noteField) {
-                        const bundleLine = `${b ? b.name + ': ' : ''}${lines.join(', ')}`;
-                        // Anhängen falls schon ein Wunsch vorhanden
-                        noteField.value = noteField.value
-                            ? noteField.value + '\n' + bundleLine
-                            : bundleLine;
-                        const counter = document.getElementById('order-note-counter');
-                        if (counter) counter.textContent = noteField.value.length;
-                    }
-                }
+            }
+
+            addBundleToCart(bundleId, event);
+
+            // Ausgewählte Sorten direkt am Warenkorb-Item speichern
+            if (selectedFlavors.length) {
+                const cartItem = cart.find(i => i.bundleId === bundleId);
+                if (cartItem) cartItem.selectedFlavors = selectedFlavors;
+                updateCartDisplay();
             }
 
             const btn = document.getElementById('bnd-detail-add-btn');
@@ -2753,9 +2751,25 @@
             showToast("📧 E-Mail wird gesendet...", "success");
             try {
                 const orderItems = orderData.items
-                    // M-NEW-04 FIX: Filter Mystery Vape and bundle meta-items from email
-                    .filter(item => item.id !== MYSTERY_ID && !item.isBundle)
+                    // Mystery Vape aus E-Mail ausfiltern, Bundles aber MIT einbeziehen
+                    .filter(item => item.id !== MYSTERY_ID)
                     .map(item => {
+                        if (item.isBundle) {
+                            // Bundle: Sorten als Name darstellen
+                            let name = `🎁 ${item.name}`;
+                            if (item.selectedFlavors && item.selectedFlavors.length) {
+                                const flavorsStr = item.selectedFlavors
+                                    .map(sf => `${sf.slot}. ${sf.flavor}${sf.nicotine ? ' ' + sf.nicotine : ''}`)
+                                    .join(' | ');
+                                name += ` (${flavorsStr})`;
+                            }
+                            return {
+                                name,
+                                units:     item.qty,
+                                price:     ((item.price || 0) * (item.qty || 1)).toFixed(2),
+                                image_url: "https://wavevapes.de/logo.png"
+                            };
+                        }
                         const prod     = _productMap.get(item.id);
                         const promoP   = prod ? getPromoPrice(prod) : null;
                         const effPrice = promoP !== null ? promoP : (item.price || 0);
@@ -4254,11 +4268,23 @@
                 } else if (item.isBundle) {
                     // Bundle-Item im Warenkorb
                     const bundleTotal = (item.qty * item.price).toFixed(2).replace('.', ',');
-                    const itemList = (item.bundleItems || []).slice(0, 4).map(bi =>
-                        `<span style="font-size:10px;background:rgba(167,139,250,.12);color:rgba(167,139,250,.9);border:1px solid rgba(167,139,250,.2);border-radius:99px;padding:1px 7px">${bi.name} ×${bi.qty}</span>`
-                    ).join(' ');
-                    const moreItems = item.bundleItems && item.bundleItems.length > 4
-                        ? `<span style="font-size:10px;color:rgba(255,255,255,.3)">+${item.bundleItems.length - 4} mehr</span>` : '';
+                    let flavorBlock = '';
+                    if (item.selectedFlavors && item.selectedFlavors.length) {
+                        // Ausgewählte Sorten direkt anzeigen
+                        const flavorTags = item.selectedFlavors.map(sf => {
+                            const nic = sf.nicotine ? ` <span style="font-size:9px;color:#a78bfa;font-weight:700">${sf.nicotine}</span>` : '';
+                            return `<span style="font-size:10px;background:rgba(103,232,249,.1);color:rgba(103,232,249,.9);border:1px solid rgba(103,232,249,.25);border-radius:99px;padding:2px 8px;display:inline-flex;align-items:center;gap:4px"><span style="color:rgba(255,255,255,.35);font-size:9px">${sf.slot}.</span> ${sf.flavor}${nic}</span>`;
+                        }).join(' ');
+                        flavorBlock = `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">${flavorTags}</div>`;
+                    } else {
+                        // Fallback: generische Bundle-Items
+                        const itemList = (item.bundleItems || []).slice(0, 4).map(bi =>
+                            `<span style="font-size:10px;background:rgba(167,139,250,.12);color:rgba(167,139,250,.9);border:1px solid rgba(167,139,250,.2);border-radius:99px;padding:1px 7px">${bi.name} ×${bi.qty}</span>`
+                        ).join(' ');
+                        const moreItems = item.bundleItems && item.bundleItems.length > 4
+                            ? `<span style="font-size:10px;color:rgba(255,255,255,.3)">+${item.bundleItems.length - 4} mehr</span>` : '';
+                        flavorBlock = `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">${itemList}${moreItems}</div>`;
+                    }
                     htmlParts.push(`
                     <div class="cart-item flex justify-between items-start bg-zinc-900 border border-purple-400/20 rounded-3xl p-5" style="background:linear-gradient(135deg,#13131f,#1a0f2e)">
                         <div style="flex:1;min-width:0">
@@ -4266,7 +4292,7 @@
                                 <span style="font-size:10px;background:linear-gradient(135deg,#a78bfa,#7c3aed);color:#fff;border-radius:99px;padding:2px 8px;font-weight:800;letter-spacing:.05em">🎁 BUNDLE</span>
                                 ${item.name}
                             </div>
-                            <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">${itemList}${moreItems}</div>
+                            ${flavorBlock}
                             <div class="text-xs text-gray-400 mt-1">${item.qty} × ${(item.price||0).toFixed(2).replace('.', ',')} €</div>
                         </div>
                         <div class="flex items-center gap-4" style="flex-shrink:0;margin-left:12px">
@@ -4489,7 +4515,8 @@
                     nicotine: item.nicotine || "",
                     isBundle: item.isBundle || false,
                     bundleId: item.bundleId || null,
-                    bundleItems: item.bundleItems || null
+                    bundleItems: item.bundleItems || null,
+                    selectedFlavors: item.selectedFlavors || null
                 }));
 
                 // ═══════════════════════════════════════════════════════

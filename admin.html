@@ -3117,54 +3117,15 @@
 
         <!-- TAB 6: ADMIN LOGS v2 -->
         <div id="tab-content-6" class="hidden">
-
-            <!-- Page header -->
-            <div class="lg-page-hdr">
-                <div class="lg-page-title">
-                    <i class="fa-solid fa-shield-halved"></i> IP-Sicherheit
-                </div>
-                <div style="display:flex;gap:8px;align-items:center">
-                    <button class="lg-btn lg-btn-ghost" onclick="loadUnauthorizedLogs();loadBannedIPs()"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
-                </div>
+            <!-- IP-Sicherheit wurde in die Superadmin Zone verschoben -->
+            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;text-align:center">
+                <div style="width:72px;height:72px;border-radius:20px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.25);display:flex;align-items:center;justify-content:center;font-size:32px;margin-bottom:20px">🔒</div>
+                <div style="font-family:'Orbitron',sans-serif;font-size:18px;font-weight:700;color:#fbbf24;margin-bottom:8px">Superadmin erforderlich</div>
+                <div style="font-size:13px;color:rgba(255,255,255,.4);max-width:320px;line-height:1.6">IP-Sicherheit &amp; Bann ist jetzt in der Superadmin Zone verfügbar.</div>
+                <button onclick="openSuperadminZone()" style="margin-top:20px;padding:12px 28px;border-radius:14px;border:none;cursor:pointer;background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#000;font-weight:700;font-size:13px">
+                    Superadmin Zone öffnen
+                </button>
             </div>
-
-            <!-- Two-column: Unauthorized + Banned IPs -->
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-
-                <!-- Unauthorized Access -->
-                <div class="lg-section" style="border-color:rgba(248,113,113,.15)">
-                    <div class="lg-section-hdr" style="border-color:rgba(248,113,113,.1)">
-                        <div class="lg-section-title" style="color:var(--lg-red)">
-                            <i class="fa-solid fa-shield-halved"></i> Zugriffsversuche
-                        </div>
-                        <div style="display:flex;gap:8px;align-items:center">
-                            <span class="lg-counter-badge" id="lg-threat-badge" style="background:rgba(248,113,113,.08);color:var(--lg-red)">—</span>
-                            <button class="lg-btn lg-btn-red" onclick="clearUnauthorizedLogs()"><i class="fa-solid fa-trash"></i> Leeren</button>
-                        </div>
-                    </div>
-                    <div class="lg-section-body" id="unauthorized-logs-container">
-                        <div class="lg-empty"><span class="lg-spinner"></span> Lade...</div>
-                    </div>
-                </div>
-
-                <!-- Banned IPs -->
-                <div class="lg-section" style="border-color:rgba(248,113,113,.12)">
-                    <div class="lg-section-hdr" style="border-color:rgba(248,113,113,.08)">
-                        <div class="lg-section-title" style="color:var(--lg-red)">
-                            <i class="fa-solid fa-ban"></i> Gebannte IPs
-                        </div>
-                        <div style="display:flex;gap:8px;align-items:center">
-                            <span class="lg-counter-badge" id="lg-ban-badge" style="background:rgba(248,113,113,.08);color:var(--lg-red)">—</span>
-                            <button class="lg-btn lg-btn-ghost" onclick="loadBannedIPs()"><i class="fa-solid fa-rotate-right"></i></button>
-                        </div>
-                    </div>
-                    <div class="lg-section-body" id="banned-ips-container">
-                        <div class="lg-empty"><span class="lg-spinner"></span> Lade...</div>
-                    </div>
-                </div>
-
-            </div>
-
         </div>
 
         <!-- TAB 7: SETTINGS v2 -->
@@ -3904,10 +3865,10 @@
             <div class="sa-inner-tabs">
                 <div class="sa-inner-tab active" onclick="saSwitchInner('dashboard',this)"><i class="fa-solid fa-gauge-high" style="margin-right:6px"></i>Dashboard</div>
                 <div class="sa-inner-tab" onclick="saSwitchInner('admins',this)"><i class="fa-solid fa-users-cog" style="margin-right:6px"></i>Admin-Verwaltung</div>
+                <div class="sa-inner-tab" onclick="saSwitchInner('ipsec',this)"><i class="fa-solid fa-ban" style="margin-right:6px"></i>IP-Sicherheit &amp; Bann</div>
                 <div class="sa-inner-tab" onclick="saSwitchInner('security',this)"><i class="fa-solid fa-shield-halved" style="margin-right:6px"></i>Sicherheit</div>
                 <div class="sa-inner-tab" onclick="saSwitchInner('sessions',this)"><i class="fa-solid fa-eye" style="margin-right:6px"></i>Session Monitor</div>
                 <div class="sa-inner-tab" onclick="saSwitchInner('backup',this)"><i class="fa-solid fa-database" style="margin-right:6px"></i>Backup &amp; Export</div>
-                <div class="sa-inner-tab" onclick="saSwitchInner('adminlogs',this)"><i class="fa-solid fa-list-check" style="margin-right:6px"></i>Admin Logs</div>
                 <div class="sa-inner-tab" onclick="saSwitchInner('actlog',this)"><i class="fa-solid fa-scroll" style="margin-right:6px"></i>SA-Aktivitätslog</div>
                 <div class="sa-inner-tab" onclick="saSwitchInner('danger',this)" style="color:rgba(248,113,113,.6)"><i class="fa-solid fa-triangle-exclamation" style="margin-right:6px"></i>Danger Zone</div>
             </div>
@@ -4195,27 +4156,76 @@
             </div>
 
             <!-- PANEL: ADMIN LOGS (aus Tab 6 hierher verschoben) -->
-            <div class="sa-inner-panel" id="sa-panel-adminlogs">
-                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px">
-                    <div class="sa-section-title" style="margin:0;flex:1">
-                        <i class="fa-solid fa-list-check" style="color:#67e8f9"></i> Admin Activity Feed
-                        <span style="width:7px;height:7px;border-radius:50%;background:#34d399;box-shadow:0 0 8px #34d399;animation:pulse 2s infinite;display:inline-block;margin-left:8px"></span>
+            <!-- PANEL: IP-SICHERHEIT & BANN -->
+            <div class="sa-inner-panel" id="sa-panel-ipsec">
+                <!-- Header mit Refresh + manuellem Ban -->
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px">
+                    <div class="sa-section-title" style="margin:0">
+                        <i class="fa-solid fa-ban" style="color:#f87171"></i> IP-Sicherheit &amp; Bann
                     </div>
-                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                        <span class="lg-counter-badge" id="lg-log-count" style="background:rgba(103,232,249,.08);color:var(--lg-cyan)">— Einträge</span>
-                        <button class="lg-btn lg-btn-ghost" onclick="loadAdminLogs()"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
-                        <button id="lg-ai-btn" onclick="aiLogAnomalies()" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:10px;background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.3);color:#a78bfa;font-size:12px;font-weight:700;cursor:pointer"><i class="fa-solid fa-wand-magic-sparkles"></i> KI-Anomalie-Check</button>
+                    <button class="lg-btn lg-btn-ghost" onclick="loadUnauthorizedLogs();loadBannedIPs()">
+                        <i class="fa-solid fa-rotate-right"></i> Refresh
+                    </button>
+                </div>
+
+                <!-- Manueller Bann -->
+                <div class="sa-add-panel" style="margin-bottom:20px;background:rgba(239,68,68,.05);border-color:rgba(239,68,68,.2)">
+                    <div class="sa-section-title" style="color:#f87171"><i class="fa-solid fa-ban"></i> IP manuell bannen</div>
+                    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                        <input class="sa-add-input" id="sa-manual-ban-ip" placeholder="IP-Adresse (z.B. 1.2.3.4)"
+                            style="font-family:'JetBrains Mono',monospace;flex:1;min-width:180px"
+                            onkeydown="if(event.key==='Enter')document.getElementById('sa-manual-ban-open').click()">
+                        <button id="sa-manual-ban-open"
+                            style="padding:11px 20px;border-radius:12px;border:none;cursor:pointer;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;font-weight:700;font-size:13px;white-space:nowrap"
+                            onclick="(function(){
+                                const ip = document.getElementById('sa-manual-ban-ip').value.trim();
+                                if (!ip) { showToast('⚠️ Bitte eine IP eingeben', 'error'); return; }
+                                openBanIPModal(ip);
+                            })()">
+                            <i class="fa-solid fa-ban"></i> Bannen
+                        </button>
                     </div>
                 </div>
-                <!-- KI Anomalie-Ergebnis -->
-                <div id="lg-ai-result" style="display:none;background:rgba(167,139,250,.07);border:1px solid rgba(167,139,250,.22);border-radius:16px;padding:18px 20px;margin-bottom:16px"></div>
-                <!-- Activity Log -->
-                <div class="lg-section">
-                    <div class="lg-section-body" id="logs-container">
-                        <div class="lg-empty"><span class="lg-spinner"></span> Lade...</div>
+
+                <!-- Zweispaltiges Layout: Zugriffsversuche + Gebannte IPs -->
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+
+                    <!-- Zugriffsversuche -->
+                    <div class="lg-section" style="border-color:rgba(248,113,113,.15)">
+                        <div class="lg-section-hdr" style="border-color:rgba(248,113,113,.1)">
+                            <div class="lg-section-title" style="color:var(--lg-red)">
+                                <i class="fa-solid fa-shield-halved"></i> Zugriffsversuche
+                            </div>
+                            <div style="display:flex;gap:8px;align-items:center">
+                                <span class="lg-counter-badge" id="lg-threat-badge" style="background:rgba(248,113,113,.08);color:var(--lg-red)">—</span>
+                                <button class="lg-btn lg-btn-red" onclick="clearUnauthorizedLogs()"><i class="fa-solid fa-trash"></i> Leeren</button>
+                            </div>
+                        </div>
+                        <div class="lg-section-body" id="unauthorized-logs-container">
+                            <div class="lg-empty"><span class="lg-spinner"></span> Lade...</div>
+                        </div>
                     </div>
+
+                    <!-- Gebannte IPs -->
+                    <div class="lg-section" style="border-color:rgba(248,113,113,.12)">
+                        <div class="lg-section-hdr" style="border-color:rgba(248,113,113,.08)">
+                            <div class="lg-section-title" style="color:var(--lg-red)">
+                                <i class="fa-solid fa-ban"></i> Gebannte IPs
+                            </div>
+                            <div style="display:flex;gap:8px;align-items:center">
+                                <span class="lg-counter-badge" id="lg-ban-badge" style="background:rgba(248,113,113,.08);color:var(--lg-red)">—</span>
+                                <button class="lg-btn lg-btn-ghost" onclick="loadBannedIPs()"><i class="fa-solid fa-rotate-right"></i></button>
+                            </div>
+                        </div>
+                        <div class="lg-section-body" id="banned-ips-container">
+                            <div class="lg-empty"><span class="lg-spinner"></span> Lade...</div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
+
+            <!-- PANEL: ADMIN LOGS — ENTFERNT (jetzt in Tab 17 für alle Admins) -->
 
             <!-- PANEL: SA-AKTIVITÄTSLOG -->
             <div class="sa-inner-panel" id="sa-panel-actlog">
@@ -10615,7 +10625,9 @@ saFetchIP();
 function saSwitchInner(panel, el) {
     document.querySelectorAll('.sa-inner-panel').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.sa-inner-tab').forEach(t => t.classList.remove('active'));
-    document.getElementById('sa-panel-' + panel).classList.add('active');
+    const panelEl = document.getElementById('sa-panel-' + panel);
+    if (!panelEl) return;
+    panelEl.classList.add('active');
     el.classList.add('active');
     // Load data on demand
     if (panel === 'dashboard')  saLoadDashboard();
@@ -10623,7 +10635,7 @@ function saSwitchInner(panel, el) {
     if (panel === 'security')   { saLoadIPWhitelist(); saLoadSecuritySettings(); }
     if (panel === 'sessions')   saLoadSessions();
     if (panel === 'actlog')     saLoadActivityLog();
-    if (panel === 'adminlogs')  loadAdminLogs();
+    if (panel === 'ipsec')      { loadUnauthorizedLogs(); loadBannedIPs(); }
     if (panel === 'backup')     bkpInit();
     if (panel === 'danger')     {} // static
 }

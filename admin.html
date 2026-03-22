@@ -2901,6 +2901,15 @@
                             </label>
                         </div>
 
+                        <!-- NEU-02 FIX: maxUsages-Feld — war bisher nur über Firestore direkt setzbar -->
+                        <div class="cpn-field" style="margin-top:6px">
+                            <label class="cpn-label" style="display:flex;justify-content:space-between;align-items:center">
+                                Max. Einlösungen gesamt
+                                <span style="font-size:10px;color:rgba(255,255,255,.3);font-weight:400">leer = unbegrenzt</span>
+                            </label>
+                            <input id="coupon-maxusages" type="number" min="1" class="cpn-input" placeholder="z.B. 50">
+                        </div>
+
                         <button type="submit" class="cpn-submit">
                             <i class="fa-solid fa-ticket"></i> Gutschein erstellen
                         </button>
@@ -5651,10 +5660,15 @@ document.getElementById('add-coupon-form').addEventListener('submit', async e =>
     const value   = parseFloat(document.getElementById('coupon-value').value);
     const expiry  = new Date(document.getElementById('coupon-expiry').value);
     const oneTime = document.getElementById('coupon-onetime').checked;
+    // NEU-02 FIX: maxUsages aus neuem Formularfeld lesen
+    const maxUsagesRaw = document.getElementById('coupon-maxusages')?.value;
+    const maxUsages = maxUsagesRaw && parseInt(maxUsagesRaw, 10) > 0 ? parseInt(maxUsagesRaw, 10) : null;
     await db.collection('coupons').add({
         code, type, value,
         expiresAt: firebase.firestore.Timestamp.fromDate(expiry),
         oneTimeUse: oneTime, usedBy: [], totalUsages: 0,
+        ...(maxUsages !== null ? { maxUsages } : {}),
+        active: true, // NEU-06 FIX: active explizit setzen statt undefined (semantisch korrekt)
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     await logAction("coupon_created", code);

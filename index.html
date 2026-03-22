@@ -4468,8 +4468,10 @@
                     if (item.selectedFlavors && item.selectedFlavors.length) {
                         // Ausgewählte Sorten direkt anzeigen
                         const flavorTags = item.selectedFlavors.map(sf => {
-                            const nic = sf.nicotine ? ` <span style="font-size:9px;color:#a78bfa;font-weight:700">${sf.nicotine}</span>` : '';
-                            return `<span style="font-size:10px;background:rgba(103,232,249,.1);color:rgba(103,232,249,.9);border:1px solid rgba(103,232,249,.25);border-radius:99px;padding:2px 8px;display:inline-flex;align-items:center;gap:4px"><span style="color:rgba(255,255,255,.35);font-size:9px">${esc(sf.slot)}.</span> ${esc(sf.flavor)}${esc(nic)}</span>`;
+                            // nic enthält bereits einen <span>-Tag — nur sf.nicotine (reiner Text) escapen,
+                            // nicht das fertige HTML-Element (sonst wird <span> als Literal gerendert)
+                            const nic = sf.nicotine ? ` <span style="font-size:9px;color:#a78bfa;font-weight:700">${esc(sf.nicotine)}</span>` : '';
+                            return `<span style="font-size:10px;background:rgba(103,232,249,.1);color:rgba(103,232,249,.9);border:1px solid rgba(103,232,249,.25);border-radius:99px;padding:2px 8px;display:inline-flex;align-items:center;gap:4px"><span style="color:rgba(255,255,255,.35);font-size:9px">${esc(sf.slot)}.</span> ${esc(sf.flavor)}${nic}</span>`;
                         }).join(' ');
                         flavorBlock = `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">${flavorTags}</div>`;
                     } else {

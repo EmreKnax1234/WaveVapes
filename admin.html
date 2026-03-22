@@ -5289,7 +5289,7 @@
             </div>
 
             <!-- Status / Progress -->
-            <div id="frv-status" style="display:none;background:#13131f;border:1px solid rgba(103,232,249,.15);border-radius:14px;padding:14px 18px;margin-bottom:16px;font-size:12px;color:#67e8f9;display:flex;align-items:center;gap:10px">
+            <div id="frv-status" style="display:none;background:#13131f;border:1px solid rgba(103,232,249,.15);border-radius:14px;padding:14px 18px;margin-bottom:16px;font-size:12px;color:#67e8f9;align-items:center;gap:10px">
                 <i class="fa-solid fa-spinner fa-spin"></i> <span id="frv-status-text">Generiere...</span>
             </div>
 
@@ -15932,8 +15932,8 @@ function frvRandomDate(spreadDays) {
 }
 
 // ── Modus-Umschalter ──────────────────────────────────────────
-let _frvMode = 'all'; // 'all' | 'one'
-let _frvAllProducts = []; // Cache aller Produkte
+let _frvMode = 'all';
+let _frvAllProducts = [];
 
 function frvSetMode(mode) {
     _frvMode = mode;
@@ -15943,27 +15943,31 @@ function frvSetMode(mode) {
     const info   = document.getElementById('frv-product-info');
     const infoTx = document.getElementById('frv-product-info-text');
 
-    const activeStyle   = 'background:rgba(167,139,250,.18);border:1px solid rgba(167,139,250,.4);color:#a78bfa';
-    const inactiveStyle = 'background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.45)';
+    if (!btnAll || !btnOne) return;
 
-    if (mode === 'all') {
-        if (btnAll) btnAll.style.cssText += ';' + activeStyle.split(';').map(s=>s.trim()).join(';');
-        if (btnOne) btnOne.style.cssText  = btnOne.style.cssText.replace(/background:[^;]+;border:[^;]+;color:[^;]+/, inactiveStyle);
-        if (sel)  sel.style.display  = 'none';
-        if (info && _frvAllProducts.length) {
+    // Styles direkt setzen, kein cssText-Regex
+    btnAll.style.background = mode === 'all' ? 'rgba(167,139,250,.2)'  : 'rgba(255,255,255,.04)';
+    btnAll.style.border     = mode === 'all' ? '1px solid rgba(167,139,250,.5)' : '1px solid rgba(255,255,255,.1)';
+    btnAll.style.color      = mode === 'all' ? '#a78bfa' : 'rgba(255,255,255,.45)';
+
+    btnOne.style.background = mode === 'one' ? 'rgba(167,139,250,.2)'  : 'rgba(255,255,255,.04)';
+    btnOne.style.border     = mode === 'one' ? '1px solid rgba(167,139,250,.5)' : '1px solid rgba(255,255,255,.1)';
+    btnOne.style.color      = mode === 'one' ? '#a78bfa' : 'rgba(255,255,255,.45)';
+
+    if (sel)  sel.style.display  = mode === 'one' ? '' : 'none';
+
+    if (info && infoTx) {
+        if (mode === 'all' && _frvAllProducts.length) {
             const count = parseInt(document.getElementById('frv-count')?.value) || 3;
-            infoTx.textContent = `${_frvAllProducts.length} Produkte × ${count} Reviews = ${_frvAllProducts.length * count} Reviews total`;
-            info.style.display = '';
+            infoTx.textContent = `${_frvAllProducts.length} Produkte × ${count} = ${_frvAllProducts.length * count} Reviews total`;
+            info.style.display = 'block';
+        } else {
+            info.style.display = 'none';
         }
-    } else {
-        if (btnOne) btnOne.style.cssText += ';' + activeStyle.split(';').map(s=>s.trim()).join(';');
-        if (btnAll) btnAll.style.cssText  = btnAll.style.cssText.replace(/background:[^;]+;border:[^;]+;color:[^;]+/, inactiveStyle);
-        if (sel)  sel.style.display  = '';
-        if (info) info.style.display = 'none';
     }
 }
 
-// ── Init: Produkt-Select befüllen ──────────────────────────────
+// ── Init ───────────────────────────────────────────────────────
 async function frvInit() {
     const sel = document.getElementById('frv-product-select');
     if (!sel) return;
@@ -15971,141 +15975,198 @@ async function frvInit() {
     try {
         const snap = await db.collection('products').orderBy('name').get();
         _frvAllProducts = snap.docs.map(doc => ({
-            id: doc.id,
-            name: doc.data().name,
+            id:       doc.id,
+            name:     doc.data().name || '(kein Name)',
             category: doc.data().category || ''
         }));
 
-        // Dropdown befüllen (für Einzelmodus)
+        // Dropdown für Einzelmodus füllen
         if (sel.options.length <= 1) {
             _frvAllProducts.forEach(p => {
                 const opt = document.createElement('option');
-                opt.value = p.id;
-                opt.textContent = p.name + (p.category ? ' — ' + p.category.replace('WaveVapes ','') : '');
+                opt.value       = p.id;
+                opt.textContent = p.name + (p.category ? ' — ' + p.category.replace('WaveVapes ', '') : '');
                 sel.appendChild(opt);
             });
         }
 
-        // Info-Banner aktualisieren
-        const count = parseInt(document.getElementById('frv-count')?.value) || 3;
-        const info  = document.getElementById('frv-product-info');
-        const infoTx = document.getElementById('frv-product-info-text');
-        if (info && infoTx && _frvMode === 'all') {
-            infoTx.textContent = `${_frvAllProducts.length} Produkte × ${count} Reviews = ${_frvAllProducts.length * count} Reviews total`;
-            info.style.display = '';
-        }
-
-        // Mode-Buttons richtig stylen
         frvSetMode(_frvMode);
-    } catch(e) { showToast('❌ Produkte konnten nicht geladen werden', 'error'); }
+    } catch(e) {
+        console.error('frvInit error:', e);
+        showToast('❌ Produkte konnten nicht geladen werden: ' + e.message, 'error');
+    }
 }
 
-// ── Batch generieren (Alle Produkte oder ein einzelnes) ────────
+// ── Generieren ─────────────────────────────────────────────────
 async function frvGenerateBatch() {
-    const lang       = document.getElementById('frv-lang')?.value || 'de';
-    const tone       = document.getElementById('frv-tone')?.value || 'gemischt';
-    const nameStyle  = document.getElementById('frv-name-style')?.value || 'mixed';
-    const spreadDays = parseInt(document.getElementById('frv-date-spread')?.value) || 90;
-    const countPer   = Math.min(20, Math.max(1, parseInt(document.getElementById('frv-count')?.value) || 3));
+    const lang        = document.getElementById('frv-lang')?.value        || 'de';
+    const tone        = document.getElementById('frv-tone')?.value        || 'gemischt';
+    const nameStyle   = document.getElementById('frv-name-style')?.value  || 'mixed';
+    const spreadDays  = parseInt(document.getElementById('frv-date-spread')?.value) || 90;
+    const countPer    = Math.min(20, Math.max(1, parseInt(document.getElementById('frv-count')?.value) || 3));
     const allowedStars = Array.from(document.querySelectorAll('#frv-star-dist input:checked')).map(el => el.value);
 
     if (!allowedStars.length) { showToast('⚠️ Mindestens eine Sternzahl auswählen', 'error'); return; }
 
-    // Produkt-Liste ermitteln
+    // Ziel-Produkte
     let targets = [];
     if (_frvMode === 'all') {
-        if (!_frvAllProducts.length) { showToast('⚠️ Produkte werden noch geladen…', 'error'); return; }
+        if (!_frvAllProducts.length) {
+            showToast('⚠️ Produkte werden noch geladen — bitte kurz warten', 'error');
+            return;
+        }
         targets = _frvAllProducts;
     } else {
-        const sel = document.getElementById('frv-product-select');
-        const pid = sel?.value;
-        const pname = sel?.selectedOptions[0]?.text?.split(' — ')[0] || '';
-        if (!pid) { showToast('⚠️ Bitte ein Produkt auswählen', 'error'); return; }
-        targets = [{ id: pid, name: pname }];
+        const sel  = document.getElementById('frv-product-select');
+        const pid  = sel?.value;
+        const name = sel?.selectedOptions[0]?.text?.split(' — ')[0]?.trim() || '';
+        if (!pid) { showToast('⚠️ Bitte ein Produkt wählen', 'error'); return; }
+        targets = [{ id: pid, name }];
     }
 
-    const totalCount = targets.length * countPer;
-    const btn = document.getElementById('frv-generate-btn');
-    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generiere...'; }
-
+    const btn        = document.getElementById('frv-generate-btn');
     const statusEl   = document.getElementById('frv-status');
     const statusText = document.getElementById('frv-status-text');
-    if (statusEl) statusEl.style.display = 'flex';
-    if (statusText) statusText.textContent = `Generiere ${totalCount} Reviews für ${targets.length} Produkt${targets.length > 1 ? 'e' : ''}…`;
 
-    const generated = [];
-    const usedNames = new Set();
+    const setStatus = (msg) => {
+        if (statusEl)   { statusEl.style.display = 'flex'; }
+        if (statusText) { statusText.textContent = msg; }
+    };
+    const hideStatus = () => { if (statusEl) statusEl.style.display = 'none'; };
 
-    // KI-Anfragen pro Produkt (Batches von max. 5 Produkten gleichzeitig)
-    const BATCH = 5;
-    for (let b = 0; b < targets.length; b += BATCH) {
-        const chunk = targets.slice(b, b + BATCH);
-        if (statusText) statusText.textContent = `Produkt ${b + 1}–${Math.min(b + BATCH, targets.length)} von ${targets.length}…`;
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generiere...'; }
+    setStatus(`Generiere Reviews für ${targets.length} Produkt${targets.length > 1 ? 'e' : ''}…`);
 
-        await Promise.all(chunk.map(async product => {
-            let aiReviews = [];
-            try {
-                const prompt = `Generiere ${countPer} realistische, unterschiedliche Kundenbewertungen für ein Vape-Produkt namens "${product.name}" auf einer deutschen E-Commerce-Plattform (WaveVapes).
+    const generated  = [];
+    const usedNames  = new Set();
 
-Stil: ${tone === 'gemischt' ? 'abwechslungsreich (mal kurz, mal detailliert, mal emotional, mal sachlich)' : tone}
-Sprache: ${lang === 'de' ? 'Deutsch' : 'Englisch'}
-Erlaubte Sternzahlen: ${allowedStars.join(', ')} Sterne
+    const callAI = async (productName, count) => {
+        try {
+            const prompt = `Generiere ${count} realistische, unterschiedliche Kundenbewertungen auf Deutsch für ein Vape-Produkt namens "${productName}" auf wavevapes.de.
+Stil: ${tone === 'gemischt' ? 'abwechslungsreich' : tone}
+Erlaubte Sternzahlen: ${allowedStars.join(', ')}
+Regeln: unterschiedliche Längen, manchmal Emojis, manchmal kleine Kritik, niemals generisch.
+Antworte NUR mit JSON-Array ohne Markdown: [{"rating":5,"text":"..."},...]`;
 
-Regeln:
-- Jede Bewertung muss sich deutlich von den anderen unterscheiden
-- Bewertungen sollen echt und menschlich klingen
-- Manchmal kleine Kritikpunkte für Glaubwürdigkeit
-- Erwähne manchmal: Geschmack, Lieferzeit, Preis-Leistung oder Wiederholungskauf
+            const resp = await fetch('https://api.anthropic.com/v1/messages', {
+                method:  'POST',
+                headers: {
+                    'Content-Type':  'application/json',
+                    'anthropic-dangerous-direct-browser-access': 'true'
+                },
+                body: JSON.stringify({
+                    model:      'claude-sonnet-4-20250514',
+                    max_tokens: 1500,
+                    messages:   [{ role: 'user', content: prompt }]
+                })
+            });
+            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+            const data = await resp.json();
+            const raw  = data.content?.[0]?.text || '[]';
+            const cleaned = raw.replace(/```json|```/g, '').trim();
+            // Extrahiere JSON-Array auch wenn Präambel vorhanden
+            const match = cleaned.match(/\[[\s\S]*\]/);
+            return match ? JSON.parse(match[0]) : [];
+        } catch(e) {
+            console.warn('AI call failed for', productName, e.message);
+            return [];
+        }
+    };
 
-Antworte NUR mit einem JSON-Array, kein Markdown:
-[{"rating": 5, "text": "..."}, ...]`;
+    // Sequenziell pro Produkt (vermeidet Rate-Limit-Probleme bei vielen Produkten)
+    for (let i = 0; i < targets.length; i++) {
+        const product = targets[i];
+        setStatus(`Produkt ${i + 1} von ${targets.length}: ${product.name}…`);
 
-                const response = await fetch('https://api.anthropic.com/v1/messages', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        model: 'claude-sonnet-4-20250514',
-                        max_tokens: 1000,
-                        messages: [{ role: 'user', content: prompt }]
-                    })
-                });
-                const data = await response.json();
-                const raw  = data.content?.[0]?.text || '';
-                aiReviews  = JSON.parse(raw.replace(/```json|```/g, '').trim());
-            } catch(e) { aiReviews = []; }
+        const aiReviews = await callAI(product.name, countPer);
 
-            for (let i = 0; i < countPer; i++) {
-                let name; let tries = 0;
-                do { name = frvPickName(nameStyle); tries++; } while (usedNames.has(name) && tries < 30);
-                usedNames.add(name);
+        for (let j = 0; j < countPer; j++) {
+            let name; let tries = 0;
+            do { name = frvPickName(nameStyle); tries++; } while (usedNames.has(name) && tries < 50);
+            usedNames.add(name);
 
-                const aiEntry = aiReviews[i];
-                const rating  = aiEntry?.rating && allowedStars.includes(String(aiEntry.rating))
-                    ? aiEntry.rating : frvPickStars(allowedStars);
-                const text    = aiEntry?.text || frvPickText(product.name, rating, tone, lang);
+            const entry  = aiReviews[j];
+            const rating = (entry?.rating && allowedStars.includes(String(entry.rating)))
+                ? Number(entry.rating) : frvPickStars(allowedStars);
+            const text   = (entry?.text && entry.text.trim().length > 5)
+                ? entry.text.trim() : frvPickText(product.name, rating, tone, lang);
 
-                generated.push({
-                    id: 'preview_' + Date.now() + '_' + Math.random(),
-                    productId:   product.id,
-                    productName: product.name,
-                    username:    name,
-                    rating,
-                    text,
-                    date:        frvRandomDate(spreadDays),
-                    selected:    true
-                });
-            }
-        }));
+            generated.push({
+                id:          'frv_' + Date.now() + '_' + Math.random().toString(36).slice(2),
+                productId:   product.id,
+                productName: product.name,
+                username:    name,
+                rating,
+                text,
+                date:        frvRandomDate(spreadDays),
+                selected:    true
+            });
+        }
     }
 
     _frvPreviews = [...generated, ..._frvPreviews];
-    if (statusEl) statusEl.style.display = 'none';
+    hideStatus();
     if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Generieren'; }
     frvRenderPreviews();
-    showToast(`✅ ${generated.length} Bewertungen für ${targets.length} Produkt${targets.length > 1 ? 'e' : ''} generiert`, 'success');
+    showToast(`✅ ${generated.length} Reviews für ${targets.length} Produkt${targets.length > 1 ? 'e' : ''} generiert`, 'success');
 }
 
-// ── Preview rendern ────────────────────────────────────────────
+// ── Veröffentlichen ────────────────────────────────────────────
+async function frvPublishAll() {
+    const toPublish = _frvPreviews.filter(r => r.selected);
+    if (!toPublish.length) { showToast('⚠️ Keine Bewertungen ausgewählt', 'error'); return; }
+
+    const autoApprove = document.getElementById('frv-auto-approve')?.checked !== false;
+    const btn         = document.getElementById('frv-publish-btn');
+    const statusEl    = document.getElementById('frv-status');
+    const statusText  = document.getElementById('frv-status-text');
+
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Veröffentliche...'; }
+    if (statusEl)   statusEl.style.display  = 'flex';
+    if (statusText) statusText.textContent  = `0 / ${toPublish.length} gespeichert…`;
+
+    try {
+        // Firestore erlaubt max. 500 Writes pro Batch
+        const CHUNK = 400;
+        let saved = 0;
+        for (let i = 0; i < toPublish.length; i += CHUNK) {
+            const batch = db.batch();
+            toPublish.slice(i, i + CHUNK).forEach(rv => {
+                const ref = db.collection('reviews').doc();
+                batch.set(ref, {
+                    productId:   rv.productId,
+                    username:    rv.username,
+                    rating:      rv.rating,
+                    text:        rv.text,
+                    approved:    autoApprove,
+                    rejected:    false,
+                    fake:        true,
+                    createdAt:   firebase.firestore.Timestamp.fromDate(rv.date),
+                    generatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    generatedBy: auth.currentUser?.email || 'admin'
+                });
+            });
+            await batch.commit();
+            saved += Math.min(CHUNK, toPublish.length - i);
+            if (statusText) statusText.textContent = `${saved} / ${toPublish.length} gespeichert…`;
+        }
+
+        await logAction('fake_reviews_published', null, {
+            count: saved,
+            autoApprove
+        });
+
+        _frvPreviews = _frvPreviews.filter(r => !r.selected);
+        frvRenderPreviews();
+        showToast(`✅ ${saved} Bewertungen veröffentlicht!`, 'success');
+    } catch(e) {
+        console.error('frvPublishAll error:', e);
+        showToast('❌ Fehler: ' + e.message, 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-upload"></i> Alle veröffentlichen'; }
+        if (statusEl) statusEl.style.display = 'none';
+    }
+}
 function frvRenderPreviews() {
     const grid = document.getElementById('frv-preview-grid');
     const countEl = document.getElementById('frv-preview-count');
@@ -16250,59 +16311,7 @@ function frvEditSave(idx) {
     showToast('✅ Bewertung aktualisiert');
 }
 
-// ── Alle ausgewählten in Firestore veröffentlichen ─────────────
-async function frvPublishAll() {
-    const toPublish = _frvPreviews.filter(r => r.selected);
-    if (!toPublish.length) { showToast('⚠️ Keine Bewertungen ausgewählt', 'error'); return; }
 
-    const autoApprove = document.getElementById('frv-auto-approve')?.checked ?? true;
-
-    const btn = document.getElementById('frv-publish-btn');
-    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Veröffentliche...'; }
-
-    const statusEl = document.getElementById('frv-status');
-    const statusText = document.getElementById('frv-status-text');
-    if (statusEl) statusEl.style.display = 'flex';
-
-    let published = 0;
-    try {
-        const batch = db.batch();
-        toPublish.forEach(rv => {
-            const ref = db.collection('reviews').doc();
-            batch.set(ref, {
-                productId:   rv.productId,
-                username:    rv.username,
-                rating:      rv.rating,
-                text:        rv.text,
-                approved:    autoApprove,
-                rejected:    false,
-                fake:        true,           // Kennzeichnung als generierte Bewertung
-                createdAt:   firebase.firestore.Timestamp.fromDate(rv.date),
-                generatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                generatedBy: auth.currentUser?.email || 'admin'
-            });
-            published++;
-            if (statusText) statusText.textContent = `${published}/${toPublish.length} veröffentlicht...`;
-        });
-        await batch.commit();
-
-        await logAction('fake_reviews_published', null, {
-            count: published,
-            productId: toPublish[0]?.productId,
-            autoApprove
-        });
-
-        // Veröffentlichte aus Preview entfernen
-        _frvPreviews = _frvPreviews.filter(r => !r.selected);
-        frvRenderPreviews();
-        showToast(`✅ ${published} Bewertungen veröffentlicht!`, 'success');
-    } catch(e) {
-        showToast('❌ Fehler: ' + e.message, 'error');
-    } finally {
-        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-upload"></i> Alle veröffentlichen'; }
-        if (statusEl) statusEl.style.display = 'none';
-    }
-}
 </script>
 </body>
 </html>

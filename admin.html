@@ -2229,7 +2229,7 @@
 
             <div class="sidebar-section-label" style="margin-top:8px">Insights</div>
             <div onclick="switchTab(5)" id="sidebar-5" class="sidebar-item"><i class="fa-solid fa-chart-line"></i><span>Analytics</span></div>
-            <div onclick="switchTab(6)" id="sidebar-6" class="sidebar-item"><i class="fa-solid fa-list-check"></i><span>Admin Logs</span></div>
+            <div onclick="switchTab(6)" id="sidebar-6" class="sidebar-item"><i class="fa-solid fa-shield-halved"></i><span>IP-Sicherheit</span></div>
             <div onclick="switchTab(9)" id="sidebar-9" class="sidebar-item"><i class="fa-solid fa-users-viewfinder"></i><span>Live Online</span><span class="sidebar-notif" id="sb-live-dot" style="display:none"></span></div>
             <div onclick="switchTab(15)" id="sidebar-15" class="sidebar-item"><i class="fa-solid fa-computer-mouse"></i><span>Klick-Analyse</span><span class="sidebar-notif" id="sb-click-dot" style="display:none"></span></div>
 
@@ -3121,30 +3121,10 @@
             <!-- Page header -->
             <div class="lg-page-hdr">
                 <div class="lg-page-title">
-                    <i class="fa-solid fa-list-check"></i> Admin Logs
+                    <i class="fa-solid fa-shield-halved"></i> IP-Sicherheit
                 </div>
                 <div style="display:flex;gap:8px;align-items:center">
-                    <span class="lg-counter-badge" id="lg-log-count" style="background:rgba(103,232,249,.08);color:var(--lg-cyan)">— Einträge</span>
-                    <button class="lg-btn lg-btn-ghost" onclick="loadAdminLogs()"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
-                    <button id="lg-ai-btn" onclick="aiLogAnomalies()" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:10px;background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.3);color:#a78bfa;font-size:12px;font-weight:700;cursor:pointer"><i class="fa-solid fa-wand-magic-sparkles"></i> KI-Anomalie-Check</button>
-                </div>
-            </div>
-
-            <!-- KI Anomalie-Ergebnis -->
-            <div id="lg-ai-result" style="display:none;background:rgba(167,139,250,.07);border:1px solid rgba(167,139,250,.22);border-radius:16px;padding:18px 20px;margin-bottom:4px"></div>
-
-            <!-- Activity Log -->
-            <div class="lg-section">
-                <div class="lg-section-hdr">
-                    <div class="lg-section-title" style="color:var(--lg-cyan)">
-                        <i class="fa-solid fa-terminal"></i> Activity Feed
-                        <span style="width:7px;height:7px;border-radius:50%;background:var(--lg-green);box-shadow:0 0 8px var(--lg-green);animation:pulse 2s infinite;display:inline-block"></span>
-                        <style>@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}</style>
-                    </div>
-                    <span class="lg-counter-badge" id="lg-activity-badge" style="background:rgba(103,232,249,.06);color:rgba(103,232,249,.5)">Live</span>
-                </div>
-                <div class="lg-section-body" id="logs-container">
-                    <div class="lg-empty"><span class="lg-spinner"></span> Lade...</div>
+                    <button class="lg-btn lg-btn-ghost" onclick="loadUnauthorizedLogs();loadBannedIPs()"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
                 </div>
             </div>
 
@@ -3927,6 +3907,7 @@
                 <div class="sa-inner-tab" onclick="saSwitchInner('security',this)"><i class="fa-solid fa-shield-halved" style="margin-right:6px"></i>Sicherheit</div>
                 <div class="sa-inner-tab" onclick="saSwitchInner('sessions',this)"><i class="fa-solid fa-eye" style="margin-right:6px"></i>Session Monitor</div>
                 <div class="sa-inner-tab" onclick="saSwitchInner('backup',this)"><i class="fa-solid fa-database" style="margin-right:6px"></i>Backup &amp; Export</div>
+                <div class="sa-inner-tab" onclick="saSwitchInner('adminlogs',this)"><i class="fa-solid fa-list-check" style="margin-right:6px"></i>Admin Logs</div>
                 <div class="sa-inner-tab" onclick="saSwitchInner('actlog',this)"><i class="fa-solid fa-scroll" style="margin-right:6px"></i>SA-Aktivitätslog</div>
                 <div class="sa-inner-tab" onclick="saSwitchInner('danger',this)" style="color:rgba(248,113,113,.6)"><i class="fa-solid fa-triangle-exclamation" style="margin-right:6px"></i>Danger Zone</div>
             </div>
@@ -4211,6 +4192,29 @@
                     </div>
                 </div>
 
+            </div>
+
+            <!-- PANEL: ADMIN LOGS (aus Tab 6 hierher verschoben) -->
+            <div class="sa-inner-panel" id="sa-panel-adminlogs">
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+                    <div class="sa-section-title" style="margin:0;flex:1">
+                        <i class="fa-solid fa-list-check" style="color:#67e8f9"></i> Admin Activity Feed
+                        <span style="width:7px;height:7px;border-radius:50%;background:#34d399;box-shadow:0 0 8px #34d399;animation:pulse 2s infinite;display:inline-block;margin-left:8px"></span>
+                    </div>
+                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                        <span class="lg-counter-badge" id="lg-log-count" style="background:rgba(103,232,249,.08);color:var(--lg-cyan)">— Einträge</span>
+                        <button class="lg-btn lg-btn-ghost" onclick="loadAdminLogs()"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
+                        <button id="lg-ai-btn" onclick="aiLogAnomalies()" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:10px;background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.3);color:#a78bfa;font-size:12px;font-weight:700;cursor:pointer"><i class="fa-solid fa-wand-magic-sparkles"></i> KI-Anomalie-Check</button>
+                    </div>
+                </div>
+                <!-- KI Anomalie-Ergebnis -->
+                <div id="lg-ai-result" style="display:none;background:rgba(167,139,250,.07);border:1px solid rgba(167,139,250,.22);border-radius:16px;padding:18px 20px;margin-bottom:16px"></div>
+                <!-- Activity Log -->
+                <div class="lg-section">
+                    <div class="lg-section-body" id="logs-container">
+                        <div class="lg-empty"><span class="lg-spinner"></span> Lade...</div>
+                    </div>
+                </div>
             </div>
 
             <!-- PANEL: SA-AKTIVITÄTSLOG -->
@@ -7015,18 +7019,35 @@ async function loadBannedIPs() {
         });
 
         let html = `
-        <div style="padding:14px 16px 10px;border-bottom:1px solid rgba(255,255,255,.07)">
-            <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:10px">IP manuell bannen</div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start">
-                <input id="manual-ban-ip" type="text" placeholder="z.B. 1.2.3.4" style="flex:1;min-width:140px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:8px 12px;color:#fff;font-size:13px;font-family:'JetBrains Mono',monospace;outline:none" onfocus="this.style.borderColor='rgba(239,68,68,.5)'" onblur="this.style.borderColor='rgba(255,255,255,.12)'">
-                <input id="manual-ban-reason" type="text" placeholder="Grund (optional)" style="flex:2;min-width:160px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:8px 12px;color:#fff;font-size:13px;outline:none" onfocus="this.style.borderColor='rgba(239,68,68,.5)'" onblur="this.style.borderColor='rgba(255,255,255,.12)'">
-                <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,.5);cursor:pointer;white-space:nowrap">
-                    <input type="checkbox" id="manual-ban-perm" checked> Permanent
-                </label>
-                <button onclick="manualBanIp()" style="background:rgba(239,68,68,.2);border:1px solid rgba(239,68,68,.4);color:#f87171;border-radius:10px;padding:8px 16px;cursor:pointer;font-size:12px;font-weight:700;white-space:nowrap" onmouseover="this.style.background='rgba(239,68,68,.35)'" onmouseout="this.style.background='rgba(239,68,68,.2)'">
-                    <i class="fa-solid fa-ban"></i> Bannen
-                </button>
+        <div style="padding:16px 16px 14px;border-bottom:1px solid rgba(255,255,255,.07)">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:12px">IP manuell bannen</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start;margin-bottom:10px">
+                <input id="manual-ban-ip" type="text" placeholder="z.B. 1.2.3.4"
+                    style="flex:1;min-width:140px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:8px 12px;color:#fff;font-size:13px;font-family:'JetBrains Mono',monospace;outline:none"
+                    onfocus="this.style.borderColor='rgba(239,68,68,.5)'" onblur="this.style.borderColor='rgba(255,255,255,.12)'">
+                <input id="manual-ban-reason" type="text" placeholder="Grund (optional)"
+                    style="flex:2;min-width:160px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:8px 12px;color:#fff;font-size:13px;outline:none"
+                    onfocus="this.style.borderColor='rgba(239,68,68,.5)'" onblur="this.style.borderColor='rgba(255,255,255,.12)'">
             </div>
+            <!-- Dauer-Presets -->
+            <div style="margin-bottom:8px">
+                <div style="font-size:10px;color:rgba(255,255,255,.3);margin-bottom:6px;font-weight:600;letter-spacing:.05em">BAN-DAUER</div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap" id="manual-ban-preset-row">
+                    <button type="button" onclick="setManualBanPreset(1)"   class="mban-preset" style="${_mbanPresetStyle()}">1 Tag</button>
+                    <button type="button" onclick="setManualBanPreset(7)"   class="mban-preset" style="${_mbanPresetStyle()}">7 Tage</button>
+                    <button type="button" onclick="setManualBanPreset(30)"  class="mban-preset" style="${_mbanPresetStyle()}">30 Tage</button>
+                    <button type="button" onclick="setManualBanPreset(90)"  class="mban-preset" style="${_mbanPresetStyle()}">90 Tage</button>
+                    <button type="button" onclick="setManualBanPreset(180)" class="mban-preset" style="${_mbanPresetStyle()}">180 Tage</button>
+                    <button type="button" onclick="setManualBanPreset(0)"   class="mban-preset" style="${_mbanPresetStyle('perm')}">Permanent</button>
+                </div>
+                <input type="hidden" id="manual-ban-days" value="">
+                <div id="manual-ban-duration-label" style="font-size:11px;color:#fbbf24;margin-top:5px;min-height:16px"></div>
+            </div>
+            <button onclick="manualBanIp()"
+                style="background:rgba(239,68,68,.2);border:1px solid rgba(239,68,68,.4);color:#f87171;border-radius:10px;padding:8px 16px;cursor:pointer;font-size:12px;font-weight:700;white-space:nowrap"
+                onmouseover="this.style.background='rgba(239,68,68,.35)'" onmouseout="this.style.background='rgba(239,68,68,.2)'">
+                <i class="fa-solid fa-ban"></i> Bannen
+            </button>
         </div>`;
 
         // ── Aktuelle Besucher IPs (aus Presence) ──
@@ -7089,25 +7110,88 @@ async function loadBannedIPs() {
     }
 }
 
-async function manualBanIp() {
-    const ip = document.getElementById('manual-ban-ip')?.value.trim();
-    const reason = document.getElementById('manual-ban-reason')?.value.trim() || 'Manuell gebannt via Admin';
-    // BUG-21 FIX: Vorher `checked !== false` → bei fehlendem Element war permanent immer true.
-    // Jetzt explizit: nur true wenn Element vorhanden UND checked.
-    const permanent = document.getElementById('manual-ban-perm')?.checked === true;
-    if (!ip || !/^[\d\.\:a-fA-F]+$/.test(ip)) { showToast('❌ Bitte gültige IP eingeben', 'error'); return; }
-    const existing = await db.collection('banned_ips').where('ip','==',ip).limit(1).get();
-    if (!existing.empty) { showToast(`⚠️ IP ${ip} ist bereits gebannt`, 'error'); return; }
-    await db.collection('banned_ips').add({
-        ip, reason, permanent,
-        bannedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        bannedBy: auth.currentUser?.email || 'Admin',
-        bannedUntil: permanent ? null : firebase.firestore.Timestamp.fromDate(new Date(Date.now() + 30*24*60*60*1000))
+// Preset-Styles für Manual-Ban
+function _mbanPresetStyle(type) {
+    return type === 'perm'
+        ? 'background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#f87171;border-radius:8px;padding:5px 12px;cursor:pointer;font-size:11px;font-weight:700;transition:all .15s'
+        : 'background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.5);border-radius:8px;padding:5px 12px;cursor:pointer;font-size:11px;font-weight:600;transition:all .15s';
+}
+
+function setManualBanPreset(days) {
+    // Alle Buttons zurücksetzen
+    document.querySelectorAll('.mban-preset').forEach((b, idx) => {
+        const isPerm = b.textContent.trim() === 'Permanent';
+        b.style.cssText = _mbanPresetStyle(isPerm ? 'perm' : '');
     });
-    await logAction('ip_banned_manual', ip, { reason, permanent });
-    showToast(`🚫 IP ${ip} gebannt!`, 'success');
+
+    // Gewählten Button highlighten
+    const allBtns = document.querySelectorAll('.mban-preset');
+    const idx = [1, 7, 30, 90, 180, 0].indexOf(days);
+    if (idx >= 0 && allBtns[idx]) {
+        if (days === 0) {
+            allBtns[idx].style.background = 'rgba(239,68,68,.3)';
+            allBtns[idx].style.borderColor = 'rgba(239,68,68,.8)';
+            allBtns[idx].style.color = '#fff';
+        } else {
+            allBtns[idx].style.background = 'rgba(251,191,36,.2)';
+            allBtns[idx].style.borderColor = 'rgba(251,191,36,.6)';
+            allBtns[idx].style.color = '#fbbf24';
+        }
+    }
+
+    document.getElementById('manual-ban-days').value = days;
+
+    const label = document.getElementById('manual-ban-duration-label');
+    if (label) {
+        if (days === 0) {
+            label.textContent = '🔴 Permanent gesperrt';
+            label.style.color = '#f87171';
+        } else {
+            const until = new Date(Date.now() + days * 86400000);
+            label.textContent = `⏱ Bis ${until.toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit', year:'numeric' })}`;
+            label.style.color = '#fbbf24';
+        }
+    }
+}
+
+async function manualBanIp() {
+    const ip     = document.getElementById('manual-ban-ip')?.value.trim();
+    const reason = document.getElementById('manual-ban-reason')?.value.trim() || 'Manuell gebannt via Admin';
+    const daysVal = document.getElementById('manual-ban-days')?.value;
+
+    if (!ip || !/^[\d\.\:a-fA-F]+$/.test(ip)) {
+        showToast('❌ Bitte gültige IP eingeben', 'error'); return;
+    }
+    if (daysVal === '' || daysVal === null || daysVal === undefined) {
+        showToast('⚠️ Bitte erst eine Bann-Dauer auswählen!', 'error'); return;
+    }
+
+    const permanent = daysVal === '0';
+    const bannedUntil = permanent
+        ? null
+        : firebase.firestore.Timestamp.fromDate(new Date(Date.now() + parseInt(daysVal, 10) * 86400000));
+
+    const existing = await db.collection('banned_ips').where('ip', '==', ip).limit(1).get();
+    if (!existing.empty) { showToast(`⚠️ IP ${ip} ist bereits gebannt`, 'error'); return; }
+
+    await db.collection('banned_ips').add({
+        ip, reason, permanent, bannedUntil,
+        bannedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        bannedBy: auth.currentUser?.email || 'Admin'
+    });
+    await logAction('ip_banned_manual', ip, { reason, permanent, days: daysVal });
+
+    const durText = permanent ? 'permanent' : `für ${daysVal} Tage`;
+    showToast(`🚫 IP ${ip} ${durText} gebannt!`, 'success');
+
     document.getElementById('manual-ban-ip').value = '';
     document.getElementById('manual-ban-reason').value = '';
+    document.getElementById('manual-ban-days').value = '';
+    document.getElementById('manual-ban-duration-label').textContent = '';
+    document.querySelectorAll('.mban-preset').forEach((b, idx) => {
+        const isPerm = b.textContent.trim() === 'Permanent';
+        b.style.cssText = _mbanPresetStyle(isPerm ? 'perm' : '');
+    });
     loadBannedIPs();
 }
 
@@ -8248,7 +8332,7 @@ function euShowTopCustomers(){
 // ═══════════════════════════════════════════════════════
 const TAB_NAMES = {
     0:'Produkte', 1:'Bestellungen', 2:'Benutzer', 3:'Kategorien',
-    4:'Gutscheine', 5:'Analytics', 6:'Admin Logs', 7:'Settings',
+    4:'Gutscheine', 5:'Analytics', 6:'IP-Sicherheit', 7:'Settings',
     8:'Sortierung', 9:'Live Online', 10:'Erw. Benutzer', 11:'Bewertungen', 12:'Superadmin Zone',
     13:'Kunden-Übersicht', 14:'Aktionen', 15:'Klick-Analyse', 16:'Bundles'
 };
@@ -8280,7 +8364,7 @@ function switchTab(n) {
     // tab-specific loaders
     if(n===4)loadCoupons();
     if(n===5)loadAnalytics();
-    if(n===6)loadAdminLogs();
+    if(n===6){ loadUnauthorizedLogs(); loadBannedIPs(); } // Tab 6 = IP-Sicherheit
     if(n===8){ (async()=>{ if(!_bundles.length) await loadBundles(); await loadProductOrder(); })(); }
     if(n===11){ rvAdminLoad('pending'); rvAdminLoadStats(); }
     if(n===9){
@@ -10019,7 +10103,7 @@ const SA_PERMISSIONS = [
     { key:'categories',  label:'Kategorien',      icon:'fa-tags',            tab:3  },
     { key:'coupons',     label:'Gutscheine',      icon:'fa-ticket',          tab:4  },
     { key:'analytics',   label:'Analytics',       icon:'fa-chart-line',      tab:5  },
-    { key:'logs',        label:'Admin Logs',      icon:'fa-list-check',      tab:6  },
+    { key:'logs',        label:'Admin Logs',      icon:'fa-list-check',      tab:12 },
     { key:'settings',    label:'Settings',        icon:'fa-sliders',         tab:7  },
     { key:'sorting',     label:'Sortierung',      icon:'fa-arrows-up-down',  tab:8  },
     { key:'liveonline',  label:'Live Online',     icon:'fa-users-viewfinder',tab:9  },
@@ -10501,6 +10585,7 @@ function saSwitchInner(panel, el) {
     if (panel === 'security')   { saLoadIPWhitelist(); saLoadSecuritySettings(); }
     if (panel === 'sessions')   saLoadSessions();
     if (panel === 'actlog')     saLoadActivityLog();
+    if (panel === 'adminlogs')  loadAdminLogs();
     if (panel === 'backup')     bkpInit();
     if (panel === 'danger')     {} // static
 }

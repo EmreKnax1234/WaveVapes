@@ -3119,6 +3119,109 @@
                 </div>
             </div>
 
+            <!-- Charts Row 4: Umsatz nach Kategorie + Wochentag-Heatmap (NEU) -->
+            <div class="an-chart-grid" style="margin-top:16px">
+                <div class="an-chart-card">
+                    <div class="an-chart-hdr">
+                        <div class="an-chart-title"><i class="fa-solid fa-layer-group" style="color:#67e8f9"></i> Umsatz nach Kategorie</div>
+                        <span class="an-chart-badge">Zeitraum</span>
+                    </div>
+                    <div class="an-chart-inner"><canvas id="categoryRevenueChart"></canvas></div>
+                </div>
+                <div class="an-chart-card">
+                    <div class="an-chart-hdr">
+                        <div class="an-chart-title"><i class="fa-solid fa-fire" style="color:#fb923c"></i> Bestellungen nach Wochentag</div>
+                        <span class="an-chart-badge">Ø pro Tag</span>
+                    </div>
+                    <div class="an-chart-inner"><canvas id="weekdayChart"></canvas></div>
+                </div>
+            </div>
+
+            <!-- Charts Row 5: Wiederkäufer + Ø Tage zwischen Bestellungen (NEU) -->
+            <div class="an-chart-grid" style="margin-top:16px">
+                <div class="an-chart-card wide">
+                    <div class="an-chart-hdr">
+                        <div class="an-chart-title"><i class="fa-solid fa-rotate" style="color:#34d399"></i> Neue vs. Wiederkehrende Kunden</div>
+                        <span class="an-chart-badge">Zeitreihe</span>
+                    </div>
+                    <div class="an-chart-inner"><canvas id="newVsReturnChart"></canvas></div>
+                </div>
+            </div>
+
+            <!-- Push-Benachrichtigungen Panel (NEU) -->
+            <div style="margin-top:16px;background:#13131f;border:1px solid rgba(103,232,249,.15);border-radius:20px;overflow:hidden">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.06)">
+                    <div style="display:flex;align-items:center;gap:10px">
+                        <div style="width:34px;height:34px;border-radius:10px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.2);display:flex;align-items:center;justify-content:center;color:#fbbf24;font-size:14px"><i class="fa-solid fa-bell"></i></div>
+                        <div>
+                            <div style="font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#fbbf24">Push-Benachrichtigungen</div>
+                            <div style="font-size:10px;color:rgba(255,255,255,.3);margin-top:1px">Gezielte Nachrichten an Kunden senden</div>
+                        </div>
+                    </div>
+                    <span id="push-sub-count" style="font-size:11px;font-family:'JetBrains Mono',monospace;background:rgba(251,191,36,.1);color:#fbbf24;padding:3px 10px;border-radius:99px;border:1px solid rgba(251,191,36,.2)">— Abonnenten</span>
+                </div>
+                <div style="padding:18px 20px;display:flex;flex-direction:column;gap:12px">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                        <div>
+                            <div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:6px">Titel</div>
+                            <input id="push-title" placeholder="z.B. 🔥 Neue Aktion!" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 12px;color:#fff;font-size:12px;outline:none;box-sizing:border-box;transition:border-color .2s" onfocus="this.style.borderColor='rgba(103,232,249,.4)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">
+                        </div>
+                        <div>
+                            <div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:6px">Zielgruppe</div>
+                            <select id="push-target" style="width:100%;background:#1a1a2e;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 12px;color:#fff;font-size:12px;outline:none;box-sizing:border-box;color-scheme:dark">
+                                <option value="all">Alle Abonnenten</option>
+                                <option value="no-order-30">Keine Bestellung 30+ Tage</option>
+                                <option value="loyalty-high">Loyalty &gt; 500 Punkte</option>
+                                <option value="loyalty-low">Loyalty &lt; 100 Punkte</option>
+                                <option value="new-users">Neue Kunden (letzte 7 Tage)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:6px">Nachricht</div>
+                        <textarea id="push-body" placeholder="Deine Nachricht an die Kunden..." rows="2" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 12px;color:#fff;font-size:12px;outline:none;resize:vertical;font-family:inherit;box-sizing:border-box;transition:border-color .2s" onfocus="this.style.borderColor='rgba(103,232,249,.4)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'"></textarea>
+                    </div>
+                    <div style="display:flex;gap:10px;align-items:center">
+                        <input id="push-url" placeholder="Link (optional, z.B. https://wavevapes.de)" style="flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 12px;color:#fff;font-size:12px;outline:none;transition:border-color .2s" onfocus="this.style.borderColor='rgba(103,232,249,.4)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">
+                        <button onclick="sendPushNotification()" id="push-send-btn" style="padding:9px 20px;border-radius:10px;background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#000;font-weight:700;font-size:12px;border:none;cursor:pointer;white-space:nowrap;transition:opacity .2s">
+                            <i class="fa-solid fa-paper-plane"></i> Senden
+                        </button>
+                    </div>
+                    <div id="push-log" style="max-height:150px;overflow-y:auto;display:flex;flex-direction:column;gap:6px"></div>
+                </div>
+            </div>
+
+            <!-- Erweiterte Export-Optionen (NEU) -->
+            <div style="margin-top:16px;background:#13131f;border:1px solid rgba(52,211,153,.15);border-radius:20px;overflow:hidden">
+                <div style="display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.06)">
+                    <div style="width:34px;height:34px;border-radius:10px;background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.2);display:flex;align-items:center;justify-content:center;color:#34d399;font-size:14px"><i class="fa-solid fa-download"></i></div>
+                    <div>
+                        <div style="font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#34d399">Erweiterte Exporte</div>
+                        <div style="font-size:10px;color:rgba(255,255,255,.3);margin-top:1px">Daten als CSV, JSON oder PDF exportieren</div>
+                    </div>
+                </div>
+                <div style="padding:16px 20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px">
+                    <button onclick="exportAnalyticsCSV()" style="display:flex;align-items:center;gap:8px;padding:11px 14px;border-radius:12px;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.2);color:#34d399;font-size:12px;font-weight:600;cursor:pointer;transition:all .18s" onmouseover="this.style.background='rgba(52,211,153,.16)'" onmouseout="this.style.background='rgba(52,211,153,.08)'">
+                        <i class="fa-solid fa-file-csv"></i> Analytics CSV (Zeitraum)
+                    </button>
+                    <button onclick="exportRevenueByCategory()" style="display:flex;align-items:center;gap:8px;padding:11px 14px;border-radius:12px;background:rgba(103,232,249,.08);border:1px solid rgba(103,232,249,.2);color:#67e8f9;font-size:12px;font-weight:600;cursor:pointer;transition:all .18s" onmouseover="this.style.background='rgba(103,232,249,.16)'" onmouseout="this.style.background='rgba(103,232,249,.08)'">
+                        <i class="fa-solid fa-table"></i> Umsatz nach Kategorie
+                    </button>
+                    <button onclick="exportTopCustomers()" style="display:flex;align-items:center;gap:8px;padding:11px 14px;border-radius:12px;background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.2);color:#a78bfa;font-size:12px;font-weight:600;cursor:pointer;transition:all .18s" onmouseover="this.style.background='rgba(167,139,250,.16)'" onmouseout="this.style.background='rgba(167,139,250,.08)'">
+                        <i class="fa-solid fa-users"></i> Top Kunden CSV
+                    </button>
+                    <button onclick="generatePDFReport()" style="display:flex;align-items:center;gap:8px;padding:11px 14px;border-radius:12px;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);color:#f87171;font-size:12px;font-weight:600;cursor:pointer;transition:all .18s" onmouseover="this.style.background='rgba(248,113,113,.16)'" onmouseout="this.style.background='rgba(248,113,113,.08)'">
+                        <i class="fa-solid fa-file-pdf"></i> Monatsbericht PDF
+                    </button>
+                    <button onclick="exportLoyaltyReport()" style="display:flex;align-items:center;gap:8px;padding:11px 14px;border-radius:12px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.2);color:#fbbf24;font-size:12px;font-weight:600;cursor:pointer;transition:all .18s" onmouseover="this.style.background='rgba(251,191,36,.16)'" onmouseout="this.style.background='rgba(251,191,36,.08)'">
+                        <i class="fa-solid fa-star"></i> Loyalty Report CSV
+                    </button>
+                    <button onclick="exportOrdersJSON()" style="display:flex;align-items:center;gap:8px;padding:11px 14px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.6);font-size:12px;font-weight:600;cursor:pointer;transition:all .18s" onmouseover="this.style.background='rgba(255,255,255,.1)'" onmouseout="this.style.background='rgba(255,255,255,.05)'">
+                        <i class="fa-solid fa-file-code"></i> Bestellungen JSON
+                    </button>
+                </div>
+            </div>
+
             <!-- KI-Zusammenfassung -->
             <div id="an-ai-box" style="margin-top:16px;padding:20px;background:linear-gradient(135deg,rgba(167,139,250,.08),rgba(103,232,249,.05));border:1px solid rgba(167,139,250,.25);border-radius:20px">
                 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px">
@@ -3138,11 +3241,7 @@
                 <div id="an-ai-result" style="font-size:13px;color:rgba(255,255,255,.3);line-height:1.7">← Klicke "Jetzt analysieren" für eine KI-Zusammenfassung des aktuellen Zeitraums.</div>
             </div>
 
-            <!-- PDF Button -->
-            <button class="an-pdf-btn" onclick="generatePDFReport()">
-                <i class="fa-solid fa-file-pdf" style="font-size:20px"></i>
-                Monatsbericht als PDF herunterladen
-            </button>
+            <!-- (PDF-Export jetzt im Erweiterte Exporte Panel oben) -->
 
         </div>
 
@@ -7399,6 +7498,268 @@ async function generatePDFReport() {
     await logAction("monthly_report_generated"); showToast("✅ PDF heruntergeladen!","success");
 }
 
+// ── Neu: Kategorie-Umsatz und Wochentag-Chart ─────────────
+let categoryRevenueChart = null;
+let weekdayChart = null;
+let newVsReturnChart = null;
+
+async function loadAnalyticsExtended(ordersSnap) {
+    // Kategorie-Umsatz
+    const catRevMap = {};
+    const weekdayCounts = [0,0,0,0,0,0,0];
+    const knownEmails = new Set();
+    const newCounts = {};
+    const returnCounts = {};
+
+    ordersSnap.forEach(doc => {
+        const o = doc.data();
+        if ((o.status || '') === 'Storniert' || !o.date) return;
+        const dateObj = o.date.toDate();
+        const day = dateObj.toISOString().slice(0,10);
+        const wd = dateObj.getDay(); // 0=So
+        weekdayCounts[wd]++;
+        const isNew = !knownEmails.has(o.userEmail);
+        if (isNew) { newCounts[day] = (newCounts[day]||0)+1; knownEmails.add(o.userEmail); }
+        else { returnCounts[day] = (returnCounts[day]||0)+1; }
+        (o.items||[]).forEach(item => {
+            if (!item.name || item.id == 999) return;
+            const cat = item.category || 'Sonstige';
+            catRevMap[cat] = (catRevMap[cat]||0) + (item.qty||1) * (item.price||0);
+        });
+    });
+
+    // Kategorie-Chart
+    const sortedCats = Object.entries(catRevMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    const catColors = ['#67e8f9','#a78bfa','#34d399','#fbbf24','#f472b6','#fb923c','#22d3ee','#8b5cf6'];
+    if (categoryRevenueChart) categoryRevenueChart.destroy();
+    const catCtx = document.getElementById('categoryRevenueChart')?.getContext('2d');
+    if (catCtx && sortedCats.length) {
+        categoryRevenueChart = new Chart(catCtx, {
+            type: 'doughnut',
+            data: { labels: sortedCats.map(([k])=>k.replace('WaveVapes ','')), datasets: [{ data: sortedCats.map(([,v])=>v), backgroundColor: catColors.map(c=>c+'bb'), borderColor: catColors, borderWidth: 1.5 }] },
+            options: { responsive:true, maintainAspectRatio:false, plugins: { legend:{ position:'right', labels:{ color:'rgba(255,255,255,.6)', font:{size:10}, boxWidth:12 } }, tooltip:{ callbacks:{ label: ctx=>' '+ctx.label+': '+ctx.parsed.toFixed(2)+' €' } }, backgroundColor:'#1a1a2e', borderColor:'rgba(103,232,249,.25)', borderWidth:1 } }
+        });
+    }
+
+    // Wochentag-Chart
+    if (weekdayChart) weekdayChart.destroy();
+    const wdCtx = document.getElementById('weekdayChart')?.getContext('2d');
+    const wdLabels = ['So','Mo','Di','Mi','Do','Fr','Sa'];
+    const wdGrad = wdCtx ? wdCtx.createLinearGradient(0,0,0,200) : null;
+    if (wdGrad) { wdGrad.addColorStop(0,'rgba(251,146,60,.55)'); wdGrad.addColorStop(1,'rgba(251,146,60,.08)'); }
+    if (wdCtx) {
+        weekdayChart = new Chart(wdCtx, {
+            type:'bar',
+            data:{ labels:wdLabels, datasets:[{ label:'Bestellungen', data:weekdayCounts, backgroundColor:wdGrad||'rgba(251,146,60,.4)', borderColor:'rgba(251,146,60,.7)', borderWidth:1.5, borderRadius:8, borderSkipped:false }] },
+            options: anChartOpts({ scales:{ x:{ grid:{display:false}, ticks:{color:'rgba(255,255,255,.5)',font:{size:11,weight:'600'}}, border:{color:'transparent'} }, y:{ grid:{color:'rgba(255,255,255,.04)'}, ticks:{color:'rgba(255,255,255,.3)',font:{size:10},stepSize:1}, border:{color:'transparent'} } } })
+        });
+    }
+
+    // Neue vs. Wiederkehrende Kunden
+    if (newVsReturnChart) newVsReturnChart.destroy();
+    const nvrCtx = document.getElementById('newVsReturnChart')?.getContext('2d');
+    const allDays = [...new Set([...Object.keys(newCounts),...Object.keys(returnCounts)])].sort();
+    if (nvrCtx && allDays.length) {
+        const nvrGrad1 = nvrCtx.createLinearGradient(0,0,0,200); nvrGrad1.addColorStop(0,'rgba(103,232,249,.25)'); nvrGrad1.addColorStop(1,'rgba(103,232,249,.0)');
+        const nvrGrad2 = nvrCtx.createLinearGradient(0,0,0,200); nvrGrad2.addColorStop(0,'rgba(167,139,250,.25)'); nvrGrad2.addColorStop(1,'rgba(167,139,250,.0)');
+        newVsReturnChart = new Chart(nvrCtx, {
+            type:'line',
+            data:{ labels:allDays.map(l=>{ const p=l.slice(5).split('-'); return p[1]+'.'+p[0]; }), datasets:[
+                { label:'Neukunden', data:allDays.map(d=>newCounts[d]||0), borderColor:'#67e8f9', borderWidth:2, tension:0.4, fill:true, backgroundColor:nvrGrad1, pointRadius:2, pointHoverRadius:5 },
+                { label:'Wiederkehrend', data:allDays.map(d=>returnCounts[d]||0), borderColor:'#a78bfa', borderWidth:2, tension:0.4, fill:true, backgroundColor:nvrGrad2, pointRadius:2, pointHoverRadius:5 }
+            ]},
+            options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:true, labels:{ color:'rgba(255,255,255,.6)', font:{size:11}, boxWidth:14 } }, tooltip:{ backgroundColor:'#1a1a2e', borderColor:'rgba(103,232,249,.25)', borderWidth:1, titleColor:'#67e8f9', bodyColor:'rgba(255,255,255,.75)', padding:10, cornerRadius:10 } }, scales:{ x:{ grid:{color:'rgba(255,255,255,.04)'}, ticks:{color:'rgba(255,255,255,.3)',font:{size:10}}, border:{color:'transparent'} }, y:{ grid:{color:'rgba(255,255,255,.04)'}, ticks:{color:'rgba(255,255,255,.3)',font:{size:10},stepSize:1}, border:{color:'transparent'} } } }
+        });
+    }
+
+    // Push-Abonnenten zählen
+    try {
+        const pushSnap = await db.collection('push_subscriptions').get().catch(()=>({size:0}));
+        const el = document.getElementById('push-sub-count');
+        if (el) el.textContent = (pushSnap.size||0)+' Abonnenten';
+    } catch(e) {}
+}
+
+// Hook into loadAnalytics to also render extended charts
+const _origLoadAnalytics = window.loadAnalytics;
+window.loadAnalytics = async function() {
+    await _origLoadAnalytics?.();
+    // Re-run query for extended charts (reuse period logic)
+    let since;
+    if (anCustomFrom && anCustomTo) {
+        since = firebase.firestore.Timestamp.fromDate(anCustomFrom);
+    } else {
+        const days = anCurrentPeriod || 30;
+        since = firebase.firestore.Timestamp.fromDate(new Date(Date.now() - days * 24 * 60 * 60 * 1000));
+    }
+    try {
+        let q = db.collection('orders').where('date','>=',since);
+        if (anCustomTo) q = q.where('date','<=',firebase.firestore.Timestamp.fromDate(anCustomTo));
+        const snap = await q.get();
+        await loadAnalyticsExtended(snap);
+    } catch(e) { console.warn('Extended analytics error:', e); }
+};
+
+// ── Push-Benachrichtigungen senden ────────────────────────
+async function sendPushNotification() {
+    const title = document.getElementById('push-title')?.value.trim();
+    const body  = document.getElementById('push-body')?.value.trim();
+    const target = document.getElementById('push-target')?.value || 'all';
+    const url   = document.getElementById('push-url')?.value.trim() || 'https://wavevapes.de';
+    if (!title || !body) { showToast('⚠️ Titel und Nachricht sind Pflichtfelder', 'error'); return; }
+
+    const btn = document.getElementById('push-send-btn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Senden...'; }
+
+    try {
+        // Push-Nachricht in Firestore speichern (Service Worker / FCM liest diese)
+        const pushRef = await db.collection('push_notifications').add({
+            title, body, url, target,
+            sentAt: firebase.firestore.FieldValue.serverTimestamp(),
+            sentBy: auth.currentUser?.email || 'admin',
+            delivered: 0,
+            status: 'queued'
+        });
+        await logAction('push_notification_sent', pushRef.id, { title, target });
+
+        // Log-Eintrag im Panel
+        const logEl = document.getElementById('push-log');
+        if (logEl) {
+            const entry = document.createElement('div');
+            entry.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:rgba(52,211,153,.07);border:1px solid rgba(52,211,153,.2);font-size:11px;color:rgba(255,255,255,.7)';
+            entry.innerHTML = `<i class="fa-solid fa-circle-check" style="color:#34d399"></i> <span style="color:#34d399;font-weight:700">${title}</span> → <span style="color:rgba(255,255,255,.4)">${target}</span> <span style="margin-left:auto;color:rgba(255,255,255,.3)">${new Date().toLocaleTimeString('de-DE')}</span>`;
+            logEl.insertBefore(entry, logEl.firstChild);
+        }
+
+        showToast('✅ Push-Benachrichtigung gespeichert & wird versendet', 'success');
+        if (document.getElementById('push-title')) document.getElementById('push-title').value = '';
+        if (document.getElementById('push-body'))  document.getElementById('push-body').value = '';
+    } catch(e) {
+        showToast('❌ Fehler: ' + e.message, 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Senden'; }
+    }
+}
+
+// ── Erweiterte Export-Funktionen ──────────────────────────
+function downloadCSV(filename, rows) {
+    const bom = '\uFEFF';
+    const csv = bom + rows.map(r => r.map(cell => `"${String(cell).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = filename; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+async function exportAnalyticsCSV() {
+    showToast('⏳ Daten werden geladen…');
+    try {
+        const days = anCurrentPeriod || 30;
+        const since = firebase.firestore.Timestamp.fromDate(new Date(Date.now() - days * 24 * 60 * 60 * 1000));
+        const snap = await db.collection('orders').where('date','>=',since).get();
+        const rows = [['Datum','Bestellnummer','Kunde','Produkte','Gesamtbetrag €','Status']];
+        snap.forEach(doc => {
+            const o = doc.data();
+            rows.push([
+                o.date?.toDate?.()?.toLocaleDateString('de-DE') || '',
+                o.orderNumber || doc.id,
+                o.userEmail || '',
+                (o.items||[]).map(i=>i.name+'×'+i.qty).join(' | '),
+                (o.total||0).toFixed(2),
+                o.status || ''
+            ]);
+        });
+        downloadCSV(`wavevapes-analytics-${days}tage_${new Date().toISOString().slice(0,10)}.csv`, rows);
+        await logAction('export_analytics_csv', null, { days });
+        showToast('✅ Analytics CSV heruntergeladen!', 'success');
+    } catch(e) { showToast('❌ ' + e.message, 'error'); }
+}
+
+async function exportRevenueByCategory() {
+    showToast('⏳ Kategorie-Daten werden berechnet…');
+    try {
+        const snap = await db.collection('orders').get();
+        const catMap = {};
+        snap.forEach(doc => {
+            const o = doc.data();
+            if ((o.status||'') === 'Storniert') return;
+            (o.items||[]).forEach(item => {
+                const cat = item.category || 'Sonstige';
+                if (!catMap[cat]) catMap[cat] = { revenue: 0, units: 0, orders: new Set() };
+                catMap[cat].revenue += (item.qty||1) * (item.price||0);
+                catMap[cat].units  += (item.qty||1);
+                catMap[cat].orders.add(doc.id);
+            });
+        });
+        const rows = [['Kategorie','Umsatz €','Verkaufte Einheiten','Bestellungen']];
+        Object.entries(catMap).sort((a,b)=>b[1].revenue-a[1].revenue).forEach(([cat,v]) => {
+            rows.push([cat, v.revenue.toFixed(2), v.units, v.orders.size]);
+        });
+        downloadCSV(`wavevapes-umsatz-kategorie_${new Date().toISOString().slice(0,10)}.csv`, rows);
+        showToast('✅ Kategorie-CSV heruntergeladen!', 'success');
+    } catch(e) { showToast('❌ ' + e.message, 'error'); }
+}
+
+async function exportTopCustomers() {
+    showToast('⏳ Top-Kunden werden berechnet…');
+    try {
+        const snap = await db.collection('orders').get();
+        const custMap = {};
+        snap.forEach(doc => {
+            const o = doc.data();
+            if ((o.status||'') === 'Storniert') return;
+            const email = o.userEmail || 'unbekannt';
+            if (!custMap[email]) custMap[email] = { orders: 0, revenue: 0 };
+            custMap[email].orders++;
+            custMap[email].revenue += parseFloat(o.total||0);
+        });
+        const rows = [['E-Mail','Bestellungen','Gesamtumsatz €','Ø Bestellwert €']];
+        Object.entries(custMap).sort((a,b)=>b[1].revenue-a[1].revenue).slice(0,100).forEach(([email,v]) => {
+            rows.push([email, v.orders, v.revenue.toFixed(2), (v.revenue/v.orders).toFixed(2)]);
+        });
+        downloadCSV(`wavevapes-top-kunden_${new Date().toISOString().slice(0,10)}.csv`, rows);
+        showToast('✅ Top-Kunden CSV heruntergeladen!', 'success');
+    } catch(e) { showToast('❌ ' + e.message, 'error'); }
+}
+
+async function exportLoyaltyReport() {
+    showToast('⏳ Loyalty-Daten werden geladen…');
+    try {
+        const snap = await db.collection('users').get();
+        const rows = [['E-Mail','Benutzername','Loyalty-Punkte','Eingelöste Codes','Referrals']];
+        snap.forEach(doc => {
+            const u = doc.data();
+            if ((u.totalBonusPoints||0) === 0 && !u.email) return;
+            rows.push([
+                u.email || '',
+                u.username || '',
+                u.totalBonusPoints || 0,
+                (u.redeemedLoyaltyCodes||[]).join(' | '),
+                u.referralCount || 0
+            ]);
+        });
+        rows.sort((a,b) => Number(b[2]) - Number(a[2]));
+        downloadCSV(`wavevapes-loyalty-report_${new Date().toISOString().slice(0,10)}.csv`, rows);
+        showToast('✅ Loyalty CSV heruntergeladen!', 'success');
+    } catch(e) { showToast('❌ ' + e.message, 'error'); }
+}
+
+async function exportOrdersJSON() {
+    showToast('⏳ Bestellungen werden exportiert…');
+    try {
+        const snap = await db.collection('orders').orderBy('date','desc').limit(500).get();
+        const data = snap.docs.map(doc => {
+            const o = doc.data();
+            return { id: doc.id, ...o, date: o.date?.toDate?.()?.toISOString() || null };
+        });
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+        a.download = `wavevapes-bestellungen_${new Date().toISOString().slice(0,10)}.json`;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        await logAction('export_orders_json');
+        showToast('✅ Bestellungen JSON heruntergeladen!', 'success');
+    } catch(e) { showToast('❌ ' + e.message, 'error'); }
+}
+
 // ====================== ADMIN LOGS v2 ======================
 const LG_ACTION_MAP = {
     product_created:'product', product_updated:'product', product_deleted:'product',
@@ -11475,6 +11836,33 @@ async function saLoadDashboard() {
         document.getElementById('sa-kpi-products-sub').textContent= availProds + ' verfügbar';
         document.getElementById('sa-kpi-top-product').textContent = topName;
         document.getElementById('sa-kpi-top-product-sub').textContent = topQty;
+
+        // ── NEU: Trend-Indikatoren (7d vs. vorherige 7d) ──────────────────
+        try {
+            const prev7start = firebase.firestore.Timestamp.fromDate(new Date(now - 14*86400000));
+            const prev7end   = firebase.firestore.Timestamp.fromDate(new Date(now - 7*86400000));
+            const prev7Snap  = await db.collection('orders').where('date','>=',prev7start).where('date','<=',prev7end).get();
+            let prev7Rev = 0, prev7Cnt = 0;
+            prev7Snap.forEach(d => { const o=d.data(); if((o.status||'')!=='Storniert'){prev7Rev+=parseFloat(o.total||0);prev7Cnt++;} });
+            const revDelta = prev7Rev > 0 ? ((rev7d - prev7Rev)/prev7Rev*100) : null;
+            const cntDelta = prev7Cnt > 0 ? ((cnt7d - prev7Cnt)/prev7Cnt*100) : null;
+            const trend = (v, isRev) => {
+                if (v === null) return '';
+                const up = v >= 0;
+                const color = up ? '#34d399' : '#f87171';
+                return `<span style="font-size:10px;color:${color};font-weight:700">${up?'↑':'↓'}${Math.abs(v).toFixed(1)}% vs. Vorwoche</span>`;
+            };
+            const kpi7d = document.getElementById('sa-kpi-7d');
+            if (kpi7d && kpi7d.parentElement) {
+                const trendEl = kpi7d.parentElement.querySelector('.sa-kpi-trend') || (() => { const e=document.createElement('div'); e.className='sa-kpi-trend'; kpi7d.parentElement.appendChild(e); return e; })();
+                trendEl.innerHTML = trend(revDelta, true);
+            }
+            const kpi7do = document.getElementById('sa-kpi-7d-orders');
+            if (kpi7do && kpi7do.parentElement) {
+                const trendEl = kpi7do.parentElement.querySelector('.sa-kpi-trend') || (() => { const e=document.createElement('div'); e.className='sa-kpi-trend'; kpi7do.parentElement.appendChild(e); return e; })();
+                trendEl.innerHTML = trend(cntDelta, false);
+            }
+        } catch(e) { /* non-blocking */ }
 
         // Shop-Status Banner
         const shopClosed = settingsSnap?.exists && settingsSnap.data().shop_closed === true;

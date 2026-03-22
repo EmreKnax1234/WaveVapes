@@ -1889,6 +1889,7 @@
                 <div class="flex gap-2">
                     <input id="discount-input" type="text" placeholder="Rabattcode eingeben"
                            autocomplete="off" spellcheck="false"
+                           onkeydown="if(event.key==='Enter'){event.preventDefault();applyDiscountCode();}"
                            class="flex-1 bg-zinc-900 border border-white/20 focus:border-cyan-400 rounded-xl px-4 py-2.5 text-sm outline-none min-w-0">
                     <button onclick="applyDiscountCode()" class="bg-white hover:bg-cyan-300 text-black font-semibold px-4 py-2.5 rounded-xl text-sm transition flex-shrink-0">Einlösen</button>
                 </div>
@@ -1929,6 +1930,7 @@
                         style="width:100%;box-sizing:border-box;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:10px 14px;color:#fff;font-size:12px;font-family:inherit;outline:none;resize:none;transition:border-color .2s;line-height:1.5"
                         onfocus="this.style.borderColor='rgba(103,232,249,.45)'"
                         onblur="this.style.borderColor='rgba(255,255,255,.1)'"
+                        oninput="const c=document.getElementById('order-note-counter');if(c)c.textContent=this.value.length"
                     ></textarea>
                     <div style="font-size:10px;color:rgba(255,255,255,.2);margin-top:4px;text-align:right"><span id="order-note-counter">0</span>/500</div>
                 </div>
@@ -1960,10 +1962,10 @@
         <div class="bg-zinc-900 rounded-3xl p-8 max-w-md w-full mx-4">
             <h3 class="text-2xl font-semibold mb-6">Lieferadresse</h3>
             <div class="space-y-5">
-                <div><label class="text-xs text-gray-400 block mb-1">Straße + Hausnummer</label><input id="addr-street" type="text" placeholder="Musterstraße 12" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-4 outline-none"></div>
+                <div><label class="text-xs text-gray-400 block mb-1">Straße + Hausnummer</label><input id="addr-street" type="text" placeholder="Musterstraße 12" onkeydown="if(event.key==='Enter')document.getElementById('addr-zip').focus()" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-4 outline-none"></div>
                 <div class="grid grid-cols-2 gap-4">
-                    <div><label class="text-xs text-gray-400 block mb-1">PLZ</label><input id="addr-zip" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="12345" maxlength="5" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-4 outline-none"></div>
-                    <div><label class="text-xs text-gray-400 block mb-1">Ort</label><input id="addr-city" type="text" placeholder="Musterstadt" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-4 outline-none"></div>
+                    <div><label class="text-xs text-gray-400 block mb-1">PLZ</label><input id="addr-zip" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="12345" maxlength="5" onkeydown="if(event.key==='Enter')document.getElementById('addr-city').focus()" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-4 outline-none"></div>
+                    <div><label class="text-xs text-gray-400 block mb-1">Ort</label><input id="addr-city" type="text" placeholder="Musterstadt" onkeydown="if(event.key==='Enter')saveAddress()" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-4 outline-none"></div>
                 </div>
             </div>
             <button onclick="saveAddress()" class="mt-8 w-full bg-cyan-400 hover:bg-cyan-300 text-black py-5 rounded-3xl font-bold text-xl">Adresse speichern</button>
@@ -1982,14 +1984,14 @@
                 <button onclick="switchAuthTab(1)" id="tab-register" class="auth-tab flex-1 py-3 text-center">Registrieren</button>
             </div>
             <div id="login-form">
-                <input id="login-email" type="email" inputmode="email" placeholder="E-Mail Adresse" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-4 outline-none mb-4">
-                <input id="login-password" type="password" autocomplete="current-password" placeholder="Passwort" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-4 outline-none mb-6">
+                <input id="login-email" type="email" inputmode="email" placeholder="E-Mail Adresse" onkeydown="if(event.key==='Enter')document.getElementById('login-password').focus()" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-4 outline-none mb-4">
+                <input id="login-password" type="password" autocomplete="current-password" placeholder="Passwort" onkeydown="if(event.key==='Enter')loginUser()" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-4 outline-none mb-6">
                 <button onclick="loginUser()" class="w-full bg-cyan-400 hover:bg-cyan-300 text-black py-5 rounded-3xl font-bold text-xl">Einloggen</button>
                 <button onclick="sendPasswordReset()" class="mt-3 w-full text-gray-400 hover:text-white text-sm py-2 transition">Passwort vergessen?</button>
             </div>
             <div id="register-form" class="hidden">
-                <input id="register-email" type="email" inputmode="email" autocomplete="email" placeholder="E-Mail Adresse" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-4 outline-none mb-4">
-                <input id="register-password" type="password" autocomplete="new-password" placeholder="Passwort (min. 6 Zeichen)" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-4 outline-none mb-6">
+                <input id="register-email" type="email" inputmode="email" autocomplete="email" placeholder="E-Mail Adresse" onkeydown="if(event.key==='Enter')document.getElementById('register-password').focus()" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-4 outline-none mb-4">
+                <input id="register-password" type="password" autocomplete="new-password" placeholder="Passwort (min. 6 Zeichen)" onkeydown="if(event.key==='Enter')registerUser()" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-4 outline-none mb-6">
                 <button onclick="registerUser()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-5 rounded-3xl font-bold text-xl">Konto erstellen</button>
             </div>
 
@@ -2312,8 +2314,6 @@
         const MYSTERY_ID = '999';
 
         const NICOTINE_OPTIONS = ["10 mg", "20 mg"];
-        // Nikotinstärke-Auswahl pro Liquid-Item in Liquid-Bundles
-        let pendingBundleNicotine = {}; // { bundleId: { productId: '20 mg', ... } }
         const BANK_OWNER = "Jakob Hellrung";
         const BANK_IBAN = "DE38360200300003395812";
         const BANK_BIC = "NBAGDE3EXXX";
@@ -2709,6 +2709,7 @@
                 });
             }
             cartItem.selectedFlavors = updatedFlavors;
+            saveUserCart();
             updateCartDisplay();
             closeBundleDetail();
             showToast('✅ Sortenauswahl aktualisiert!');
@@ -3040,10 +3041,10 @@
                         if (Array.isArray(parsed) && parsed.length > 0) {
                             cart = parsed.filter(i => i.id !== MYSTERY_ID);
                             manageMysteryVape();
-                            updateCartDisplay();
                         }
                     }
                 } catch(e) { /* ignore */ }
+                updateCartDisplay(); // immer aufrufen – auch wenn Cart leer
                 return;
             }
             try {
@@ -3213,8 +3214,17 @@
                     if (ip) {
                         const bannedSnap = await db.collection("banned_ips").where("ip", "==", ip).get();
                         if (!bannedSnap.empty) {
-                            await auth.signOut();
-                            showToast("❌ Deine IP wurde gesperrt.", "error");
+                            const now = new Date();
+                            const activeBan = bannedSnap.docs.find(doc => {
+                                const b = doc.data();
+                                if (b.permanent) return true;
+                                if (b.bannedUntil && b.bannedUntil.toDate() > now) return true;
+                                return false;
+                            });
+                            if (activeBan) {
+                                await auth.signOut();
+                                showToast("❌ Deine IP wurde gesperrt.", "error");
+                            }
                         }
                     }
                 } catch(e) {
@@ -4327,8 +4337,12 @@
                 listEl.innerHTML = `<p class="text-center py-16 text-gray-400">Dein Warenkorb ist leer</p>`;
                 totalSection.style.display = "none";
                 document.getElementById('cart-upsell-banner').style.display = 'none';
+                document.getElementById('cart-note-row').style.display = 'none';
+                document.getElementById('cart-discount-row').style.display = 'none';
                 return;
             }
+            document.getElementById('cart-note-row').style.display = '';
+            document.getElementById('cart-discount-row').style.display = '';
             totalSection.style.display = "block";
             const grandTotal = calculateCartTotal();
             totalEl.textContent = `${grandTotal.toFixed(2).replace('.', ',')} €`;
@@ -4452,13 +4466,13 @@
                             <div class="text-xs text-gray-500 mt-0.5">${priceSubline}</div>
                         </div>
                         <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-                            <input type="number" min="1" max="10" value="${item.qty}"
-                                onchange="setCartQty('${item.id}', Math.min(10, Math.max(1, parseInt(this.value)||1))); this.value=Math.min(10,Math.max(1,parseInt(this.value)||1))"
+                            <input type="number" min="1" max="${_productMap.get(item.id)?.stock || 10}" value="${item.qty}"
+                                onchange="setCartQty('${item.id}', Math.min(${_productMap.get(item.id)?.stock || 10}, Math.max(1, parseInt(this.value)||1))); this.value=Math.min(${_productMap.get(item.id)?.stock || 10},Math.max(1,parseInt(this.value)||1))"
                                 onclick="event.stopImmediatePropagation()"
                                 onkeydown="event.stopImmediatePropagation()"
                                 style="width:42px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:6px;color:#fff;font-size:12px;font-weight:700;padding:4px 6px;text-align:center;outline:none;-moz-appearance:textfield"
                                 onfocus="this.style.borderColor='rgba(103,232,249,.5)'"
-                                onblur="this.style.borderColor='rgba(255,255,255,.12)'; setCartQty('${item.id}', Math.min(10, Math.max(1, parseInt(this.value)||1))); this.value=Math.min(10,Math.max(1,parseInt(this.value)||1))">
+                                onblur="this.style.borderColor='rgba(255,255,255,.12)'; setCartQty('${item.id}', Math.min(${_productMap.get(item.id)?.stock || 10}, Math.max(1, parseInt(this.value)||1))); this.value=Math.min(${_productMap.get(item.id)?.stock || 10},Math.max(1,parseInt(this.value)||1))">
                             <div class="font-bold whitespace-nowrap" style="font-size:0.9rem;${totalColor}">${(item.qty * effPrice).toFixed(2).replace('.', ',')} €</div>
                             <button onclick="removeCartItem('${item.id}'); event.stopImmediatePropagation()" style="color:#f87171;background:none;border:none;cursor:pointer;font-size:12px;padding:0"><i class="fa-solid fa-trash"></i></button>
                         </div>
@@ -4478,6 +4492,7 @@
                     </div>
                 </div>`);
             listEl.innerHTML = htmlParts.join('');
+            _syncNoteToggleState();
             if (isFree) {
                 paymentInfoEl.innerHTML = "";
             } else {
@@ -4491,6 +4506,17 @@
             const open    = body.style.display !== 'none';
             body.style.display    = open ? 'none' : 'block';
             chevron.style.transform = open ? '' : 'rotate(180deg)';
+        }
+        function _syncNoteToggleState() {
+            const body    = document.getElementById('cart-note-body');
+            const chevron = document.getElementById('cart-note-chevron');
+            const input   = document.getElementById('order-note-input');
+            if (!body || !input) return;
+            const hasText = (input.value || '').trim().length > 0;
+            if (hasText) {
+                body.style.display      = 'block';
+                if (chevron) chevron.style.transform = 'rotate(180deg)';
+            }
         }
         function toggleQtyDropdown(id) {
             const menu = document.getElementById('qty-menu-' + id);
@@ -4543,6 +4569,8 @@
             pendingNicotine = {};
             _loyaltyPromptShown = false;
             document.getElementById("discount-status").innerHTML = "";
+            const discInput = document.getElementById("discount-input");
+            if (discInput) discInput.value = "";
             saveUserCart();
             updateCartDisplay();
             // Jede betroffene Produktkarte auf qty=0 zurücksetzen
@@ -5913,6 +5941,10 @@
             const modal = document.getElementById("product-detail-modal");
             modal.classList.remove("hidden");
             modal.classList.add("flex");
+            // Scroll modal back to top when opening a new product
+            const modalInner = modal.querySelector('.modal-inner');
+            if (modalInner) modalInner.scrollTop = 0;
+            modal.scrollTop = 0;
             // Init gallery (swipe, arrows, thumbnails)
             window._pgCleanup = null;
             initGallery(product.images);
@@ -6137,7 +6169,7 @@
             if (!currentUser) { showToast('Bitte zuerst einloggen!', 'error'); return; }
             const rating = _rvPickedStars[productId] || 0;
             if (!rating) { showToast('Bitte erst Sterne auswählen!', 'error'); return; }
-            const text = (document.getElementById(`rv-text-${productId}`)?.value || '').trim();
+            const text = (document.getElementById(`rv-text-${productId}`)?.value || '').trim().slice(0, 600);
             const btn = document.querySelector(`#rv-form-${productId} .rv-submit-btn`);
             if (btn) { btn.disabled = true; btn.textContent = 'Wird gespeichert...'; }
 
@@ -6552,15 +6584,6 @@
             loadLeaderboard();
             subscribeGlobalListeners();
             updateAggregateRatingSchema();
-
-            // Zeichenzähler für Bestellwunsch
-            const noteInput   = document.getElementById('order-note-input');
-            const noteCounter = document.getElementById('order-note-counter');
-            if (noteInput && noteCounter) {
-                noteInput.addEventListener('input', () => {
-                    noteCounter.textContent = noteInput.value.length;
-                });
-            }
         }
 
 
@@ -7026,6 +7049,10 @@
         })();
 
         window.onload = initialize;
+        // Presence aktualisieren wenn Tab wieder sichtbar wird
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') updatePresence();
+        });
         // Re-render on orientation change so layout adjusts correctly
         window.addEventListener('orientationchange', () => setTimeout(renderProducts, 200));
         window.addEventListener('resize', () => { clearTimeout(window._resizeT); window._resizeT = setTimeout(renderProducts, 250); });

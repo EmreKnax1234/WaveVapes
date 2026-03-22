@@ -5152,47 +5152,39 @@
 
         <!-- TAB 18: FAKE REVIEW GENERATOR -->
         <div id="tab-content-18" class="hidden">
+        <div id="frv-root">
 
             <!-- Header -->
             <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:22px">
                 <div style="font-family:'Orbitron',sans-serif;font-size:19px;font-weight:700;color:#a78bfa;text-shadow:0 0 18px rgba(167,139,250,.4);display:flex;align-items:center;gap:10px">
                     <i class="fa-solid fa-wand-magic-sparkles"></i> Review Generator
                 </div>
-                <div style="display:flex;gap:8px">
-                    <button onclick="frvGenerateBatch()" id="frv-generate-btn"
-                        style="display:flex;align-items:center;gap:8px;padding:10px 20px;border-radius:12px;background:linear-gradient(135deg,#a78bfa,#7c3aed);color:#fff;font-size:13px;font-weight:700;border:none;cursor:pointer;transition:opacity .2s">
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                    <button id="frv-btn-gen"
+                        style="display:flex;align-items:center;gap:8px;padding:10px 20px;border-radius:12px;background:linear-gradient(135deg,#a78bfa,#7c3aed);color:#fff;font-size:13px;font-weight:700;border:none;cursor:pointer">
                         <i class="fa-solid fa-wand-magic-sparkles"></i> Generieren
                     </button>
-                    <button onclick="frvPublishAll()" id="frv-publish-btn"
-                        style="display:flex;align-items:center;gap:8px;padding:10px 20px;border-radius:12px;background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.3);color:#34d399;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s"
-                        onmouseover="this.style.background='rgba(52,211,153,.22)'" onmouseout="this.style.background='rgba(52,211,153,.12)'">
-                        <i class="fa-solid fa-upload"></i> Alle veröffentlichen
+                    <button id="frv-btn-pub"
+                        style="display:flex;align-items:center;gap:8px;padding:10px 20px;border-radius:12px;background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.3);color:#34d399;font-size:13px;font-weight:700;cursor:pointer">
+                        <i class="fa-solid fa-upload"></i> Veröffentlichen
                     </button>
-                    <button onclick="rvDeleteAllFake()"
-                        style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:12px;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);color:#f87171;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s"
-                        onmouseover="this.style.background='rgba(248,113,113,.2)'" onmouseout="this.style.background='rgba(248,113,113,.1)'" title="Alle gespeicherten Fake-Reviews aus Firestore löschen">
+                    <button id="frv-btn-del"
+                        style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:12px;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);color:#f87171;font-size:13px;font-weight:700;cursor:pointer">
                         <i class="fa-solid fa-trash-can"></i> Alle Fake löschen
                     </button>
                 </div>
             </div>
 
-            <!-- Config Panel -->
+            <!-- Config -->
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px">
 
-                <!-- Linke Spalte: Produkte & Menge -->
                 <div style="background:#13131f;border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:20px;display:flex;flex-direction:column;gap:14px">
 
                     <div>
-                        <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:8px">Ziel</div>
+                        <div style="font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:8px">Ziel</div>
                         <div style="display:flex;gap:8px">
-                            <button id="frv-mode-all" onclick="frvSetMode('all')"
-                                style="flex:1;padding:9px 10px;border-radius:10px;background:rgba(167,139,250,.18);border:1px solid rgba(167,139,250,.4);color:#a78bfa;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s">
-                                🌐 Alle Produkte
-                            </button>
-                            <button id="frv-mode-one" onclick="frvSetMode('one')"
-                                style="flex:1;padding:9px 10px;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.45);font-size:12px;font-weight:700;cursor:pointer;transition:all .15s">
-                                📦 Ein Produkt
-                            </button>
+                            <button id="frv-mode-all" style="flex:1;padding:9px;border-radius:10px;background:rgba(167,139,250,.2);border:1px solid rgba(167,139,250,.5);color:#a78bfa;font-size:12px;font-weight:700;cursor:pointer">🌐 Alle Produkte</button>
+                            <button id="frv-mode-one" style="flex:1;padding:9px;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.4);font-size:12px;font-weight:700;cursor:pointer">📦 Ein Produkt</button>
                         </div>
                     </div>
 
@@ -5200,11 +5192,12 @@
                         <option value="">— Produkt wählen —</option>
                     </select>
 
+                    <div id="frv-info-banner" style="font-size:11px;color:#67e8f9;background:rgba(103,232,249,.06);border:1px solid rgba(103,232,249,.15);border-radius:8px;padding:8px 12px;display:none"></div>
+
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
                         <div>
                             <div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:6px">Reviews pro Produkt</div>
-                            <input id="frv-count" type="number" min="1" max="20" value="3"
-                                style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 12px;color:#fff;font-size:13px;outline:none;box-sizing:border-box">
+                            <input id="frv-count" type="number" min="1" max="20" value="3" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 12px;color:#fff;font-size:13px;outline:none;box-sizing:border-box">
                         </div>
                         <div>
                             <div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:6px">Sprache</div>
@@ -5216,7 +5209,7 @@
                     </div>
 
                     <div>
-                        <div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:8px">Bewertungsverteilung</div>
+                        <div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:8px">Sternverteilung</div>
                         <div style="display:flex;gap:8px;flex-wrap:wrap" id="frv-star-dist">
                             <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:rgba(255,255,255,.6);cursor:pointer"><input type="checkbox" value="5" checked style="accent-color:#a78bfa"> ★★★★★</label>
                             <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:rgba(255,255,255,.6);cursor:pointer"><input type="checkbox" value="4" checked style="accent-color:#a78bfa"> ★★★★</label>
@@ -5226,29 +5219,16 @@
                         </div>
                     </div>
 
-                    <div style="display:flex;align-items:center;justify-content:space-between">
-                        <div>
-                            <div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:4px">Datum streuen</div>
-                            <div style="font-size:11px;color:rgba(255,255,255,.35)">Letzte</div>
-                        </div>
-                        <div style="display:flex;align-items:center;gap:8px">
-                            <input id="frv-date-spread" type="number" min="1" max="365" value="90"
-                                style="width:70px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:7px 10px;color:#fff;font-size:12px;outline:none;text-align:center">
-                            <span style="font-size:12px;color:rgba(255,255,255,.4)">Tage</span>
-                        </div>
-                    </div>
-
-                    <!-- Vorschau Produkt-Count -->
-                    <div id="frv-product-info" style="font-size:11px;color:rgba(103,232,249,.7);background:rgba(103,232,249,.06);border:1px solid rgba(103,232,249,.15);border-radius:8px;padding:8px 12px;display:none">
-                        <i class="fa-solid fa-circle-info"></i> <span id="frv-product-info-text"></span>
+                    <div style="display:flex;align-items:center;gap:12px">
+                        <div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.28)">Datumsstreuung</div>
+                        <input id="frv-date-spread" type="number" min="1" max="365" value="90" style="width:70px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:7px 10px;color:#fff;font-size:12px;outline:none;text-align:center">
+                        <span style="font-size:12px;color:rgba(255,255,255,.4)">Tage</span>
                     </div>
                 </div>
 
-                <!-- Rechte Spalte: KI-Einstellungen -->
                 <div style="background:#13131f;border:1px solid rgba(167,139,250,.15);border-radius:18px;padding:20px;display:flex;flex-direction:column;gap:14px">
-                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
-                        <div style="width:28px;height:28px;border-radius:8px;background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.25);display:flex;align-items:center;justify-content:center;color:#a78bfa;font-size:12px"><i class="fa-solid fa-robot"></i></div>
-                        <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#a78bfa">KI-Einstellungen</div>
+                    <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#a78bfa;display:flex;align-items:center;gap:8px">
+                        <i class="fa-solid fa-robot"></i> KI-Einstellungen
                     </div>
 
                     <div>
@@ -5263,55 +5243,56 @@
                     </div>
 
                     <div>
-                        <div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:6px">Namens-Stil</div>
+                        <div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:6px">Namen-Stil</div>
                         <select id="frv-name-style" style="width:100%;background:#1a1a2e;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 12px;color:#fff;font-size:12px;outline:none;color-scheme:dark">
                             <option value="de">🇩🇪 Deutsche Namen</option>
-                            <option value="mixed" selected>🌍 Gemischt (DE + Int.)</option>
-                            <option value="anonym">🕵️ Anonymisiert (Max M.)</option>
+                            <option value="mixed" selected>🌍 Gemischt</option>
+                            <option value="anonym">🕵️ Anonymisiert</option>
                         </select>
                     </div>
 
-                    <div>
-                        <div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:6px">Kontext-Info (optional)</div>
-                        <textarea id="frv-context" rows="3" placeholder="z.B. Produkt ist ein Vape mit Blueberry-Geschmack, kam sehr schnell an..."
-                            style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 12px;color:#fff;font-size:12px;resize:none;outline:none;font-family:inherit;box-sizing:border-box;transition:border-color .2s"
-                            onfocus="this.style.borderColor='rgba(167,139,250,.4)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'"></textarea>
-                    </div>
-
-                    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.06)'" onmouseout="this.style.background='rgba(255,255,255,.03)'">
+                    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07)">
                         <input type="checkbox" id="frv-auto-approve" checked style="accent-color:#a78bfa;width:16px;height:16px">
                         <div>
                             <div style="font-size:12px;font-weight:600;color:rgba(255,255,255,.8)">Direkt genehmigen</div>
-                            <div style="font-size:10px;color:rgba(255,255,255,.3);margin-top:1px">Ohne manuelle Freigabe veröffentlichen</div>
+                            <div style="font-size:10px;color:rgba(255,255,255,.3);margin-top:1px">Sofort sichtbar im Shop</div>
                         </div>
                     </label>
+
+                    <div id="frv-fake-count-info" style="font-size:11px;color:rgba(248,113,113,.7);background:rgba(248,113,113,.06);border:1px solid rgba(248,113,113,.15);border-radius:8px;padding:8px 12px;display:none"></div>
                 </div>
             </div>
 
-            <!-- Status / Progress -->
-            <div id="frv-status" style="display:none;background:#13131f;border:1px solid rgba(103,232,249,.15);border-radius:14px;padding:14px 18px;margin-bottom:16px;font-size:12px;color:#67e8f9;align-items:center;gap:10px">
-                <i class="fa-solid fa-spinner fa-spin"></i> <span id="frv-status-text">Generiere...</span>
+            <!-- Status bar -->
+            <div id="frv-status" style="display:none;background:#13131f;border:1px solid rgba(103,232,249,.2);border-radius:12px;padding:12px 18px;margin-bottom:16px;font-size:12px;color:#67e8f9;align-items:center;gap:10px">
+                <i class="fa-solid fa-spinner fa-spin"></i>
+                <span id="frv-status-text">Bitte warten…</span>
+                <div id="frv-progress-bar" style="flex:1;height:4px;background:rgba(255,255,255,.08);border-radius:99px;overflow:hidden;margin-left:8px">
+                    <div id="frv-progress-fill" style="height:100%;background:#67e8f9;border-radius:99px;width:0%;transition:width .3s"></div>
+                </div>
             </div>
 
-            <!-- Preview Grid -->
+            <!-- Preview list -->
             <div style="background:#13131f;border:1px solid rgba(255,255,255,.07);border-radius:18px;overflow:hidden">
                 <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid rgba(255,255,255,.06)">
                     <div style="font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.4)">
                         Vorschau <span id="frv-preview-count" style="color:#a78bfa;font-family:'JetBrains Mono',monospace"></span>
                     </div>
                     <div style="display:flex;gap:8px">
-                        <button onclick="frvSelectAll()" style="font-size:11px;padding:5px 12px;border-radius:8px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.5);cursor:pointer;transition:all .15s" onmouseover="this.style.background='rgba(255,255,255,.1)'" onmouseout="this.style.background='rgba(255,255,255,.05)'">Alle auswählen</button>
-                        <button onclick="frvDeselectAll()" style="font-size:11px;padding:5px 12px;border-radius:8px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.5);cursor:pointer;transition:all .15s" onmouseover="this.style.background='rgba(255,255,255,.1)'" onmouseout="this.style.background='rgba(255,255,255,.05)'">Alle abwählen</button>
-                        <button onclick="frvDeleteSelected()" style="font-size:11px;padding:5px 12px;border-radius:8px;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);color:#f87171;cursor:pointer;transition:all .15s">Ausgewählte löschen</button>
+                        <button id="frv-btn-selall"  style="font-size:11px;padding:5px 12px;border-radius:8px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.5);cursor:pointer">Alle auswählen</button>
+                        <button id="frv-btn-desel"   style="font-size:11px;padding:5px 12px;border-radius:8px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.5);cursor:pointer">Alle abwählen</button>
+                        <button id="frv-btn-delsel"  style="font-size:11px;padding:5px 12px;border-radius:8px;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);color:#f87171;cursor:pointer">Ausgewählte löschen</button>
                     </div>
                 </div>
                 <div id="frv-preview-grid" style="padding:16px 20px;display:flex;flex-direction:column;gap:10px;min-height:100px">
                     <div style="text-align:center;padding:40px 20px;color:rgba(255,255,255,.2);font-size:13px">
                         <i class="fa-solid fa-wand-magic-sparkles" style="font-size:28px;display:block;margin-bottom:10px;opacity:.3"></i>
-                        Produkt wählen & auf „Generieren" klicken
+                        Einstellungen wählen und auf „Generieren" klicken
                     </div>
                 </div>
             </div>
+
+        </div>
         </div>
 
 
@@ -11436,6 +11417,7 @@ const SA_PERMISSIONS = [
     { key:'clicks',      label:'Klick-Analyse',   icon:'fa-computer-mouse',  tab:15 },
     { key:'bundles',     label:'Bundles',          icon:'fa-layer-group',     tab:16 },
     { key:'adminlogs',   label:'Admin Logs',       icon:'fa-list-check',      tab:17 },
+    { key:'reviewgen',   label:'Review Generator', icon:'fa-wand-magic-sparkles', tab:18 },
 ];
 
 let saUnlocked = false;
@@ -15776,541 +15758,278 @@ async function executeCatCostUpdate() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  FAKE REVIEW GENERATOR (Tab 18)
+//  FAKE REVIEW GENERATOR (Tab 18) — clean IIFE, event-listener only
 // ═══════════════════════════════════════════════════════════════
+(function() {
+    var _mode = 'all', _products = [], _previews = [], _inited = false;
 
-let _frvPreviews = []; // { id, productId, productName, username, rating, text, date, selected }
+    var NAMES_DE   = ['Leon K.','Mia S.','Noah W.','Emma T.','Luca M.','Hannah B.','Felix R.','Sophie L.','Tim G.','Laura H.','Jonas P.','Anna F.','Max D.','Julia N.','Markus E.','Nina W.','Stefan R.','Michael T.'];
+    var NAMES_INT  = ['Alex C.','Sam R.','Jordan M.','Taylor B.','Morgan K.','Casey W.','Mateusz K.','Ahmed S.','Ivan P.','Marco B.','Giulia M.'];
+    var NAMES_ANON = ['Max M.','Lisa K.','Jan S.','Sara B.','Tom W.','Eva H.','Kai R.','Lea T.','Ben F.','Nina G.'];
 
-// ── Namen-Pools ───────────────────────────────────────────────
-const FRV_NAMES_DE = ['Leon K.','Mia S.','Noah W.','Emma T.','Luca M.','Hannah B.','Felix R.','Sophie L.','Tim G.','Laura H.',
-    'Jonas P.','Anna F.','Max D.','Julia N.','David Sch.','Lisa V.','Paul H.','Sarah K.','Markus E.','Nina W.',
-    'Tobias B.','Katja M.','Stefan R.','Vanessa H.','Michael T.','Sandra G.','Christian K.','Jennifer L.','Andreas F.','Melissa S.'];
-const FRV_NAMES_INT = ['Alex C.','Sam R.','Jordan M.','Taylor B.','Morgan K.','Casey W.','Riley H.','Quinn T.',
-    'Mateusz K.','Jakub N.','Pawel W.','Tomasz B.','Ahmed S.','Omar K.','Ivan P.','Marco B.','Luca R.','Giulia M.'];
-const FRV_NAMES_ANON = ['Max M.','Lisa K.','Jan S.','Sara B.','Tom W.','Eva H.','Kai R.','Lea T.','Ben F.','Nina G.',
-    'Chris L.','Tina M.','Alex P.','Jana D.','Mark E.','Pia V.','Paul N.','Anna K.','Lars B.','Marie S.'];
+    function pickName(s) {
+        var p = s === 'de' ? NAMES_DE : s === 'anonym' ? NAMES_ANON : NAMES_DE.concat(NAMES_INT);
+        return p[Math.floor(Math.random() * p.length)];
+    }
+    function pickStars(a) { return a.length ? parseInt(a[Math.floor(Math.random() * a.length)]) : 5; }
+    function randDate(d) { return new Date(Date.now() - Math.floor(Math.random() * d * 86400000)); }
 
-// ── Review-Text-Templates ─────────────────────────────────────
-const FRV_TEXTS = {
-    de: {
-        5: {
-            begeistert: [
-                'Absolut der Hammer! {name} übertrifft alle Erwartungen – Geschmack, Qualität, alles top! Kommt definitiv wieder!',
-                'Mega zufrieden! {name} ist einfach unschlagbar. Schnelle Lieferung, top Verpackung, der Geschmack ist 🔥',
-                'WOW! {name} hat mich wirklich begeistert. Der Geschmack ist so intensiv und hält lange. 10/10!',
-                'Ich bin absolut verliebt in {name}! Das Preis-Leistungs-Verhältnis ist unglaublich. Bestelle schon zum 5. Mal!',
-                'Unglaublich gut! {name} ist mein neues Lieblingsprodukt. Lieferung super schnell, Qualität top – weiter so! ❤️',
-            ],
-            kurz: [
-                'Top Produkt, schnelle Lieferung. {name} empfehle ich jedem!',
-                '{name} – einfach perfekt. Nichts zu meckern.',
-                'Klasse! {name} hält was es verspricht. Gerne wieder.',
-                'Sehr zufrieden! Kommt definitiv wieder. 👍',
-                'Perfekt! Genau wie beschrieben. Super Service!',
-            ],
-            detailliert: [
-                'Habe {name} jetzt seit über einer Woche und bin rundum begeistert. Die Verarbeitung ist hochwertig, der Geschmack bleibt konstant gut bis zum Ende. Die Lieferung kam in 2 Tagen – sehr beeindruckend. Kann ich uneingeschränkt weiterempfehlen.',
-                '{name} ist seit Monaten mein fester Begleiter. Im Vergleich zu anderen Anbietern ist die Qualität hier deutlich besser. Der Kundenservice war auch sehr freundlich als ich mal eine Frage hatte. Klare 5 Sterne!',
-                'War anfangs skeptisch aber {name} hat mich vollständig überzeugt. Der Geschmack ist authentisch und nicht künstlich. Verpackung war sehr sicher. Werde definitiv wieder bestellen und auch meinen Freunden empfehlen.',
-            ],
-            casual: [
-                'Also ich muss sagen {name} ist echt krass gut lol. Hab schon einiges ausprobiert aber das ist mit Abstand das beste. kommt auch mega schnell an 🚀',
-                'ja ok ich bin jetzt süchtig nach {name} hahaha. Quality ist so gut alter, kann nicht mehr aufhören zu bestellen 😂',
-                '{name} ist halt einfach goated. bestelle immer wieder hier, preise sind ok und lieferung ist immer pünktlich. 5/5',
-            ],
-        },
-        4: {
-            begeistert: [
-                '{name} ist wirklich gut! Kleiner Abzug weil die Lieferung einen Tag länger gedauert hat, aber die Qualität ist super.',
-                'Fast perfekt! {name} überzeugt auf ganzer Linie. Einen Stern Abzug für die Verpackung, aber Produkt selbst ist top.',
-                'Sehr gutes Produkt! {name} macht Spaß. Komme gerne wieder. Nur ein kleines Detail könnte besser sein.',
-            ],
-            kurz: [
-                'Gut! {name} empfehlenswert. Kleiner Abzug aber insgesamt super.',
-                '{name} – sehr solide. Gerne wieder!',
-                'Fast 5 Sterne! {name} ist klasse.',
-            ],
-            detailliert: [
-                '{name} hat mich größtenteils überzeugt. Qualität ist sehr gut, Lieferung war pünktlich. Einen Stern Abzug weil der Geschmack am Anfang etwas intensiver hätte sein können, aber das ist Geschmackssache. Insgesamt sehr zu empfehlen.',
-                'Gutes Produkt mit kleinen Abzügen. {name} funktioniert einwandfrei, die Verarbeitung ist solide. Für den Preis wirklich sehr gut. Würde gerne 4,5 Sterne geben.',
-            ],
-            casual: [
-                'ja {name} ist cool! nicht ganz 5 Sterne aber nah dran. würde nochmal kaufen',
-                '{name} macht das was es soll. bin zufrieden. vielleicht beim nächsten mal noch besser aber insgesamt ok 👌',
-            ],
-        },
-        3: {
-            begeistert: [
-                '{name} ist ok. Erwartungen wurden zum Teil erfüllt. Mittelfeld.',
-            ],
-            kurz: [
-                'Geht so. {name} ist ok aber nichts besonderes.',
-                'Mittelmäßig. {name} hätte besser sein können.',
-            ],
-            detailliert: [
-                '{name} ist ein durchschnittliches Produkt. Die Qualität ist okay, aber für den Preis hätte ich mehr erwartet. Lieferung war pünktlich, das ist positiv. Insgesamt ein solides Mittelfeldprodukt.',
-            ],
-            casual: [
-                'naja {name} geht schon aber hab schon besseres gesehen. mal schauen ob ich wieder bestelle',
-            ],
-        },
-    },
-    en: {
-        5: {
-            begeistert: [
-                'Absolutely love {name}! Quality is top-notch, delivery was super fast. Will definitely order again! 🔥',
-                'Amazing product! {name} exceeded all my expectations. The taste is incredible and lasts long. 10/10!',
-                'Best purchase ever! {name} is worth every penny. Fast shipping, great packaging. Highly recommend! ❤️',
-            ],
-            kurz: [
-                'Great product! {name} delivers exactly what it promises.',
-                '{name} – simply perfect. No complaints at all.',
-                'Excellent! {name} is my new favorite. Will order again.',
-            ],
-            detailliert: [
-                'I've been using {name} for a few weeks now and I'm completely satisfied. The quality is consistent, delivery was prompt and well-packaged. Compared to other options I've tried, this is by far the best. Highly recommend!',
-                '{name} has become a staple for me. The value for money is unbeatable and the service is always reliable. Fast shipping and great customer support when I had questions. 5 stars without hesitation.',
-            ],
-            casual: [
-                '{name} is just awesome lol. didn't expect it to be this good but here we are. fast delivery too 🚀',
-                'ok so {name} is literally addictive haha. quality is insane, can't stop ordering 😂',
-            ],
-        },
-        4: {
-            begeistert: [
-                'Really good product! {name} almost perfect. Small deduction for packaging but quality itself is great.',
-                '{name} is very good! Delivery took a day longer but the product quality makes up for it.',
-            ],
-            kurz: [
-                'Good! {name} recommended. Small minus but overall great.',
-                '{name} – very solid. Would order again!',
-            ],
-            detailliert: [
-                'Mostly very happy with {name}. Quality is solid, delivery was on time. Taking off one star because the intensity could be slightly higher at the start, but that's personal preference. Overall highly recommended.',
-            ],
-            casual: [
-                'yeah {name} is pretty good! not quite 5 stars but close. would buy again',
-            ],
-        },
-        3: {
-            detailliert: [
-                '{name} is an average product. Quality is okay for the price but I expected a bit more. Delivery was fine though.',
-            ],
-            kurz: [
-                'Average. {name} is okay but nothing special.',
-            ],
-        },
-    },
-};
+    var FB = {
+        5:['Super Qualität! Schnelle Lieferung. Gerne wieder 🔥','Mega zufrieden! Beste Qualität. Klare Empfehlung!','Absolut top! {n} übertrifft alle Erwartungen. ★★★★★','Wieder bestellt und wieder begeistert. {n} ist einfach perfekt!','Unglaublich gut! {n} macht einfach Spaß 🚀'],
+        4:['Sehr gut! {n} – kleiner Abzug aber insgesamt top.','Fast 5 Sterne! {n} überzeugt. Lieferung war schnell.','Bin zufrieden! {n} ist gut, kommt gerne wieder.'],
+        3:['Solides Produkt. {n} ist ok für den Preis.','Geht so. Hatte mehr erwartet.'],
+        2:['Leider enttäuscht. Hatte mehr von {n} erwartet.'],
+        1:['Nicht mein Fall. {n} hat mich nicht überzeugt.']
+    };
+    function localTxt(name, r) {
+        var p = FB[r] || FB[5];
+        return p[Math.floor(Math.random() * p.length)].replace(/{n}/g, name);
+    }
 
-function frvPickText(productName, rating, tone, lang) {
-    const langPool = FRV_TEXTS[lang] || FRV_TEXTS.de;
-    const ratingPool = langPool[rating] || langPool[5];
-    let toneKey = tone === 'gemischt'
-        ? ['begeistert','kurz','detailliert','casual'][Math.floor(Math.random() * 4)]
-        : tone;
-    const pool = ratingPool[toneKey] || ratingPool['kurz'] || ratingPool[Object.keys(ratingPool)[0]] || ['Super Produkt!'];
-    const template = pool[Math.floor(Math.random() * pool.length)];
-    return template.replace(/{name}/g, productName);
-}
+    function g(id) { return document.getElementById(id); }
 
-function frvPickName(style) {
-    if (style === 'de')     return FRV_NAMES_DE[Math.floor(Math.random() * FRV_NAMES_DE.length)];
-    if (style === 'anonym') return FRV_NAMES_ANON[Math.floor(Math.random() * FRV_NAMES_ANON.length)];
-    const pool = [...FRV_NAMES_DE, ...FRV_NAMES_INT];
-    return pool[Math.floor(Math.random() * pool.length)];
-}
+    function setStatus(msg, pct) {
+        var el = g('frv-status');
+        if (el) el.style.display = 'flex';
+        var tx = g('frv-status-text');
+        if (tx) tx.textContent = msg;
+        var bar = g('frv-progress-fill');
+        if (bar && pct !== undefined) bar.style.width = pct + '%';
+    }
+    function hideStatus() {
+        var el = g('frv-status'); if (el) el.style.display = 'none';
+        var bar = g('frv-progress-fill'); if (bar) bar.style.width = '0%';
+    }
 
-function frvPickStars(allowed) {
-    if (!allowed.length) return 5;
-    return parseInt(allowed[Math.floor(Math.random() * allowed.length)]);
-}
-
-function frvRandomDate(spreadDays) {
-    const ms = Math.floor(Math.random() * spreadDays * 86400000);
-    return new Date(Date.now() - ms);
-}
-
-// ── Modus-Umschalter ──────────────────────────────────────────
-let _frvMode = 'all';
-let _frvAllProducts = [];
-
-function frvSetMode(mode) {
-    _frvMode = mode;
-    const btnAll = document.getElementById('frv-mode-all');
-    const btnOne = document.getElementById('frv-mode-one');
-    const sel    = document.getElementById('frv-product-select');
-    const info   = document.getElementById('frv-product-info');
-    const infoTx = document.getElementById('frv-product-info-text');
-
-    if (!btnAll || !btnOne) return;
-
-    // Styles direkt setzen, kein cssText-Regex
-    btnAll.style.background = mode === 'all' ? 'rgba(167,139,250,.2)'  : 'rgba(255,255,255,.04)';
-    btnAll.style.border     = mode === 'all' ? '1px solid rgba(167,139,250,.5)' : '1px solid rgba(255,255,255,.1)';
-    btnAll.style.color      = mode === 'all' ? '#a78bfa' : 'rgba(255,255,255,.45)';
-
-    btnOne.style.background = mode === 'one' ? 'rgba(167,139,250,.2)'  : 'rgba(255,255,255,.04)';
-    btnOne.style.border     = mode === 'one' ? '1px solid rgba(167,139,250,.5)' : '1px solid rgba(255,255,255,.1)';
-    btnOne.style.color      = mode === 'one' ? '#a78bfa' : 'rgba(255,255,255,.45)';
-
-    if (sel)  sel.style.display  = mode === 'one' ? '' : 'none';
-
-    if (info && infoTx) {
-        if (mode === 'all' && _frvAllProducts.length) {
-            const count = parseInt(document.getElementById('frv-count')?.value) || 3;
-            infoTx.textContent = `${_frvAllProducts.length} Produkte × ${count} = ${_frvAllProducts.length * count} Reviews total`;
-            info.style.display = 'block';
-        } else {
-            info.style.display = 'none';
+    function setMode(mode) {
+        _mode = mode;
+        ['frv-mode-all','frv-mode-one'].forEach(function(id) {
+            var b = g(id); if (!b) return;
+            var active = (id === 'frv-mode-all' && mode === 'all') || (id === 'frv-mode-one' && mode === 'one');
+            b.style.background = active ? 'rgba(167,139,250,.22)' : 'rgba(255,255,255,.04)';
+            b.style.border     = active ? '1px solid rgba(167,139,250,.55)' : '1px solid rgba(255,255,255,.1)';
+            b.style.color      = active ? '#a78bfa' : 'rgba(255,255,255,.4)';
+        });
+        var sel  = g('frv-product-select');
+        var info = g('frv-info-banner');
+        if (sel) sel.style.display = mode === 'one' ? '' : 'none';
+        if (info) {
+            if (mode === 'all' && _products.length) {
+                var cnt = parseInt((g('frv-count') || {}).value) || 3;
+                info.innerHTML = '<i class="fa-solid fa-circle-info"></i> ' + _products.length + ' Produkte × ' + cnt + ' = <b>' + (_products.length * cnt) + '</b> Reviews';
+                info.style.display = 'block';
+            } else { info.style.display = 'none'; }
         }
     }
-}
 
-// ── Init ───────────────────────────────────────────────────────
-async function frvInit() {
-    const sel = document.getElementById('frv-product-select');
-    if (!sel) return;
-
-    try {
-        const snap = await db.collection('products').orderBy('name').get();
-        _frvAllProducts = snap.docs.map(doc => ({
-            id:       doc.id,
-            name:     doc.data().name || '(kein Name)',
-            category: doc.data().category || ''
-        }));
-
-        // Dropdown für Einzelmodus füllen
-        if (sel.options.length <= 1) {
-            _frvAllProducts.forEach(p => {
-                const opt = document.createElement('option');
-                opt.value       = p.id;
-                opt.textContent = p.name + (p.category ? ' — ' + p.category.replace('WaveVapes ', '') : '');
-                sel.appendChild(opt);
-            });
-        }
-
-        frvSetMode(_frvMode);
-    } catch(e) {
-        console.error('frvInit error:', e);
-        showToast('❌ Produkte konnten nicht geladen werden: ' + e.message, 'error');
-    }
-}
-
-// ── Generieren ─────────────────────────────────────────────────
-async function frvGenerateBatch() {
-    const lang        = document.getElementById('frv-lang')?.value        || 'de';
-    const tone        = document.getElementById('frv-tone')?.value        || 'gemischt';
-    const nameStyle   = document.getElementById('frv-name-style')?.value  || 'mixed';
-    const spreadDays  = parseInt(document.getElementById('frv-date-spread')?.value) || 90;
-    const countPer    = Math.min(20, Math.max(1, parseInt(document.getElementById('frv-count')?.value) || 3));
-    const allowedStars = Array.from(document.querySelectorAll('#frv-star-dist input:checked')).map(el => el.value);
-
-    if (!allowedStars.length) { showToast('⚠️ Mindestens eine Sternzahl auswählen', 'error'); return; }
-
-    // Ziel-Produkte
-    let targets = [];
-    if (_frvMode === 'all') {
-        if (!_frvAllProducts.length) {
-            showToast('⚠️ Produkte werden noch geladen — bitte kurz warten', 'error');
+    function renderPreviews() {
+        var grid = g('frv-preview-grid');
+        var cnt  = g('frv-preview-count');
+        if (!grid) return;
+        if (cnt) cnt.textContent = _previews.length ? '(' + _previews.length + ')' : '';
+        if (!_previews.length) {
+            grid.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,.2);font-size:13px"><i class="fa-solid fa-wand-magic-sparkles" style="font-size:28px;display:block;margin-bottom:10px;opacity:.3"></i>Noch keine Reviews generiert</div>';
             return;
         }
-        targets = _frvAllProducts;
-    } else {
-        const sel  = document.getElementById('frv-product-select');
-        const pid  = sel?.value;
-        const name = sel?.selectedOptions[0]?.text?.split(' — ')[0]?.trim() || '';
-        if (!pid) { showToast('⚠️ Bitte ein Produkt wählen', 'error'); return; }
-        targets = [{ id: pid, name }];
+        grid.innerHTML = _previews.map(function(rv, i) {
+            var stars = [1,2,3,4,5].map(function(n){ return '<span style="color:' + (n<=rv.rating?'#fbbf24':'rgba(255,255,255,.15)') + ';font-size:13px">★</span>'; }).join('');
+            var d = rv.date.toLocaleDateString('de-DE', {day:'2-digit',month:'short',year:'numeric'});
+            return '<div data-frv-idx="'+i+'" style="display:flex;align-items:flex-start;gap:12px;padding:13px 16px;border-radius:13px;background:'+(rv.selected?'rgba(167,139,250,.06)':'rgba(255,255,255,.02)')+';border:1px solid '+(rv.selected?'rgba(167,139,250,.2)':'rgba(255,255,255,.06)')+'"><input type="checkbox" data-frv-check="'+i+'" '+(rv.selected?'checked':'')+' style="accent-color:#a78bfa;width:16px;height:16px;flex-shrink:0;margin-top:3px;cursor:pointer"><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:10px;margin-bottom:5px;flex-wrap:wrap"><span style="font-size:13px;font-weight:600;color:rgba(255,255,255,.85)">'+rv.username+'</span><div>'+stars+'</div><span style="font-size:10px;color:rgba(255,255,255,.3);margin-left:auto">'+d+'</span></div><div style="font-size:12px;color:rgba(255,255,255,.55);line-height:1.55;margin-bottom:6px">'+rv.text+'</div><div style="font-size:10px;color:rgba(167,139,250,.5)">📦 '+rv.productName+'</div></div><div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0"><button data-frv-edit="'+i+'" style="width:30px;height:30px;border-radius:8px;background:rgba(103,232,249,.08);border:1px solid rgba(103,232,249,.15);color:#67e8f9;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center" title="Bearbeiten"><i class="fa-solid fa-pen"></i></button><button data-frv-rm="'+i+'" style="width:30px;height:30px;border-radius:8px;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.15);color:#f87171;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center" title="Löschen"><i class="fa-solid fa-trash"></i></button></div></div>';
+        }).join('');
     }
 
-    const btn        = document.getElementById('frv-generate-btn');
-    const statusEl   = document.getElementById('frv-status');
-    const statusText = document.getElementById('frv-status-text');
-
-    const setStatus = (msg) => {
-        if (statusEl)   { statusEl.style.display = 'flex'; }
-        if (statusText) { statusText.textContent = msg; }
-    };
-    const hideStatus = () => { if (statusEl) statusEl.style.display = 'none'; };
-
-    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generiere...'; }
-    setStatus(`Generiere Reviews für ${targets.length} Produkt${targets.length > 1 ? 'e' : ''}…`);
-
-    const generated  = [];
-    const usedNames  = new Set();
-
-    const callAI = async (productName, count) => {
-        try {
-            const prompt = `Generiere ${count} realistische, unterschiedliche Kundenbewertungen auf Deutsch für ein Vape-Produkt namens "${productName}" auf wavevapes.de.
-Stil: ${tone === 'gemischt' ? 'abwechslungsreich' : tone}
-Erlaubte Sternzahlen: ${allowedStars.join(', ')}
-Regeln: unterschiedliche Längen, manchmal Emojis, manchmal kleine Kritik, niemals generisch.
-Antworte NUR mit JSON-Array ohne Markdown: [{"rating":5,"text":"..."},...]`;
-
-            const resp = await fetch('https://api.anthropic.com/v1/messages', {
-                method:  'POST',
-                headers: {
-                    'Content-Type':  'application/json',
-                    'anthropic-dangerous-direct-browser-access': 'true'
-                },
-                body: JSON.stringify({
-                    model:      'claude-sonnet-4-20250514',
-                    max_tokens: 1500,
-                    messages:   [{ role: 'user', content: prompt }]
-                })
-            });
-            if (!resp.ok) throw new Error('HTTP ' + resp.status);
-            const data = await resp.json();
-            const raw  = data.content?.[0]?.text || '[]';
-            const cleaned = raw.replace(/```json|```/g, '').trim();
-            // Extrahiere JSON-Array auch wenn Präambel vorhanden
-            const match = cleaned.match(/\[[\s\S]*\]/);
-            return match ? JSON.parse(match[0]) : [];
-        } catch(e) {
-            console.warn('AI call failed for', productName, e.message);
-            return [];
-        }
-    };
-
-    // Sequenziell pro Produkt (vermeidet Rate-Limit-Probleme bei vielen Produkten)
-    for (let i = 0; i < targets.length; i++) {
-        const product = targets[i];
-        setStatus(`Produkt ${i + 1} von ${targets.length}: ${product.name}…`);
-
-        const aiReviews = await callAI(product.name, countPer);
-
-        for (let j = 0; j < countPer; j++) {
-            let name; let tries = 0;
-            do { name = frvPickName(nameStyle); tries++; } while (usedNames.has(name) && tries < 50);
-            usedNames.add(name);
-
-            const entry  = aiReviews[j];
-            const rating = (entry?.rating && allowedStars.includes(String(entry.rating)))
-                ? Number(entry.rating) : frvPickStars(allowedStars);
-            const text   = (entry?.text && entry.text.trim().length > 5)
-                ? entry.text.trim() : frvPickText(product.name, rating, tone, lang);
-
-            generated.push({
-                id:          'frv_' + Date.now() + '_' + Math.random().toString(36).slice(2),
-                productId:   product.id,
-                productName: product.name,
-                username:    name,
-                rating,
-                text,
-                date:        frvRandomDate(spreadDays),
-                selected:    true
-            });
-        }
-    }
-
-    _frvPreviews = [...generated, ..._frvPreviews];
-    hideStatus();
-    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Generieren'; }
-    frvRenderPreviews();
-    showToast(`✅ ${generated.length} Reviews für ${targets.length} Produkt${targets.length > 1 ? 'e' : ''} generiert`, 'success');
-}
-
-// ── Veröffentlichen ────────────────────────────────────────────
-async function frvPublishAll() {
-    const toPublish = _frvPreviews.filter(r => r.selected);
-    if (!toPublish.length) { showToast('⚠️ Keine Bewertungen ausgewählt', 'error'); return; }
-
-    const autoApprove = document.getElementById('frv-auto-approve')?.checked !== false;
-    const btn         = document.getElementById('frv-publish-btn');
-    const statusEl    = document.getElementById('frv-status');
-    const statusText  = document.getElementById('frv-status-text');
-
-    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Veröffentliche...'; }
-    if (statusEl)   statusEl.style.display  = 'flex';
-    if (statusText) statusText.textContent  = `0 / ${toPublish.length} gespeichert…`;
-
-    try {
-        // Firestore erlaubt max. 500 Writes pro Batch
-        const CHUNK = 400;
-        let saved = 0;
-        for (let i = 0; i < toPublish.length; i += CHUNK) {
-            const batch = db.batch();
-            toPublish.slice(i, i + CHUNK).forEach(rv => {
-                const ref = db.collection('reviews').doc();
-                batch.set(ref, {
-                    productId:   rv.productId,
-                    username:    rv.username,
-                    rating:      rv.rating,
-                    text:        rv.text,
-                    approved:    autoApprove,
-                    rejected:    false,
-                    fake:        true,
-                    createdAt:   firebase.firestore.Timestamp.fromDate(rv.date),
-                    generatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    generatedBy: auth.currentUser?.email || 'admin'
-                });
-            });
-            await batch.commit();
-            saved += Math.min(CHUNK, toPublish.length - i);
-            if (statusText) statusText.textContent = `${saved} / ${toPublish.length} gespeichert…`;
-        }
-
-        await logAction('fake_reviews_published', null, {
-            count: saved,
-            autoApprove
+    async function callAI(name, count, tone, lang, stars) {
+        var prompt = 'Generiere ' + count + ' realistische Kundenbewertungen auf ' + (lang==='de'?'Deutsch':'Englisch') + ' für "' + name + '" (Vape-Produkt, wavevapes.de).\nStil: ' + (tone==='gemischt'?'abwechslungsreich':tone) + '. Erlaubte Sterne: ' + stars.join(',') + '.\nMenschlich, gelegentlich Emojis, manchmal kleine Kritik, unterschiedliche Längen.\nNUR JSON-Array: [{"rating":5,"text":"..."},...]';
+        var resp = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'anthropic-dangerous-direct-browser-access': 'true' },
+            body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1500, messages: [{ role: 'user', content: prompt }] })
         });
-
-        _frvPreviews = _frvPreviews.filter(r => !r.selected);
-        frvRenderPreviews();
-        showToast(`✅ ${saved} Bewertungen veröffentlicht!`, 'success');
-    } catch(e) {
-        console.error('frvPublishAll error:', e);
-        showToast('❌ Fehler: ' + e.message, 'error');
-    } finally {
-        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-upload"></i> Alle veröffentlichen'; }
-        if (statusEl) statusEl.style.display = 'none';
-    }
-}
-function frvRenderPreviews() {
-    const grid = document.getElementById('frv-preview-grid');
-    const countEl = document.getElementById('frv-preview-count');
-    if (!grid) return;
-
-    if (countEl) countEl.textContent = _frvPreviews.length ? `(${_frvPreviews.length})` : '';
-
-    if (!_frvPreviews.length) {
-        grid.innerHTML = `<div style="text-align:center;padding:40px 20px;color:rgba(255,255,255,.2);font-size:13px">
-            <i class="fa-solid fa-wand-magic-sparkles" style="font-size:28px;display:block;margin-bottom:10px;opacity:.3"></i>
-            Noch keine Bewertungen generiert
-        </div>`;
-        return;
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        var data = await resp.json();
+        var raw = ((data.content || [])[0] || {}).text || '';
+        var m = raw.replace(/```json|```/g, '').trim().match(/\[[\s\S]*\]/);
+        if (!m) throw new Error('no array');
+        return JSON.parse(m[0]);
     }
 
-    grid.innerHTML = _frvPreviews.map((rv, idx) => {
-        const stars = [1,2,3,4,5].map(n =>
-            `<span style="color:${n<=rv.rating?'#fbbf24':'rgba(255,255,255,.18)'};font-size:14px">★</span>`
-        ).join('');
-        const dateStr = rv.date.toLocaleDateString('de-DE', { day:'2-digit', month:'short', year:'numeric' });
+    async function generate() {
+        var lang = (g('frv-lang')||{}).value || 'de';
+        var tone = (g('frv-tone')||{}).value || 'gemischt';
+        var ns   = (g('frv-name-style')||{}).value || 'mixed';
+        var days = parseInt((g('frv-date-spread')||{}).value) || 90;
+        var cnt  = Math.min(20, Math.max(1, parseInt((g('frv-count')||{}).value) || 3));
+        var stars = Array.from(document.querySelectorAll('#frv-star-dist input:checked')).map(function(e){return e.value;});
+        if (!stars.length) { showToast('⚠️ Mindestens eine Sternzahl wählen','error'); return; }
 
-        return `<div style="display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border-radius:14px;background:${rv.selected?'rgba(167,139,250,.06)':'rgba(255,255,255,.02)'};border:1px solid ${rv.selected?'rgba(167,139,250,.2)':'rgba(255,255,255,.06)'};transition:all .15s">
-            <input type="checkbox" ${rv.selected?'checked':''} onchange="frvToggleSelect(${idx},this.checked)"
-                style="accent-color:#a78bfa;width:16px;height:16px;flex-shrink:0;margin-top:3px;cursor:pointer">
-            <div style="flex:1;min-width:0">
-                <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap">
-                    <span style="font-size:13px;font-weight:600;color:rgba(255,255,255,.85)">${rv.username}</span>
-                    <div>${stars}</div>
-                    <span style="font-size:10px;color:rgba(255,255,255,.3);margin-left:auto">${dateStr}</span>
-                </div>
-                <div style="font-size:12px;color:rgba(255,255,255,.55);line-height:1.55;margin-bottom:8px">${rv.text}</div>
-                <div style="font-size:10px;color:rgba(167,139,250,.5)">📦 ${rv.productName}</div>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
-                <button onclick="frvEditReview(${idx})" title="Bearbeiten"
-                    style="width:30px;height:30px;border-radius:8px;background:rgba(103,232,249,.08);border:1px solid rgba(103,232,249,.15);color:#67e8f9;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s"
-                    onmouseover="this.style.background='rgba(103,232,249,.18)'" onmouseout="this.style.background='rgba(103,232,249,.08)'">
-                    <i class="fa-solid fa-pen"></i>
-                </button>
-                <button onclick="frvRemovePreview(${idx})" title="Löschen"
-                    style="width:30px;height:30px;border-radius:8px;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.15);color:#f87171;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s"
-                    onmouseover="this.style.background='rgba(248,113,113,.18)'" onmouseout="this.style.background='rgba(248,113,113,.08)'">
-                    <i class="fa-solid fa-trash"></i>
-                </button>
-            </div>
-        </div>`;
-    }).join('');
-}
+        var targets;
+        if (_mode === 'all') {
+            if (!_products.length) { showToast('⚠️ Produkte noch nicht geladen','error'); return; }
+            targets = _products;
+        } else {
+            var sel = g('frv-product-select');
+            if (!sel || !sel.value) { showToast('⚠️ Bitte ein Produkt wählen','error'); return; }
+            targets = [{ id: sel.value, name: sel.selectedOptions[0].text.split(' — ')[0].trim() }];
+        }
 
-function frvToggleSelect(idx, checked) {
-    if (_frvPreviews[idx]) _frvPreviews[idx].selected = checked;
-}
+        var btn = g('frv-btn-gen');
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generiere…'; }
 
-function frvRemovePreview(idx) {
-    _frvPreviews.splice(idx, 1);
-    frvRenderPreviews();
-}
+        var used = new Set(), generated = [];
+        for (var i = 0; i < targets.length; i++) {
+            var p = targets[i];
+            setStatus((i+1) + ' / ' + targets.length + ': ' + p.name, Math.round(i/targets.length*100));
+            var rows = [];
+            try { rows = await callAI(p.name, cnt, tone, lang, stars); } catch(e) { rows = []; }
+            for (var j = 0; j < cnt; j++) {
+                var name; var t = 0;
+                do { name = pickName(ns); t++; } while (used.has(name) && t < 50);
+                used.add(name);
+                var ai = rows[j];
+                var rating = (ai && ai.rating && stars.indexOf(String(ai.rating)) >= 0) ? Number(ai.rating) : pickStars(stars);
+                var text = (ai && ai.text && ai.text.trim().length > 4) ? ai.text.trim() : localTxt(p.name, rating);
+                generated.push({ id: 'frv_'+Date.now()+'_'+Math.random().toString(36).slice(2), productId: p.id, productName: p.name, username: name, rating: rating, text: text, date: randDate(days), selected: true });
+            }
+        }
+        _previews = generated.concat(_previews);
+        hideStatus();
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Generieren'; }
+        renderPreviews();
+        showToast('✅ ' + generated.length + ' Reviews für ' + targets.length + ' Produkt' + (targets.length>1?'e':'') + ' generiert', 'success');
+    }
 
-function frvSelectAll()   { _frvPreviews.forEach(r => r.selected = true);  frvRenderPreviews(); }
-function frvDeselectAll() { _frvPreviews.forEach(r => r.selected = false); frvRenderPreviews(); }
+    async function publish() {
+        var toSave = _previews.filter(function(r){ return r.selected; });
+        if (!toSave.length) { showToast('⚠️ Keine Reviews ausgewählt','error'); return; }
+        var autoApprove = g('frv-auto-approve') ? g('frv-auto-approve').checked : true;
+        var btn = g('frv-btn-pub');
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Speichere…'; }
+        setStatus('0 / ' + toSave.length + ' gespeichert…', 0);
+        try {
+            var CHUNK = 400;
+            for (var i = 0; i < toSave.length; i += CHUNK) {
+                var batch = db.batch();
+                toSave.slice(i, i+CHUNK).forEach(function(rv) {
+                    batch.set(db.collection('reviews').doc(), { productId: rv.productId, username: rv.username, rating: rv.rating, text: rv.text, approved: autoApprove, rejected: false, fake: true, createdAt: firebase.firestore.Timestamp.fromDate(rv.date), generatedAt: firebase.firestore.FieldValue.serverTimestamp(), generatedBy: (auth.currentUser||{}).email||'admin' });
+                });
+                await batch.commit();
+                var saved = Math.min(i+CHUNK, toSave.length);
+                setStatus(saved + ' / ' + toSave.length + ' gespeichert…', Math.round(saved/toSave.length*100));
+            }
+            await logAction('fake_reviews_published', null, { count: toSave.length, autoApprove: autoApprove });
+            _previews = _previews.filter(function(r){ return !r.selected; });
+            renderPreviews();
+            showToast('✅ ' + toSave.length + ' Reviews veröffentlicht!', 'success');
+        } catch(e) { showToast('❌ Fehler: ' + e.message, 'error'); }
+        finally { if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-upload"></i> Veröffentlichen'; } hideStatus(); }
+    }
 
-function frvDeleteSelected() {
-    _frvPreviews = _frvPreviews.filter(r => !r.selected);
-    frvRenderPreviews();
-    showToast('🗑️ Ausgewählte entfernt');
-}
+    async function deleteAllFake() {
+        try {
+            var snap = await db.collection('reviews').where('fake','==',true).get();
+            if (snap.empty) { showToast('Keine Fake-Reviews vorhanden','error'); return; }
+            if (!confirm(snap.size + ' Fake-Reviews endgültig löschen?')) return;
+            setStatus('Lösche ' + snap.size + ' Reviews…', 50);
+            var CHUNK = 400;
+            for (var i = 0; i < snap.docs.length; i += CHUNK) {
+                var batch = db.batch();
+                snap.docs.slice(i, i+CHUNK).forEach(function(d){ batch.delete(d.ref); });
+                await batch.commit();
+            }
+            await logAction('fake_reviews_deleted', null, { count: snap.size });
+            hideStatus();
+            showToast('🗑️ ' + snap.size + ' Fake-Reviews gelöscht', 'success');
+            var el = g('rv-stat-fake'); if (el) el.textContent = '0';
+        } catch(e) { hideStatus(); showToast('❌ ' + e.message, 'error'); }
+    }
 
-function frvEditReview(idx) {
-    const rv = _frvPreviews[idx];
-    if (!rv) return;
+    function editReview(idx) {
+        var rv = _previews[idx]; if (!rv) return;
+        var editRating = rv.rating;
+        var ov = document.createElement('div');
+        ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(8px);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px';
+        ov.innerHTML = '<div style="background:linear-gradient(160deg,#0f0f1a,#1a1a2e);border:1px solid rgba(167,139,250,.3);border-radius:22px;padding:28px;width:100%;max-width:500px"><div style="font-family:\'Orbitron\',sans-serif;font-size:15px;font-weight:700;color:#a78bfa;margin-bottom:20px"><i class="fa-solid fa-pen"></i> Bewertung bearbeiten</div><div style="margin-bottom:14px"><div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:8px">Sterne</div><div style="display:flex;gap:8px" id="_frv_stars">' + [1,2,3,4,5].map(function(n){ return '<span data-s="'+n+'" style="font-size:28px;cursor:pointer;color:'+(n<=rv.rating?'#fbbf24':'rgba(255,255,255,.2)')+'">★</span>'; }).join('') + '</div></div><div style="margin-bottom:12px"><div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:6px">Name</div><input id="_frv_name" value="'+rv.username+'" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 12px;color:#fff;font-size:13px;outline:none;box-sizing:border-box"></div><div style="margin-bottom:20px"><div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:6px">Text</div><textarea id="_frv_text" rows="4" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 12px;color:#fff;font-size:13px;resize:vertical;outline:none;font-family:inherit;box-sizing:border-box">'+rv.text+'</textarea></div><div style="display:flex;gap:10px"><button id="_frv_save" style="flex:1;padding:11px;border-radius:12px;background:linear-gradient(135deg,#a78bfa,#7c3aed);color:#fff;font-size:13px;font-weight:700;border:none;cursor:pointer">Speichern</button><button id="_frv_cancel" style="padding:11px 20px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.5);font-size:13px;cursor:pointer;border:1px solid rgba(255,255,255,.1)">Abbrechen</button></div></div>';
+        document.body.appendChild(ov);
+        ov.querySelectorAll('[data-s]').forEach(function(el) {
+            el.addEventListener('click', function() {
+                editRating = parseInt(el.dataset.s);
+                ov.querySelectorAll('[data-s]').forEach(function(s){ s.style.color = parseInt(s.dataset.s) <= editRating ? '#fbbf24' : 'rgba(255,255,255,.2)'; });
+            });
+        });
+        ov.querySelector('#_frv_save').addEventListener('click', function() {
+            var t = (ov.querySelector('#_frv_text')||{}).value||''; var n = (ov.querySelector('#_frv_name')||{}).value||'';
+            if (t.trim()) rv.text = t.trim(); if (n.trim()) rv.username = n.trim(); rv.rating = editRating;
+            ov.remove(); renderPreviews(); showToast('✅ Gespeichert');
+        });
+        ov.querySelector('#_frv_cancel').addEventListener('click', function(){ ov.remove(); });
+        ov.addEventListener('click', function(e){ if (e.target === ov) ov.remove(); });
+    }
 
-    // Inline-Edit-Overlay
-    const overlay = document.createElement('div');
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(8px);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px';
-    overlay.innerHTML = `
-        <div style="background:linear-gradient(160deg,#0f0f1a,#1a1a2e);border:1px solid rgba(167,139,250,.3);border-radius:22px;padding:28px;width:100%;max-width:500px;animation:modalPop .25s cubic-bezier(0.34,1.56,0.64,1)">
-            <div style="font-family:'Orbitron',sans-serif;font-size:15px;font-weight:700;color:#a78bfa;margin-bottom:20px;display:flex;align-items:center;gap:8px">
-                <i class="fa-solid fa-pen"></i> Bewertung bearbeiten
-            </div>
+    async function init() {
+        if (_inited) return;
+        try {
+            setStatus('Lade Produkte…', 10);
+            var snap = await db.collection('products').orderBy('name').get();
+            _products = snap.docs.map(function(d){ return { id: d.id, name: d.data().name||'?', category: d.data().category||'' }; });
+            var sel = g('frv-product-select');
+            if (sel && sel.options.length <= 1) {
+                _products.forEach(function(p) {
+                    var o = document.createElement('option');
+                    o.value = p.id; o.textContent = p.name + (p.category ? ' — ' + p.category.replace('WaveVapes ','') : '');
+                    sel.appendChild(o);
+                });
+            }
+            _inited = true;
+            hideStatus();
+            setMode(_mode);
+        } catch(e) { hideStatus(); showToast('❌ Laden fehlgeschlagen: ' + e.message, 'error'); }
+    }
 
-            <div style="margin-bottom:14px">
-                <div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:8px">Sterne</div>
-                <div style="display:flex;gap:8px" id="frv-edit-stars">
-                    ${[1,2,3,4,5].map(n => `
-                        <span data-star="${n}" onclick="frvEditSetStar(${n})"
-                            style="font-size:28px;cursor:pointer;color:${n<=rv.rating?'#fbbf24':'rgba(255,255,255,.2)'};transition:color .12s;line-height:1">★</span>
-                    `).join('')}
-                </div>
-            </div>
+    function wireUp() {
+        var btnGen   = g('frv-btn-gen');
+        var btnPub   = g('frv-btn-pub');
+        var btnDel   = g('frv-btn-del');
+        var btnMAll  = g('frv-mode-all');
+        var btnMOne  = g('frv-mode-one');
+        var btnSelA  = g('frv-btn-selall');
+        var btnDesel = g('frv-btn-desel');
+        var btnDels  = g('frv-btn-delsel');
+        var grid     = g('frv-preview-grid');
+        var cntInput = g('frv-count');
 
-            <div style="margin-bottom:14px">
-                <div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:6px">Benutzername</div>
-                <input id="frv-edit-name" value="${rv.username.replace(/"/g,'&quot;')}"
-                    style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 12px;color:#fff;font-size:13px;outline:none;box-sizing:border-box;transition:border-color .2s"
-                    onfocus="this.style.borderColor='rgba(167,139,250,.5)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">
-            </div>
+        if (btnGen)  btnGen.addEventListener('click',  generate);
+        if (btnPub)  btnPub.addEventListener('click',  publish);
+        if (btnDel)  btnDel.addEventListener('click',  deleteAllFake);
+        if (btnMAll) btnMAll.addEventListener('click', function(){ setMode('all'); });
+        if (btnMOne) btnMOne.addEventListener('click', function(){ setMode('one'); });
+        if (btnSelA) btnSelA.addEventListener('click',  function(){ _previews.forEach(function(r){ r.selected=true; }); renderPreviews(); });
+        if (btnDesel)btnDesel.addEventListener('click', function(){ _previews.forEach(function(r){ r.selected=false; }); renderPreviews(); });
+        if (btnDels) btnDels.addEventListener('click',  function(){ _previews=_previews.filter(function(r){return !r.selected;}); renderPreviews(); showToast('🗑️ Entfernt'); });
+        if (cntInput)cntInput.addEventListener('input', function(){ if (_mode==='all') setMode('all'); });
 
-            <div style="margin-bottom:20px">
-                <div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:6px">Bewertungstext</div>
-                <textarea id="frv-edit-text" rows="4"
-                    style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 12px;color:#fff;font-size:13px;resize:vertical;outline:none;font-family:inherit;box-sizing:border-box;transition:border-color .2s"
-                    onfocus="this.style.borderColor='rgba(167,139,250,.5)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">${rv.text}</textarea>
-            </div>
+        if (grid) {
+            grid.addEventListener('change', function(e) {
+                var idx = e.target.getAttribute('data-frv-check');
+                if (idx !== null && _previews[parseInt(idx)]) _previews[parseInt(idx)].selected = e.target.checked;
+            });
+            grid.addEventListener('click', function(e) {
+                var eb = e.target.closest('[data-frv-edit]');
+                var rb = e.target.closest('[data-frv-rm]');
+                if (eb) editReview(parseInt(eb.getAttribute('data-frv-edit')));
+                if (rb) { _previews.splice(parseInt(rb.getAttribute('data-frv-rm')), 1); renderPreviews(); }
+            });
+        }
+    }
 
-            <div style="display:flex;gap:10px">
-                <button onclick="frvEditSave(${idx})"
-                    style="flex:1;padding:11px;border-radius:12px;background:linear-gradient(135deg,#a78bfa,#7c3aed);color:#fff;font-size:13px;font-weight:700;border:none;cursor:pointer;transition:opacity .2s"
-                    onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
-                    <i class="fa-solid fa-check"></i> Speichern
-                </button>
-                <button onclick="this.closest('[style*=fixed]').remove()"
-                    style="padding:11px 20px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.5);font-size:13px;cursor:pointer;transition:all .15s"
-                    onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,.5)'">
-                    Abbrechen
-                </button>
-            </div>
-        </div>`;
+    var _wired = false;
+    window.frvInit = async function() {
+        if (!_wired) { wireUp(); _wired = true; }
+        await init();
+    };
 
-    window._frvEditStarValue = rv.rating;
-    document.body.appendChild(overlay);
-    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
-}
+    window.rvDeleteAllFake = async function() { await deleteAllFake(); };
 
-function frvEditSetStar(n) {
-    window._frvEditStarValue = n;
-    document.querySelectorAll('#frv-edit-stars [data-star]').forEach(el => {
-        el.style.color = parseInt(el.dataset.star) <= n ? '#fbbf24' : 'rgba(255,255,255,.2)';
-    });
-}
-
-function frvEditSave(idx) {
-    const rv = _frvPreviews[idx];
-    if (!rv) return;
-    const newText = document.getElementById('frv-edit-text')?.value.trim();
-    const newName = document.getElementById('frv-edit-name')?.value.trim();
-    const newRating = window._frvEditStarValue || rv.rating;
-    if (newText) rv.text = newText;
-    if (newName) rv.username = newName;
-    rv.rating = newRating;
-    document.querySelector('[style*="position:fixed"][style*="inset:0"]')?.remove();
-    frvRenderPreviews();
-    showToast('✅ Bewertung aktualisiert');
-}
-
+})();
 
 </script>
 </body>

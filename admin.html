@@ -2600,7 +2600,7 @@
                         </div>
                     </div>
                     <div id="ord-ai-email-result" style="display:none;margin-top:10px;padding:12px 14px;background:rgba(167,139,250,.07);border:1px solid rgba(167,139,250,.2);border-radius:12px;font-size:12px;color:rgba(255,255,255,.8);line-height:1.7;white-space:pre-wrap"></div>
-                    <div id="ord-ai-email-actions" style="display:none;margin-top:8px;display:none;gap:8px">
+                    <div id="ord-ai-email-actions" style="display:none;margin-top:8px;gap:8px">
                         <button onclick="aiEmailCopy()" style="padding:6px 14px;border-radius:8px;background:rgba(103,232,249,.12);border:1px solid rgba(103,232,249,.25);color:#67e8f9;font-size:11px;font-weight:700;cursor:pointer"><i class="fa-solid fa-copy" style="margin-right:5px"></i>Kopieren</button>
                         <button onclick="aiEmailIntoNotes()" style="padding:6px 14px;border-radius:8px;background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.25);color:#34d399;font-size:11px;font-weight:700;cursor:pointer"><i class="fa-solid fa-arrow-down" style="margin-right:5px"></i>In Notizen</button>
                     </div>
@@ -3190,6 +3190,11 @@
                         <div class="cfg-section-title">Bankverbindung</div>
                     </div>
                     <div class="cfg-section-body">
+                        <div class="cfg-field">
+                            <label class="cfg-label">Bank / Institut</label>
+                            <!-- BUG-11 FIX: bank_name-Feld war nicht vorhanden — Admin konnte Banknamen nie ändern -->
+                            <input id="set-bank-name" class="cfg-input" placeholder="z.B. NATIONAL-BANK AG">
+                        </div>
                         <div class="cfg-field">
                             <label class="cfg-label">Empfänger</label>
                             <input id="set-bank-owner" class="cfg-input" placeholder="Max Mustermann">
@@ -5109,6 +5114,9 @@ async function enforceCategories() {
         const batch = db.batch();
         docs.slice(i, i + 499).forEach(doc => {
             const p = doc.data();
+            // BUG-02 FIX: Tornado-Produkte ausdrücklich ausnehmen — der Confirm-Dialog
+            // versprach dies, aber der Code hatte keine solche Bedingung.
+            if (p.category === 'WaveVapes Tornado 30000') return;
             const targetCat = p.isNew === true ? "Neue Sorten" : "Normale Sorten";
             if (p.category !== targetCat) { batch.update(doc.ref, { category: targetCat }); changed++; }
         });
@@ -6884,7 +6892,9 @@ async function loadBannedIPs() {
 async function manualBanIp() {
     const ip = document.getElementById('manual-ban-ip')?.value.trim();
     const reason = document.getElementById('manual-ban-reason')?.value.trim() || 'Manuell gebannt via Admin';
-    const permanent = document.getElementById('manual-ban-perm')?.checked !== false;
+    // BUG-21 FIX: Vorher `checked !== false` → bei fehlendem Element war permanent immer true.
+    // Jetzt explizit: nur true wenn Element vorhanden UND checked.
+    const permanent = document.getElementById('manual-ban-perm')?.checked === true;
     if (!ip || !/^[\d\.\:a-fA-F]+$/.test(ip)) { showToast('❌ Bitte gültige IP eingeben', 'error'); return; }
     const existing = await db.collection('banned_ips').where('ip','==',ip).limit(1).get();
     if (!existing.empty) { showToast(`⚠️ IP ${ip} ist bereits gebannt`, 'error'); return; }
@@ -6960,6 +6970,9 @@ async function loadSettings() {
         document.getElementById("set-bank-owner").value = data.bank_owner||"";
         document.getElementById("set-iban").value = data.iban||"";
         document.getElementById("set-bic").value = data.bic||"";
+        // BUG-11 FIX: bank_name laden und ins neue Feld schreiben
+        const bankNameEl = document.getElementById("set-bank-name");
+        if (bankNameEl) bankNameEl.value = data.bank_name || "";
         document.getElementById("set-shipping").value = data.shipping_cost||4.99;
         document.getElementById("set-free-threshold").value = data.free_shipping_threshold||100;
         document.getElementById("set-email-template").value = data.email_template||"";
@@ -6971,14 +6984,28 @@ async function loadSettings() {
         window._adminNotifyEmail = data.admin_notify_email || "";
         cfgUpdateStatusPill();
         cfgUpdatePreviews();
-        document.getElementById('set-stock-critical')?.addEventListener('input', cfgUpdatePreviews);
-        document.getElementById('set-stock-warning')?.addEventListener('input',  cfgUpdatePreviews);
+        // BUG-07 FIX: Event-Listener-Leak — bei jedem loadSettings()-Aufruf wurden neue
+        // Listener gestackt. Lösung: Elemente austauschen (cloneNode) entfernt alle alten Listener.
+        const critEl = document.getElementById('set-stock-critical');
+        const warnEl = document.getElementById('set-stock-warning');
+        if (critEl) {
+            const freshCrit = critEl.cloneNode(true);
+            critEl.parentNode.replaceChild(freshCrit, critEl);
+            freshCrit.addEventListener('input', cfgUpdatePreviews);
+        }
+        if (warnEl) {
+            const freshWarn = warnEl.cloneNode(true);
+            warnEl.parentNode.replaceChild(freshWarn, warnEl);
+            freshWarn.addEventListener('input', cfgUpdatePreviews);
+        }
     } catch(e) { showToast('❌ Einstellungen konnten nicht geladen werden: ' + e.message, 'error'); }
 }
 
 async function saveSettings() {
     const data = {
         bank_owner:              document.getElementById("set-bank-owner").value,
+        // BUG-11 FIX: bank_name jetzt speicherbar — bisher hardcoded in index.html
+        bank_name:               document.getElementById("set-bank-name")?.value || "",
         iban:                    document.getElementById("set-iban").value,
         bic:                     document.getElementById("set-bic").value,
         shipping_cost:           parseFloat(document.getElementById("set-shipping").value),
@@ -7064,7 +7091,7 @@ async function handleStockOnStatusChange(orderId, newStatus) {
     const wasAlreadySold = ['Versendet', 'Zugestellt'].includes(oldStatus);
     if (newStatus === 'Wird bearbeitet' && !wasAlreadySold) {
         const batch = db.batch();
-        for (const item of order.items) {
+        for (const item of (order.items || [])) { // BUG-15 FIX: Null-Guard für fehlende items
             if (item.id === MYSTERY_ID) continue;
             if (item.isBundle || String(item.id).startsWith('bundle_')) continue;
             const update = order.stockReserved
@@ -7083,7 +7110,7 @@ async function handleStockOnStatusChange(orderId, newStatus) {
         && (order.stockReserved || wasProcessed);
     if (shouldRestoreStock) {
         const batch = db.batch();
-        for (const item of order.items) {
+        for (const item of (order.items || [])) { // BUG-15 FIX: Null-Guard
             if (item.id === MYSTERY_ID) continue;
             if (item.isBundle || String(item.id).startsWith('bundle_')) continue;
             const update = (order.stockReserved && !wasProcessed)
@@ -7132,14 +7159,18 @@ function renderSrtCatBar() {
     if (!bar) return;
     // Collect unique categories from allProducts
     const cats = ['Alle', ...new Set(allProducts.map(p => p.category).filter(Boolean))];
-    bar.innerHTML = cats.map(cat => `
+    bar.innerHTML = cats.map(cat => {
+        // BUG-20 FIX: Kategorienamen escapen — doppelte Anführungszeichen brechen das onclick-Attribut
+        const safeCat = cat.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        return `
         <button class="srt-cat-pill ${cat === srtCurrentCat ? 'active' : ''}"
-                data-cat="${cat}"
-                onclick="srtSetCat('${cat.replace(/'/g,"\'")}', this)">
+                data-cat="${cat.replace(/"/g,'&quot;')}"
+                onclick="srtSetCat('${safeCat}', this)">
             ${cat === 'Alle' ? '<i class="fa-solid fa-layer-group"></i>' : `<i class="fa-solid fa-tag"></i>`}
             ${cat}
             ${cat !== 'Alle' ? `<span style="font-size:10px;opacity:.5;font-weight:400">(${allProducts.filter(p=>p.category===cat).length})</span>` : ''}
-        </button>`).join('');
+        </button>`;
+    }).join('');
 
     // Bundles pill – always last
     const bndCount = _bundles.length;
@@ -8146,10 +8177,18 @@ function promoRenderList() {
 async function promoFillCategorySelect() {
     const sel = document.getElementById('promo-f-category');
     if (!sel) return;
-    const snap = await db.collection('categories').get();
     const current = sel.value;
+    // BUG-18 FIX: Statt jedesmal einen Firestore-Get zu machen, allCategories (bereits geladen)
+    // verwenden. Fallback auf Firestore nur wenn allCategories noch leer ist.
+    let catNames = allCategories.map(c => c.name).filter(Boolean);
+    if (!catNames.length) {
+        try {
+            const snap = await db.collection('categories').get();
+            catNames = snap.docs.map(d => d.data().name).filter(Boolean);
+        } catch(e) { catNames = []; }
+    }
     sel.innerHTML = `<option value="Alle">🌐 Alle Produkte</option>` +
-        snap.docs.map(d => d.data().name).filter(Boolean).map(c=>`<option value="${c}">${c}</option>`).join('');
+        catNames.map(c => `<option value="${c}">${c}</option>`).join('');
     if (current) sel.value = current;
 }
 
@@ -9087,9 +9126,7 @@ function rvAdminSwitch(mode, btn) {
 function rvAdminLoadStats() {
     // Cancel previous stats listener
     if (_rvStatsUnsub) { _rvStatsUnsub(); _rvStatsUnsub = null; }
-
-    // BUG FIX: Listener vor Neustart sauber beenden (verhindert Listener-Stacking)
-    if (_rvStatsUnsub) { _rvStatsUnsub(); _rvStatsUnsub = null; }
+    // BUG-08 FIX: Doppelter Unsub-Check entfernt (zweiter Block war immer false und dead code)
     _rvStatsUnsub = db.collection('reviews').onSnapshot(snap => {
         const docs = snap.docs.map(d => d.data());
         const approved = docs.filter(d => d.approved === true);
@@ -10295,14 +10332,13 @@ async function saLoadRecentSALog() {
     if (!el) return;
     try {
         const SA_ACTIONS = ['superadmin_zone_access','admin_added','admin_removed','admin_permissions_updated','ip_whitelist_updated','sa_danger_action','sa_export','sa_security_settings','sa_fullexport','danger_shop_close','danger_shop_open','danger_clear_banned_ips','danger_reject_reviews','danger_purge_logs','danger_reset_loyalty','danger_delete_orders'];
-        const snap = await db.collection('admin_logs').limit(200).get();
+        // BUG-24 FIX: orderBy direkt in Firestore, client-seitiger Sort entfernt
+        const snap = await db.collection('admin_logs')
+            .orderBy('timestamp', 'desc')
+            .limit(200)
+            .get();
         const filtered = snap.docs
             .filter(d => SA_ACTIONS.includes(d.data().action))
-            .sort((a,b) => {
-                const ta = a.data().timestamp?.toDate?.()?.getTime?.() || 0;
-                const tb = b.data().timestamp?.toDate?.()?.getTime?.() || 0;
-                return tb - ta;
-            })
             .slice(0, 8);
         renderLogEntries(el, filtered, true);
     } catch(e) { el.innerHTML = '<div style="color:rgba(255,255,255,.2);font-size:12px;padding:12px">Log konnte nicht geladen werden.</div>'; }
@@ -10317,13 +10353,13 @@ async function saLoadActivityLog() {
     if (!el) return;
     el.innerHTML = '<div style="color:rgba(255,255,255,.2);font-size:12px;padding:12px"><i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>Lade...</div>';
     try {
-        const snap = await db.collection('admin_logs').limit(200).get();
-        // Sort client-side — avoids Firestore composite index requirement
-        _saLogAllDocs = snap.docs.slice().sort((a, b) => {
-            const ta = a.data().timestamp?.toDate?.()?.getTime?.() || 0;
-            const tb = b.data().timestamp?.toDate?.()?.getTime?.() || 0;
-            return tb - ta;
-        });
+        // BUG-24 FIX: orderBy('timestamp','desc') direkt in Firestore — verhindert,
+        // dass bei >200 Logs die ältesten fehlen weil nur nach limit() client-seitig sortiert wurde.
+        const snap = await db.collection('admin_logs')
+            .orderBy('timestamp', 'desc')
+            .limit(200)
+            .get();
+        _saLogAllDocs = snap.docs;
         saRenderFilteredLog();
     } catch(e) { el.textContent = ''; const d=document.createElement('div');d.style.cssText='color:rgba(248,113,113,.5);font-size:12px;padding:12px';d.textContent='Fehler: '+e.message;el.appendChild(d); }
 }
@@ -11140,10 +11176,33 @@ async function bkpOpenRestore(id) {
 
 async function bkpConfirmRestore() {
     if (!_bkpRestoreId) return;
+
+    // BUG-03 FIX: Zweistufige Bestätigung mit explizitem Datenverlust-Hinweis.
+    // Der alte Code löschte alle Daten und schrieb dann neu — ohne Rollback-Möglichkeit.
+    // Schritt 1: Klarer Warn-Dialog
+    if (!confirm('⚠️ ACHTUNG: Diese Aktion löscht ALLE aktuellen Daten in den gewählten Collections und ersetzt sie durch das Backup.\n\nDieser Vorgang kann NICHT rückgängig gemacht werden!\n\nFortfahren?')) return;
+    // Schritt 2: Manuelles Eintippen zur Bestätigung
+    const confirmText = prompt('Tippe "RESTORE" ein um fortzufahren:');
+    if (confirmText !== 'RESTORE') { showToast('Abgebrochen — Eingabe nicht korrekt', 'warning'); return; }
+
     const btn = document.getElementById('bkp-restore-confirm-btn');
-    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Wird wiederhergestellt...'; }
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Erstelle Sicherheitskopie...'; }
 
     try {
+        // Vor dem Überschreiben: automatisches Backup der aktuellen Daten erstellen
+        showToast('🔄 Erstelle Sicherheitskopie der aktuellen Daten...', 'success');
+        try {
+            await bkpRunNow(); // Aktuellen Stand sichern bevor alles gelöscht wird
+        } catch(backupErr) {
+            console.warn('Sicherheitskopie vor Restore fehlgeschlagen:', backupErr.message);
+            if (!confirm('⚠️ Sicherheitskopie konnte nicht erstellt werden!\n\nTrotzdem fortfahren? (NICHT EMPFOHLEN)')) {
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-rotate-left"></i> Wiederherstellen'; }
+                return;
+            }
+        }
+
+        if (btn) btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Wird wiederhergestellt...';
+
         const snap = await db.collection(BKP_COLLECTION).doc(_bkpRestoreId).get();
         if (!snap.exists) throw new Error('Backup-Dokument nicht gefunden.');
 
@@ -11195,15 +11254,9 @@ async function bkpConfirmRestore() {
 }
 
 // ── Log-Labels erweitern ──────────────────────────────────────────────────
-// Hängt Backup-Aktionen in das bestehende renderLogEntries-Mapping ein
-(function() {
-    const origRender = window.renderLogEntries;
-    if (!origRender) return;
-    window.renderLogEntries = function(el, docs, compact) {
-        // Inject backup label mapping by patching doc.data().action display
-        origRender(el, docs, compact);
-    };
-})();
+// BUG-09 FIX: Erster Monkey-Patch-Block (Zeilen 11200-11205 original) entfernt —
+// er rief nur origRender auf ohne etwas hinzuzufügen (dead code).
+// Nur der zweite Patch (unten) ist aktiv und korrekt.
 
 // Füge Backup-Aktionen zum SA-Log-Labels hinzu (Monkey-patch auf actionLabel map)
 const _bkpLabelMap = {

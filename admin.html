@@ -12621,8 +12621,10 @@ async function saToggleLoginHistory(uid) {
     const inner = document.getElementById(`sa-loginhistory-inner-${uid}`);
     if (!inner) return;
     try {
+        const adminEmail = saAllAdmins.find(a => a.id === uid)?.email;
+        if (!adminEmail) { inner.innerHTML = '<div style="color:rgba(255,255,255,.2);font-size:11px">Admin-E-Mail nicht gefunden</div>'; return; }
         const snap = await db.collection('admin_logs')
-            .where('adminEmail', '==', saAllAdmins.find(a => a.id === uid)?.email)
+            .where('adminEmail', '==', adminEmail)
             .orderBy('timestamp', 'desc')
             .limit(10)
             .get();
@@ -12638,7 +12640,10 @@ async function saToggleLoginHistory(uid) {
             </div>`;
         }).join('');
     } catch(e) {
-        inner.innerHTML = `<div style="color:#f87171;font-size:11px">${escA(e.message)}</div>`;
+        const msg = e.code === 'failed-precondition'
+            ? 'Index wird noch aufgebaut – bitte kurz warten und erneut versuchen.'
+            : escA(e.message);
+        inner.innerHTML = `<div style="color:#f87171;font-size:11px">${msg}</div>`;
     }
 }
 
@@ -12925,6 +12930,7 @@ async function admOpenModal(adminData) {
     const actEl    = document.getElementById('adm-modal-actions');
     const lastEl   = document.getElementById('adm-modal-lastlogin');
     try {
+        if (!adminData.email) throw new Error('Admin-E-Mail fehlt');
         const snap = await db.collection('admin_logs').where('adminEmail','==',adminData.email).orderBy('timestamp','desc').limit(20).get();
         if (actEl) actEl.textContent = snap.size;
         if (snap.size>0 && lastEl) { const ts=snap.docs[0].data().timestamp?.toDate?.(); if(ts) lastEl.textContent=ts.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'2-digit'}); }
@@ -12933,7 +12939,12 @@ async function admOpenModal(adminData) {
             const isDanger=(dd.action||'').includes('danger');
             return `<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 12px;background:rgba(255,255,255,.03);border-radius:10px;border:1px solid rgba(255,255,255,.05)"><div style="width:8px;height:8px;border-radius:50%;background:${isDanger?'#f87171':'#67e8f9'};box-shadow:0 0 6px ${isDanger?'#f87171':'#67e8f9'};flex-shrink:0;margin-top:4px"></div><div><div style="font-size:12px;color:rgba(255,255,255,.75)">${typeof AUDIT_ACTION_LABELS!=='undefined'&&AUDIT_ACTION_LABELS[dd.action]?AUDIT_ACTION_LABELS[dd.action]:('⚡ '+(dd.action||''))}</div><div style="font-size:10px;color:rgba(255,255,255,.25);margin-top:2px;font-family:'JetBrains Mono',monospace">${dt}${dd.target?' · '+escA(dd.target.substring(0,20)):''}</div></div></div>`;
         }).join('') : '<div style="color:rgba(255,255,255,.2);font-size:12px;padding:10px;text-align:center">Noch keine Aktionen protokolliert</div>';
-    } catch(e) { if(timeline) timeline.innerHTML=`<div style="color:rgba(248,113,113,.5);font-size:12px;padding:10px">Fehler: ${escA(e.message)}</div>`; }
+    } catch(e) {
+        const msg = e.code === 'failed-precondition'
+            ? 'Index wird noch aufgebaut – bitte kurz warten und neu laden.'
+            : escA(e.message);
+        if(timeline) timeline.innerHTML=`<div style="color:rgba(248,113,113,.5);font-size:12px;padding:10px">Fehler: ${msg}</div>`;
+    }
 }
 
 async function admModalResetToken() {
@@ -13186,23 +13197,7 @@ async function bkpSaveConfig() {
     if (!_bkpConfig.collections.length) _bkpConfig.collections = [...BKP_ALL_COLS];
 
     try {
-        // Nur serialisierbare Felder nach Firestore schreiben (keine Funktionen)
-        const lastBackupAtRaw = _bkpConfig.lastBackupAt;
-        const lastBackupAtSafe =
-            (lastBackupAtRaw && typeof lastBackupAtRaw === 'object' && lastBackupAtRaw.seconds !== undefined)
-                ? lastBackupAtRaw  // echter Firestore Timestamp
-                : (lastBackupAtRaw instanceof Date)
-                    ? firebase.firestore.Timestamp.fromDate(lastBackupAtRaw)
-                    : null;
-        const configToSave = {
-            enabled:       _bkpConfig.enabled,
-            intervalHours: _bkpConfig.intervalHours,
-            retentionDays: _bkpConfig.retentionDays,
-            maxCount:      _bkpConfig.maxCount,
-            collections:   _bkpConfig.collections,
-            lastBackupAt:  lastBackupAtSafe,
-        };
-        await db.collection('settings').doc('backup_config').set(configToSave, { merge: true });
+        await db.collection('settings').doc('backup_config').set(_bkpConfig, { merge: true });
         bkpRenderStatus();
         bkpScheduleAutoCheck();
         showToast('✅ Backup-Konfiguration gespeichert');
@@ -13337,7 +13332,7 @@ async function bkpRunNow() {
 
         // Konfig aktualisieren: lastBackupAt
         await db.collection('settings').doc('backup_config').set({ lastBackupAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
-        _bkpConfig.lastBackupAt = firebase.firestore.Timestamp.now();
+        _bkpConfig.lastBackupAt = { toDate: () => new Date() };
 
         // Alte Backups bereinigen
         await bkpCleanup();

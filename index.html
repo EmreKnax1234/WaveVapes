@@ -3043,7 +3043,7 @@
                 listEl.innerHTML = html;
             } catch(e) {
                 console.error("showMyReferrals:", e);
-                listEl.innerHTML = `<p class="text-center py-8 text-red-400">Fehler beim Laden: ${e.message}</p>`;
+                listEl.innerHTML = `<p class="text-center py-8 text-red-400">Fehler beim Laden: ${esc(e.message)}</p>`;
             }
         }
         function closeReferralsModal() {
@@ -3557,7 +3557,7 @@
                 // Store coupon ref — mark used only at order placement (not on apply, to avoid waste on abandoned carts)
                 appliedDiscount = { code: input, type: coupon.type, value: coupon.value, couponId: couponDocRef.id };
                 const display = coupon.type === "percent" ? `${coupon.value}%` : `${coupon.value}€`;
-                status.innerHTML = `<span class="text-emerald-400">✓ ${input} (${display}) eingelöst!</span>`;
+                status.innerHTML = `<span class="text-emerald-400">✓ ${esc(input)} (${esc(display)}) eingelöst!</span>`;
                 manageMysteryVape(); // BUG 4 FIX: recalculate mystery vape after discount changes effective total
                 updateCartDisplay();
                 return;
@@ -3593,7 +3593,7 @@
                     // placeOrder() does the atomic check + mark inside a transaction
                     // after the order is successfully saved — avoids marking on abandoned carts.
                     const display = d.type === "fixed" ? `${d.value} €` : `${d.value}%`;
-                    status.innerHTML = `<span class="text-emerald-400">✓ ${input} (${display}) eingelöst!</span>`;
+                    status.innerHTML = `<span class="text-emerald-400">✓ ${esc(input)} (${esc(display)}) eingelöst!</span>`;
                     manageMysteryVape();
                     updateCartDisplay();
                 } catch (err) {
@@ -3603,7 +3603,7 @@
             } else {
                 appliedDiscount = { code: input, type: d.type, value: d.value };
                 const display = d.type === "fixed" ? `${d.value} €` : `${d.value}%`;
-                status.innerHTML = `<span class="text-emerald-400">✓ ${input} (${display}) eingelöst!</span>`;
+                status.innerHTML = `<span class="text-emerald-400">✓ ${esc(input)} (${esc(display)}) eingelöst!</span>`;
                 updateCartDisplay();
             }
         }
@@ -4317,7 +4317,7 @@
             saveUserCart();
             updateCartDisplay();
             patchProductCardQty(id);
-            const nicLabel = product.hasNicotine ? ` (${nic})` : '';
+            const nicLabel = product.hasNicotine ? ` (${esc(nic)})` : '';
             showToast(`✅ ${esc(product.name)}${nicLabel} hinzugefügt!`);
         }
         // ───────────────────────────────────────────────────────────────────
@@ -4434,7 +4434,9 @@
                 });
                 if (!catItems.length) continue;
                 const totalCatQty = catItems.reduce((s,i) => s + i.qty, 0);
-                const badgeText = offer.specialText || `${offer.offerN} FÜR ${offer.offerM}`;
+                // badgeText, catName, offerN, offerM kommen aus Firestore → escapen
+                const badgeText = esc(offer.specialText || `${offer.offerN} FÜR ${offer.offerM}`);
+                const safeCatName = esc(catName);
 
                 if (offer.offerType === 'nforn' && totalCatQty >= offer.offerN) {
                     const freeCount = Math.floor(totalCatQty / offer.offerN) * (offer.offerN - offer.offerM);
@@ -4448,10 +4450,10 @@
                         const effPrice = p ? (getPromoPrice(p) ?? i.price ?? 0) : (i.price || 0);
                         return s + i.qty * effPrice * (offer.offerN / 100);
                     }, 0);
-                    htmlParts.push(`<div class="bg-gradient-to-r from-cyan-400 to-purple-500 text-black p-4 rounded-3xl mb-4 text-center"><div class="font-black">⚡ -${offer.offerN}% auf ${catName}</div><p class="text-sm mt-1">Du sparst ${saving.toFixed(2).replace('.',',')} €</p></div>`);
+                    htmlParts.push(`<div class="bg-gradient-to-r from-cyan-400 to-purple-500 text-black p-4 rounded-3xl mb-4 text-center"><div class="font-black">⚡ -${esc(String(offer.offerN))}% auf ${safeCatName}</div><p class="text-sm mt-1">Du sparst ${saving.toFixed(2).replace('.',',')} €</p></div>`);
                 } else if (offer.offerType === 'fixed') {
                     const saving = catItems.reduce((s,i) => s + i.qty*offer.offerN, 0);
-                    htmlParts.push(`<div class="bg-gradient-to-r from-emerald-400 to-cyan-400 text-black p-4 rounded-3xl mb-4 text-center"><div class="font-black">⚡ -${offer.offerN}€ pro Artikel in ${catName}</div><p class="text-sm mt-1">Du sparst ${saving.toFixed(2).replace('.',',')} €</p></div>`);
+                    htmlParts.push(`<div class="bg-gradient-to-r from-emerald-400 to-cyan-400 text-black p-4 rounded-3xl mb-4 text-center"><div class="font-black">⚡ -${esc(String(offer.offerN))}€ pro Artikel in ${safeCatName}</div><p class="text-sm mt-1">Du sparst ${saving.toFixed(2).replace('.',',')} €</p></div>`);
                 } else if (offer.offerType === 'badge') {
                     htmlParts.push(`<div class="bg-gradient-to-r from-amber-400 to-yellow-400 text-black p-4 rounded-3xl mb-4 text-center"><div class="font-black">⚡ ${badgeText}</div></div>`);
                 }
@@ -4460,7 +4462,7 @@
                 const prod = _productMap.get(item.id);
                 const nicDisplay = (item.nicotine && prod && prod.hasNicotine) ? ` (${item.nicotine})` : '';
                 if (item.id === MYSTERY_ID) {
-                    htmlParts.push(`<div class="mystery-item cart-item flex justify-between items-center rounded-3xl p-5"><div class="flex items-center gap-3"><i class="fa-solid fa-gift text-3xl"></i><div><div class="font-medium">${item.name}</div><div class="text-xs bg-white/30 px-3 py-0.5 rounded-full inline-block">GRATIS AB 100€</div></div></div><div class="text-right"><div class="font-bold text-xl text-emerald-900 whitespace-nowrap">0,00 €</div></div></div>`);
+                    htmlParts.push(`<div class="mystery-item cart-item flex justify-between items-center rounded-3xl p-5"><div class="flex items-center gap-3"><i class="fa-solid fa-gift text-3xl"></i><div><div class="font-medium">${esc(item.name)}</div><div class="text-xs bg-white/30 px-3 py-0.5 rounded-full inline-block">GRATIS AB 100€</div></div></div><div class="text-right"><div class="font-bold text-xl text-emerald-900 whitespace-nowrap">0,00 €</div></div></div>`);
                 } else if (item.isBundle) {
                     // Bundle-Item im Warenkorb
                     const bundleTotal = (item.qty * item.price).toFixed(2).replace('.', ',');
@@ -5362,7 +5364,7 @@
                 const active = currentCategoryFilter === c.name ? 'tab-active' : '';
                 let extra = '';
                 if (c.special === true) {
-                    const badgeText = c.specialText || "4 FÜR 3";
+                    const badgeText = esc(c.specialText || "4 FÜR 3");
                     extra = ` <span class="bg-amber-400 text-black text-xs font-black px-4 py-1 rounded-2xl">${badgeText}</span> <i class="fa-solid fa-bolt animate-bolt text-2xl"></i>`;
                 }
                 // BUG-10 FIX: Kategorienamen escapen, um JS-Syntaxfehler und XSS zu verhindern
@@ -6372,7 +6374,7 @@
             updateCartDisplay();
             patchProductCardQty(id);
             closeProductDetail();
-            const nicLabel = product.hasNicotine ? ` (${chosenNic})` : '';
+            const nicLabel = product.hasNicotine ? ` (${esc(chosenNic)})` : '';
             showToast(`✅ ${esc(product.name)}${nicLabel} zum Warenkorb hinzugefügt!`);
         }
         // ====================== SETTINGS SYNC ======================

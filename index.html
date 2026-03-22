@@ -2802,6 +2802,11 @@
         let _toastTimer = null;
         let _noteOpen = false;
         let _orderInProgress = false;
+        let _isAdmin = false; // true sobald ein Admin eingeloggt ist — Wartungsmodus überspringen
+        // Maintenance & Countdown Timer
+        let _maintenanceCountdownInterval = null;
+        let _maintenanceAutoReloadTimeout = null;
+        let _cdInterval = null;
         // Weitere State-Variablen die früher verstreut deklariert waren (TDZ-Fix):
         let _cartScrollY = 0;
         let _modalScrollY = 0;
@@ -3195,6 +3200,13 @@
                         showToast("❌ Dein Account wurde permanent gesperrt.", "error");
                         return;
                     }
+                    // Admin-Status merken — damit Wartungsmodus für Admins übersprungen wird
+                    const wasAdmin = _isAdmin;
+                    _isAdmin = data.role === 'admin';
+                    // Falls Admin einloggt während Shop geschlossen ist → Overlay sofort verstecken
+                    if (!wasAdmin && _isAdmin) {
+                        hideMaintenanceOverlay();
+                    }
                     loyaltyPoints = data.totalBonusPoints || 0;
                     userHasFreeShipping = data.freeShipping === true;
                     // BUG FIX: keep local mirror in sync so checkAndAutoRedeemLoyalty
@@ -3278,6 +3290,7 @@
                 }
             } else {
                 cart = [];
+                _isAdmin = false; // Admin hat sich ausgeloggt — Wartungsmodus wieder aktiv wenn nötig
                 recentlyViewed = JSON.parse(localStorage.getItem("wavevapes_recently") || "[]");
                 if (userSnapshotUnsubscribe) userSnapshotUnsubscribe();
                 updateCartDisplay();
@@ -6425,7 +6438,7 @@
         }
         // ====================== SETTINGS SYNC ======================
         // ── COUNTDOWN TIMER ─────────────────────────────────────────────────────
-        let _cdInterval = null;
+        // _cdInterval oben global deklariert
 
         function cdUpdatePromoBanner() {
             const banner    = document.getElementById('countdown-banner');
@@ -6552,7 +6565,8 @@
                     });
                 }
                 if (s.shop_closed === true) {
-                    showMaintenanceOverlay();
+                    // Admins sehen den Shop immer normal — kein Wartungsmodus
+                    if (!_isAdmin) showMaintenanceOverlay();
                 } else {
                     hideMaintenanceOverlay();
                 }
@@ -6624,10 +6638,15 @@
         }
 
         // ====================== WARTUNGS-OVERLAY ======================
-        let _maintenanceCountdownInterval = null;
-        let _maintenanceAutoReloadTimeout = null;
+        // _maintenanceCountdownInterval oben global deklariert
+        // _maintenanceAutoReloadTimeout oben global deklariert
 
         function showMaintenanceOverlay() {
+            // Admins sehen den Shop immer — aber bekommen einen Hinweis-Banner
+            if (_isAdmin) {
+                _showAdminShopClosedBanner();
+                return;
+            }
             const overlay = document.getElementById('maintenance-overlay');
             if (!overlay || overlay.style.display === 'flex') return; // already shown
             overlay.style.display = 'flex';
@@ -6638,7 +6657,40 @@
             startMaintenanceCountdown(30);
         }
 
+        function _showAdminShopClosedBanner() {
+            if (document.getElementById('admin-shop-closed-banner')) return; // already shown
+            const banner = document.createElement('div');
+            banner.id = 'admin-shop-closed-banner';
+            banner.style.cssText = [
+                'position:fixed;top:0;left:0;right:0;z-index:99990',
+                'background:linear-gradient(135deg,rgba(251,191,36,.95),rgba(245,158,11,.95))',
+                'backdrop-filter:blur(8px)',
+                'color:#000;font-weight:700;font-size:13px',
+                'padding:10px 20px',
+                'display:flex;align-items:center;justify-content:center;gap:10px',
+                'box-shadow:0 4px 20px rgba(251,191,36,.4)',
+                'animation:maintenanceFadeIn .4s ease'
+            ].join(';');
+            banner.innerHTML = `
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <span>⚠️ Shop ist für Kunden geschlossen — nur du als Admin siehst ihn gerade.</span>
+                <a href="admin.html" style="background:rgba(0,0,0,.15);border-radius:8px;padding:4px 12px;font-size:12px;text-decoration:none;color:#000">
+                    Admin-Panel
+                </a>`;
+            document.body.prepend(banner);
+            // Schiebt Inhalt nach unten damit Banner nicht überlappt
+            document.body.style.paddingTop = (parseInt(document.body.style.paddingTop || '0') + 44) + 'px';
+        }
+
+        function _hideAdminShopClosedBanner() {
+            const banner = document.getElementById('admin-shop-closed-banner');
+            if (!banner) return;
+            document.body.style.paddingTop = Math.max(0, parseInt(document.body.style.paddingTop || '0') - 44) + 'px';
+            banner.remove();
+        }
+
         function hideMaintenanceOverlay() {
+            _hideAdminShopClosedBanner(); // Admin-Banner immer entfernen wenn Shop öffnet
             const overlay = document.getElementById('maintenance-overlay');
             if (!overlay || overlay.style.display !== 'flex') return; // already hidden
             // Animate out

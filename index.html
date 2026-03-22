@@ -1333,36 +1333,46 @@
 
             /* ── CART SIDEBAR — mobile compact ── */
             #cart-sidebar         { width: 100% !important; border-radius: 0 !important; }
-            #cart-items-list      { -webkit-overflow-scrolling: touch !important; overscroll-behavior: contain !important; touch-action: pan-y !important; overflow-y: auto !important; padding: 10px 12px !important; gap: 8px !important; }
+            #cart-items-list      { -webkit-overflow-scrolling: touch !important; overscroll-behavior: contain !important; touch-action: pan-y !important; overflow-y: auto !important; padding: 8px 12px !important; gap: 6px !important; }
             #cart-checkout-panel  {
                 box-shadow: 0 -12px 28px rgba(0,0,0,.65);
-                padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+                padding: 8px 14px calc(8px + env(safe-area-inset-bottom, 0px)) !important;
             }
             /* Compact header */
-            #cart-header          { padding: 10px 14px 10px !important; }
+            #cart-header          { padding: 10px 14px 8px !important; }
             #cart-header h3       { font-size: 1.1rem !important; }
             #cart-header button   { font-size: 1.5rem !important; }
+            /* Compact progress + upsell */
+            #cart-shipping-progress { padding: 6px 12px 0 !important; }
+            #cart-sp-inner          { padding: 8px 12px !important; }
+            #cart-upsell-banner     { padding: 6px 12px 0 !important; }
             /* Compact address row */
-            #cart-address-row     { padding: 8px 12px !important; border-radius: 14px !important; margin-bottom: 8px !important; }
+            #cart-address-row     { padding: 7px 10px !important; border-radius: 12px !important; margin-bottom: 6px !important; }
             #cart-address-display { font-size: 11px !important; }
             /* Compact discount row */
-            #cart-discount-row    { margin-bottom: 8px !important; }
-            #discount-input       { font-size: 16px !important; padding: 9px 12px !important; border-radius: 10px !important; }
-            #cart-checkout-panel button[onclick="applyDiscountCode()"] { padding: 9px 12px !important; font-size: 12px !important; border-radius: 10px !important; }
-            #discount-status      { min-height: 14px !important; margin-top: 4px !important; }
+            #cart-discount-row    { margin-bottom: 6px !important; }
+            #discount-input       { font-size: 16px !important; padding: 8px 10px !important; border-radius: 10px !important; }
+            #cart-checkout-panel button[onclick="applyDiscountCode()"] { padding: 8px 10px !important; font-size: 12px !important; border-radius: 10px !important; }
+            #discount-status      { min-height: 12px !important; margin-top: 3px !important; }
             /* Compact total */
+            #cart-total-section .border-t { padding-top: 6px !important; }
+            #cart-total-section .py-2     { padding-top: 4px !important; padding-bottom: 4px !important; }
             #cart-total-price     { font-size: 1rem !important; }
+            #loyalty-cart-info    { margin-bottom: 6px !important; font-size: 10px !important; }
+            #cart-payment-info    { margin-bottom: 2px !important; }
+            /* Compact note */
+            #cart-note-row        { margin-bottom: 6px !important; }
             /* Compact CTA */
-            button[onclick="placeOrder()"]  { min-height: 50px !important; font-size: 0.95rem !important; padding: 12px !important; margin-top: 6px !important; }
-            button[onclick="clearCart()"]   { min-height: 34px !important; font-size: 11px !important; padding: 6px !important; margin-top: 4px !important; }
+            button[onclick="placeOrder()"]  { min-height: 48px !important; font-size: 0.9rem !important; padding: 11px !important; margin-top: 4px !important; }
+            button[onclick="clearCart()"]   { min-height: 30px !important; font-size: 11px !important; padding: 4px !important; margin-top: 2px !important; }
             /* Compact cart item cards */
-            .cart-item            { padding: 10px 12px !important; border-radius: 16px !important; }
-            .cart-item .font-medium { font-size: 0.82rem !important; line-height: 1.25 !important; }
-            .cart-item .font-bold.text-xl { font-size: 0.9rem !important; }
-            .cart-item .text-xs   { font-size: 0.7rem !important; }
+            .cart-item            { padding: 9px 11px !important; border-radius: 14px !important; }
+            .cart-item .font-medium { font-size: 0.8rem !important; line-height: 1.25 !important; }
+            .cart-item .font-bold.text-xl { font-size: 0.88rem !important; }
+            .cart-item .text-xs   { font-size: 0.68rem !important; }
             .cart-item .text-3xl  { font-size: 1.4rem !important; }
-            .cart-item .gap-6     { gap: 10px !important; }
-            .cart-item .p-5       { padding: 10px 12px !important; }
+            .cart-item .gap-6     { gap: 8px !important; }
+            .cart-item .p-5       { padding: 9px 11px !important; }
 
             /* ── PRODUCT DETAIL MODAL (bottom sheet) ── */
             #product-detail-modal { padding: 0 !important; align-items: flex-end !important; overflow-y: hidden !important; scrollbar-width: none !important; }
@@ -1906,19 +1916,22 @@
 
             <!-- Order Note -->
             <div id="cart-note-row" class="mb-3">
-                <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px">
+                <button onclick="toggleOrderNote()" style="display:flex;align-items:center;gap:7px;background:none;border:none;cursor:pointer;padding:0;width:100%">
                     <i class="fa-solid fa-comment-dots" style="color:rgba(103,232,249,.7);font-size:11px"></i>
                     <span style="font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:rgba(255,255,255,.35)">Wunsch / Anmerkung</span>
+                    <i id="cart-note-chevron" class="fa-solid fa-chevron-down" style="font-size:9px;color:rgba(255,255,255,.25);margin-left:auto;transition:transform .2s"></i>
+                </button>
+                <div id="cart-note-body" style="display:none;margin-top:6px">
+                    <textarea id="order-note-input"
+                        placeholder="z.B. allgemeine Anmerkungen zur Bestellung"
+                        maxlength="500"
+                        rows="2"
+                        style="width:100%;box-sizing:border-box;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:10px 14px;color:#fff;font-size:12px;font-family:inherit;outline:none;resize:none;transition:border-color .2s;line-height:1.5"
+                        onfocus="this.style.borderColor='rgba(103,232,249,.45)'"
+                        onblur="this.style.borderColor='rgba(255,255,255,.1)'"
+                    ></textarea>
+                    <div style="font-size:10px;color:rgba(255,255,255,.2);margin-top:4px;text-align:right"><span id="order-note-counter">0</span>/500</div>
                 </div>
-                <textarea id="order-note-input"
-                    placeholder="z.B. Bundle: Apple Peach statt Blueberry · oder allgemeine Anmerkungen zur Bestellung"
-                    maxlength="500"
-                    rows="2"
-                    style="width:100%;box-sizing:border-box;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:10px 14px;color:#fff;font-size:12px;font-family:inherit;outline:none;resize:none;transition:border-color .2s;line-height:1.5"
-                    onfocus="this.style.borderColor='rgba(103,232,249,.45)'"
-                    onblur="this.style.borderColor='rgba(255,255,255,.1)'"
-                ></textarea>
-                <div style="font-size:10px;color:rgba(255,255,255,.2);margin-top:4px;text-align:right"><span id="order-note-counter">0</span>/500</div>
             </div>
 
             <!-- CTA Button -->
@@ -4425,6 +4438,13 @@
                 paymentInfoEl.innerHTML = `Zahlung per Überweisung • Versand nach Zahlungseingang`;
             }
             updateUpsellBanner();
+        }
+        function toggleOrderNote() {
+            const body    = document.getElementById('cart-note-body');
+            const chevron = document.getElementById('cart-note-chevron');
+            const open    = body.style.display !== 'none';
+            body.style.display    = open ? 'none' : 'block';
+            chevron.style.transform = open ? '' : 'rotate(180deg)';
         }
         function toggleQtyDropdown(id) {
             const menu = document.getElementById('qty-menu-' + id);

@@ -1616,7 +1616,7 @@
                 <div class="text-right">
                     <p id="loyalty-progress-text" class="text-xs text-emerald-400">Nächster Bonus in <span class="font-bold">300</span> Punkten</p>
                     <div class="w-36 h-2 bg-zinc-800 rounded-full mt-2 overflow-hidden" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-label="Loyalty Fortschritt">
-                        <div id="loyalty-progress-bar" class="loyalty-bar w-0"></div>
+                        <div id="loyalty-progress-bar" class="loyalty-bar w-0" aria-valuenow="0"></div>
                     </div>
                 </div>
             </div>
@@ -2778,6 +2778,25 @@
         let ordersUnsubscribe = null;
         let userSnapshotUnsubscribe = null;
         let myReferralCode = "";
+
+        // ── Globale Timer & State-Variablen (müssen vor erster Nutzung deklariert sein) ──
+        // Früher war _toastTimer bei Zeile ~5287 und _noteOpen/etc. verstreut — das
+        // verursacht "Cannot access before initialization"-Fehler wenn Funktionen
+        // weiter oben im Code bereits clearTimeout(_toastTimer) aufrufen.
+        let _toastTimer = null;
+        let _noteOpen = false;
+        let _orderInProgress = false;
+        // Weitere State-Variablen die früher verstreut deklariert waren (TDZ-Fix):
+        let _cartScrollY = 0;
+        let _modalScrollY = 0;
+        let _lastCatHash = '';
+        let _cachedCategorySnap = null;
+        let _offerCats = {};
+        let _offerCatsReady = false;
+        let _loyaltyPromptShown = false;
+        let _redeemedLoyaltyCodes = [];
+        let _cachedIp = null;
+        let _renderProductsTimer = null;
         let userHasFreeShipping = false;
         let productOrder = [];
         let pendingNicotine = {};
@@ -3589,10 +3608,10 @@
             }
         }
 
-        let _loyaltyPromptShown = false;
+        // _loyaltyPromptShown oben global deklariert
         // BUG FIX: mirror of Firestore redeemedLoyaltyCodes — refreshed by onSnapshot.
         // Replaces localStorage check which was device-specific and broke on second devices.
-        let _redeemedLoyaltyCodes = [];
+        // _redeemedLoyaltyCodes oben global deklariert
 
         function checkAndAutoRedeemLoyalty() {
             if (_loyaltyPromptShown || appliedDiscount) return;
@@ -3765,8 +3784,8 @@
         let productsUnsubscribe = null;
 
         // Live cache of special-category offer configs, keyed by category name
-        let _offerCats = {}; // { "Category Name": { offerType, offerN, offerM, specialText } }
-        let _offerCatsReady = false;
+        // _offerCats oben global deklariert // { "Category Name": { offerType, offerN, offerM, specialText } }
+        // _offerCatsReady oben global deklariert
 
         // ── Live Aktionen / Promotions ───────────────────────────────────────────
         let _activePromos = []; // [{ id, name, category, type:'percent'|'fixed', value, label, active }]
@@ -3787,7 +3806,6 @@
 
         // OPT 1: Debounced renderProducts — prevents multiple simultaneous Firestore
         // snapshots (products + promotions + cart) from triggering redundant grid rebuilds.
-        let _renderProductsTimer = null;
         function renderProductsDebounced() {
             clearTimeout(_renderProductsTimer);
             _renderProductsTimer = setTimeout(renderProducts, 50);
@@ -4529,7 +4547,7 @@
             }
             updateUpsellBanner();
         }
-        let _noteOpen = false; // BUG-012 FIX: booleane State-Variable statt fragile style.display-Prüfung
+        // _noteOpen ist global oben deklariert
         function toggleOrderNote() {
             const body    = document.getElementById('cart-note-body');
             const chevron = document.getElementById('cart-note-chevron');
@@ -4609,8 +4627,8 @@
             toggleCart();
         }
         // Merkt sich die Scroll-Position beim Öffnen des Carts / Modals
-        let _cartScrollY = 0;
-        let _modalScrollY = 0;
+        // _cartScrollY oben global deklariert
+        // _modalScrollY oben global deklariert
 
         function toggleCart() {
             const sidebar = document.getElementById("cart-sidebar");
@@ -4681,7 +4699,7 @@
             const rand = String(buf[0]).slice(0, 7).padStart(7, '0');
             return `WV-${dateStr}-${rand}`;
         }
-        let _orderInProgress = false;
+        // _orderInProgress ist global oben deklariert
         async function placeOrder() {
             if (_orderInProgress) return;
             if (!currentUser) {
@@ -5284,7 +5302,7 @@
         }
         // BUG FIX: Central toast timer so showToast() and showLoyaltyPrompt()
         // don't race against each other on the same DOM node.
-        let _toastTimer = null;
+        // _toastTimer ist global oben deklariert — keine erneute Deklaration hier
         function showToast(msg, type = "success") {
             const toast = document.getElementById('notification-toast');
             clearTimeout(_toastTimer);
@@ -5299,8 +5317,8 @@
             _toastTimer = setTimeout(() => toast.classList.remove('visible'), 4000);
         }
 
-        let _lastCatHash = ''; // OPT 2: cache — only re-render tabs if categories actually changed
-        let _cachedCategorySnap = null; // Bug 5 fix: cache Firestore snap so tab clicks don't re-fetch
+        // _lastCatHash oben global deklariert // OPT 2: cache — only re-render tabs if categories actually changed
+        // _cachedCategorySnap oben global deklariert // Bug 5 fix: cache Firestore snap so tab clicks don't re-fetch
 
         // Fetches category data from Firestore and rebuilds offer config + tab DOM.
         // Only makes a Firestore request — setCategoryFilter() calls _renderCategoryTabsDOM() directly.
@@ -5388,7 +5406,8 @@
             localStorage.setItem("age_verified", "true");
             const modal = document.getElementById("age-modal");
             modal.classList.add("hidden"); modal.classList.remove("flex");
-            showToast("✅ Willkommen bei WaveVapes!");
+            // Guard: showToast kann noch nicht verfügbar sein wenn Firebase langsam lädt
+            try { showToast("✅ Willkommen bei WaveVapes!"); } catch(e) {}
         }
         function denyAge() {
             const modal = document.getElementById("age-modal");
@@ -6502,7 +6521,7 @@
             if (field) field.value = "";
         }
         // Cache IP once per session to avoid repeated fetches
-        let _cachedIp = null;
+        // _cachedIp oben global deklariert
         async function fetchIp() {
             if (_cachedIp) return _cachedIp;
             try {

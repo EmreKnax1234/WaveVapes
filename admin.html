@@ -9303,7 +9303,17 @@ function pedRemoveImage() {
 }
 
 function removeImageInEdit() { pedRemoveImage(); }
-function closeEditModal() { closePedDrawer(); }
+function closeEditModal() {
+    // Schließt das Ban-Modal (#edit-modal) wenn offen
+    const editModal = document.getElementById('edit-modal');
+    if (editModal && !editModal.classList.contains('hidden')) {
+        editModal.classList.add('hidden');
+        editModal.innerHTML = '';
+        return;
+    }
+    // Fallback: Produkt-Edit-Drawer
+    closePedDrawer();
+}
 
 async function saveEdit() {
     if (!currentEditId) return;

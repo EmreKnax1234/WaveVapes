@@ -171,13 +171,6 @@
       "priceRange": "€€",
       "currenciesAccepted": "EUR",
       "paymentAccepted": "Bank transfer",
-      "aggregateRating": {
-        "@type": "AggregateRating",
-        "ratingValue": "0",
-        "reviewCount": "0",
-        "bestRating": "5",
-        "worstRating": "1"
-      },
       "review": [
         {
           "@type": "Review",
@@ -778,6 +771,8 @@
         }
         @media (max-width: 767px) {
             .product-card { cursor: default; }
+            /* BUG-19 FIX: Hover-Transform auf Mobile deaktivieren (Touch-Geräte: Karten konnten "hängen" bleiben) */
+            .product-card:hover { transform: none; box-shadow: none; }
         }
         #products-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
         @media (min-width: 768px) { #products-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; } }
@@ -2333,9 +2328,13 @@
 
         // ── Bundles ──────────────────────────────────────────────────────────
         let allBundles = [];
+        // BUG-25 FIX: Listener-Tracking für loadBundles() — verhindert Listener-Stacking
+        // bei Mehrfachaufruf (z.B. Pull-to-Refresh, Re-Init).
+        let _bundlesUnsub = null;
 
         function loadBundles() {
-            db.collection('bundles').where('active', '==', true).onSnapshot(snap => {
+            if (_bundlesUnsub) { _bundlesUnsub(); _bundlesUnsub = null; }
+            _bundlesUnsub = db.collection('bundles').where('active', '==', true).onSnapshot(snap => {
                 allBundles = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                 renderProductsDebounced();
             }, err => console.warn('Bundles laden fehlgeschlagen:', err));
@@ -2365,10 +2364,10 @@
                     bundleItems: bundle.items || []
                 });
             }
+            manageMysteryVape(); // BUG-04 FIX: Mystery Vape bei Bundle-Kauf korrekt auslösen
             saveUserCart();
             updateCartDisplay();
             showToast(`🎁 „${bundle.name}" zum Warenkorb hinzugefügt!`);
-            renderProducts();
         }
 
         function showBundleDetail(bundleId) {
@@ -2572,7 +2571,9 @@
             document.body.style.width = '';
             document.body.classList.remove('modal-open');
             window.scrollTo(0, _modalScrollY || 0);
-            renderProducts();
+            // BUG-13 FIX: renderProducts() hier entfernt — Produktdaten haben sich nicht geändert,
+            // das vollständige Grid-Re-Render war unnötig und verursachte UI-Flash.
+            updateCartDisplay();
         }
 
         // Wird aufgerufen wenn der Nutzer eine andere Sorte wählt – Bild + Vorschau aktualisieren
@@ -5314,7 +5315,10 @@
                     const badgeText = c.specialText || "4 FÜR 3";
                     extra = ` <span class="bg-amber-400 text-black text-xs font-black px-4 py-1 rounded-2xl">${badgeText}</span> <i class="fa-solid fa-bolt animate-bolt text-2xl"></i>`;
                 }
-                html += `<button onclick="setCategoryFilter('${c.name}')" class="px-5 py-2 transition ${active}">${c.name}${extra}</button>`;
+                // BUG-10 FIX: Kategorienamen escapen, um JS-Syntaxfehler und XSS zu verhindern
+                // (z.B. bei Namen mit einfachen Anführungszeichen wie "Men's Choice")
+                const safeCatName = c.name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                html += `<button onclick="setCategoryFilter('${safeCatName}')" class="px-5 py-2 transition ${active}">${c.name}${extra}</button>`;
             });
             document.getElementById("category-tabs").innerHTML = html;
         }
@@ -5392,15 +5396,13 @@
                     const users = snap.docs.map(d => ({ id: d.id, ...d.data() }))
                         .filter(u => (u.totalBonusPoints || 0) > 0);
                     renderLeaderboard(users);
-                }, () => {
-                    // Fallback if index not ready: get all and sort client-side
-                    db.collection('users').get().then(snap => {
-                        const users = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-                            .filter(u => (u.totalBonusPoints || 0) > 0)
-                            .sort((a, b) => (b.totalBonusPoints || 0) - (a.totalBonusPoints || 0))
-                            .slice(0, 10);
-                        renderLeaderboard(users);
-                    });
+                }, (err) => {
+                    // BUG-12 FIX: Fallback entfernt — der alte Fallback lud alle User-Dokumente
+                    // auf den Client (Privacy-Leak: E-Mails, Adressen, Bestelldaten).
+                    // Stattdessen: Composite-Index in Firestore anlegen (totalBonusPoints desc).
+                    // Bis dahin: leeres Leaderboard anzeigen.
+                    console.warn('Leaderboard: Firestore-Index fehlt. Bitte in der Firestore-Konsole anlegen:', err.code);
+                    renderLeaderboard([]);
                 });
         }
 
@@ -6437,6 +6439,7 @@
                 if (!doc.exists) return;
                 const s = doc.data();
                 if (s.bank_owner) window._BANK_OWNER = s.bank_owner;
+                if (s.bank_name)  window._BANK_NAME  = s.bank_name;  // BUG-11 FIX
                 if (s.iban)       window._BANK_IBAN  = s.iban;
                 else if (s.bank_iban) window._BANK_IBAN = s.bank_iban;
                 if (s.bic)        window._BANK_BIC   = s.bic;
@@ -6685,7 +6688,8 @@
                 { id: 'payment-info-modal', close: closePaymentInfoModal },
                 { id: 'referrals-modal', close: closeReferralsModal },
                 { id: 'product-detail-modal', close: closeProductDetail },
-                { id: 'success-modal', close: closeSuccessModal },
+                { id: 'bundle-detail-modal', close: closeBundleDetail }, // BUG-05 FIX
+                { id: 'success-modal', close: closeSuccessModal },       // BUG-06 FIX
                 { id: 'agb-modal', close: closeAgbModal },
                 { id: 'widerruf-modal', close: closeWiderrufModal },
                 { id: 'impressum-modal', close: closeImpressumModal },
@@ -6721,6 +6725,8 @@
             else if (id === 'agb-modal') closeAgbModal();
             else if (id === 'widerruf-modal') closeWiderrufModal();
             else if (id === 'datenschutz-modal') closeDatenschutzModal();
+            else if (id === 'success-modal') closeSuccessModal(); // BUG-06 FIX
+            else if (id === 'bundle-detail-modal') closeBundleDetail(); // BUG-05 FIX
         });
         // ═══════════════════════════════════════════════════════════════
         //  ANDROID & CROSS-PLATFORM MOBILE FIXES
@@ -6735,7 +6741,8 @@
                 'cart-sidebar', 'auth-modal', 'address-modal', 'name-modal',
                 'history-modal', 'payment-info-modal', 'referrals-modal',
                 'success-modal', 'agb-modal', 'widerruf-modal',
-                'impressum-modal', 'datenschutz-modal'
+                'impressum-modal', 'datenschutz-modal',
+                'bundle-detail-modal' // BUG-05 FIX: Bundle-Detail-Modal schließbar per Back-Taste
             ];
             const MODAL_CLOSERS = {
                 'cart-sidebar':        () => { const s = document.getElementById('cart-sidebar'); if (s && !s.classList.contains('translate-x-full')) toggleCart(); },
@@ -6750,6 +6757,7 @@
                 'widerruf-modal':      closeWiderrufModal,
                 'impressum-modal':     closeImpressumModal,
                 'datenschutz-modal':   closeDatenschutzModal,
+                'bundle-detail-modal': closeBundleDetail, // BUG-05 FIX
             };
             // Push a dummy history entry when a modal opens so back button has something to pop
             function pushModalHistory() {
@@ -7059,6 +7067,7 @@
         window.addEventListener('beforeunload', () => {
             if (productsUnsubscribe) productsUnsubscribe();
             if (_cartSyncUnsubscribe) _cartSyncUnsubscribe();
+            if (_bundlesUnsub) _bundlesUnsub(); // BUG-25 FIX: Bundles-Listener sauber beenden
         });
     </script>
 </body>

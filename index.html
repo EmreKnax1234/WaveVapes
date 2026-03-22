@@ -4370,7 +4370,28 @@
                         ? `${item.qty} × <span style="text-decoration:line-through;color:#6b7280">${origPrice.toFixed(2).replace('.', ',')} €</span> <span style="color:#ef4444;font-weight:700">${effPrice.toFixed(2).replace('.', ',')} €</span>`
                         : `${item.qty} × ${origPrice.toFixed(2).replace('.', ',')} €`;
                     const totalColor = hasPromo ? 'color:#ef4444' : '';
-                    htmlParts.push(`<div class="cart-item flex justify-between items-center bg-zinc-900 border border-white/10 rounded-3xl p-5"><div><div class="font-medium">${item.name}${nicDisplay}</div><div class="text-xs text-gray-400 whitespace-nowrap">${priceSubline}</div></div><div class="flex items-center gap-6"><div class="font-bold text-xl whitespace-nowrap" style="${totalColor}">${(item.qty * effPrice).toFixed(2).replace('.', ',')} €</div><button onclick="removeCartItem('${item.id}'); event.stopImmediatePropagation()" class="text-red-400"><i class="fa-solid fa-trash"></i></button></div></div>`);
+                    htmlParts.push(`
+                    <div class="cart-item flex justify-between items-center bg-zinc-900 border border-white/10 rounded-3xl p-5">
+                        <div style="flex:1;min-width:0">
+                            <div class="font-medium">${item.name}${nicDisplay}</div>
+                            <div class="text-xs text-gray-400 whitespace-nowrap mt-0.5">${priceSubline}</div>
+                        </div>
+                        <div class="flex items-center gap-3" style="flex-shrink:0;margin-left:12px">
+                            <div style="display:flex;align-items:center;gap:0;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;overflow:hidden">
+                                <button onclick="changeQuantity('${item.id}', -1); event.stopImmediatePropagation()"
+                                    style="width:32px;height:32px;background:transparent;border:none;color:rgba(255,255,255,.6);font-size:16px;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center"
+                                    onmouseover="this.style.background='rgba(255,255,255,.1)';this.style.color='#fff'"
+                                    onmouseout="this.style.background='transparent';this.style.color='rgba(255,255,255,.6)'">−</button>
+                                <span style="min-width:24px;text-align:center;font-size:14px;font-weight:700;color:#fff;padding:0 4px">${item.qty}</span>
+                                <button onclick="changeQuantity('${item.id}', +1); event.stopImmediatePropagation()"
+                                    style="width:32px;height:32px;background:transparent;border:none;color:rgba(255,255,255,.6);font-size:16px;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center"
+                                    onmouseover="this.style.background='rgba(255,255,255,.1)';this.style.color='#fff'"
+                                    onmouseout="this.style.background='transparent';this.style.color='rgba(255,255,255,.6)'">+</button>
+                            </div>
+                            <div class="font-bold text-xl whitespace-nowrap" style="${totalColor}">${(item.qty * effPrice).toFixed(2).replace('.', ',')} €</div>
+                            <button onclick="removeCartItem('${item.id}'); event.stopImmediatePropagation()" class="text-red-400"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>`);
                 }
             });
             const shippingCost = getShippingCost();

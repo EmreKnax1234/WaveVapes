@@ -2410,10 +2410,26 @@
             if (_bundlesUnsub) { _bundlesUnsub(); _bundlesUnsub = null; }
             _bundlesUnsub = db.collection('bundles').where('active', '==', true).onSnapshot(snap => {
                 allBundles = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                // BUNDLE-FIX: Nach dem Laden der Bundles die Wunschliste bereinigen.
+                // Bundle-IDs ohne 'b_'-Prefix werden entfernt (veraltete Einträge).
+                _sanitizeBundleWishlistEntries();
                 // SORT-FIX: Sofort nach bundleOrder sortieren wenn bereits geladen
                 _applyBundleOrder();
                 renderProductsDebounced();
             }, err => console.warn('Bundles laden fehlgeschlagen:', err));
+        }
+
+        function _sanitizeBundleWishlistEntries() {
+            const bundleIds = new Set(allBundles.map(b => String(b.id)));
+            const before = wishlist.length;
+            const cleaned = wishlist.filter(id => {
+                if (String(id).startsWith('b_')) return true; // korrekte Bundle-Einträge behalten
+                return !bundleIds.has(String(id));            // falsche Bundle-IDs entfernen
+            });
+            if (cleaned.length !== before) {
+                wishlist = cleaned;
+                saveWishlist();
+            }
         }
 
         // Sortiert allBundles in-place nach bundleOrder (aus settings/bundle_order)
@@ -3330,8 +3346,18 @@
                     // Previously the local guest wishlist was silently discarded on login
                     if (Array.isArray(data.wishlist)) {
                         const guestWishlist = JSON.parse(localStorage.getItem("wavevapes_wishlist") || "[]");
-                        const merged = [...new Set([...guestWishlist, ...data.wishlist])];
-                        if (merged.length !== data.wishlist.length) {
+                        let merged = [...new Set([...guestWishlist, ...data.wishlist])];
+                        // BUNDLE-FIX: Bundle-IDs ohne 'b_'-Prefix aus der Wunschliste entfernen.
+                        // Wenn eine Bundle-ID (z.B. "abc123") ohne Prefix in der Wishlist liegt,
+                        // wird das Bundle fälschlicherweise als Favorit markiert.
+                        const bundleIds = new Set(allBundles.map(b => b.id));
+                        const before = merged.length;
+                        merged = merged.filter(id => {
+                            // Behalte: b_-Prefixed Einträge, oder IDs die KEINE Bundle-ID sind
+                            if (String(id).startsWith('b_')) return true;
+                            return !bundleIds.has(String(id));
+                        });
+                        if (merged.length !== data.wishlist.length || merged.length !== before) {
                             // Persist merged wishlist back to Firestore
                             db.collection("users").doc(user.uid).update({ wishlist: merged }).catch(() => {});
                         }
@@ -4021,9 +4047,16 @@
                        <i class="fa-solid fa-shuffle" style="font-size:9px"></i> Sorten frei wählbar
                    </div>`
                 : '';
+            const isBundleWished = wishlist.includes('b_' + b.id);
             return `
             <div class="bundle-card" data-bundle-id="${b.id}" onclick="showBundleDetail('${b.id}')">
                 <div class="bundle-card-bar"></div>
+                <button class="wish-btn${isBundleWished ? ' wished' : ''}"
+                        onclick="toggleBundleWishlist('${b.id}', event)"
+                        aria-label="Bundle zu Favoriten hinzufügen" title="Favorit"
+                        style="position:absolute;top:16px;right:10px;z-index:10">
+                    <i class="fa-${isBundleWished ? 'solid' : 'regular'} fa-heart"></i>
+                </button>
                 <div class="p-5 flex flex-col h-full gap-3">
                     <span class="bundle-badge">🎁 Bundle</span>
                     <div style="margin-top:22px">${imgHTML}</div>
@@ -4200,11 +4233,14 @@
             // Vorher: Bundles immer zuerst — Admin-Sortierung wurde komplett ignoriert.
 
             if (showWishlistOnly) {
-                // Favoriten-Modus: nur Bundles zeigen die im Warenkorb sind
+                // Favoriten-Modus: Bundles zeigen die in der Wunschliste sind
                 const wishBundleHtml = activeBundles
-                    .filter(b => cart.some(i => i.bundleId === b.id))
+                    .filter(b => wishlist.includes('b_' + b.id))
                     .map(b => _buildBundleCardHtml(b)).join('');
                 container.innerHTML = wishBundleHtml + html;
+                if (!wishBundleHtml && !html) {
+                    container.innerHTML = `<p class="col-span-full text-center py-16 text-gray-400">Keine Favoriten vorhanden.</p>`;
+                }
                 return;
             }
 
@@ -5756,6 +5792,33 @@
             updateWishlistBadge();
         }
 
+        function toggleBundleWishlist(bundleId, event) {
+            event.stopImmediatePropagation();
+            const key = 'b_' + bundleId;
+            const idx = wishlist.indexOf(key);
+            if (idx === -1) {
+                wishlist.push(key);
+                showToast("❤️ Bundle zu Favoriten hinzugefügt");
+            } else {
+                wishlist.splice(idx, 1);
+                showToast("🤍 Bundle aus Favoriten entfernt");
+            }
+            saveWishlist();
+            // Nur den Herz-Button patchen, kein Full-Re-Render
+            const card = document.querySelector(`[data-bundle-id="${bundleId}"]`);
+            if (card) {
+                const btn = card.querySelector(".wish-btn");
+                if (btn) {
+                    const wished = wishlist.includes(key);
+                    btn.classList.toggle("wished", wished);
+                    btn.innerHTML = `<i class="fa-${wished ? 'solid' : 'regular'} fa-heart"></i>`;
+                    btn.classList.add("pop");
+                    btn.addEventListener("animationend", () => btn.classList.remove("pop"), { once: true });
+                }
+            }
+            if (showWishlistOnly) renderProducts();
+        }
+
         function updateWishlistBadge() {
             const badge = document.getElementById("wishlist-count-badge");
             const pill  = document.getElementById("wishlist-filter-pill");
@@ -5821,22 +5884,33 @@
                 ? `<div class="wish-modal-empty">❤️<br>Noch keine Favoriten. Klicke auf das Herz bei einem Produkt!</div>`
                 : sortedItems.map(p => {
                     if (!p) return '';
-                    const price = p.price ? p.price.toFixed(2).replace('.', ',') + ' €' : '—';
+                    const isBundle = p._type === 'bundle';
+                    const price = isBundle
+                        ? (p.bundlePrice || p.price || 0).toFixed(2).replace('.', ',') + ' €'
+                        : (p.price ? p.price.toFixed(2).replace('.', ',') + ' €' : '—');
                     const imgHtml = p.image
                         ? `<img class="wish-modal-img" src="${p.image}" alt="${p.name}" loading="lazy">`
-                        : `<div class="wish-modal-ph">🧪</div>`;
-                    const _rc3 = _productRatingCache[p.id];
+                        : `<div class="wish-modal-ph">${isBundle ? '🎁' : '🧪'}</div>`;
+                    const _rc3 = !isBundle && _productRatingCache[p.id];
                     const ratingHtml = _rc3 && _rc3.count > 0
                         ? `<div style="font-size:10px;color:#fbbf24;margin-top:3px">★ ${_rc3.avg.toFixed(1)} <span style="color:rgba(255,255,255,.3)">(${_rc3.count})</span></div>`
                         : '';
-                    return `<div class="wish-modal-item" onclick="closeWishlistModal();showProductDetail('${p.id}')">
+                    const typeBadge = isBundle
+                        ? `<span style="font-size:9px;font-weight:700;background:rgba(167,139,250,.15);color:#a78bfa;border:1px solid rgba(167,139,250,.25);border-radius:99px;padding:1px 7px;margin-top:3px;display:inline-block">Bundle</span>`
+                        : '';
+                    const openFn = isBundle
+                        ? `closeWishlistModal();showBundleDetail('${p.id}')`
+                        : `closeWishlistModal();showProductDetail('${p.id}')`;
+                    const rmKey = isBundle ? `'b_${p.id}'` : `'${p.id}'`;
+                    return `<div class="wish-modal-item" onclick="${openFn}">
                         ${imgHtml}
                         <div style="flex:1;min-width:0">
                             <div class="wish-modal-name">${p.name}</div>
+                            ${typeBadge}
                             ${ratingHtml}
                         </div>
                         <span class="wish-modal-price">${price}</span>
-                        <button class="wish-modal-rm" onclick="event.stopPropagation();removeFromWishlistModal('${p.id}')" title="Entfernen"><i class="fa-solid fa-xmark"></i></button>
+                        <button class="wish-modal-rm" onclick="event.stopPropagation();removeFromWishlistModal(${rmKey})" title="Entfernen"><i class="fa-solid fa-xmark"></i></button>
                     </div>`;
                 }).join('');
 
@@ -5869,15 +5943,27 @@
         }
 
         function getWishlistSorted() {
-            const items = wishlist.map(id => allProducts.find(p => p.id === id)).filter(Boolean);
-            if (_wishlistSort === 'price-asc') return items.sort((a,b) => (a.price||0)-(b.price||0));
-            if (_wishlistSort === 'price-desc') return items.sort((a,b) => (b.price||0)-(a.price||0));
-            if (_wishlistSort === 'rating') return items.sort((a,b) => {
+            // Produkte
+            const productItems = wishlist
+                .filter(id => !String(id).startsWith('b_'))
+                .map(id => allProducts.find(p => p.id === id))
+                .filter(Boolean)
+                .map(p => ({ ...p, _type: 'product' }));
+            // Bundles
+            const bundleItems = wishlist
+                .filter(id => String(id).startsWith('b_'))
+                .map(key => allBundles.find(b => b.id === key.slice(2)))
+                .filter(Boolean)
+                .map(b => ({ ...b, price: b.bundlePrice, _type: 'bundle' }));
+            const all = [...productItems, ...bundleItems];
+            if (_wishlistSort === 'price-asc')  return all.sort((a,b) => (a.price||0)-(b.price||0));
+            if (_wishlistSort === 'price-desc') return all.sort((a,b) => (b.price||0)-(a.price||0));
+            if (_wishlistSort === 'rating')     return all.sort((a,b) => {
                 const ra = _productRatingCache[a.id]?.avg || 0;
                 const rb = _productRatingCache[b.id]?.avg || 0;
                 return rb - ra;
             });
-            return items.sort((a,b) => a.name.localeCompare(b.name, 'de'));
+            return all.sort((a,b) => a.name.localeCompare(b.name, 'de'));
         }
 
         function setWishlistSort(sort) {
@@ -5896,9 +5982,17 @@
         }
 
         function shareWishlist() {
-            const items = wishlist.map(id => allProducts.find(p => p.id === id)).filter(Boolean);
-            if (items.length === 0) return;
-            const text = `Meine WaveVapes Wunschliste:\n${items.map(p => `• ${p.name} – ${p.price?.toFixed(2).replace('.',',')} €`).join('\n')}\n\nShop: https://wavevapes.de`;
+            const productEntries = wishlist
+                .filter(id => !String(id).startsWith('b_'))
+                .map(id => allProducts.find(p => p.id === id)).filter(Boolean)
+                .map(p => `• ${p.name} – ${p.price?.toFixed(2).replace('.',',')} €`);
+            const bundleEntries = wishlist
+                .filter(id => String(id).startsWith('b_'))
+                .map(key => allBundles.find(b => b.id === key.slice(2))).filter(Boolean)
+                .map(b => `• 🎁 ${b.name} – ${(b.bundlePrice||0).toFixed(2).replace('.',',')} €`);
+            const all = [...productEntries, ...bundleEntries];
+            if (all.length === 0) return;
+            const text = `Meine WaveVapes Wunschliste:\n${all.join('\n')}\n\nShop: https://wavevapes.de`;
             if (navigator.share) {
                 navigator.share({ title: 'Meine WaveVapes Favoriten', text }).catch(() => {});
             } else {
@@ -5907,16 +6001,30 @@
         }
 
         function addAllWishlistToCart() {
-            const items = wishlist.map(id => allProducts.find(p => p.id === id)).filter(p => p && p.available && p.stock > 0);
-            if (items.length === 0) { showToast('⚠️ Keine verfügbaren Produkte in deiner Wunschliste', 'error'); return; }
-            items.forEach(p => {
+            // Produkte
+            const productItems = wishlist
+                .filter(id => !String(id).startsWith('b_'))
+                .map(id => allProducts.find(p => p.id === id))
+                .filter(p => p && p.available && p.stock > 0);
+            productItems.forEach(p => {
                 const existing = cart.find(i => i.id === p.id);
                 if (existing) existing.qty = Math.min(existing.qty + 1, p.stock || 99);
                 else cart.push({ id: p.id, name: p.name, price: p.price, qty: 1, nicotine: pendingNicotine[p.id] || '20 mg' });
             });
+            // Bundles
+            const bundleItems = wishlist
+                .filter(id => String(id).startsWith('b_'))
+                .map(key => allBundles.find(b => b.id === key.slice(2)))
+                .filter(Boolean);
+            bundleItems.forEach(b => {
+                const existing = cart.find(i => i.bundleId === b.id);
+                if (!existing) cart.push({ id: 'bundle_' + b.id, bundleId: b.id, name: b.name, price: b.bundlePrice, qty: 1, isBundle: true });
+            });
+            const total = productItems.length + bundleItems.length;
+            if (total === 0) { showToast('⚠️ Keine verfügbaren Produkte in deiner Wunschliste', 'error'); return; }
             updateCartDisplay();
             closeWishlistModal();
-            showToast(`🛒 ${items.length} Produkt${items.length!==1?'e':''} in den Warenkorb gelegt!`);
+            showToast(`🛒 ${total} Artikel in den Warenkorb gelegt!`);
         }
 
         // ── LIVE SEARCH DROPDOWN ────────────────────────────────────────────────

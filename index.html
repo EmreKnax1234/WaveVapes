@@ -3032,25 +3032,32 @@
         // ====================== SERVER-CART ======================
         async function loadUserCart() {
             if (!currentUser) {
-                cart = [];
-                updateCartDisplay();
+                // Gast: Warenkorb aus localStorage wiederherstellen
+                try {
+                    const saved = localStorage.getItem('wavevapes_cart_guest');
+                    if (saved) {
+                        const parsed = JSON.parse(saved);
+                        if (Array.isArray(parsed) && parsed.length > 0) {
+                            cart = parsed.filter(i => i.id !== MYSTERY_ID);
+                            manageMysteryVape();
+                            updateCartDisplay();
+                        }
+                    }
+                } catch(e) { /* ignore */ }
                 return;
             }
             try {
                 const userDoc = await db.collection("users").doc(currentUser.uid).get();
                 const serverCart = (userDoc.exists && userDoc.data().cart) ? userDoc.data().cart : [];
-                const guestCart  = cart.filter(i => i.id !== MYSTERY_ID); // BUG FIX: use MYSTERY_ID constant instead of hardcoded 999
+                const guestCart  = cart.filter(i => i.id !== MYSTERY_ID);
 
                 if (guestCart.length > 0 && serverCart.length === 0) {
-                    // Only guest items — clamp each to current stock
                     cart = guestCart.map(i => {
                         const p = _productMap.get(i.id);
                         if (p && p.stock > 0) i.qty = Math.min(i.qty, p.stock);
                         return i;
                     });
                 } else if (guestCart.length > 0 && serverCart.length > 0) {
-                    // Merge: add guest items that aren't already in server cart
-                    // BUG FIX: cap merged qty at product.stock to prevent over-ordering
                     cart = [...serverCart];
                     guestCart.forEach(guestItem => {
                         const existing = cart.find(i => i.id === guestItem.id);
@@ -3067,24 +3074,61 @@
                 } else {
                     cart = serverCart;
                 }
+                // Gast-Cart nach Merge löschen
+                localStorage.removeItem('wavevapes_cart_guest');
                 manageMysteryVape();
                 await saveUserCart();
                 updateCartDisplay();
+
+                // Live-Sync: Warenkorb-Änderungen von anderen Geräten sofort übernehmen
+                _startCartLiveSync();
             } catch (e) {
                 console.error("Cart laden fehlgeschlagen", e);
                 cart = [];
             }
         }
+
+        // Live-Sync des Warenkorbs über Firestore onSnapshot
+        let _cartSyncUnsubscribe = null;
+        let _cartSyncPaused = false; // Während eigenem Speichern keine fremden Updates verarbeiten
+        function _startCartLiveSync() {
+            if (_cartSyncUnsubscribe) _cartSyncUnsubscribe();
+            if (!currentUser) return;
+            _cartSyncUnsubscribe = db.collection("users").doc(currentUser.uid)
+                .onSnapshot(doc => {
+                    if (_cartSyncPaused || !doc.exists) return;
+                    const remoteCart = doc.data().cart;
+                    if (!remoteCart) return;
+                    // Nur übernehmen wenn sich der Inhalt wirklich geändert hat
+                    const localSig  = JSON.stringify(cart.filter(i => i.id !== MYSTERY_ID));
+                    const remoteSig = JSON.stringify(remoteCart.filter(i => i.id !== MYSTERY_ID));
+                    if (localSig === remoteSig) return;
+                    cart = remoteCart;
+                    manageMysteryVape();
+                    updateCartDisplay();
+                }, err => console.warn("Cart live-sync Fehler:", err));
+        }
+
         // Debounced cart save — prevents rapid Firestore writes on fast +-clicks
         let _saveCartTimer = null;
         function saveUserCart() {
-            if (!currentUser) return;
+            // Gast: in localStorage speichern
+            if (!currentUser) {
+                try {
+                    localStorage.setItem('wavevapes_cart_guest',
+                        JSON.stringify(cart.filter(i => i.id !== MYSTERY_ID)));
+                } catch(e) { /* ignore */ }
+                return;
+            }
             clearTimeout(_saveCartTimer);
+            _cartSyncPaused = true; // eigene Schreibvorgänge nicht als "fremde Änderung" werten
             _saveCartTimer = setTimeout(async () => {
                 try {
                     await db.collection("users").doc(currentUser.uid).update({ cart });
                 } catch(e) {
                     console.error("Cart speichern fehlgeschlagen:", e.message);
+                } finally {
+                    setTimeout(() => { _cartSyncPaused = false; }, 800);
                 }
             }, 600);
         }
@@ -3301,6 +3345,8 @@
             if (window._presenceInterval) { clearInterval(window._presenceInterval); window._presenceInterval = null; }
             // BUG 3 FIX: Clean up referral code listener on logout
             if (window._referralCodeUnsub) { window._referralCodeUnsub(); window._referralCodeUnsub = null; }
+            // Stop cart live-sync
+            if (_cartSyncUnsubscribe) { _cartSyncUnsubscribe(); _cartSyncUnsubscribe = null; }
             // Remove presence doc so user disappears from Live Online immediately
             const docId = currentUser ? currentUser.uid : sessionId;
             db.collection("presence").doc(docId).delete().catch(()=>{});
@@ -6985,6 +7031,7 @@
         window.addEventListener('resize', () => { clearTimeout(window._resizeT); window._resizeT = setTimeout(renderProducts, 250); });
         window.addEventListener('beforeunload', () => {
             if (productsUnsubscribe) productsUnsubscribe();
+            if (_cartSyncUnsubscribe) _cartSyncUnsubscribe();
         });
     </script>
 </body>

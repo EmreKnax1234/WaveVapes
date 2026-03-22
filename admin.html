@@ -3864,6 +3864,7 @@
             <!-- ── Inner Navigation Tabs ── -->
             <div class="sa-inner-tabs">
                 <div class="sa-inner-tab active" onclick="saSwitchInner('dashboard',this)"><i class="fa-solid fa-gauge-high" style="margin-right:6px"></i>Dashboard</div>
+                <div class="sa-inner-tab" onclick="saSwitchInner('analytics',this)"><i class="fa-solid fa-chart-line" style="margin-right:6px"></i>Shop-Analyse</div>
                 <div class="sa-inner-tab" onclick="saSwitchInner('admins',this)"><i class="fa-solid fa-users-cog" style="margin-right:6px"></i>Admin-Verwaltung</div>
                 <div class="sa-inner-tab" onclick="saSwitchInner('ipsec',this)"><i class="fa-solid fa-ban" style="margin-right:6px"></i>IP-Sicherheit &amp; Bann</div>
                 <div class="sa-inner-tab" onclick="saSwitchInner('security',this)"><i class="fa-solid fa-shield-halved" style="margin-right:6px"></i>Sicherheit</div>
@@ -3878,17 +3879,57 @@
                 <div class="sa-section-title"><i class="fa-solid fa-gauge-high" style="color:#fbbf24"></i> Shop-Übersicht</div>
                 <div class="sa-kpi-grid">
                     <div class="sa-kpi"><div class="sa-kpi-icon">💶</div><div class="sa-kpi-label">Gesamtumsatz</div><div class="sa-kpi-value" id="sa-kpi-revenue">—</div><div class="sa-kpi-sub">Alle Bestellungen</div></div>
-                    <div class="sa-kpi"><div class="sa-kpi-icon">📦</div><div class="sa-kpi-label">Bestellungen</div><div class="sa-kpi-value" id="sa-kpi-orders">—</div><div class="sa-kpi-sub" id="sa-kpi-orders-sub">Gesamt</div></div>
-                    <div class="sa-kpi"><div class="sa-kpi-icon">👤</div><div class="sa-kpi-label">Registrierte User</div><div class="sa-kpi-value" id="sa-kpi-users">—</div><div class="sa-kpi-sub">Gesamt</div></div>
-                    <div class="sa-kpi"><div class="sa-kpi-icon">🛡️</div><div class="sa-kpi-label">Aktive Admins</div><div class="sa-kpi-value" id="sa-kpi-admins">—</div><div class="sa-kpi-sub">inkl. Superadmin</div></div>
+                    <div class="sa-kpi"><div class="sa-kpi-icon">📅</div><div class="sa-kpi-label">Heute</div><div class="sa-kpi-value" id="sa-kpi-today">—</div><div class="sa-kpi-sub" id="sa-kpi-today-orders">— Bestellungen</div></div>
+                    <div class="sa-kpi"><div class="sa-kpi-icon">📈</div><div class="sa-kpi-label">Letzte 7 Tage</div><div class="sa-kpi-value" id="sa-kpi-7d">—</div><div class="sa-kpi-sub" id="sa-kpi-7d-orders">— Bestellungen</div></div>
+                    <div class="sa-kpi"><div class="sa-kpi-icon">📊</div><div class="sa-kpi-label">Letzte 30 Tage</div><div class="sa-kpi-value" id="sa-kpi-30d">—</div><div class="sa-kpi-sub" id="sa-kpi-30d-orders">— Bestellungen</div></div>
+                    <div class="sa-kpi"><div class="sa-kpi-icon">⏳</div><div class="sa-kpi-label">Offene Bestellungen</div><div class="sa-kpi-value" id="sa-kpi-open">—</div><div class="sa-kpi-sub">Wird bearbeitet</div></div>
+                    <div class="sa-kpi"><div class="sa-kpi-icon">👤</div><div class="sa-kpi-label">Registrierte User</div><div class="sa-kpi-value" id="sa-kpi-users">—</div><div class="sa-kpi-sub" id="sa-kpi-users-new">— neu (7 Tage)</div></div>
                     <div class="sa-kpi"><div class="sa-kpi-icon">🌐</div><div class="sa-kpi-label">Live Online</div><div class="sa-kpi-value" id="sa-kpi-online">—</div><div class="sa-kpi-sub">Besucher jetzt</div></div>
+                    <div class="sa-kpi"><div class="sa-kpi-icon">🛡️</div><div class="sa-kpi-label">Aktive Admins</div><div class="sa-kpi-value" id="sa-kpi-admins">—</div><div class="sa-kpi-sub">inkl. Superadmin</div></div>
                     <div class="sa-kpi"><div class="sa-kpi-icon">⭐</div><div class="sa-kpi-label">Aussteh. Reviews</div><div class="sa-kpi-value" id="sa-kpi-reviews">—</div><div class="sa-kpi-sub">Warten auf Freigabe</div></div>
-                    <div class="sa-kpi"><div class="sa-kpi-icon">🚫</div><div class="sa-kpi-label">Gesperrte IPs</div><div class="sa-kpi-value" id="sa-kpi-banned">—</div><div class="sa-kpi-sub">Unberechtigte Zugr.</div></div>
-                    <div class="sa-kpi"><div class="sa-kpi-icon">🏷️</div><div class="sa-kpi-label">Produkte</div><div class="sa-kpi-value" id="sa-kpi-products">—</div><div class="sa-kpi-sub">Im Shop aktiv</div></div>
+                    <div class="sa-kpi"><div class="sa-kpi-icon">🚫</div><div class="sa-kpi-label">Gesperrte IPs</div><div class="sa-kpi-value" id="sa-kpi-banned">—</div><div class="sa-kpi-sub">Aktive Bans</div></div>
+                    <div class="sa-kpi"><div class="sa-kpi-icon">🏷️</div><div class="sa-kpi-label">Produkte</div><div class="sa-kpi-value" id="sa-kpi-products">—</div><div class="sa-kpi-sub" id="sa-kpi-products-sub">Im Shop</div></div>
+                    <div class="sa-kpi"><div class="sa-kpi-icon">🏆</div><div class="sa-kpi-label">Top-Produkt</div><div class="sa-kpi-value" style="font-size:14px;line-height:1.3" id="sa-kpi-top-product">—</div><div class="sa-kpi-sub" id="sa-kpi-top-product-sub">Meistverkauft</div></div>
                 </div>
-                <div class="sa-section-title" style="margin-top:8px"><i class="fa-solid fa-clock-rotate-left" style="color:#a78bfa"></i> Letzte SA-Aktionen</div>
+
+                <!-- Shop-Status Banner -->
+                <div id="sa-shop-status-banner" style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-radius:16px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.03);flex-wrap:wrap;gap:10px">
+                    <div style="display:flex;align-items:center;gap:10px">
+                        <div id="sa-shop-status-dot" style="width:10px;height:10px;border-radius:50%;background:#34d399;box-shadow:0 0 10px #34d399;flex-shrink:0"></div>
+                        <span id="sa-shop-status-text" style="font-size:13px;font-weight:600">Shop-Status wird geladen…</span>
+                    </div>
+                    <div style="display:flex;gap:8px">
+                        <button onclick="saDangerShopClose()" style="padding:7px 16px;border-radius:10px;border:1px solid rgba(248,113,113,.3);background:rgba(248,113,113,.08);color:#f87171;font-size:12px;font-weight:600;cursor:pointer"><i class="fa-solid fa-power-off"></i> Schließen</button>
+                        <button onclick="saDangerShopOpen()" style="padding:7px 16px;border-radius:10px;border:1px solid rgba(52,211,153,.3);background:rgba(52,211,153,.08);color:#34d399;font-size:12px;font-weight:600;cursor:pointer"><i class="fa-solid fa-door-open"></i> Öffnen</button>
+                    </div>
+                </div>
+
+                <div class="sa-section-title" style="margin-top:4px"><i class="fa-solid fa-clock-rotate-left" style="color:#a78bfa"></i> Letzte SA-Aktionen</div>
                 <div class="sa-log-list" id="sa-dash-log" style="max-height:240px">
                     <div style="color:rgba(255,255,255,.2);font-size:12px;padding:12px"><i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>Lade...</div>
+                </div>
+            </div>
+
+            <!-- PANEL: SHOP-ANALYSE -->
+            <div class="sa-inner-panel" id="sa-panel-analytics">
+                <div class="sa-section-title"><i class="fa-solid fa-chart-line" style="color:#67e8f9"></i> Umsatz-Übersicht</div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px" id="sa-analytics-kpis">
+                    <div style="color:rgba(255,255,255,.2);font-size:12px;padding:20px;grid-column:1/-1"><i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>Analysiere…</div>
+                </div>
+
+                <div class="sa-section-title"><i class="fa-solid fa-trophy" style="color:#fbbf24"></i> Top 10 Produkte</div>
+                <div id="sa-top-products" style="display:flex;flex-direction:column;gap:8px">
+                    <div style="color:rgba(255,255,255,.2);font-size:12px;padding:12px"><i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>Lade…</div>
+                </div>
+
+                <div class="sa-section-title"><i class="fa-solid fa-chart-pie" style="color:#a78bfa"></i> Bestellstatus-Verteilung</div>
+                <div id="sa-order-status-chart" style="display:flex;flex-direction:column;gap:8px">
+                    <div style="color:rgba(255,255,255,.2);font-size:12px;padding:12px"><i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>Lade…</div>
+                </div>
+
+                <div class="sa-section-title"><i class="fa-solid fa-users" style="color:#34d399"></i> User-Wachstum (letzte 30 Tage)</div>
+                <div id="sa-user-growth" style="display:flex;flex-direction:column;gap:6px">
+                    <div style="color:rgba(255,255,255,.2);font-size:12px;padding:12px"><i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>Lade…</div>
                 </div>
             </div>
 
@@ -3964,14 +4005,25 @@
             <!-- PANEL: SESSION MONITOR -->
             <div class="sa-inner-panel" id="sa-panel-sessions">
                 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:4px">
-                    <div class="sa-section-title" style="margin:0;flex:1"><i class="fa-solid fa-eye" style="color:#34d399"></i> Aktive Admin-Sessions</div>
-                    <button onclick="saLoadSessions()" style="padding:8px 16px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:rgba(255,255,255,.6);font-size:12px;cursor:pointer"><i class="fa-solid fa-rotate"></i> Aktualisieren</button>
+                    <div class="sa-section-title" style="margin:0;flex:1"><i class="fa-solid fa-eye" style="color:#34d399"></i> Session Monitor</div>
+                    <div style="display:flex;gap:8px;align-items:center">
+                        <div id="sa-sess-counts" style="font-size:12px;color:rgba(255,255,255,.3)"></div>
+                        <button onclick="saLoadSessions()" style="padding:8px 16px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:rgba(255,255,255,.6);font-size:12px;cursor:pointer"><i class="fa-solid fa-rotate"></i> Aktualisieren</button>
+                    </div>
                 </div>
-                <div class="sa-sess-list" id="sa-sess-list">
+                <!-- Filter Tabs -->
+                <div style="display:flex;gap:6px;flex-wrap:wrap">
+                    <button class="sa-inner-tab active" id="sess-tab-all" onclick="saSessionFilter('all',this)" style="padding:5px 14px;font-size:11px">Alle</button>
+                    <button class="sa-inner-tab" id="sess-tab-admins" onclick="saSessionFilter('admins',this)" style="padding:5px 14px;font-size:11px;color:rgba(251,191,36,.7)">👑 Admins</button>
+                    <button class="sa-inner-tab" id="sess-tab-guests" onclick="saSessionFilter('guests',this)" style="padding:5px 14px;font-size:11px">Gäste</button>
+                    <button class="sa-inner-tab" id="sess-tab-users" onclick="saSessionFilter('users',this)" style="padding:5px 14px;font-size:11px">Eingeloggte User</button>
+                    <button class="sa-inner-tab" id="sess-tab-cart" onclick="saSessionFilter('cart',this)" style="padding:5px 14px;font-size:11px;color:rgba(103,232,249,.7)">🛒 Mit Warenkorb</button>
+                </div>
+                <div class="sa-sess-list" id="sa-sess-list" style="max-height:480px;overflow-y:auto">
                     <div style="color:rgba(255,255,255,.2);font-size:13px;padding:16px"><i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>Lade Sessions...</div>
                 </div>
                 <div style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.05);border-radius:16px;padding:14px">
-                    <div style="font-size:11px;color:rgba(255,255,255,.25);line-height:1.7"><i class="fa-solid fa-circle-info" style="margin-right:6px;color:rgba(103,232,249,.4)"></i>Sessions basieren auf dem Firebase Presence-System. Grüner Punkt = aktiv in letzten 60 Sek.</div>
+                    <div style="font-size:11px;color:rgba(255,255,255,.25);line-height:1.7"><i class="fa-solid fa-circle-info" style="margin-right:6px;color:rgba(103,232,249,.4)"></i>Grüner Punkt = aktiv in letzten 90 Sek. Alle Presence-Daten kommen aus Firestore.</div>
                 </div>
             </div>
 
@@ -4257,11 +4309,12 @@
                         <div style="font-size:11px;color:rgba(255,255,255,.3);margin-top:3px;line-height:1.5">Diese Aktionen können nicht rückgängig gemacht werden. Alle Änderungen werden protokolliert.</div>
                     </div>
                 </div>
+
                 <div class="sa-section-title"><i class="fa-solid fa-bolt" style="color:#f87171"></i> Shop-Steuerung</div>
                 <div class="sa-danger-grid">
                     <div class="sa-danger-card">
                         <div class="sa-danger-title"><i class="fa-solid fa-power-off"></i> Shop sofort schließen</div>
-                        <div class="sa-danger-desc">Schließt den Shop sofort für alle Kunden. Kunden sehen eine Wartungsseite, Admins haben weiterhin Zugriff.</div>
+                        <div class="sa-danger-desc">Schließt den Shop sofort für alle Kunden. Admins haben weiterhin Zugriff.</div>
                         <button class="sa-danger-btn" onclick="saDangerShopClose()"><i class="fa-solid fa-power-off"></i> Shop schließen</button>
                     </div>
                     <div class="sa-danger-card">
@@ -4269,12 +4322,23 @@
                         <div class="sa-danger-desc">Öffnet den Shop sofort wieder für alle Kunden.</div>
                         <button class="sa-danger-btn" onclick="saDangerShopOpen()" style="border-color:rgba(52,211,153,.3);background:rgba(52,211,153,.08);color:#34d399"><i class="fa-solid fa-door-open"></i> Shop öffnen</button>
                     </div>
+                    <div class="sa-danger-card">
+                        <div class="sa-danger-title"><i class="fa-solid fa-ticket"></i> Alle Gutscheine deaktivieren</div>
+                        <div class="sa-danger-desc">Setzt alle aktiven Gutscheine auf inaktiv. Nützlich bei Missbrauch oder Fehlern.</div>
+                        <button class="sa-danger-btn" onclick="saDangerDisableAllCoupons()" style="border-color:rgba(251,191,36,.3);background:rgba(251,191,36,.07);color:#fbbf24"><i class="fa-solid fa-ticket"></i> Alle deaktivieren</button>
+                    </div>
+                    <div class="sa-danger-card">
+                        <div class="sa-danger-title"><i class="fa-solid fa-box-open"></i> Alle Produkte deaktivieren</div>
+                        <div class="sa-danger-desc">Setzt alle Produkte auf "nicht verfügbar". Kunden können nichts kaufen. Reversibel.</div>
+                        <button class="sa-danger-btn" onclick="saDangerDeactivateAllProducts()" style="border-color:rgba(251,191,36,.3);background:rgba(251,191,36,.07);color:#fbbf24"><i class="fa-solid fa-box-open"></i> Alle deaktivieren</button>
+                    </div>
                 </div>
+
                 <div class="sa-section-title" style="margin-top:8px"><i class="fa-solid fa-broom" style="color:#f87171"></i> Daten zurücksetzen</div>
                 <div class="sa-danger-grid">
                     <div class="sa-danger-card">
-                        <div class="sa-danger-title"><i class="fa-solid fa-shield-halved"></i> Alle gesperrten IPs aufheben</div>
-                        <div class="sa-danger-desc">Entfernt alle automatisch gesperrten IP-Adressen. Nützlich wenn du dich selbst ausgesperrt hast.</div>
+                        <div class="sa-danger-title"><i class="fa-solid fa-shield-halved"></i> Alle IP-Sperren aufheben</div>
+                        <div class="sa-danger-desc">Entfernt alle gesperrten IP-Adressen. Nützlich wenn du dich selbst ausgesperrt hast.</div>
                         <button class="sa-danger-btn" onclick="saDangerClearBannedIPs()"><i class="fa-solid fa-trash-can"></i> IP-Sperren aufheben</button>
                     </div>
                     <div class="sa-danger-card">
@@ -4292,13 +4356,29 @@
                         <div class="sa-danger-desc">Setzt die Loyalty-Punkte ALLER Benutzer auf 0 zurück. Konten bleiben erhalten.</div>
                         <button class="sa-danger-btn" onclick="saDangerResetLoyalty()"><i class="fa-solid fa-rotate-left"></i> Alle Punkte zurücksetzen</button>
                     </div>
+                    <div class="sa-danger-card">
+                        <div class="sa-danger-title"><i class="fa-solid fa-wifi"></i> Presence-Daten leeren</div>
+                        <div class="sa-danger-desc">Löscht alle Online-Presence-Einträge. Behebt "Geister-User" die online erscheinen aber weg sind.</div>
+                        <button class="sa-danger-btn" onclick="saDangerClearPresence()"><i class="fa-solid fa-trash-can"></i> Presence leeren</button>
+                    </div>
+                    <div class="sa-danger-card">
+                        <div class="sa-danger-title"><i class="fa-solid fa-flag"></i> Alle Zugriffsversuche löschen</div>
+                        <div class="sa-danger-desc">Löscht alle Einträge in der unauthorized_access Collection. Zähler werden zurückgesetzt.</div>
+                        <button class="sa-danger-btn" onclick="saDangerClearUnauthorized()"><i class="fa-solid fa-trash-can"></i> Logs löschen</button>
+                    </div>
                 </div>
+
                 <div class="sa-section-title" style="margin-top:8px"><i class="fa-solid fa-skull-crossbones" style="color:#f87171"></i> Nuklear</div>
                 <div class="sa-danger-grid">
                     <div class="sa-danger-card" style="border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.07)">
                         <div class="sa-danger-title" style="font-size:15px"><i class="fa-solid fa-trash"></i> ALLE Bestellungen löschen</div>
                         <div class="sa-danger-desc">Löscht <strong style="color:#f87171">alle</strong> Bestellungen permanent aus der Datenbank. Absolut irreversibel.</div>
                         <button class="sa-danger-btn" style="border-color:rgba(239,68,68,.6);background:rgba(239,68,68,.18)" onclick="saDangerDeleteAllOrders()"><i class="fa-solid fa-triangle-exclamation"></i> ALLE Bestellungen löschen</button>
+                    </div>
+                    <div class="sa-danger-card" style="border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.07)">
+                        <div class="sa-danger-title" style="font-size:15px"><i class="fa-solid fa-users-slash"></i> ALLE User löschen</div>
+                        <div class="sa-danger-desc">Löscht <strong style="color:#f87171">alle</strong> User-Dokumente aus Firestore (nicht Firebase Auth). Absolut irreversibel.</div>
+                        <button class="sa-danger-btn" style="border-color:rgba(239,68,68,.6);background:rgba(239,68,68,.18)" onclick="saDangerDeleteAllUsers()"><i class="fa-solid fa-triangle-exclamation"></i> ALLE User löschen</button>
                     </div>
                 </div>
             </div>
@@ -10641,6 +10721,7 @@ function saSwitchInner(panel, el) {
     el.classList.add('active');
     // Load data on demand
     if (panel === 'dashboard')  saLoadDashboard();
+    if (panel === 'analytics')  saLoadAnalytics();
     if (panel === 'admins')     saLoadAdmins();
     if (panel === 'security')   { saLoadIPWhitelist(); saLoadSecuritySettings(); }
     if (panel === 'sessions')   saLoadSessions();
@@ -10661,37 +10742,106 @@ function saRefreshZone() {
 
 // ── Dashboard ─────────────────────────────────────────
 async function saLoadDashboard() {
-    // Load KPIs in parallel
     try {
-        const [ordersSnap, usersSnap, productsSnap, adminsSnap, presenceSnap, reviewsSnap, bannedSnap] = await Promise.all([
+        const [ordersSnap, usersSnap, productsSnap, adminsSnap, presenceSnap, reviewsSnap, bannedSnap, settingsSnap] = await Promise.all([
             db.collection('orders').get(),
             db.collection('users').get(),
             db.collection('products').get(),
             db.collection('users').where('role','==','admin').get(),
             db.collection('presence').get(),
-            db.collection('reviews').where('approved','==',false).where('rejected','==',false).get().catch(()=>({size:0})),
-            db.collection('banned_ips').get().catch(()=>({size:0}))
+            db.collection('reviews').where('approved','==',false).where('rejected','==',false).get().catch(()=>({size:0,docs:[]})),
+            db.collection('banned_ips').get().catch(()=>({size:0})),
+            db.collection('settings').doc('main').get().catch(()=>null)
         ]);
 
-        let totalRevenue = 0;
-        ordersSnap.forEach(d => { totalRevenue += parseFloat(d.data().total || 0); });
         const now = Date.now();
+        const today = new Date(); today.setHours(0,0,0,0);
+        const day7  = new Date(now - 7  * 86400000);
+        const day30 = new Date(now - 30 * 86400000);
+        const week7Reg  = new Date(now - 7 * 86400000);
+
+        let totalRevenue = 0, today_rev = 0, rev7d = 0, rev30d = 0;
+        let today_cnt = 0, cnt7d = 0, cnt30d = 0, openOrders = 0;
+        const productSales = {};
+
+        ordersSnap.forEach(d => {
+            const o = d.data();
+            const ts = o.date?.toDate?.() || null;
+            const amt = parseFloat(o.total || 0);
+            totalRevenue += amt;
+            if (o.status === 'Wird bearbeitet') openOrders++;
+            if (ts) {
+                if (ts >= today) { today_rev += amt; today_cnt++; }
+                if (ts >= day7)  { rev7d  += amt; cnt7d++;  }
+                if (ts >= day30) { rev30d += amt; cnt30d++; }
+            }
+            (o.items || []).forEach(item => {
+                if (item.id && item.id !== 999) {
+                    productSales[item.id] = (productSales[item.id] || { name: item.name, qty: 0 });
+                    productSales[item.id].qty += (item.qty || 1);
+                }
+            });
+        });
+
+        // Top product
+        const topEntry = Object.values(productSales).sort((a,b) => b.qty - a.qty)[0];
+        const topName = topEntry ? (topEntry.name.length > 16 ? topEntry.name.slice(0,14)+'…' : topEntry.name) : '—';
+        const topQty  = topEntry ? topEntry.qty + '× verkauft' : '';
+
+        // New users last 7d
+        let newUsers7d = 0;
+        usersSnap.forEach(d => {
+            const ts = d.data().createdAt?.toDate?.() || null;
+            if (ts && ts >= week7Reg) newUsers7d++;
+        });
+
         const onlineCount = presenceSnap.docs.filter(d => {
             const t = d.data().lastSeen?.toDate?.()?.getTime?.() || 0;
             return (now - t) < 90000;
         }).length;
 
-        document.getElementById('sa-kpi-revenue').textContent = totalRevenue.toFixed(2).replace('.',',') + ' €';
-        document.getElementById('sa-kpi-orders').textContent = ordersSnap.size;
-        document.getElementById('sa-kpi-users').textContent = usersSnap.size;
-        document.getElementById('sa-kpi-admins').textContent = adminsSnap.size;
-        document.getElementById('sa-kpi-online').textContent = onlineCount;
-        document.getElementById('sa-kpi-reviews').textContent = reviewsSnap.size || 0;
-        document.getElementById('sa-kpi-banned').textContent = bannedSnap.size || 0;
-        document.getElementById('sa-kpi-products').textContent = productsSnap.size;
+        const availProds = productsSnap.docs.filter(d => d.data().available !== false).length;
+
+        // Update KPIs
+        const fmt = v => v.toFixed(2).replace('.',',') + ' €';
+        document.getElementById('sa-kpi-revenue').textContent     = fmt(totalRevenue);
+        document.getElementById('sa-kpi-today').textContent       = fmt(today_rev);
+        document.getElementById('sa-kpi-today-orders').textContent= today_cnt + ' Bestellung' + (today_cnt !== 1 ? 'en' : '');
+        document.getElementById('sa-kpi-7d').textContent          = fmt(rev7d);
+        document.getElementById('sa-kpi-7d-orders').textContent   = cnt7d + ' Bestellungen';
+        document.getElementById('sa-kpi-30d').textContent         = fmt(rev30d);
+        document.getElementById('sa-kpi-30d-orders').textContent  = cnt30d + ' Bestellungen';
+        document.getElementById('sa-kpi-open').textContent        = openOrders;
+        document.getElementById('sa-kpi-users').textContent       = usersSnap.size;
+        document.getElementById('sa-kpi-users-new').textContent   = '+' + newUsers7d + ' neu (7 Tage)';
+        document.getElementById('sa-kpi-online').textContent      = onlineCount;
+        document.getElementById('sa-kpi-admins').textContent      = adminsSnap.size;
+        document.getElementById('sa-kpi-reviews').textContent     = reviewsSnap.size || 0;
+        document.getElementById('sa-kpi-banned').textContent      = bannedSnap.size || 0;
+        document.getElementById('sa-kpi-products').textContent    = productsSnap.size;
+        document.getElementById('sa-kpi-products-sub').textContent= availProds + ' verfügbar';
+        document.getElementById('sa-kpi-top-product').textContent = topName;
+        document.getElementById('sa-kpi-top-product-sub').textContent = topQty;
+
+        // Shop-Status Banner
+        const shopClosed = settingsSnap?.exists && settingsSnap.data().shop_closed === true;
+        const dot  = document.getElementById('sa-shop-status-dot');
+        const text = document.getElementById('sa-shop-status-text');
+        if (dot && text) {
+            if (shopClosed) {
+                dot.style.background  = '#f87171';
+                dot.style.boxShadow   = '0 0 10px #f87171';
+                text.textContent = '🔴 Shop ist geschlossen — Kunden sehen die Wartungsseite';
+                text.style.color = '#f87171';
+            } else {
+                dot.style.background  = '#34d399';
+                dot.style.boxShadow   = '0 0 10px #34d399';
+                text.textContent = '🟢 Shop ist geöffnet — Kunden können bestellen';
+                text.style.color = '#34d399';
+            }
+        }
     } catch(e) { console.warn('SA Dashboard error:', e); }
 
-    // Load recent SA logs for dashboard
     saLoadRecentSALog();
 }
 
@@ -10710,6 +10860,122 @@ async function saLoadRecentSALog() {
             .slice(0, 8);
         renderLogEntries(el, filtered, true);
     } catch(e) { el.innerHTML = '<div style="color:rgba(255,255,255,.2);font-size:12px;padding:12px">Log konnte nicht geladen werden.</div>'; }
+}
+
+// ── Shop-Analyse ──────────────────────────────────────
+async function saLoadAnalytics() {
+    const kpisEl   = document.getElementById('sa-analytics-kpis');
+    const topEl    = document.getElementById('sa-top-products');
+    const statusEl = document.getElementById('sa-order-status-chart');
+    const growthEl = document.getElementById('sa-user-growth');
+
+    try {
+        const [ordersSnap, usersSnap] = await Promise.all([
+            db.collection('orders').get(),
+            db.collection('users').orderBy('createdAt', 'desc').limit(500).get().catch(() => db.collection('users').get())
+        ]);
+
+        const now = Date.now();
+        const day30 = new Date(now - 30 * 86400000);
+
+        // Revenue + product counts
+        let totalRev = 0, rev30d = 0;
+        const productSales = {}, statusCounts = {};
+        const catRevenue = {};
+
+        ordersSnap.forEach(d => {
+            const o = d.data();
+            const ts = o.date?.toDate?.() || null;
+            const amt = parseFloat(o.total || 0);
+            totalRev += amt;
+            if (ts && ts >= day30) rev30d += amt;
+
+            const s = o.status || 'Unbekannt';
+            statusCounts[s] = (statusCounts[s] || 0) + 1;
+
+            (o.items || []).forEach(item => {
+                if (!item.id || item.id === 999) return;
+                const key = String(item.id);
+                if (!productSales[key]) productSales[key] = { name: item.name || key, qty: 0, rev: 0 };
+                productSales[key].qty += (item.qty || 1);
+                productSales[key].rev += (item.qty || 1) * (item.price || 0);
+                const cat = item.category || 'Sonstige';
+                catRevenue[cat] = (catRevenue[cat] || 0) + (item.qty || 1) * (item.price || 0);
+            });
+        });
+
+        const avgOrder = ordersSnap.size ? totalRev / ordersSnap.size : 0;
+
+        // KPI cards
+        if (kpisEl) kpisEl.innerHTML = [
+            { icon:'💶', label:'Gesamtumsatz',    val: totalRev.toFixed(2).replace('.',',')+' €', sub: ordersSnap.size+' Bestellungen' },
+            { icon:'📅', label:'Letzte 30 Tage',  val: rev30d.toFixed(2).replace('.',',')+' €',   sub: 'Umsatz' },
+            { icon:'🧾', label:'Ø Bestellwert',   val: avgOrder.toFixed(2).replace('.',',')+' €', sub: 'pro Bestellung' },
+            { icon:'🏷️', label:'Produkte verkauft',val: Object.values(productSales).reduce((s,p)=>s+p.qty,0)+'×', sub: Object.keys(productSales).length+' verschiedene' },
+        ].map(k => `<div class="sa-kpi">
+            <div class="sa-kpi-icon">${k.icon}</div>
+            <div class="sa-kpi-label">${k.label}</div>
+            <div class="sa-kpi-value" style="font-size:20px">${k.val}</div>
+            <div class="sa-kpi-sub">${k.sub}</div>
+        </div>`).join('');
+
+        // Top 10 products
+        const topProds = Object.values(productSales).sort((a,b) => b.qty - a.qty).slice(0,10);
+        const maxQty = topProds[0]?.qty || 1;
+        if (topEl) topEl.innerHTML = topProds.length ? topProds.map((p, i) => `
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(255,255,255,.03);border-radius:12px;border:1px solid rgba(255,255,255,.05)">
+                <div style="font-size:13px;font-weight:700;color:#fbbf24;min-width:20px;text-align:center">#${i+1}</div>
+                <div style="flex:1;min-width:0">
+                    <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escA(p.name)}</div>
+                    <div style="height:4px;background:rgba(255,255,255,.07);border-radius:2px;margin-top:5px;overflow:hidden">
+                        <div style="height:100%;width:${Math.round(p.qty/maxQty*100)}%;background:linear-gradient(90deg,#67e8f9,#a78bfa);border-radius:2px"></div>
+                    </div>
+                </div>
+                <div style="text-align:right;flex-shrink:0">
+                    <div style="font-size:13px;font-weight:700;color:#67e8f9">${p.qty}×</div>
+                    <div style="font-size:10px;color:rgba(255,255,255,.3)">${p.rev.toFixed(2).replace('.',',')} €</div>
+                </div>
+            </div>`).join('') : '<div style="color:rgba(255,255,255,.2);font-size:12px;padding:12px">Keine Verkäufe gefunden</div>';
+
+        // Order status chart
+        const statusColors = { 'Zugestellt':'#34d399','Versendet':'#67e8f9','Wird bearbeitet':'#fbbf24','Storniert':'#f87171' };
+        const totalOrders = ordersSnap.size || 1;
+        if (statusEl) statusEl.innerHTML = Object.entries(statusCounts)
+            .sort((a,b) => b[1]-a[1])
+            .map(([s, c]) => `
+            <div style="display:flex;align-items:center;gap:10px">
+                <div style="font-size:12px;min-width:130px;color:rgba(255,255,255,.6)">${escA(s)}</div>
+                <div style="flex:1;height:20px;background:rgba(255,255,255,.05);border-radius:6px;overflow:hidden">
+                    <div style="height:100%;width:${Math.round(c/totalOrders*100)}%;background:${statusColors[s]||'rgba(255,255,255,.2)'};border-radius:6px;transition:width .5s"></div>
+                </div>
+                <div style="font-size:12px;font-weight:700;min-width:28px;text-align:right;color:${statusColors[s]||'rgba(255,255,255,.4)'}">${c}</div>
+                <div style="font-size:10px;color:rgba(255,255,255,.25);min-width:36px">${Math.round(c/totalOrders*100)}%</div>
+            </div>`).join('') || '<div style="color:rgba(255,255,255,.2);font-size:12px;padding:12px">Keine Bestellungen</div>';
+
+        // User growth last 30 days — count registrations per day
+        if (growthEl) {
+            const dayMap = {};
+            usersSnap.forEach(d => {
+                const ts = d.data().createdAt?.toDate?.() || null;
+                if (!ts || ts < day30) return;
+                const key = ts.toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit' });
+                dayMap[key] = (dayMap[key] || 0) + 1;
+            });
+            const entries = Object.entries(dayMap).slice(-14);
+            const maxU = Math.max(...entries.map(e=>e[1]), 1);
+            growthEl.innerHTML = entries.length ? `<div style="display:flex;align-items:flex-end;gap:4px;height:80px;padding:0 4px">
+                ${entries.map(([day, cnt]) => `
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px" title="${day}: ${cnt} neue User">
+                    <div style="font-size:9px;color:rgba(255,255,255,.3)">${cnt}</div>
+                    <div style="width:100%;background:linear-gradient(180deg,#34d399,#059669);border-radius:3px 3px 0 0;height:${Math.max(4,Math.round(cnt/maxU*60))}px"></div>
+                    <div style="font-size:8px;color:rgba(255,255,255,.25);white-space:nowrap">${day}</div>
+                </div>`).join('')}
+            </div>` : '<div style="color:rgba(255,255,255,.2);font-size:12px;padding:12px">Keine Registrierungen in den letzten 30 Tagen</div>';
+        }
+    } catch(e) {
+        console.warn('SA Analytics error:', e);
+        [kpisEl, topEl, statusEl, growthEl].forEach(el => { if (el) el.innerHTML = '<div style="color:rgba(248,113,113,.5);font-size:12px;padding:12px">Fehler beim Laden: '+escA(e.message)+'</div>'; });
+    }
 }
 
 // ── Activity Log ──────────────────────────────────────
@@ -10838,6 +11104,55 @@ async function saSaveSecuritySettings() {
 }
 
 // ── Session Monitor ───────────────────────────────────
+let _saAllSessions = [];
+
+function saSessionFilter(mode, el) {
+    document.querySelectorAll('#sa-panel-sessions .sa-inner-tab').forEach(t => t.classList.remove('active'));
+    if (el) el.classList.add('active');
+    const list = document.getElementById('sa-sess-list');
+    if (!list || !_saAllSessions.length) return;
+    const now = Date.now();
+    let filtered = _saAllSessions;
+    if (mode === 'admins')  filtered = _saAllSessions.filter(s => s._isAdmin);
+    if (mode === 'guests')  filtered = _saAllSessions.filter(s => s.isGuest);
+    if (mode === 'users')   filtered = _saAllSessions.filter(s => !s.isGuest && !s._isAdmin);
+    if (mode === 'cart')    filtered = _saAllSessions.filter(s => (s.cartCount || 0) > 0);
+    renderSessionList(list, filtered, now);
+}
+
+function renderSessionList(el, sessions, now) {
+    if (!sessions.length) {
+        el.innerHTML = '<div style="color:rgba(255,255,255,.2);font-size:13px;padding:24px;text-align:center"><i class="fa-solid fa-moon" style="font-size:28px;display:block;margin-bottom:10px;opacity:.3"></i>Keine Sessions in diesem Filter</div>';
+        return;
+    }
+    el.innerHTML = sessions.map(s => {
+        const lastSeen = s.lastSeen?.toDate?.() || null;
+        const msAgo    = lastSeen ? now - lastSeen.getTime() : Infinity;
+        const isLive   = msAgo < 90000;
+        const timeStr  = lastSeen ? lastSeen.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}) : '—';
+        const initials = s._isAdmin ? '👑' : s.isGuest ? '👤' : (s.email||'?').substring(0,2).toUpperCase();
+        const avatarBg = s._isAdmin ? 'background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#000'
+                       : s.isGuest  ? 'background:rgba(255,255,255,.08);color:rgba(255,255,255,.4)'
+                       : 'background:linear-gradient(135deg,#67e8f9,#a78bfa);color:#000';
+        const label    = s._isAdmin ? (s.email||s.uid) : s.isGuest ? 'Gast' : (s.email || s.username || s.uid);
+        const metaParts = [];
+        if (s.username) metaParts.push('@'+s.username);
+        if (s.cartCount) metaParts.push('🛒 '+s.cartCount+' Item'+(s.cartCount>1?'s':''));
+        if (s.page) metaParts.push(s.page);
+        if (s.ip) metaParts.push(s.ip);
+        return `<div class="sa-sess-card">
+            <div class="sa-sess-avatar" style="${avatarBg};font-size:${s._isAdmin?'14px':'11px'}">${initials}</div>
+            <div style="flex:1;min-width:0">
+                <div class="sa-sess-email">${escA(label)} ${s._isAdmin?'<span style="font-size:10px;color:#fbbf24;margin-left:4px">Superadmin</span>':''}</div>
+                <div class="sa-sess-meta">${metaParts.map(escA).join(' · ')} · ${timeStr}</div>
+            </div>
+            ${isLive
+                ? `<div class="sa-sess-live"><div class="sa-sess-live-dot"></div>Live</div>`
+                : `<div style="font-size:11px;color:rgba(255,255,255,.2);margin-left:auto;white-space:nowrap">${msAgo<3600000?Math.round(msAgo/60000)+' Min':Math.round(msAgo/3600000)+' Std'}</div>`}
+        </div>`;
+    }).join('');
+}
+
 async function saLoadSessions() {
     const el = document.getElementById('sa-sess-list');
     if (!el) return;
@@ -10847,38 +11162,22 @@ async function saLoadSessions() {
             db.collection('presence').get(),
             db.collection('users').where('role','==','admin').get()
         ]);
-        const adminMap = {};
-        adminsSnap.forEach(d => { adminMap[d.id] = d.data(); });
+        const adminUIDs = new Set(adminsSnap.docs.map(d => d.id));
         const now = Date.now();
-        const sessions = presenceSnap.docs
-            .map(d => ({ uid: d.id, ...d.data() }))
-            .filter(s => adminMap[s.uid])
+
+        _saAllSessions = presenceSnap.docs
+            .map(d => ({ uid: d.id, ...d.data(), _isAdmin: adminUIDs.has(d.id) }))
+            .filter(s => { const t = s.lastSeen?.toDate?.()?.getTime?.() || 0; return (now - t) < 7200000; })
             .sort((a,b) => (b.lastSeen?.toDate?.()?.getTime?.() || 0) - (a.lastSeen?.toDate?.()?.getTime?.() || 0));
 
-        if (sessions.length === 0) {
-            el.innerHTML = '<div style="color:rgba(255,255,255,.2);font-size:13px;padding:24px;text-align:center"><i class="fa-solid fa-moon" style="font-size:28px;display:block;margin-bottom:10px;opacity:.3"></i>Keine aktiven Admin-Sessions</div>';
-            return;
-        }
-        el.innerHTML = sessions.map(s => {
-            const admin = adminMap[s.uid] || {};
-            const lastSeen = s.lastSeen?.toDate?.() || null;
-            const msAgo = lastSeen ? now - lastSeen.getTime() : Infinity;
-            const isLive = msAgo < 90000;
-            const timeStr = lastSeen ? lastSeen.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}) : '—';
-            const initials = (admin.email||'?').substring(0,2).toUpperCase();
-            const isSuperAdminSession = s.uid === (window._superUID || '');
-            return `<div class="sa-sess-card">
-                <div class="sa-sess-avatar" style="${isSuperAdminSession ? 'background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#000' : ''}">${initials}</div>
-                <div style="flex:1;min-width:0">
-                    <div class="sa-sess-email">${admin.email || s.uid} ${isSuperAdminSession ? '<span style="font-size:10px;color:#fbbf24;margin-left:4px">👑 Superadmin</span>' : ''}</div>
-                    <div class="sa-sess-meta">Zuletzt aktiv: ${timeStr} • ${admin.username ? '@'+admin.username : 'Kein Username'}</div>
-                </div>
-                ${isLive
-                    ? `<div class="sa-sess-live"><div class="sa-sess-live-dot"></div>Live</div>`
-                    : `<div style="font-size:11px;color:rgba(255,255,255,.2);margin-left:auto">vor ${Math.round(msAgo/60000)} Min</div>`}
-            </div>`;
-        }).join('');
-    } catch(e) { el.textContent = ''; const d=document.createElement('div');d.style.cssText='color:rgba(248,113,113,.5);font-size:12px;padding:16px';d.textContent='Fehler: '+e.message;el.appendChild(d); }
+        const liveCount = _saAllSessions.filter(s => { const t=s.lastSeen?.toDate?.()?.getTime?.()||0; return now-t<90000; }).length;
+        const countsEl  = document.getElementById('sa-sess-counts');
+        if (countsEl) countsEl.textContent = `${liveCount} live · ${_saAllSessions.length} gesamt (2h)`;
+
+        renderSessionList(el, _saAllSessions, now);
+    } catch(e) {
+        el.innerHTML = '<div style="color:rgba(248,113,113,.5);font-size:12px;padding:16px">Fehler: '+escA(e.message)+'</div>';
+    }
 }
 
 // ── Backup & Export ───────────────────────────────────
@@ -11037,6 +11336,84 @@ async function saDangerDeleteAllOrders() {
         }
         await logAction('danger_delete_orders', 'orders', { count: snap.size });
         showToast(`☢️ ${snap.size} Bestellungen gelöscht`);
+    } catch(e) { showToast('❌ Fehler: ' + e.message, 'error'); }
+}
+
+async function saDangerDeleteAllUsers() {
+    const typed = prompt('ACHTUNG: IRREVERSIBEL!\nLöscht alle User-Dokumente aus Firestore (nicht Firebase Auth).\nTyp "ALLE USER LÖSCHEN" um fortzufahren:');
+    if (typed !== 'ALLE USER LÖSCHEN') { showToast('Abgebrochen', 'warning'); return; }
+    const confirm2 = prompt('Wirklich ALLE User löschen? Tippe "JA":');
+    if (confirm2 !== 'JA') { showToast('Abgebrochen', 'warning'); return; }
+    try {
+        const snap = await db.collection('users').get();
+        let deleted = 0;
+        for (let i = 0; i < snap.docs.length; i += 400) {
+            const batch = db.batch();
+            snap.docs.slice(i, i + 400).forEach(d => batch.delete(d.ref));
+            await batch.commit();
+            deleted += Math.min(400, snap.docs.length - i);
+        }
+        await logAction('danger_delete_all_users', 'users', { count: deleted });
+        showToast(`☢️ ${deleted} User-Dokumente gelöscht`);
+    } catch(e) { showToast('❌ Fehler: ' + e.message, 'error'); }
+}
+
+async function saDangerDisableAllCoupons() {
+    if (!confirm('Alle aktiven Gutscheine deaktivieren?')) return;
+    try {
+        const snap = await db.collection('coupons').where('active', '==', true).get();
+        if (snap.empty) { showToast('ℹ️ Keine aktiven Gutscheine vorhanden'); return; }
+        for (let i = 0; i < snap.docs.length; i += 400) {
+            const batch = db.batch();
+            snap.docs.slice(i, i + 400).forEach(d => batch.update(d.ref, { active: false }));
+            await batch.commit();
+        }
+        await logAction('danger_disable_coupons', 'coupons', { count: snap.size });
+        showToast(`🎟️ ${snap.size} Gutscheine deaktiviert`, 'success');
+    } catch(e) { showToast('❌ Fehler: ' + e.message, 'error'); }
+}
+
+async function saDangerDeactivateAllProducts() {
+    if (!confirm('Alle Produkte auf "nicht verfügbar" setzen?\n\nDies kann rückgängig gemacht werden.')) return;
+    try {
+        const snap = await db.collection('products').where('available', '==', true).get();
+        if (snap.empty) { showToast('ℹ️ Keine verfügbaren Produkte gefunden'); return; }
+        for (let i = 0; i < snap.docs.length; i += 400) {
+            const batch = db.batch();
+            snap.docs.slice(i, i + 400).forEach(d => batch.update(d.ref, { available: false }));
+            await batch.commit();
+        }
+        await logAction('danger_deactivate_products', 'products', { count: snap.size });
+        showToast(`📦 ${snap.size} Produkte deaktiviert`, 'success');
+    } catch(e) { showToast('❌ Fehler: ' + e.message, 'error'); }
+}
+
+async function saDangerClearPresence() {
+    if (!confirm('Alle Presence-Einträge löschen?\n\nDies behebt "Geist-User" die als online erscheinen.')) return;
+    try {
+        const snap = await db.collection('presence').get();
+        for (let i = 0; i < snap.docs.length; i += 400) {
+            const batch = db.batch();
+            snap.docs.slice(i, i + 400).forEach(d => batch.delete(d.ref));
+            await batch.commit();
+        }
+        await logAction('danger_clear_presence', 'presence', { count: snap.size });
+        showToast(`🟢 ${snap.size} Presence-Einträge gelöscht`, 'success');
+    } catch(e) { showToast('❌ Fehler: ' + e.message, 'error'); }
+}
+
+async function saDangerClearUnauthorized() {
+    if (!confirm('Alle Zugriffsversuche aus unauthorized_access löschen?')) return;
+    try {
+        const snap = await db.collection('unauthorized_access').get();
+        if (snap.empty) { showToast('ℹ️ Keine Einträge vorhanden'); return; }
+        for (let i = 0; i < snap.docs.length; i += 400) {
+            const batch = db.batch();
+            snap.docs.slice(i, i + 400).forEach(d => batch.delete(d.ref));
+            await batch.commit();
+        }
+        await logAction('danger_clear_unauthorized', 'unauthorized_access', { count: snap.size });
+        showToast(`🚩 ${snap.size} Zugriffsversuche gelöscht`, 'success');
     } catch(e) { showToast('❌ Fehler: ' + e.message, 'error'); }
 }
 

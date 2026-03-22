@@ -6679,6 +6679,171 @@
             if (_maintenanceAutoReloadTimeout) { clearTimeout(_maintenanceAutoReloadTimeout); _maintenanceAutoReloadTimeout = null; }
         }
 
+        // ═══════════════════════════════════════════════════════════════
+        //  IP-BAN CHECK — läuft VOR initialize(), Shop wird nie geladen
+        // ═══════════════════════════════════════════════════════════════
+        async function checkIpBan() {
+            try {
+                const ip = await fetchIp();
+                if (!ip) return; // IP nicht ermittelbar → durchlassen (fail-open)
+
+                const snap = await db.collection('banned_ips')
+                    .where('ip', '==', ip)
+                    .limit(5)
+                    .get();
+                if (snap.empty) return;
+
+                const now = new Date();
+                const activeBan = snap.docs
+                    .map(d => ({ id: d.id, ...d.data() }))
+                    .find(b => {
+                        if (b.permanent) return true;
+                        if (b.bannedUntil && b.bannedUntil.toDate() > now) return true;
+                        return false;
+                    });
+
+                if (!activeBan) return; // Ban abgelaufen → durchlassen
+
+                // Gesperrte IP → Ban-Seite anzeigen, kein Shop-Start
+                showBanPage(activeBan);
+                throw new Error('__IP_BANNED__'); // stoppt initialize()
+            } catch(e) {
+                if (e.message === '__IP_BANNED__') throw e; // re-throw damit initialize() nicht startet
+                // Alle anderen Fehler (Netzwerk, Firestore) → fail-open, Shop normal laden
+            }
+        }
+
+        function showBanPage(ban) {
+            // Schließe alle laufenden Firestore-Listener damit nichts nachlädt
+            try { if (productsUnsubscribe) productsUnsubscribe(); } catch(e) {}
+            try { if (_bundlesUnsub) _bundlesUnsub(); } catch(e) {}
+
+            const reason = ban.reason || 'Kein Grund angegeben';
+            const bannedBy = ban.bannedBy || 'Administrator';
+            const bannedAt = ban.bannedAt
+                ? ban.bannedAt.toDate().toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit', year:'numeric' })
+                : '—';
+            const expiresText = ban.permanent
+                ? 'Diese Sperre ist permanent.'
+                : ban.bannedUntil
+                    ? `Gesperrt bis: ${ban.bannedUntil.toDate().toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })} Uhr`
+                    : '';
+
+            document.body.innerHTML = `
+            <style>
+                @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Inter:wght@400;500;600;700&display=swap');
+                * { margin:0; padding:0; box-sizing:border-box; }
+                body {
+                    font-family: 'Inter', system-ui, sans-serif;
+                    background: linear-gradient(135deg, #0a0a0a 0%, #1a0505 50%, #0a0a0a 100%);
+                    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+                    color: #fff; padding: 24px;
+                }
+                .ban-card {
+                    background: #18181b;
+                    border: 1px solid rgba(239,68,68,0.35);
+                    border-radius: 28px;
+                    padding: 48px 40px;
+                    max-width: 520px;
+                    width: 100%;
+                    text-align: center;
+                    box-shadow: 0 0 80px rgba(239,68,68,0.12), 0 30px 60px rgba(0,0,0,0.6);
+                    animation: banIn 0.5s cubic-bezier(0.34,1.56,0.64,1);
+                }
+                @keyframes banIn { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+                .ban-icon-wrap {
+                    width: 88px; height: 88px; border-radius: 50%;
+                    background: rgba(239,68,68,0.1);
+                    border: 2px solid rgba(239,68,68,0.4);
+                    display: flex; align-items: center; justify-content: center;
+                    margin: 0 auto 28px;
+                    font-size: 40px;
+                    animation: pulse 2s ease-in-out infinite;
+                }
+                @keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0.25)} 50%{box-shadow:0 0 0 16px rgba(239,68,68,0)} }
+                .ban-title {
+                    font-family: 'Orbitron', sans-serif;
+                    font-size: 26px; font-weight: 700;
+                    color: #ef4444;
+                    text-shadow: 0 0 24px rgba(239,68,68,0.5);
+                    margin-bottom: 10px;
+                    letter-spacing: .04em;
+                }
+                .ban-subtitle {
+                    font-size: 15px; color: rgba(255,255,255,0.5);
+                    line-height: 1.6; margin-bottom: 32px;
+                }
+                .ban-info-box {
+                    background: rgba(239,68,68,0.07);
+                    border: 1px solid rgba(239,68,68,0.2);
+                    border-radius: 16px;
+                    padding: 20px 24px;
+                    text-align: left;
+                    margin-bottom: 28px;
+                    display: flex; flex-direction: column; gap: 12px;
+                }
+                .ban-info-row { display: flex; gap: 12px; align-items: flex-start; }
+                .ban-info-label {
+                    font-size: 10px; font-weight: 700; letter-spacing: .1em;
+                    text-transform: uppercase; color: rgba(239,68,68,0.6);
+                    min-width: 80px; padding-top: 2px; flex-shrink: 0;
+                }
+                .ban-info-value { font-size: 14px; color: rgba(255,255,255,0.8); line-height: 1.5; word-break: break-word; }
+                .ban-expires {
+                    font-size: 12px; font-weight: 600;
+                    color: ${ban.permanent ? '#f87171' : '#fbbf24'};
+                    background: ${ban.permanent ? 'rgba(239,68,68,0.1)' : 'rgba(251,191,36,0.1)'};
+                    border: 1px solid ${ban.permanent ? 'rgba(239,68,68,0.25)' : 'rgba(251,191,36,0.25)'};
+                    border-radius: 99px; padding: 6px 16px; display: inline-block;
+                    margin-bottom: 28px;
+                }
+                .ban-contact {
+                    font-size: 12px; color: rgba(255,255,255,0.3); line-height: 1.7;
+                }
+                .ban-contact a { color: rgba(103,232,249,0.7); text-decoration: none; }
+                .ban-contact a:hover { color: #67e8f9; }
+                .ban-divider { height: 1px; background: rgba(255,255,255,0.07); margin: 24px 0; }
+                @media (max-width: 480px) {
+                    .ban-card { padding: 36px 24px; }
+                    .ban-title { font-size: 22px; }
+                }
+            </style>
+            <div class="ban-card">
+                <div class="ban-icon-wrap">🚫</div>
+                <div class="ban-title">ZUGANG GESPERRT</div>
+                <div class="ban-subtitle">
+                    Deine IP-Adresse wurde vom Zugriff auf WaveVapes ausgeschlossen.
+                </div>
+                <div class="ban-info-box">
+                    <div class="ban-info-row">
+                        <span class="ban-info-label">Grund</span>
+                        <span class="ban-info-value">${escBan(reason)}</span>
+                    </div>
+                    <div class="ban-info-row">
+                        <span class="ban-info-label">Gesperrt am</span>
+                        <span class="ban-info-value">${escBan(bannedAt)}</span>
+                    </div>
+                    <div class="ban-info-row">
+                        <span class="ban-info-label">Gesperrt von</span>
+                        <span class="ban-info-value">${escBan(bannedBy)}</span>
+                    </div>
+                </div>
+                ${expiresText ? `<div class="ban-expires">${escBan(expiresText)}</div>` : ''}
+                <div class="ban-divider"></div>
+                <div class="ban-contact">
+                    Wenn du glaubst, dass dies ein Fehler ist, wende dich an:<br>
+                    <a href="mailto:support@wavevapes.de">support@wavevapes.de</a>
+                </div>
+            </div>`;
+        }
+
+        // Minimale Escape-Funktion für die Ban-Seite (esc() ist noch nicht verfügbar wenn Firebase lädt)
+        function escBan(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+                .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+        }
+
         function initialize() {
             initEmailJS();
             if (!localStorage.getItem("age_verified")) showAgeModal();
@@ -7165,7 +7330,16 @@
         })();
 
         // BUG-004 FIX: window.onload = fn überschreibt andere Handler — addEventListener ist sicherer.
-        window.addEventListener('load', initialize);
+        // IP-BAN FIX: IP-Sperre wird VOR initialize() geprüft — gesperrte IPs sehen den Shop nie.
+        window.addEventListener('load', async () => {
+            try {
+                await checkIpBan();
+            } catch(e) {
+                if (e.message === '__IP_BANNED__') return; // Ban-Seite läuft — Shop nicht starten
+                // Andere Fehler: Shop trotzdem laden (fail-open)
+            }
+            initialize();
+        });
 
         // BUG-003 FIX: popstate-Handler damit Browser-Zurück das Produkt-Modal korrekt schließt
         // oder ein anderes Produkt öffnet, wenn der Nutzer sich per Browser-Navigation bewegt.

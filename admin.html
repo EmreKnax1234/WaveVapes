@@ -381,6 +381,37 @@
         .sidebar-item-locked i { font-size:13px; width:18px; text-align:center; }
         .sidebar-item-disabled { opacity:.3; cursor:not-allowed !important; pointer-events:none; }
 
+        /* ── Health Monitor ── */
+        .health-check-item { display:flex; align-items:center; gap:12px; padding:11px 16px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); border-radius:14px; transition:background .15s; }
+        .health-check-item:hover { background:rgba(255,255,255,.05); }
+        .health-check-icon { width:32px; height:32px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; }
+        .health-ok .health-check-icon { background:rgba(52,211,153,.12); border:1px solid rgba(52,211,153,.2); color:#34d399; }
+        .health-warn .health-check-icon { background:rgba(251,191,36,.12); border:1px solid rgba(251,191,36,.2); color:#fbbf24; }
+        .health-err .health-check-icon { background:rgba(248,113,113,.12); border:1px solid rgba(248,113,113,.2); color:#f87171; }
+        .health-check-label { font-size:13px; font-weight:600; color:rgba(255,255,255,.85); }
+        .health-check-sub { font-size:11px; color:rgba(255,255,255,.3); margin-top:2px; }
+        .health-badge-ok   { padding:3px 10px; border-radius:99px; font-size:10px; font-weight:700; background:rgba(52,211,153,.12); color:#34d399; border:1px solid rgba(52,211,153,.25); margin-left:auto; }
+        .health-badge-warn { padding:3px 10px; border-radius:99px; font-size:10px; font-weight:700; background:rgba(251,191,36,.12); color:#fbbf24; border:1px solid rgba(251,191,36,.25); margin-left:auto; }
+        .health-badge-err  { padding:3px 10px; border-radius:99px; font-size:10px; font-weight:700; background:rgba(248,113,113,.12); color:#f87171; border:1px solid rgba(248,113,113,.25); margin-left:auto; }
+        .health-col-bar { background:#0f0f1a; border:1px solid rgba(255,255,255,.07); border-radius:14px; padding:14px 16px; }
+        .health-col-name { font-size:12px; font-weight:700; color:rgba(255,255,255,.8); margin-bottom:8px; display:flex; justify-content:space-between; }
+        .health-col-val { font-size:18px; font-weight:700; color:#67e8f9; font-family:'JetBrains Mono',monospace; }
+
+        /* ── Audit Trail Table ── */
+        .audit-row { transition:background .12s; }
+        .audit-row:hover { background:rgba(255,255,255,.03); }
+        .audit-row td { padding:10px 16px; font-size:12px; border-bottom:1px solid rgba(255,255,255,.04); vertical-align:middle; }
+        .audit-type-badge { display:inline-flex; align-items:center; gap:4px; padding:2px 9px; border-radius:99px; font-size:10px; font-weight:700; }
+        .audit-type-danger   { background:rgba(248,113,113,.15); color:#f87171; border:1px solid rgba(248,113,113,.25); }
+        .audit-type-access   { background:rgba(52,211,153,.12); color:#34d399; border:1px solid rgba(52,211,153,.2); }
+        .audit-type-admin    { background:rgba(251,191,36,.12); color:#fbbf24; border:1px solid rgba(251,191,36,.2); }
+        .audit-type-export   { background:rgba(103,232,249,.1); color:#67e8f9; border:1px solid rgba(103,232,249,.2); }
+        .audit-type-order    { background:rgba(167,139,250,.1); color:#a78bfa; border:1px solid rgba(167,139,250,.2); }
+        .audit-type-product  { background:rgba(251,191,36,.1); color:#fbbf24; border:1px solid rgba(251,191,36,.2); }
+        .audit-type-security { background:rgba(248,113,113,.1); color:#f87171; border:1px solid rgba(248,113,113,.2); }
+        .audit-type-config   { background:rgba(103,232,249,.1); color:#67e8f9; border:1px solid rgba(103,232,249,.15); }
+        .audit-type-other    { background:rgba(255,255,255,.06); color:rgba(255,255,255,.5); border:1px solid rgba(255,255,255,.1); }
+
 
         /* ═══════════════════════════════════════════
            CUSTOM SELECT — replaces all native <select>
@@ -3871,6 +3902,9 @@
                 <div class="sa-inner-tab" onclick="saSwitchInner('sessions',this)"><i class="fa-solid fa-eye" style="margin-right:6px"></i>Session Monitor</div>
                 <div class="sa-inner-tab" onclick="saSwitchInner('backup',this)"><i class="fa-solid fa-database" style="margin-right:6px"></i>Backup &amp; Export</div>
                 <div class="sa-inner-tab" onclick="saSwitchInner('actlog',this)"><i class="fa-solid fa-scroll" style="margin-right:6px"></i>SA-Aktivitätslog</div>
+                <div class="sa-inner-tab" onclick="saSwitchInner('shopconfig',this)"><i class="fa-solid fa-sliders" style="margin-right:6px"></i>Shop-Konfiguration</div>
+                <div class="sa-inner-tab" onclick="saSwitchInner('health',this)"><i class="fa-solid fa-heart-pulse" style="margin-right:6px"></i>System-Health</div>
+                <div class="sa-inner-tab" onclick="saSwitchInner('audittrail',this)"><i class="fa-solid fa-shield-check" style="margin-right:6px;color:rgba(167,139,250,.7)"></i>Audit-Trail</div>
                 <div class="sa-inner-tab" onclick="saSwitchInner('danger',this)" style="color:rgba(248,113,113,.6)"><i class="fa-solid fa-triangle-exclamation" style="margin-right:6px"></i>Danger Zone</div>
             </div>
 
@@ -3904,7 +3938,66 @@
                     </div>
                 </div>
 
-                <div class="sa-section-title" style="margin-top:4px"><i class="fa-solid fa-clock-rotate-left" style="color:#a78bfa"></i> Letzte SA-Aktionen</div>
+                <!-- Umsatz-Verlauf Chart -->
+                <div class="sa-section-title" style="margin-top:4px"><i class="fa-solid fa-chart-area" style="color:#67e8f9"></i> Umsatz-Verlauf (letzte 14 Tage)</div>
+                <div style="background:#0f0f1a;border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:20px">
+                    <div id="sa-dash-revenue-chart" style="height:120px;display:flex;align-items:flex-end;gap:4px">
+                        <div style="color:rgba(255,255,255,.2);font-size:12px;width:100%;text-align:center;padding-top:40px"><i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>Lade Chart...</div>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;margin-top:10px;flex-wrap:wrap;gap:8px">
+                        <div style="font-size:11px;color:rgba(255,255,255,.2)">Tagesumsatz in € — Hover für Details</div>
+                        <div style="display:flex;gap:16px">
+                            <div style="font-size:11px;color:rgba(255,255,255,.3)">Ø/Tag: <span id="sa-dash-avg-day" style="color:#67e8f9;font-weight:700">—</span></div>
+                            <div style="font-size:11px;color:rgba(255,255,255,.3)">Bester Tag: <span id="sa-dash-best-day" style="color:#fbbf24;font-weight:700">—</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Schnellaktionen -->
+                <div class="sa-section-title"><i class="fa-solid fa-bolt" style="color:#fbbf24"></i> Schnellaktionen</div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px">
+                    <button onclick="saSwitchInner('shopconfig',document.querySelector('[onclick*=shopconfig]'))" style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:14px;border:1px solid rgba(103,232,249,.15);background:rgba(103,232,249,.05);color:#67e8f9;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;text-align:left" onmouseover="this.style.background='rgba(103,232,249,.12)'" onmouseout="this.style.background='rgba(103,232,249,.05)'"><i class="fa-solid fa-sliders" style="font-size:16px"></i><span>Shop konfigurieren</span></button>
+                    <button onclick="saSwitchInner('health',document.querySelector('[onclick*=health]'))" style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:14px;border:1px solid rgba(52,211,153,.15);background:rgba(52,211,153,.05);color:#34d399;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;text-align:left" onmouseover="this.style.background='rgba(52,211,153,.12)'" onmouseout="this.style.background='rgba(52,211,153,.05)'"><i class="fa-solid fa-heart-pulse" style="font-size:16px"></i><span>Health-Check</span></button>
+                    <button onclick="saSwitchInner('audittrail',document.querySelector('[onclick*=audittrail]'))" style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:14px;border:1px solid rgba(167,139,250,.15);background:rgba(167,139,250,.05);color:#a78bfa;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;text-align:left" onmouseover="this.style.background='rgba(167,139,250,.12)'" onmouseout="this.style.background='rgba(167,139,250,.05)'"><i class="fa-solid fa-shield-check" style="font-size:16px"></i><span>Audit-Trail</span></button>
+                    <button onclick="saSwitchInner('backup',document.querySelector('[onclick*=backup]'))" style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:14px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);color:rgba(255,255,255,.6);font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;text-align:left" onmouseover="this.style.background='rgba(255,255,255,.08)'" onmouseout="this.style.background='rgba(255,255,255,.03)'"><i class="fa-solid fa-database" style="font-size:16px"></i><span>Backup starten</span></button>
+                    <button onclick="saDangerShopClose()" style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:14px;border:1px solid rgba(248,113,113,.2);background:rgba(248,113,113,.06);color:#f87171;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;text-align:left" onmouseover="this.style.background='rgba(248,113,113,.14)'" onmouseout="this.style.background='rgba(248,113,113,.06)'"><i class="fa-solid fa-power-off" style="font-size:16px"></i><span>Shop schließen</span></button>
+                    <button onclick="saSwitchInner('admins',document.querySelector('[onclick*=admins]'))" style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:14px;border:1px solid rgba(251,191,36,.15);background:rgba(251,191,36,.05);color:#fbbf24;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;text-align:left" onmouseover="this.style.background='rgba(251,191,36,.12)'" onmouseout="this.style.background='rgba(251,191,36,.05)'"><i class="fa-solid fa-users-cog" style="font-size:16px"></i><span>Admins verwalten</span></button>
+                </div>
+
+                <!-- Alert Feed + Security Score nebeneinander -->
+                <div style="display:grid;grid-template-columns:1fr 340px;gap:16px;align-items:start">
+
+                    <!-- Alert Feed -->
+                    <div>
+                        <div class="sa-section-title"><i class="fa-solid fa-bell" style="color:#f87171"></i> Alert-Feed <span id="sa-alert-badge" style="display:none;font-size:9px;padding:1px 7px;border-radius:99px;background:rgba(248,113,113,.18);color:#f87171;border:1px solid rgba(248,113,113,.3);margin-left:6px;font-weight:700"></span></div>
+                        <div id="sa-alert-feed" style="display:flex;flex-direction:column;gap:6px;max-height:260px;overflow-y:auto">
+                            <div style="color:rgba(255,255,255,.2);font-size:12px;padding:12px;text-align:center"><i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>Lade Alerts...</div>
+                        </div>
+                    </div>
+
+                    <!-- Security Score Card -->
+                    <div style="background:#0f0f1a;border:1px solid rgba(255,255,255,.07);border-radius:20px;padding:20px">
+                        <div style="font-size:12px;font-weight:700;color:rgba(255,255,255,.5);margin-bottom:14px;text-transform:uppercase;letter-spacing:.07em"><i class="fa-solid fa-shield-halved" style="margin-right:6px;color:#67e8f9"></i>Security Score</div>
+                        <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+                            <div id="sa-sec-score-ring" style="position:relative;width:72px;height:72px;flex-shrink:0">
+                                <svg width="72" height="72" viewBox="0 0 72 72" style="transform:rotate(-90deg)">
+                                    <circle cx="36" cy="36" r="28" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="8"/>
+                                    <circle id="sa-sec-score-arc" cx="36" cy="36" r="28" fill="none" stroke="#34d399" stroke-width="8" stroke-linecap="round" stroke-dasharray="176" stroke-dashoffset="176" style="transition:stroke-dashoffset 1s ease,stroke .5s"/>
+                                </svg>
+                                <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:#fff" id="sa-sec-score-val">—</div>
+                            </div>
+                            <div>
+                                <div id="sa-sec-score-label" style="font-size:15px;font-weight:700;color:#34d399">Sehr sicher</div>
+                                <div style="font-size:11px;color:rgba(255,255,255,.3);margin-top:3px;line-height:1.5" id="sa-sec-score-sub">Wird berechnet...</div>
+                            </div>
+                        </div>
+                        <div id="sa-sec-score-breakdown" style="display:flex;flex-direction:column;gap:7px">
+                            <!-- rendered by JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sa-section-title"><i class="fa-solid fa-clock-rotate-left" style="color:#a78bfa"></i> Letzte SA-Aktionen</div>
                 <div class="sa-log-list" id="sa-dash-log" style="max-height:240px">
                     <div style="color:rgba(255,255,255,.2);font-size:12px;padding:12px"><i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>Lade...</div>
                 </div>
@@ -3917,6 +4010,33 @@
                     <div style="color:rgba(255,255,255,.2);font-size:12px;padding:20px;grid-column:1/-1"><i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>Analysiere…</div>
                 </div>
 
+                <!-- Umsatz-Zeitstrahl -->
+                <div class="sa-section-title"><i class="fa-solid fa-chart-area" style="color:#a78bfa"></i> Umsatz-Zeitstrahl (letzte 30 Tage)</div>
+                <div style="background:#0f0f1a;border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:20px">
+                    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+                        <button class="sa-inner-tab active" id="anlz-period-7"  onclick="anlzSetPeriod(7,this)"  style="padding:5px 14px;font-size:11px">7 Tage</button>
+                        <button class="sa-inner-tab"        id="anlz-period-14" onclick="anlzSetPeriod(14,this)" style="padding:5px 14px;font-size:11px">14 Tage</button>
+                        <button class="sa-inner-tab"        id="anlz-period-30" onclick="anlzSetPeriod(30,this)" style="padding:5px 14px;font-size:11px">30 Tage</button>
+                        <button class="sa-inner-tab"        id="anlz-period-90" onclick="anlzSetPeriod(90,this)" style="padding:5px 14px;font-size:11px">90 Tage</button>
+                        <div style="margin-left:auto;display:flex;gap:10px;font-size:11px;color:rgba(255,255,255,.3);align-items:center">
+                            <span>Gesamt: <span id="anlz-period-total" style="color:#fbbf24;font-weight:700">—</span></span>
+                            <span>Trend: <span id="anlz-trend-badge" style="font-weight:700">—</span></span>
+                        </div>
+                    </div>
+                    <div id="sa-revenue-timeline" style="height:130px;display:flex;align-items:flex-end;gap:3px">
+                        <div style="color:rgba(255,255,255,.2);font-size:12px;width:100%;text-align:center;padding-top:50px"><i class="fa-solid fa-spinner fa-spin" style="margin-right:6px"></i>Lade…</div>
+                    </div>
+                </div>
+
+                <!-- Stunden-Heatmap -->
+                <div class="sa-section-title"><i class="fa-solid fa-fire" style="color:#f87171"></i> Bestell-Heatmap (Uhrzeit)</div>
+                <div style="background:#0f0f1a;border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:20px">
+                    <div id="sa-order-heatmap" style="display:flex;gap:3px;flex-wrap:wrap">
+                        <div style="color:rgba(255,255,255,.2);font-size:12px;width:100%"><i class="fa-solid fa-spinner fa-spin" style="margin-right:6px"></i>Lade…</div>
+                    </div>
+                    <div style="font-size:10px;color:rgba(255,255,255,.2);margin-top:8px">Jede Zelle = 1 Stunde des Tages · Intensität = Anzahl Bestellungen</div>
+                </div>
+
                 <div class="sa-section-title"><i class="fa-solid fa-trophy" style="color:#fbbf24"></i> Top 10 Produkte</div>
                 <div id="sa-top-products" style="display:flex;flex-direction:column;gap:8px">
                     <div style="color:rgba(255,255,255,.2);font-size:12px;padding:12px"><i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>Lade…</div>
@@ -3924,6 +4044,12 @@
 
                 <div class="sa-section-title"><i class="fa-solid fa-chart-pie" style="color:#a78bfa"></i> Bestellstatus-Verteilung</div>
                 <div id="sa-order-status-chart" style="display:flex;flex-direction:column;gap:8px">
+                    <div style="color:rgba(255,255,255,.2);font-size:12px;padding:12px"><i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>Lade…</div>
+                </div>
+
+                <!-- Coupon-Nutzung -->
+                <div class="sa-section-title"><i class="fa-solid fa-ticket" style="color:#34d399"></i> Coupon-Nutzung</div>
+                <div id="sa-coupon-stats" style="display:flex;flex-direction:column;gap:8px">
                     <div style="color:rgba(255,255,255,.2);font-size:12px;padding:12px"><i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>Lade…</div>
                 </div>
 
@@ -3935,18 +4061,132 @@
 
             <!-- PANEL: ADMIN-VERWALTUNG -->
             <div class="sa-inner-panel" id="sa-panel-admins">
+
+                <!-- Stats Row -->
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">
+                    <div class="sa-kpi" style="padding:13px 16px"><div class="sa-kpi-label">Gesamt</div><div class="sa-kpi-value" id="sa-admins-total" style="font-size:22px">—</div></div>
+                    <div class="sa-kpi" style="padding:13px 16px"><div class="sa-kpi-label">Co-Superadmins</div><div class="sa-kpi-value" id="sa-admins-cosupercount" style="font-size:22px;color:#fb923c">—</div></div>
+                    <div class="sa-kpi" style="padding:13px 16px"><div class="sa-kpi-label">Mit 2FA</div><div class="sa-kpi-value" id="sa-admins-2facount" style="font-size:22px;color:#34d399">—</div></div>
+                    <div class="sa-kpi" style="padding:13px 16px"><div class="sa-kpi-label">Nur-Lesen</div><div class="sa-kpi-value" id="sa-admins-rocount" style="font-size:22px;color:rgba(255,255,255,.4)">—</div></div>
+                    <div class="sa-kpi" style="padding:13px 16px"><div class="sa-kpi-label">Heute aktiv</div><div class="sa-kpi-value" id="sa-admins-todaycount" style="font-size:22px;color:#67e8f9">—</div></div>
+                </div>
+
+                <!-- Search + Filter -->
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                    <input type="text" id="sa-admins-search" placeholder="Admin suchen (E-Mail, Username)…" oninput="saFilterAdmins()" style="flex:1;min-width:180px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:9px 14px;color:#fff;font-size:12px;outline:none;transition:border-color .2s" onfocus="this.style.borderColor='rgba(251,191,36,.4)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">
+                    <select id="sa-admins-filter-role" onchange="saFilterAdmins()" style="background:#1a1a2e;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:9px 14px;color:#fff;font-size:12px;outline:none;cursor:pointer">
+                        <option value="">Alle Rollen</option>
+                        <option value="super">👑 Superadmin</option>
+                        <option value="cosuper">🛡️ Co-Superadmin</option>
+                        <option value="regular">👤 Admin</option>
+                    </select>
+                    <select id="sa-admins-filter-2fa" onchange="saFilterAdmins()" style="background:#1a1a2e;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:9px 14px;color:#fff;font-size:12px;outline:none;cursor:pointer">
+                        <option value="">Alle 2FA-Status</option>
+                        <option value="yes">✅ 2FA aktiv</option>
+                        <option value="no">⚠️ Kein 2FA</option>
+                    </select>
+                </div>
+
                 <div class="sa-add-panel">
                     <div class="sa-section-title"><i class="fa-solid fa-user-plus" style="color:#67e8f9"></i> Neuen Admin hinzufügen</div>
                     <div class="sa-add-row">
                         <input class="sa-add-input" id="sa-new-admin-email" placeholder="E-Mail-Adresse des Benutzers" type="email" onkeydown="if(event.key==='Enter')saAddAdmin()">
+                        <div style="position:relative">
+                            <select id="sa-new-admin-role" style="display:none"></select>
+                            <select id="sa-new-admin-role-vis" style="background:#1a1a2e;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:11px 16px;color:#fff;font-size:13px;outline:none;cursor:pointer">
+                                <option value="admin">Regular Admin</option>
+                                <option value="cosuper">Co-Superadmin</option>
+                                <option value="readonly">👁️ Nur-Lesen</option>
+                            </select>
+                        </div>
                         <button class="sa-btn-add" onclick="saAddAdmin()"><i class="fa-solid fa-plus"></i> Admin ernennen</button>
                     </div>
-                    <p style="font-size:11px;color:rgba(255,255,255,.2);margin-top:10px"><i class="fa-solid fa-info-circle" style="margin-right:5px"></i>Der Benutzer muss bereits registriert sein. Er erhält standardmäßig alle Rechte.</p>
+                    <p style="font-size:11px;color:rgba(255,255,255,.2);margin-top:10px"><i class="fa-solid fa-info-circle" style="margin-right:5px"></i>Der Benutzer muss bereits registriert sein. Nur-Lesen: Darf alles sehen, aber nichts ändern.</p>
                 </div>
+
+                <!-- Admin-Aktivitäts-Übersicht -->
+                <div style="background:#0f0f1a;border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:18px 20px">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+                        <div style="font-size:13px;font-weight:700;color:rgba(255,255,255,.7)"><i class="fa-solid fa-chart-simple" style="margin-right:8px;color:#67e8f9"></i>Admin-Aktivität (letzte 30 Tage)</div>
+                        <button onclick="adminActivityLoad()" style="padding:6px 14px;border-radius:9px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:rgba(255,255,255,.5);font-size:11px;cursor:pointer"><i class="fa-solid fa-rotate"></i></button>
+                    </div>
+                    <div id="admin-activity-table" style="display:flex;flex-direction:column;gap:6px">
+                        <div style="color:rgba(255,255,255,.2);font-size:12px;padding:12px;text-align:center"><i class="fa-solid fa-spinner fa-spin" style="margin-right:6px"></i>Lade...</div>
+                    </div>
+                </div>
+
                 <div>
                     <div class="sa-section-title"><i class="fa-solid fa-users-cog" style="color:#a78bfa"></i> Admin-Übersicht &amp; Berechtigungen</div>
                     <div class="sa-admin-grid" id="sa-admin-grid">
                         <div style="color:rgba(255,255,255,.2);font-size:13px;padding:20px"><i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>Lade Admins...</div>
+                    </div>
+                </div>
+
+                <!-- Rollen-Matrix -->
+                <div>
+                    <div class="sa-section-title"><i class="fa-solid fa-table" style="color:#67e8f9"></i> Rollen-Matrix</div>
+                    <div style="background:#0f0f1a;border:1px solid rgba(255,255,255,.07);border-radius:18px;overflow:hidden">
+                        <div style="overflow-x:auto">
+                            <table style="width:100%;border-collapse:collapse;min-width:600px">
+                                <thead>
+                                    <tr style="border-bottom:1px solid rgba(255,255,255,.07)">
+                                        <th style="padding:12px 16px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.3);text-align:left">Berechtigung</th>
+                                        <th style="padding:12px 16px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;text-align:center;color:#fbbf24">👑 Super</th>
+                                        <th style="padding:12px 16px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;text-align:center;color:#fb923c">🛡️ Co-Super</th>
+                                        <th style="padding:12px 16px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;text-align:center;color:#67e8f9">👤 Admin</th>
+                                        <th style="padding:12px 16px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;text-align:center;color:rgba(255,255,255,.3)">👁️ Nur-Lesen</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="sa-role-matrix-tbody">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Admin-Detail-Modal (hidden) -->
+                <div id="sa-admin-detail-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:99997;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(8px)">
+                    <div style="background:linear-gradient(160deg,#0f0f1a,#1a1a2e);border:1px solid rgba(251,191,36,.2);border-radius:26px;padding:32px;max-width:560px;width:100%;max-height:90vh;overflow-y:auto;animation:modalPop .3s cubic-bezier(.34,1.56,.64,1)">
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px">
+                            <div style="display:flex;align-items:center;gap:14px">
+                                <div id="adm-modal-avatar" style="width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,#fbbf24,#f59e0b);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#000;flex-shrink:0">?</div>
+                                <div>
+                                    <div id="adm-modal-email" style="font-size:15px;font-weight:700;color:#fff;word-break:break-all">—</div>
+                                    <div id="adm-modal-role-badge" style="margin-top:4px"></div>
+                                </div>
+                            </div>
+                            <button onclick="document.getElementById('sa-admin-detail-modal').style.display='none'" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;width:34px;height:34px;color:rgba(255,255,255,.5);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
+                        </div>
+
+                        <!-- KPI Mini Row -->
+                        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px">
+                            <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:13px;padding:12px;text-align:center">
+                                <div style="font-size:9px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Aktionen (30d)</div>
+                                <div id="adm-modal-actions" style="font-size:20px;font-weight:700;color:#67e8f9;font-family:'JetBrains Mono',monospace">—</div>
+                            </div>
+                            <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:13px;padding:12px;text-align:center">
+                                <div style="font-size:9px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Letzter Login</div>
+                                <div id="adm-modal-lastlogin" style="font-size:13px;font-weight:700;color:#fbbf24;font-family:'JetBrains Mono',monospace">—</div>
+                            </div>
+                            <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:13px;padding:12px;text-align:center">
+                                <div style="font-size:9px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Status</div>
+                                <div id="adm-modal-status" style="font-size:13px;font-weight:700;color:#34d399">Aktiv</div>
+                            </div>
+                        </div>
+
+                        <!-- Activity Timeline -->
+                        <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px"><i class="fa-solid fa-timeline" style="margin-right:6px;color:#a78bfa"></i>Letzte Aktionen</div>
+                        <div id="adm-modal-timeline" style="display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto;margin-bottom:20px">
+                            <div style="color:rgba(255,255,255,.2);font-size:12px;padding:10px;text-align:center"><i class="fa-solid fa-spinner fa-spin"></i></div>
+                        </div>
+
+                        <!-- Actions -->
+                        <div style="display:flex;gap:8px;flex-wrap:wrap">
+                            <button id="adm-modal-promote-btn" onclick="admModalPromote()" style="flex:1;padding:10px;border-radius:12px;border:none;cursor:pointer;background:rgba(251,191,36,.12);color:#fbbf24;font-size:12px;font-weight:600;transition:all .15s" onmouseover="this.style.background='rgba(251,191,36,.22)'" onmouseout="this.style.background='rgba(251,191,36,.12)'"><i class="fa-solid fa-arrow-up"></i> Befördern</button>
+                            <button id="adm-modal-demote-btn" onclick="admModalDemote()" style="flex:1;padding:10px;border-radius:12px;border:none;cursor:pointer;background:rgba(251,146,60,.1);color:#fb923c;font-size:12px;font-weight:600;transition:all .15s" onmouseover="this.style.background='rgba(251,146,60,.22)'" onmouseout="this.style.background='rgba(251,146,60,.1)'"><i class="fa-solid fa-arrow-down"></i> Degradieren</button>
+                            <button onclick="admModalResetToken()" style="padding:10px 16px;border-radius:12px;border:none;cursor:pointer;background:rgba(103,232,249,.08);color:#67e8f9;font-size:12px;font-weight:600;transition:all .15s" onmouseover="this.style.background='rgba(103,232,249,.18)'" onmouseout="this.style.background='rgba(103,232,249,.08)'"><i class="fa-solid fa-rotate"></i> Token resetten</button>
+                            <button onclick="admModalRemove()" style="padding:10px 16px;border-radius:12px;border:none;cursor:pointer;background:rgba(248,113,113,.08);color:#f87171;font-size:12px;font-weight:600;transition:all .15s" onmouseover="this.style.background='rgba(248,113,113,.18)'" onmouseout="this.style.background='rgba(248,113,113,.08)'"><i class="fa-solid fa-trash"></i> Entfernen</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -3962,6 +4202,22 @@
                     </div>
                     <div class="sa-ip-list" id="sa-ip-list"><div style="color:rgba(255,255,255,.2);font-size:12px">Lade IP-Whitelist...</div></div>
                 </div>
+
+                <!-- NEW: Brute-Force Monitor -->
+                <div>
+                    <div class="sa-section-title"><i class="fa-solid fa-chart-line" style="color:#f87171"></i> Brute-Force &amp; Login-Anomalien</div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:14px">
+                        <div class="sa-kpi" style="padding:13px 16px"><div class="sa-kpi-label">Zugriffe (24h)</div><div class="sa-kpi-value" id="sa-bf-24h" style="font-size:22px;color:#f87171">—</div></div>
+                        <div class="sa-kpi" style="padding:13px 16px"><div class="sa-kpi-label">Gesperrte IPs</div><div class="sa-kpi-value" id="sa-bf-banned" style="font-size:22px;color:#fbbf24">—</div></div>
+                        <div class="sa-kpi" style="padding:13px 16px"><div class="sa-kpi-label">Unique IPs</div><div class="sa-kpi-value" id="sa-bf-uniqueips" style="font-size:22px;color:#a78bfa">—</div></div>
+                        <div class="sa-kpi" style="padding:13px 16px"><div class="sa-kpi-label">Top-Angreifer</div><div class="sa-kpi-value" id="sa-bf-topip" style="font-size:13px;color:#f87171;font-family:'JetBrains Mono',monospace">—</div></div>
+                    </div>
+                    <div id="sa-bf-log" style="display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto">
+                        <div style="color:rgba(255,255,255,.2);font-size:12px;padding:12px;text-align:center"><i class="fa-solid fa-spinner fa-spin" style="margin-right:6px"></i>Lade...</div>
+                    </div>
+                    <button onclick="saLoadBruteForce()" style="margin-top:10px;padding:7px 16px;border-radius:10px;border:1px solid rgba(248,113,113,.2);background:rgba(248,113,113,.06);color:#f87171;font-size:11px;font-weight:600;cursor:pointer"><i class="fa-solid fa-rotate"></i> Aktualisieren</button>
+                </div>
+
                 <div>
                     <div class="sa-section-title"><i class="fa-solid fa-gear" style="color:#67e8f9"></i> Sicherheitseinstellungen</div>
                     <div class="sa-sec-grid">
@@ -3996,34 +4252,106 @@
                             <div class="sa-sec-row"><div class="sa-sec-label">Immer sperren</div><label class="sa-switch"><input type="checkbox" id="sa-sec-auto-lock"><span class="sa-switch-sl"></span></label></div>
                         </div>
                     </div>
-                    <button onclick="saSaveSecuritySettings()" style="margin-top:16px;padding:12px 28px;border-radius:14px;border:none;cursor:pointer;background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#000;font-weight:700;font-size:13px">
-                        <i class="fa-solid fa-floppy-disk"></i> &nbsp;Sicherheitseinstellungen speichern
-                    </button>
                 </div>
+
+                <!-- Brute-Force-Schutz -->
+                <div>
+                    <div class="sa-section-title"><i class="fa-solid fa-shield-virus" style="color:#f87171"></i> Brute-Force-Schutz</div>
+                    <div class="sa-sec-grid">
+                        <div class="sa-sec-card" style="border-color:rgba(248,113,113,.15)">
+                            <div class="sa-sec-card-title"><i class="fa-solid fa-lock-open" style="color:#f87171"></i> Rate-Limiting</div>
+                            <div class="sa-sec-card-desc">Wie viele Bestellungen / Aktionen pro Minute erlaubt sind, bevor ein Nutzer temporär gesperrt wird.</div>
+                            <div class="sa-sec-row"><span class="sa-sec-label">Max. Aktionen/Min.</span><input type="number" class="sa-sec-input" id="sa-sec-rate-limit" value="30" min="5" max="200"></div>
+                            <div class="sa-sec-row" style="margin-top:6px"><span class="sa-sec-label">Sperrzeit (Minuten)</span><input type="number" class="sa-sec-input" id="sa-sec-rate-lockout" value="15" min="1" max="1440"></div>
+                        </div>
+                        <div class="sa-sec-card" style="border-color:rgba(248,113,113,.15)">
+                            <div class="sa-sec-card-title"><i class="fa-solid fa-robot" style="color:#a78bfa"></i> Bot-Schutz</div>
+                            <div class="sa-sec-card-desc">Verdächtige IPs (viele Fehlversuche) automatisch bannen.</div>
+                            <div class="sa-sec-row"><span class="sa-sec-label">Auto-Ban aktiv</span><label class="sa-switch"><input type="checkbox" id="sa-sec-autoban" checked><span class="sa-switch-sl"></span></label></div>
+                            <div class="sa-sec-row" style="margin-top:6px"><span class="sa-sec-label">Fehlversuche vor Ban</span><input type="number" class="sa-sec-input" id="sa-sec-autoban-threshold" value="10" min="3" max="50"></div>
+                        </div>
+                        <div class="sa-sec-card" style="border-color:rgba(248,113,113,.15)">
+                            <div class="sa-sec-card-title"><i class="fa-solid fa-network-wired" style="color:#67e8f9"></i> Geo-Blocking</div>
+                            <div class="sa-sec-card-desc">Bestellungen aus bestimmten Ländern blockieren (kommagetrennte ISO-2-Codes).</div>
+                            <div class="sa-sec-row"><span class="sa-sec-label">Aktiv</span><label class="sa-switch"><input type="checkbox" id="sa-sec-geo-active"><span class="sa-switch-sl"></span></label></div>
+                            <input type="text" id="sa-sec-geo-blocklist" placeholder="z.B. RU,CN,KP" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:8px 12px;color:#fff;font-size:12px;outline:none;box-sizing:border-box;margin-top:8px;font-family:'JetBrains Mono',monospace">
+                        </div>
+                        <div class="sa-sec-card" style="border-color:rgba(248,113,113,.15)">
+                            <div class="sa-sec-card-title"><i class="fa-solid fa-envelope-circle-check" style="color:#34d399"></i> E-Mail-Verification</div>
+                            <div class="sa-sec-card-desc">Neue Nutzer müssen E-Mail-Adresse bestätigen bevor sie bestellen können.</div>
+                            <div class="sa-sec-row"><span class="sa-sec-label">Pflicht-Verification</span><label class="sa-switch"><input type="checkbox" id="sa-sec-email-verify" checked><span class="sa-switch-sl"></span></label></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Login-Historie -->
+                <div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+                        <div class="sa-section-title" style="margin:0;flex:1"><i class="fa-solid fa-clock-rotate-left" style="color:#a78bfa"></i> SA-Login-Historie</div>
+                        <button onclick="secLoadLoginHistory()" style="padding:6px 14px;border-radius:9px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:rgba(255,255,255,.5);font-size:11px;cursor:pointer"><i class="fa-solid fa-rotate"></i></button>
+                    </div>
+                    <div id="sec-login-history" style="display:flex;flex-direction:column;gap:6px;margin-top:12px;max-height:340px;overflow-y:auto">
+                        <div style="color:rgba(255,255,255,.2);font-size:12px;padding:12px;text-align:center"><i class="fa-solid fa-spinner fa-spin" style="margin-right:6px"></i>Lade Login-Historie...</div>
+                    </div>
+                </div>
+
+                <button onclick="saSaveSecuritySettings()" style="margin-top:16px;padding:12px 28px;border-radius:14px;border:none;cursor:pointer;background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#000;font-weight:700;font-size:13px">
+                    <i class="fa-solid fa-floppy-disk"></i> &nbsp;Sicherheitseinstellungen speichern
+                </button>
             </div>
 
             <!-- PANEL: SESSION MONITOR -->
             <div class="sa-inner-panel" id="sa-panel-sessions">
                 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:4px">
                     <div class="sa-section-title" style="margin:0;flex:1"><i class="fa-solid fa-eye" style="color:#34d399"></i> Session Monitor</div>
-                    <div style="display:flex;gap:8px;align-items:center">
+                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
                         <div id="sa-sess-counts" style="font-size:12px;color:rgba(255,255,255,.3)"></div>
+                        <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:rgba(255,255,255,.4);cursor:pointer">
+                            <input type="checkbox" id="sess-autorefresh" onchange="sessToggleAutorefresh(this)" style="accent-color:#67e8f9"> Auto-Refresh (30s)
+                        </label>
                         <button onclick="saLoadSessions()" style="padding:8px 16px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:rgba(255,255,255,.6);font-size:12px;cursor:pointer"><i class="fa-solid fa-rotate"></i> Aktualisieren</button>
+                        <button onclick="sessKillAllGuests()" style="padding:8px 16px;border-radius:10px;border:1px solid rgba(248,113,113,.25);background:rgba(248,113,113,.07);color:#f87171;font-size:12px;font-weight:600;cursor:pointer"><i class="fa-solid fa-user-slash"></i> Alle Gäste entfernen</button>
                     </div>
+                </div>
+                <!-- KPI Strip -->
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px" id="sess-kpi-strip">
+                    <div class="sa-kpi" style="padding:12px 16px"><div class="sa-kpi-label">Live aktiv</div><div class="sa-kpi-value" id="sess-kpi-live" style="font-size:22px;color:#34d399">—</div></div>
+                    <div class="sa-kpi" style="padding:12px 16px"><div class="sa-kpi-label">Gesamt (2h)</div><div class="sa-kpi-value" id="sess-kpi-total" style="font-size:22px">—</div></div>
+                    <div class="sa-kpi" style="padding:12px 16px"><div class="sa-kpi-label">Eingeloggt</div><div class="sa-kpi-value" id="sess-kpi-users" style="font-size:22px;color:#67e8f9">—</div></div>
+                    <div class="sa-kpi" style="padding:12px 16px"><div class="sa-kpi-label">Gäste</div><div class="sa-kpi-value" id="sess-kpi-guests" style="font-size:22px;color:rgba(255,255,255,.4)">—</div></div>
+                    <div class="sa-kpi" style="padding:12px 16px"><div class="sa-kpi-label">Mit Warenkorb</div><div class="sa-kpi-value" id="sess-kpi-cart" style="font-size:22px;color:#fbbf24">—</div></div>
+                    <div class="sa-kpi" style="padding:12px 16px"><div class="sa-kpi-label">Admins online</div><div class="sa-kpi-value" id="sess-kpi-admins" style="font-size:22px;color:#fbbf24">—</div></div>
                 </div>
                 <!-- Filter Tabs -->
                 <div style="display:flex;gap:6px;flex-wrap:wrap">
-                    <button class="sa-inner-tab active" id="sess-tab-all" onclick="saSessionFilter('all',this)" style="padding:5px 14px;font-size:11px">Alle</button>
-                    <button class="sa-inner-tab" id="sess-tab-admins" onclick="saSessionFilter('admins',this)" style="padding:5px 14px;font-size:11px;color:rgba(251,191,36,.7)">👑 Admins</button>
-                    <button class="sa-inner-tab" id="sess-tab-guests" onclick="saSessionFilter('guests',this)" style="padding:5px 14px;font-size:11px">Gäste</button>
-                    <button class="sa-inner-tab" id="sess-tab-users" onclick="saSessionFilter('users',this)" style="padding:5px 14px;font-size:11px">Eingeloggte User</button>
-                    <button class="sa-inner-tab" id="sess-tab-cart" onclick="saSessionFilter('cart',this)" style="padding:5px 14px;font-size:11px;color:rgba(103,232,249,.7)">🛒 Mit Warenkorb</button>
+                    <button class="sa-inner-tab active" id="sess-tab-all"    onclick="saSessionFilter('all',this)"    style="padding:5px 14px;font-size:11px">Alle</button>
+                    <button class="sa-inner-tab"        id="sess-tab-admins" onclick="saSessionFilter('admins',this)" style="padding:5px 14px;font-size:11px;color:rgba(251,191,36,.7)">👑 Admins</button>
+                    <button class="sa-inner-tab"        id="sess-tab-guests" onclick="saSessionFilter('guests',this)" style="padding:5px 14px;font-size:11px">Gäste</button>
+                    <button class="sa-inner-tab"        id="sess-tab-users"  onclick="saSessionFilter('users',this)"  style="padding:5px 14px;font-size:11px">Eingeloggte User</button>
+                    <button class="sa-inner-tab"        id="sess-tab-cart"   onclick="saSessionFilter('cart',this)"   style="padding:5px 14px;font-size:11px;color:rgba(103,232,249,.7)">🛒 Mit Warenkorb</button>
+                    <button class="sa-inner-tab"        id="sess-tab-live"   onclick="saSessionFilter('live',this)"   style="padding:5px 14px;font-size:11px;color:rgba(52,211,153,.8)">🟢 Live</button>
+                </div>
+
+                <!-- Session-Geo-Übersicht -->
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+                    <div style="background:#0f0f1a;border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:18px 20px">
+                        <div style="font-size:12px;font-weight:700;color:rgba(255,255,255,.5);margin-bottom:12px;text-transform:uppercase;letter-spacing:.07em"><i class="fa-solid fa-map-location-dot" style="margin-right:6px;color:#67e8f9"></i>Top-Seiten (aktive Sessions)</div>
+                        <div id="sess-top-pages" style="display:flex;flex-direction:column;gap:6px">
+                            <div style="color:rgba(255,255,255,.2);font-size:11px;text-align:center;padding:8px">—</div>
+                        </div>
+                    </div>
+                    <div style="background:#0f0f1a;border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:18px 20px">
+                        <div style="font-size:12px;font-weight:700;color:rgba(255,255,255,.5);margin-bottom:12px;text-transform:uppercase;letter-spacing:.07em"><i class="fa-solid fa-chart-pie" style="margin-right:6px;color:#a78bfa"></i>Session-Typen</div>
+                        <div id="sess-type-breakdown" style="display:flex;flex-direction:column;gap:8px">
+                            <div style="color:rgba(255,255,255,.2);font-size:11px;text-align:center;padding:8px">—</div>
+                        </div>
+                    </div>
                 </div>
                 <div class="sa-sess-list" id="sa-sess-list" style="max-height:480px;overflow-y:auto">
                     <div style="color:rgba(255,255,255,.2);font-size:13px;padding:16px"><i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>Lade Sessions...</div>
                 </div>
                 <div style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.05);border-radius:16px;padding:14px">
-                    <div style="font-size:11px;color:rgba(255,255,255,.25);line-height:1.7"><i class="fa-solid fa-circle-info" style="margin-right:6px;color:rgba(103,232,249,.4)"></i>Grüner Punkt = aktiv in letzten 90 Sek. Alle Presence-Daten kommen aus Firestore.</div>
+                    <div style="font-size:11px;color:rgba(255,255,255,.25);line-height:1.7"><i class="fa-solid fa-circle-info" style="margin-right:6px;color:rgba(103,232,249,.4)"></i>Grüner Punkt = aktiv in letzten 90 Sek. · „Session beenden" löscht den Presence-Eintrag aus Firestore. · Alle Presence-Daten kommen aus Firestore.</div>
                 </div>
             </div>
 
@@ -4279,7 +4607,6 @@
 
             <!-- PANEL: ADMIN LOGS — ENTFERNT (jetzt in Tab 17 für alle Admins) -->
 
-            <!-- PANEL: SA-AKTIVITÄTSLOG -->
             <div class="sa-inner-panel" id="sa-panel-actlog">
                 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:4px">
                     <div class="sa-section-title" style="margin:0;flex:1"><i class="fa-solid fa-scroll" style="color:#a78bfa"></i> Superadmin-Aktivitätslog</div>
@@ -4288,15 +4615,51 @@
                         <button onclick="saExport('admin_logs','csv')" style="padding:8px 14px;border-radius:10px;border:1px solid rgba(167,139,250,.2);background:rgba(167,139,250,.07);color:#a78bfa;font-size:12px;cursor:pointer"><i class="fa-solid fa-download"></i> Export</button>
                     </div>
                 </div>
-                <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px">
-                    <button class="sa-inner-tab active" onclick="saFilterLog('all',this)" style="padding:5px 12px;font-size:11px">Alle</button>
-                    <button class="sa-inner-tab" onclick="saFilterLog('access',this)" style="padding:5px 12px;font-size:11px;color:rgba(52,211,153,.6)">Zugriffe</button>
-                    <button class="sa-inner-tab" onclick="saFilterLog('admin',this)" style="padding:5px 12px;font-size:11px;color:rgba(103,232,249,.6)">Admin-Änderungen</button>
-                    <button class="sa-inner-tab" onclick="saFilterLog('export',this)" style="padding:5px 12px;font-size:11px;color:rgba(167,139,250,.6)">Exports</button>
-                    <button class="sa-inner-tab" onclick="saFilterLog('danger',this)" style="padding:5px 12px;font-size:11px;color:rgba(248,113,113,.6)">Danger</button>
+
+                <!-- Stats-Header -->
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:4px" id="actlog-stats">
+                    <div class="sa-kpi" style="padding:12px 16px"><div class="sa-kpi-label">Gesamt (200)</div><div class="sa-kpi-value" id="actlog-total" style="font-size:22px">—</div></div>
+                    <div class="sa-kpi" style="padding:12px 16px"><div class="sa-kpi-label">Heute</div><div class="sa-kpi-value" id="actlog-today" style="font-size:22px;color:#67e8f9">—</div></div>
+                    <div class="sa-kpi" style="padding:12px 16px"><div class="sa-kpi-label">Danger</div><div class="sa-kpi-value" id="actlog-danger" style="font-size:22px;color:#f87171">—</div></div>
+                    <div class="sa-kpi" style="padding:12px 16px"><div class="sa-kpi-label">Exports</div><div class="sa-kpi-value" id="actlog-exports" style="font-size:22px;color:#a78bfa">—</div></div>
+                    <div class="sa-kpi" style="padding:12px 16px"><div class="sa-kpi-label">Letzter Zugriff</div><div class="sa-kpi-value" id="actlog-lastaccess" style="font-size:13px;color:#fbbf24;font-family:'JetBrains Mono',monospace">—</div></div>
                 </div>
-                <div class="sa-log-list" id="sa-act-log">
-                    <div style="color:rgba(255,255,255,.2);font-size:12px;padding:12px"><i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>Lade Log...</div>
+
+                <!-- Filter + View Toggle -->
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;flex:1">
+                        <button class="sa-inner-tab active" onclick="saFilterLog('all',this)" style="padding:5px 12px;font-size:11px">Alle</button>
+                        <button class="sa-inner-tab" onclick="saFilterLog('access',this)" style="padding:5px 12px;font-size:11px;color:rgba(52,211,153,.6)">Zugriffe</button>
+                        <button class="sa-inner-tab" onclick="saFilterLog('admin',this)" style="padding:5px 12px;font-size:11px;color:rgba(103,232,249,.6)">Admin-Änderungen</button>
+                        <button class="sa-inner-tab" onclick="saFilterLog('export',this)" style="padding:5px 12px;font-size:11px;color:rgba(167,139,250,.6)">Exports</button>
+                        <button class="sa-inner-tab" onclick="saFilterLog('danger',this)" style="padding:5px 12px;font-size:11px;color:rgba(248,113,113,.6)">Danger</button>
+                    </div>
+                    <!-- Zeitraum-Filter -->
+                    <select id="actlog-period-filter" onchange="saFilterLogPeriod(this.value)" style="background:#1a1a2e;border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:7px 12px;color:#fff;font-size:11px;outline:none;cursor:pointer">
+                        <option value="0">Alle Zeit</option>
+                        <option value="1">24 Stunden</option>
+                        <option value="7" selected>7 Tage</option>
+                        <option value="30">30 Tage</option>
+                    </select>
+                    <!-- View Toggle -->
+                    <div style="display:flex;gap:4px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:4px">
+                        <button id="actlog-view-list" onclick="actlogSetView('list',this)" style="padding:5px 10px;border-radius:7px;border:none;cursor:pointer;background:rgba(255,255,255,.08);color:#fff;font-size:11px;transition:all .15s"><i class="fa-solid fa-list"></i></button>
+                        <button id="actlog-view-timeline" onclick="actlogSetView('timeline',this)" style="padding:5px 10px;border-radius:7px;border:none;cursor:pointer;background:transparent;color:rgba(255,255,255,.4);font-size:11px;transition:all .15s"><i class="fa-solid fa-timeline"></i></button>
+                    </div>
+                </div>
+
+                <!-- List View -->
+                <div id="actlog-view-list-panel">
+                    <div class="sa-log-list" id="sa-act-log" style="max-height:400px">
+                        <div style="color:rgba(255,255,255,.2);font-size:12px;padding:12px"><i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>Lade Log...</div>
+                    </div>
+                </div>
+
+                <!-- Timeline View (hidden by default) -->
+                <div id="actlog-view-timeline-panel" style="display:none">
+                    <div id="actlog-timeline-view" style="position:relative;padding-left:28px">
+                        <div style="color:rgba(255,255,255,.2);font-size:12px;padding:12px">Wechsle in Timeline-Ansicht um Einträge zu sehen.</div>
+                    </div>
                 </div>
             </div>
 
@@ -4379,6 +4742,277 @@
                         <div class="sa-danger-title" style="font-size:15px"><i class="fa-solid fa-users-slash"></i> ALLE User löschen</div>
                         <div class="sa-danger-desc">Löscht <strong style="color:#f87171">alle</strong> User-Dokumente aus Firestore (nicht Firebase Auth). Absolut irreversibel.</div>
                         <button class="sa-danger-btn" style="border-color:rgba(239,68,68,.6);background:rgba(239,68,68,.18)" onclick="saDangerDeleteAllUsers()"><i class="fa-solid fa-triangle-exclamation"></i> ALLE User löschen</button>
+                    </div>
+                    <div class="sa-danger-card" style="border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.07)">
+                        <div class="sa-danger-title" style="font-size:15px"><i class="fa-solid fa-lock"></i> Security Lockdown</div>
+                        <div class="sa-danger-desc">Sperrt sofort alle Nicht-Superadmin-Logins, schließt den Shop und protokolliert alle aktiven Sessions. Für Notfälle.</div>
+                        <button class="sa-danger-btn" style="border-color:rgba(239,68,68,.6);background:rgba(239,68,68,.18)" onclick="saDangerSecurityLockdown()"><i class="fa-solid fa-lock"></i> Lockdown aktivieren</button>
+                    </div>
+                    <div class="sa-danger-card" style="border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.07)">
+                        <div class="sa-danger-title" style="font-size:15px"><i class="fa-solid fa-ban"></i> Alle Admin-Tokens revoken</div>
+                        <div class="sa-danger-desc">Setzt das <code style="font-family:JetBrains Mono,monospace;color:#f87171">adminTokenVersion</code>-Feld aller Admins hoch — erzwingt Re-Login bei allen Admins außer dir.</div>
+                        <button class="sa-danger-btn" style="border-color:rgba(239,68,68,.6);background:rgba(239,68,68,.18)" onclick="saDangerRevokeAdminTokens()"><i class="fa-solid fa-ban"></i> Tokens revoken</button>
+                    </div>
+                    <div class="sa-danger-card" style="border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.07)">
+                        <div class="sa-danger-title" style="font-size:15px"><i class="fa-solid fa-broom"></i> Alle Click-Events löschen</div>
+                        <div class="sa-danger-desc">Löscht alle Einträge in der <code style="font-family:JetBrains Mono,monospace;color:#f87171">click_events</code>-Collection. Analyse-Daten gehen verloren.</div>
+                        <button class="sa-danger-btn" style="border-color:rgba(239,68,68,.6);background:rgba(239,68,68,.18)" onclick="saDangerClearClickEvents()"><i class="fa-solid fa-broom"></i> Alle Events löschen</button>
+                    </div>
+                    <div class="sa-danger-card" style="border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.07)">
+                        <div class="sa-danger-title" style="font-size:15px"><i class="fa-solid fa-database"></i> Alle Backups löschen</div>
+                        <div class="sa-danger-desc">Entfernt alle gespeicherten Backups aus Firestore. Die Konfiguration bleibt erhalten.</div>
+                        <button class="sa-danger-btn" style="border-color:rgba(239,68,68,.6);background:rgba(239,68,68,.18)" onclick="saDangerDeleteAllBackups()"><i class="fa-solid fa-trash"></i> Alle Backups löschen</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══════════════════════════════════════════════════════════
+                 PANEL: SHOP-KONFIGURATION
+            ══════════════════════════════════════════════════════════ -->
+            <div class="sa-inner-panel" id="sa-panel-shopconfig">
+
+                <!-- Feature-Toggles -->
+                <div>
+                    <div class="sa-section-title"><i class="fa-solid fa-toggle-on" style="color:#67e8f9"></i> Feature-Toggles</div>
+                    <div class="sa-sec-grid">
+                        <div class="sa-sec-card">
+                            <div class="sa-sec-card-title"><i class="fa-solid fa-gift" style="color:#34d399"></i> 4-für-3-Aktion</div>
+                            <div class="sa-sec-card-desc">Kunden erhalten beim Kauf von 4 Produkten das günstigste gratis.</div>
+                            <div class="sa-sec-row"><span class="sa-sec-label">Aktiv</span><label class="sa-switch"><input type="checkbox" id="cfg-4for3"><span class="sa-switch-sl"></span></label></div>
+                        </div>
+                        <div class="sa-sec-card">
+                            <div class="sa-sec-card-title"><i class="fa-solid fa-box-open" style="color:#a78bfa"></i> Mystery Vape</div>
+                            <div class="sa-sec-card-desc">Mystery-Vape wird bei Bestellungen ab dem konfigurierten Schwellenwert gratis hinzugefügt.</div>
+                            <div class="sa-sec-row"><span class="sa-sec-label">Aktiv</span><label class="sa-switch"><input type="checkbox" id="cfg-mystery"><span class="sa-switch-sl"></span></label></div>
+                            <div class="sa-sec-row" style="margin-top:6px"><span class="sa-sec-label">Ab (€)</span><input type="number" class="sa-sec-input" id="cfg-mystery-threshold" value="100" min="0" step="5"></div>
+                        </div>
+                        <div class="sa-sec-card">
+                            <div class="sa-sec-card-title"><i class="fa-solid fa-truck" style="color:#fbbf24"></i> Gratisversand</div>
+                            <div class="sa-sec-card-desc">Versandkostenfrei ab einem bestimmten Bestellwert.</div>
+                            <div class="sa-sec-row"><span class="sa-sec-label">Aktiv</span><label class="sa-switch"><input type="checkbox" id="cfg-freeship"><span class="sa-switch-sl"></span></label></div>
+                            <div class="sa-sec-row" style="margin-top:6px"><span class="sa-sec-label">Ab (€)</span><input type="number" class="sa-sec-input" id="cfg-freeship-threshold" value="100" min="0" step="5"></div>
+                        </div>
+                        <div class="sa-sec-card">
+                            <div class="sa-sec-card-title"><i class="fa-solid fa-star" style="color:#fbbf24"></i> Loyalty-Programm</div>
+                            <div class="sa-sec-card-desc">Punkte sammeln und einlösen. Deaktivieren verhindert neue Punkte-Vergabe.</div>
+                            <div class="sa-sec-row"><span class="sa-sec-label">Aktiv</span><label class="sa-switch"><input type="checkbox" id="cfg-loyalty"><span class="sa-switch-sl"></span></label></div>
+                            <div class="sa-sec-row" style="margin-top:6px"><span class="sa-sec-label">Punkte / € </span><input type="number" class="sa-sec-input" id="cfg-loyalty-rate" value="10" min="1" max="100"></div>
+                        </div>
+                        <div class="sa-sec-card">
+                            <div class="sa-sec-card-title"><i class="fa-solid fa-user-plus" style="color:#67e8f9"></i> Registrierung</div>
+                            <div class="sa-sec-card-desc">Neue Nutzerregistrierungen zulassen oder sperren (Wartungsmodus).</div>
+                            <div class="sa-sec-row"><span class="sa-sec-label">Offen</span><label class="sa-switch"><input type="checkbox" id="cfg-registration" checked><span class="sa-switch-sl"></span></label></div>
+                        </div>
+                        <div class="sa-sec-card">
+                            <div class="sa-sec-card-title"><i class="fa-solid fa-star-half-stroke" style="color:#fbbf24"></i> Bewertungs-Moderation</div>
+                            <div class="sa-sec-card-desc">Bewertungen müssen vom Admin freigegeben werden, bevor sie sichtbar sind.</div>
+                            <div class="sa-sec-row"><span class="sa-sec-label">Pflicht-Review</span><label class="sa-switch"><input type="checkbox" id="cfg-review-mod" checked><span class="sa-switch-sl"></span></label></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Banner & Ankündigungen -->
+                <div>
+                    <div class="sa-section-title"><i class="fa-solid fa-rectangle-ad" style="color:#fbbf24"></i> Banner &amp; Ankündigungen</div>
+                    <div style="display:flex;flex-direction:column;gap:12px">
+                        <div class="sa-sec-card">
+                            <div class="sa-sec-card-title"><i class="fa-solid fa-bullhorn" style="color:#fbbf24"></i> Aktions-Banner</div>
+                            <div class="sa-sec-card-desc">Wird als farbiger Streifen oben im Shop angezeigt.</div>
+                            <div class="sa-sec-row"><span class="sa-sec-label">Anzeigen</span><label class="sa-switch"><input type="checkbox" id="cfg-banner-active"><span class="sa-switch-sl"></span></label></div>
+                            <input type="text" id="cfg-banner-text" placeholder="z.B. 🔥 Sommeraktion: 20% auf alle Liquids!" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 14px;color:#fff;font-size:13px;outline:none;box-sizing:border-box;margin-top:10px;transition:border-color .2s" onfocus="this.style.borderColor='rgba(251,191,36,.4)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">
+                            <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+                                <label style="font-size:11px;color:rgba(255,255,255,.4);display:flex;align-items:center;gap:6px"><input type="radio" name="cfg-banner-color" value="amber" style="accent-color:#fbbf24"> <span style="color:#fbbf24">Gelb</span></label>
+                                <label style="font-size:11px;color:rgba(255,255,255,.4);display:flex;align-items:center;gap:6px"><input type="radio" name="cfg-banner-color" value="cyan" style="accent-color:#67e8f9"> <span style="color:#67e8f9">Cyan</span></label>
+                                <label style="font-size:11px;color:rgba(255,255,255,.4);display:flex;align-items:center;gap:6px"><input type="radio" name="cfg-banner-color" value="red" style="accent-color:#f87171"> <span style="color:#f87171">Rot</span></label>
+                                <label style="font-size:11px;color:rgba(255,255,255,.4);display:flex;align-items:center;gap:6px"><input type="radio" name="cfg-banner-color" value="green" style="accent-color:#34d399"> <span style="color:#34d399">Grün</span></label>
+                            </div>
+                        </div>
+                        <div class="sa-sec-card">
+                            <div class="sa-sec-card-title"><i class="fa-solid fa-circle-info" style="color:#67e8f9"></i> Wartungs-Nachricht</div>
+                            <div class="sa-sec-card-desc">Diese Nachricht sehen Kunden wenn der Shop geschlossen ist.</div>
+                            <textarea id="cfg-maintenance-msg" rows="3" placeholder="Wir sind gleich wieder für euch da! 🛠️" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 14px;color:#fff;font-size:13px;outline:none;box-sizing:border-box;margin-top:8px;resize:vertical;transition:border-color .2s" onfocus="this.style.borderColor='rgba(103,232,249,.4)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rabatt-Konfiguration -->
+                <div>
+                    <div class="sa-section-title"><i class="fa-solid fa-percent" style="color:#34d399"></i> Globale Rabatt-Einstellungen</div>
+                    <div class="sa-sec-grid">
+                        <div class="sa-sec-card">
+                            <div class="sa-sec-card-title"><i class="fa-solid fa-tags" style="color:#34d399"></i> Globaler Rabatt</div>
+                            <div class="sa-sec-card-desc">Temporärer prozentualer Rabatt auf alle Produkte. 0 = deaktiviert.</div>
+                            <div class="sa-sec-row"><span class="sa-sec-label">Aktiv</span><label class="sa-switch"><input type="checkbox" id="cfg-global-discount-active"><span class="sa-switch-sl"></span></label></div>
+                            <div class="sa-sec-row" style="margin-top:6px"><span class="sa-sec-label">Rabatt (%)</span><input type="number" class="sa-sec-input" id="cfg-global-discount-pct" value="0" min="0" max="90"></div>
+                            <div class="sa-sec-row" style="margin-top:6px"><span class="sa-sec-label">Ablauf</span><input type="date" class="sa-sec-input" id="cfg-global-discount-expiry" style="width:auto;text-align:left;padding:7px 10px"></div>
+                        </div>
+                        <div class="sa-sec-card">
+                            <div class="sa-sec-card-title"><i class="fa-solid fa-coins" style="color:#fbbf24"></i> Mindestbestellwert</div>
+                            <div class="sa-sec-card-desc">Bestellungen unter diesem Wert werden abgelehnt. 0 = kein Minimum.</div>
+                            <div class="sa-sec-row" style="margin-top:6px"><span class="sa-sec-label">Min. (€)</span><input type="number" class="sa-sec-input" id="cfg-min-order" value="0" min="0" step="5"></div>
+                        </div>
+                        <div class="sa-sec-card">
+                            <div class="sa-sec-card-title"><i class="fa-solid fa-truck-fast" style="color:#a78bfa"></i> Versandkosten</div>
+                            <div class="sa-sec-card-desc">Standard-Versandkosten wenn Gratisversand nicht greift.</div>
+                            <div class="sa-sec-row" style="margin-top:6px"><span class="sa-sec-label">Kosten (€)</span><input type="number" class="sa-sec-input" id="cfg-shipping-cost" value="4.99" min="0" step="0.5"></div>
+                        </div>
+                        <div class="sa-sec-card">
+                            <div class="sa-sec-card-title"><i class="fa-solid fa-rotate" style="color:#67e8f9"></i> Max. Retouren (Tage)</div>
+                            <div class="sa-sec-card-desc">Wie viele Tage nach Lieferung eine Retoure möglich ist.</div>
+                            <div class="sa-sec-row" style="margin-top:6px"><span class="sa-sec-label">Tage</span><input type="number" class="sa-sec-input" id="cfg-return-days" value="14" min="0" max="90"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Kontakt-Daten -->
+                <div>
+                    <div class="sa-section-title"><i class="fa-solid fa-address-card" style="color:#67e8f9"></i> Kontakt &amp; Impressum</div>
+                    <div class="sa-sec-card">
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                            <div><label style="font-size:11px;color:rgba(255,255,255,.35);display:block;margin-bottom:5px">Support E-Mail</label><input type="email" id="cfg-contact-email" placeholder="support@wavevapes.de" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 12px;color:#fff;font-size:13px;outline:none;box-sizing:border-box"></div>
+                            <div><label style="font-size:11px;color:rgba(255,255,255,.35);display:block;margin-bottom:5px">Instagram-URL</label><input type="text" id="cfg-instagram" placeholder="https://instagram.com/..." style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 12px;color:#fff;font-size:13px;outline:none;box-sizing:border-box"></div>
+                            <div><label style="font-size:11px;color:rgba(255,255,255,.35);display:block;margin-bottom:5px">Shop-Name (Display)</label><input type="text" id="cfg-shop-name" placeholder="WaveVapes" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 12px;color:#fff;font-size:13px;outline:none;box-sizing:border-box"></div>
+                            <div><label style="font-size:11px;color:rgba(255,255,255,.35);display:block;margin-bottom:5px">Altersverifikation (Jahre)</label><input type="number" id="cfg-age-gate" value="18" min="18" max="21" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 12px;color:#fff;font-size:13px;outline:none;box-sizing:border-box"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <button onclick="cfgSaveAll()" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:15px;background:linear-gradient(135deg,#fbbf24,#f59e0b);border:none;border-radius:15px;font-size:14px;font-weight:700;color:#000;cursor:pointer;transition:opacity .2s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+                    <i class="fa-solid fa-floppy-disk"></i> Alle Einstellungen speichern
+                </button>
+            </div>
+
+            <!-- ══════════════════════════════════════════════════════════
+                 PANEL: SYSTEM-HEALTH MONITOR
+            ══════════════════════════════════════════════════════════ -->
+            <div class="sa-inner-panel" id="sa-panel-health">
+
+                <!-- Live Status Bar -->
+                <div id="health-status-bar" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:18px 22px;border-radius:20px;background:linear-gradient(135deg,rgba(52,211,153,.06),rgba(52,211,153,.02));border:1px solid rgba(52,211,153,.2)">
+                    <div style="display:flex;align-items:center;gap:12px">
+                        <div id="health-overall-dot" style="width:14px;height:14px;border-radius:50%;background:#34d399;box-shadow:0 0 12px #34d399;flex-shrink:0"></div>
+                        <div>
+                            <div id="health-overall-text" style="font-size:14px;font-weight:700;color:#34d399">System betriebsbereit</div>
+                            <div style="font-size:11px;color:rgba(255,255,255,.3);margin-top:2px" id="health-last-check">Letzter Check: —</div>
+                        </div>
+                    </div>
+                    <button onclick="healthRunCheck()" id="health-check-btn" style="display:flex;align-items:center;gap:8px;padding:9px 18px;border-radius:12px;background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.25);color:#34d399;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(52,211,153,.2)'" onmouseout="this.style.background='rgba(52,211,153,.1)'">
+                        <i class="fa-solid fa-rotate"></i> Health-Check starten
+                    </button>
+                </div>
+
+                <!-- KPI Metrics -->
+                <div class="sa-kpi-grid" id="health-kpi-grid">
+                    <div class="sa-kpi"><div class="sa-kpi-icon">🗄️</div><div class="sa-kpi-label">Firestore Reads (heute)</div><div class="sa-kpi-value" id="h-reads">—</div><div class="sa-kpi-sub">Limit: ~50.000/Tag</div></div>
+                    <div class="sa-kpi"><div class="sa-kpi-icon">✏️</div><div class="sa-kpi-label">Firestore Writes (heute)</div><div class="sa-kpi-value" id="h-writes">—</div><div class="sa-kpi-sub">Limit: ~20.000/Tag</div></div>
+                    <div class="sa-kpi"><div class="sa-kpi-icon">💾</div><div class="sa-kpi-label">Dokumente gesamt</div><div class="sa-kpi-value" id="h-docs">—</div><div class="sa-kpi-sub">Über alle Collections</div></div>
+                    <div class="sa-kpi"><div class="sa-kpi-icon">⚡</div><div class="sa-kpi-label">Aktive Listener</div><div class="sa-kpi-value" id="h-listeners">—</div><div class="sa-kpi-sub">onSnapshot-Verbindungen</div></div>
+                    <div class="sa-kpi"><div class="sa-kpi-icon">🌐</div><div class="sa-kpi-label">Online-Nutzer</div><div class="sa-kpi-value" id="h-online">—</div><div class="sa-kpi-sub">Aktiv (letzte 90 Sek.)</div></div>
+                    <div class="sa-kpi"><div class="sa-kpi-icon">⏱️</div><div class="sa-kpi-label">Ø Response-Zeit</div><div class="sa-kpi-value" id="h-latency">—</div><div class="sa-kpi-sub">Firestore Ping</div></div>
+                    <div class="sa-kpi"><div class="sa-kpi-icon">🚫</div><div class="sa-kpi-label">Gesperrte IPs</div><div class="sa-kpi-value" id="h-banned-ips">—</div><div class="sa-kpi-sub">In banned_ips</div></div>
+                    <div class="sa-kpi"><div class="sa-kpi-icon">⚠️</div><div class="sa-kpi-label">Fehlerrate (24h)</div><div class="sa-kpi-value" id="h-errors">—</div><div class="sa-kpi-sub">Unauthorized-Einträge</div></div>
+                </div>
+
+                <!-- Collection Sizes -->
+                <div>
+                    <div class="sa-section-title"><i class="fa-solid fa-table-list" style="color:#67e8f9"></i> Collection-Größen</div>
+                    <div id="health-collections-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px">
+                        <div style="color:rgba(255,255,255,.2);font-size:12px;padding:16px;text-align:center;grid-column:1/-1"><i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>Lade...</div>
+                    </div>
+                </div>
+
+                <!-- Performance Timeline -->
+                <div>
+                    <div class="sa-section-title"><i class="fa-solid fa-chart-area" style="color:#a78bfa"></i> Latenz-Messungen (letzte Checks)</div>
+                    <div id="health-latency-chart" style="background:#0f0f1a;border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:18px 20px">
+                        <div style="color:rgba(255,255,255,.2);font-size:12px;text-align:center;padding:20px">Noch keine Messungen — starte einen Health-Check</div>
+                    </div>
+                </div>
+
+                <!-- Checklist -->
+                <div>
+                    <div class="sa-section-title"><i class="fa-solid fa-clipboard-check" style="color:#34d399"></i> Integritäts-Checkliste</div>
+                    <div id="health-checklist" style="display:flex;flex-direction:column;gap:8px">
+                        <div style="color:rgba(255,255,255,.2);font-size:12px;padding:16px;text-align:center"><i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>Warte auf Check...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══════════════════════════════════════════════════════════
+                 PANEL: AUDIT-TRAIL (erweiterter Activity-Log mit Filter)
+            ══════════════════════════════════════════════════════════ -->
+            <div class="sa-inner-panel" id="sa-panel-audittrail">
+
+                <!-- Header -->
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:18px 22px;border-radius:20px;background:linear-gradient(135deg,rgba(167,139,250,.06),rgba(167,139,250,.02));border:1px solid rgba(167,139,250,.2)">
+                    <div>
+                        <div style="font-family:'Orbitron',sans-serif;font-size:16px;font-weight:700;color:#a78bfa;display:flex;align-items:center;gap:10px;text-shadow:0 0 14px rgba(167,139,250,.4)"><i class="fa-solid fa-shield-check"></i> Vollständiger Audit-Trail</div>
+                        <div style="font-size:11px;color:rgba(255,255,255,.3);margin-top:3px">Alle Admin-Aktionen — unveränderlich protokolliert</div>
+                    </div>
+                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                        <div id="audit-total-badge" style="font-family:'JetBrains Mono',monospace;font-size:11px;padding:4px 12px;border-radius:99px;background:rgba(167,139,250,.1);color:#a78bfa;border:1px solid rgba(167,139,250,.2)">— Einträge</div>
+                        <button onclick="auditExportCSV()" style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:10px;background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.25);color:#a78bfa;font-size:11px;font-weight:700;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(167,139,250,.2)'" onmouseout="this.style.background='rgba(167,139,250,.1)'"><i class="fa-solid fa-file-csv"></i> Export CSV</button>
+                        <button onclick="auditLoad()" style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.6);font-size:11px;font-weight:700;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(255,255,255,.1)'" onmouseout="this.style.background='rgba(255,255,255,.05)'"><i class="fa-solid fa-rotate"></i> Aktualisieren</button>
+                    </div>
+                </div>
+
+                <!-- Filter Bar -->
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                    <input type="text" id="audit-search" placeholder="Admin, Aktion oder Ziel suchen..." oninput="auditApplyFilter()" style="flex:1;min-width:200px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:9px 14px;color:#fff;font-size:12px;outline:none;transition:border-color .2s" onfocus="this.style.borderColor='rgba(167,139,250,.4)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">
+                    <select id="audit-filter-type" onchange="auditApplyFilter()" style="background:#1a1a2e;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:9px 14px;color:#fff;font-size:12px;outline:none;cursor:pointer">
+                        <option value="">Alle Typen</option>
+                        <option value="danger">⚡ Danger-Aktionen</option>
+                        <option value="access">🔓 Zugriffe</option>
+                        <option value="admin">👑 Admin-Verwaltung</option>
+                        <option value="export">💾 Exporte</option>
+                        <option value="order">📦 Bestellungen</option>
+                        <option value="product">🛍️ Produkte</option>
+                        <option value="security">🔒 Sicherheit</option>
+                        <option value="config">⚙️ Konfiguration</option>
+                    </select>
+                    <select id="audit-filter-admin" onchange="auditApplyFilter()" style="background:#1a1a2e;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:9px 14px;color:#fff;font-size:12px;outline:none;cursor:pointer">
+                        <option value="">Alle Admins</option>
+                    </select>
+                    <select id="audit-filter-period" onchange="auditApplyFilter()" style="background:#1a1a2e;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:9px 14px;color:#fff;font-size:12px;outline:none;cursor:pointer">
+                        <option value="0">Alle Zeit</option>
+                        <option value="1">Letzte 24h</option>
+                        <option value="7" selected>Letzte 7 Tage</option>
+                        <option value="30">Letzte 30 Tage</option>
+                    </select>
+                </div>
+
+                <!-- Stats Row -->
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px" id="audit-stats-row">
+                    <div class="sa-kpi" style="padding:14px 18px"><div class="sa-kpi-label">Gefilterte Einträge</div><div class="sa-kpi-value" id="audit-filtered-count" style="font-size:22px">—</div></div>
+                    <div class="sa-kpi" style="padding:14px 18px"><div class="sa-kpi-label">Danger-Aktionen</div><div class="sa-kpi-value" id="audit-danger-count" style="font-size:22px;color:#f87171">—</div></div>
+                    <div class="sa-kpi" style="padding:14px 18px"><div class="sa-kpi-label">Unique Admins</div><div class="sa-kpi-value" id="audit-admin-count" style="font-size:22px;color:#a78bfa">—</div></div>
+                    <div class="sa-kpi" style="padding:14px 18px"><div class="sa-kpi-label">Heute</div><div class="sa-kpi-value" id="audit-today-count" style="font-size:22px;color:#67e8f9">—</div></div>
+                </div>
+
+                <!-- Log Table -->
+                <div style="background:#0f0f1a;border:1px solid rgba(255,255,255,.07);border-radius:20px;overflow:hidden">
+                    <div style="overflow-x:auto">
+                        <table style="width:100%;border-collapse:collapse">
+                            <thead>
+                                <tr style="border-bottom:1px solid rgba(255,255,255,.07)">
+                                    <th style="padding:11px 16px;font-size:9px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:rgba(255,255,255,.3);text-align:left">Zeit</th>
+                                    <th style="padding:11px 16px;font-size:9px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:rgba(255,255,255,.3);text-align:left">Admin</th>
+                                    <th style="padding:11px 16px;font-size:9px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:rgba(255,255,255,.3);text-align:left">Aktion</th>
+                                    <th style="padding:11px 16px;font-size:9px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:rgba(255,255,255,.3);text-align:left">Ziel / Details</th>
+                                    <th style="padding:11px 16px;font-size:9px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:rgba(255,255,255,.3);text-align:center">Typ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="audit-tbody">
+                                <tr><td colspan="5" style="padding:40px;text-align:center;color:rgba(255,255,255,.2);font-size:13px"><i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>Lade Audit-Trail...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="audit-footer" style="padding:10px 16px;border-top:1px solid rgba(255,255,255,.05);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+                        <span id="audit-footer-label" style="font-size:11px;color:rgba(255,255,255,.2)">—</span>
+                        <div style="display:flex;gap:8px">
+                            <button id="audit-prev" onclick="auditPagePrev()" disabled style="padding:5px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:rgba(255,255,255,.4);font-size:11px;cursor:pointer">← Zurück</button>
+                            <button id="audit-next" onclick="auditPageNext()" style="padding:5px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:rgba(255,255,255,.4);font-size:11px;cursor:pointer">Weiter →</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -10526,17 +11160,36 @@ async function saLoadAdmins() {
                         <div class="sa-admin-email">${admin.email || admin.id}</div>
                         <div class="sa-admin-uid">${admin.id.substring(0,16)}...</div>
                         ${admin.username ? `<div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:2px">@${admin.username}</div>` : ''}
+                        ${admin.lastAdminLogin ? `<div style="font-size:10px;color:rgba(255,255,255,.2);margin-top:2px;font-family:'JetBrains Mono',monospace"><i class="fa-solid fa-clock" style="margin-right:4px;opacity:.5"></i>${new Date(admin.lastAdminLogin?.toDate?.() || admin.lastAdminLogin).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</div>` : '<div style="font-size:10px;color:rgba(255,255,255,.15);margin-top:2px"><i class="fa-solid fa-clock" style="margin-right:4px;opacity:.4"></i>Noch kein Login aufgezeichnet</div>'}
                     </div>
                 </div>
-                <div class="sa-role-badge ${badgeClass}">
-                    ${badgeLabel}
+                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+                    <div class="sa-role-badge ${badgeClass}">${badgeLabel}</div>
+                    ${admin.readOnly ? `<div class="sa-role-badge" style="background:rgba(255,255,255,.07);color:rgba(255,255,255,.35);border:1px solid rgba(255,255,255,.1);font-size:10px"><i class="fa-solid fa-eye"></i> Nur-Lesen</div>` : ''}
+                    ${admin.twoFactorEnabled ? `<div class="sa-role-badge" style="background:rgba(52,211,153,.1);color:#34d399;border:1px solid rgba(52,211,153,.2);font-size:10px"><i class="fa-solid fa-shield-check"></i> 2FA aktiv</div>` : `<div class="sa-role-badge" style="background:rgba(248,113,113,.07);color:rgba(248,113,113,.5);border:1px solid rgba(248,113,113,.15);font-size:10px"><i class="fa-solid fa-shield-exclamation"></i> Kein 2FA</div>`}
                 </div>
             </div>
             ${infoBanner}
-            <div style="font-size:11px;color:rgba(255,255,255,.25);margin-bottom:8px;font-weight:600;letter-spacing:.05em">BERECHTIGUNGEN</div>
-            <div class="sa-perms-grid${isSuper ? '" style="opacity:.35;pointer-events:none' : ''}">${permsHTML}</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                <div style="font-size:11px;color:rgba(255,255,255,.25);font-weight:600;letter-spacing:.05em">BERECHTIGUNGEN</div>
+                ${!isSuper && saIsPrimaryAdmin ? `<label style="display:flex;align-items:center;gap:6px;font-size:11px;color:rgba(255,255,255,.35);cursor:pointer;user-select:none">
+                    <input type="checkbox" id="sa-readonly-${admin.id}" ${admin.readOnly?'checked':''} onchange="saToggleReadOnly('${admin.id}',this.checked)" style="accent-color:#67e8f9">
+                    Nur-Lesen-Modus
+                </label>` : ''}
+            </div>
+            <div class="sa-perms-grid${isSuper ? '" style="opacity:.35;pointer-events:none' : (admin.readOnly ? '" style="opacity:.5;pointer-events:none' : '')}">
+                ${permsHTML}
+            </div>
+            <!-- Login-History Mini -->
+            <div id="sa-loginhistory-${admin.id}" style="display:none;margin-top:12px;padding:10px 12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:12px;font-size:11px;color:rgba(255,255,255,.4)">
+                <div style="font-size:10px;color:rgba(255,255,255,.25);font-weight:700;letter-spacing:.06em;margin-bottom:8px">LETZTE LOGINS</div>
+                <div id="sa-loginhistory-inner-${admin.id}"><i class="fa-solid fa-spinner fa-spin"></i> Lade...</div>
+            </div>
             <div class="sa-card-actions" style="margin-top:16px">
                 ${actionsHTML}
+                <button onclick="saToggleLoginHistory('${admin.id}')" title="Login-Verlauf" style="padding:9px 12px;border-radius:12px;border:none;cursor:pointer;background:rgba(255,255,255,.06);color:rgba(255,255,255,.4);font-size:12px;font-weight:600;transition:all .15s" onmouseover="this.style.background='rgba(255,255,255,.12)'" onmouseout="this.style.background='rgba(255,255,255,.06)'">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                </button>
             </div>`;
         grid.appendChild(card);
     });
@@ -11417,7 +12070,712 @@ async function saDangerClearUnauthorized() {
     } catch(e) { showToast('❌ Fehler: ' + e.message, 'error'); }
 }
 
-// ── Override saOpenTab to load dashboard on open ──────
+async function saDangerClearUnauthorized() {
+    if (!confirm('Alle Zugriffsversuche aus unauthorized_access löschen?')) return;
+    try {
+        const snap = await db.collection('unauthorized_access').get();
+        if (snap.empty) { showToast('ℹ️ Keine Einträge vorhanden'); return; }
+        for (let i = 0; i < snap.docs.length; i += 400) {
+            const batch = db.batch();
+            snap.docs.slice(i, i + 400).forEach(d => batch.delete(d.ref));
+            await batch.commit();
+        }
+        await logAction('danger_clear_unauthorized', 'unauthorized_access', { count: snap.size });
+        showToast(`🚩 ${snap.size} Zugriffsversuche gelöscht`, 'success');
+    } catch(e) { showToast('❌ Fehler: ' + e.message, 'error'); }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  NEW DANGER ZONE ACTIONS
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function saDangerSecurityLockdown() {
+    const typed = prompt('SECURITY LOCKDOWN: Alle Nicht-SA-Logins werden gesperrt, Shop wird geschlossen.\nBestätige mit "LOCKDOWN":');
+    if (typed !== 'LOCKDOWN') { showToast('Abgebrochen', 'warning'); return; }
+    try {
+        const batch = db.batch();
+        // Shop schließen
+        batch.set(db.collection('settings').doc('main'), { shop_closed: true, lockdown: true, lockdownAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+        // Lockdown-Flag in superadmin settings
+        batch.set(db.collection('settings').doc('superadmin'), { lockdown: true, lockdownAt: firebase.firestore.FieldValue.serverTimestamp(), lockdownBy: auth.currentUser?.email || '?' }, { merge: true });
+        await batch.commit();
+        cfgUpdateStatusPill?.();
+        await logAction('danger_security_lockdown', 'system', { initiatedBy: auth.currentUser?.email });
+        showToast('🔒 Security Lockdown aktiviert — Shop geschlossen, alle Sessions invalidiert', 'error');
+    } catch(e) { showToast('❌ Fehler: ' + e.message, 'error'); }
+}
+
+async function saDangerRevokeAdminTokens() {
+    if (!confirm('Alle Admin-Token-Versionen hochsetzen?\n\nAlle Admins außer dir werden ausgeloggt.')) return;
+    try {
+        const snap = await db.collection('users').where('role', '==', 'admin').get();
+        const myUID = auth.currentUser?.uid;
+        let revoked = 0;
+        for (let i = 0; i < snap.docs.length; i += 400) {
+            const batch = db.batch();
+            snap.docs.slice(i, i + 400).forEach(d => {
+                if (d.id !== myUID) {
+                    const cur = d.data().adminTokenVersion || 0;
+                    batch.update(d.ref, { adminTokenVersion: cur + 1 });
+                    revoked++;
+                }
+            });
+            await batch.commit();
+        }
+        await logAction('danger_revoke_admin_tokens', 'users', { count: revoked });
+        showToast(`🚫 ${revoked} Admin-Tokens revoked — alle Admins außer dir wurden ausgeloggt`, 'success');
+    } catch(e) { showToast('❌ Fehler: ' + e.message, 'error'); }
+}
+
+async function saDangerClearClickEvents() {
+    const typed = prompt('Alle Click-Events löschen? Analyse-Daten gehen verloren.\nTyp "EVENTS LÖSCHEN":');
+    if (typed !== 'EVENTS LÖSCHEN') { showToast('Abgebrochen', 'warning'); return; }
+    try {
+        const snap = await db.collection('click_events').get();
+        for (let i = 0; i < snap.docs.length; i += 400) {
+            const batch = db.batch();
+            snap.docs.slice(i, i + 400).forEach(d => batch.delete(d.ref));
+            await batch.commit();
+        }
+        await logAction('danger_clear_click_events', 'click_events', { count: snap.size });
+        showToast(`✅ ${snap.size} Click-Events gelöscht`, 'success');
+    } catch(e) { showToast('❌ Fehler: ' + e.message, 'error'); }
+}
+
+async function saDangerDeleteAllBackups() {
+    if (!confirm('Wirklich ALLE Backups aus Firestore löschen?\n\nDie Konfiguration bleibt erhalten.')) return;
+    const typed = prompt('Tippe "BACKUPS LÖSCHEN" zur Bestätigung:');
+    if (typed !== 'BACKUPS LÖSCHEN') { showToast('Abgebrochen', 'warning'); return; }
+    try {
+        const snap = await db.collection('backups').get();
+        if (snap.empty) { showToast('ℹ️ Keine Backups vorhanden'); return; }
+        for (let i = 0; i < snap.docs.length; i += 400) {
+            const batch = db.batch();
+            snap.docs.slice(i, i + 400).forEach(d => batch.delete(d.ref));
+            await batch.commit();
+        }
+        await logAction('danger_delete_all_backups', 'backups', { count: snap.size });
+        showToast(`🗑️ ${snap.size} Backups gelöscht`, 'success');
+    } catch(e) { showToast('❌ Fehler: ' + e.message, 'error'); }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  SHOP-KONFIGURATION (SA Panel)
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function cfgLoad() {
+    try {
+        const snap = await db.collection('settings').doc('main').get();
+        if (!snap.exists) return;
+        const d = snap.data();
+        const s = (id, val) => { const el = document.getElementById(id); if (el) { if (el.type === 'checkbox') el.checked = !!val; else el.value = val ?? el.value; } };
+        s('cfg-4for3',                d.feature_4for3 ?? true);
+        s('cfg-mystery',              d.feature_mystery ?? true);
+        s('cfg-mystery-threshold',    d.mystery_threshold ?? 100);
+        s('cfg-freeship',             d.feature_freeship ?? true);
+        s('cfg-freeship-threshold',   d.freeship_threshold ?? 100);
+        s('cfg-loyalty',              d.feature_loyalty ?? true);
+        s('cfg-loyalty-rate',         d.loyalty_rate ?? 10);
+        s('cfg-registration',         d.registration_open ?? true);
+        s('cfg-review-mod',           d.review_moderation ?? true);
+        s('cfg-banner-active',        d.banner_active ?? false);
+        s('cfg-banner-text',          d.banner_text ?? '');
+        s('cfg-maintenance-msg',      d.maintenance_message ?? '');
+        s('cfg-global-discount-active', d.global_discount_active ?? false);
+        s('cfg-global-discount-pct',  d.global_discount_pct ?? 0);
+        s('cfg-global-discount-expiry', d.global_discount_expiry ?? '');
+        s('cfg-min-order',            d.min_order_value ?? 0);
+        s('cfg-shipping-cost',        d.shipping_cost ?? 4.99);
+        s('cfg-return-days',          d.return_days ?? 14);
+        s('cfg-contact-email',        d.contact_email ?? '');
+        s('cfg-instagram',            d.instagram_url ?? '');
+        s('cfg-shop-name',            d.shop_display_name ?? 'WaveVapes');
+        s('cfg-age-gate',             d.age_gate ?? 18);
+        // Banner color radio
+        const col = d.banner_color || 'amber';
+        const radio = document.querySelector(`input[name="cfg-banner-color"][value="${col}"]`);
+        if (radio) radio.checked = true;
+    } catch(e) { console.warn('cfgLoad error:', e); }
+}
+
+async function cfgSaveAll() {
+    const g = id => { const el = document.getElementById(id); if (!el) return null; return el.type === 'checkbox' ? el.checked : el.value; };
+    const bannerColor = document.querySelector('input[name="cfg-banner-color"]:checked')?.value || 'amber';
+    const data = {
+        feature_4for3:           !!g('cfg-4for3'),
+        feature_mystery:         !!g('cfg-mystery'),
+        mystery_threshold:       parseFloat(g('cfg-mystery-threshold')) || 100,
+        feature_freeship:        !!g('cfg-freeship'),
+        freeship_threshold:      parseFloat(g('cfg-freeship-threshold')) || 100,
+        feature_loyalty:         !!g('cfg-loyalty'),
+        loyalty_rate:            parseInt(g('cfg-loyalty-rate')) || 10,
+        registration_open:       !!g('cfg-registration'),
+        review_moderation:       !!g('cfg-review-mod'),
+        banner_active:           !!g('cfg-banner-active'),
+        banner_text:             g('cfg-banner-text') || '',
+        banner_color:            bannerColor,
+        maintenance_message:     g('cfg-maintenance-msg') || '',
+        global_discount_active:  !!g('cfg-global-discount-active'),
+        global_discount_pct:     parseFloat(g('cfg-global-discount-pct')) || 0,
+        global_discount_expiry:  g('cfg-global-discount-expiry') || '',
+        min_order_value:         parseFloat(g('cfg-min-order')) || 0,
+        shipping_cost:           parseFloat(g('cfg-shipping-cost')) || 4.99,
+        return_days:             parseInt(g('cfg-return-days')) || 14,
+        contact_email:           g('cfg-contact-email') || '',
+        instagram_url:           g('cfg-instagram') || '',
+        shop_display_name:       g('cfg-shop-name') || 'WaveVapes',
+        age_gate:                parseInt(g('cfg-age-gate')) || 18,
+        updatedAt:               firebase.firestore.FieldValue.serverTimestamp(),
+    };
+    try {
+        await db.collection('settings').doc('main').set(data, { merge: true });
+        await logAction('sa_shop_config_saved', 'settings/main', { keys: Object.keys(data).length });
+        showToast('✅ Shop-Konfiguration gespeichert', 'success');
+    } catch(e) { showToast('❌ Fehler: ' + e.message, 'error'); }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  SYSTEM-HEALTH MONITOR
+// ─────────────────────────────────────────────────────────────────────────────
+
+let _healthLatencyHistory = [];
+
+async function healthRunCheck() {
+    const btn = document.getElementById('health-check-btn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Prüfe...'; }
+
+    const setKpi = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    const checklist = document.getElementById('health-checklist');
+    const checks = [];
+
+    try {
+        const t0 = Date.now();
+
+        // 1. Firestore Ping / Latenz
+        await db.collection('settings').doc('main').get();
+        const latencyMs = Date.now() - t0;
+        _healthLatencyHistory.push({ t: new Date(), ms: latencyMs });
+        if (_healthLatencyHistory.length > 20) _healthLatencyHistory.shift();
+        setKpi('h-latency', latencyMs + ' ms');
+        checks.push({ label: 'Firestore Verbindung', sub: latencyMs + ' ms Latenz', status: latencyMs < 500 ? 'ok' : latencyMs < 1500 ? 'warn' : 'err', badge: latencyMs < 500 ? 'OK' : latencyMs < 1500 ? 'Langsam' : 'Kritisch' });
+
+        // 2. Collection sizes
+        const colNames = ['products','orders','users','coupons','reviews','admin_logs','banned_ips','unauthorized_access','presence','click_events','backups'];
+        const colGrid = document.getElementById('health-collections-grid');
+        let totalDocs = 0;
+        const colData = [];
+        await Promise.all(colNames.map(async col => {
+            try {
+                const snap = await db.collection(col).get();
+                colData.push({ col, count: snap.size });
+                totalDocs += snap.size;
+            } catch(e) { colData.push({ col, count: '?' }); }
+        }));
+        colData.sort((a,b) => (b.count||0) - (a.count||0));
+        const maxCount = Math.max(...colData.map(c => c.count || 0), 1);
+        if (colGrid) colGrid.innerHTML = colData.map(c => `
+            <div class="health-col-bar">
+                <div class="health-col-name"><span>${c.col}</span><span class="health-col-val">${c.count}</span></div>
+                <div style="height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden">
+                    <div style="height:100%;width:${Math.max(4,Math.round((c.count||0)/maxCount*100))}%;background:linear-gradient(90deg,#67e8f9,#a78bfa);border-radius:3px;transition:width .6s"></div>
+                </div>
+            </div>`).join('');
+        setKpi('h-docs', totalDocs.toLocaleString('de-DE'));
+        checks.push({ label: 'Collections erreichbar', sub: colNames.length + ' Collections, ' + totalDocs + ' Dokumente', status: 'ok', badge: 'OK' });
+
+        // 3. Banned IPs
+        const bannedSnap = await db.collection('banned_ips').get();
+        setKpi('h-banned-ips', bannedSnap.size);
+        checks.push({ label: 'IP-Sperren', sub: bannedSnap.size + ' gesperrte IPs', status: bannedSnap.size > 50 ? 'warn' : 'ok', badge: bannedSnap.size > 50 ? 'Viele' : 'OK' });
+
+        // 4. Unauthorized access (24h)
+        const unauthSnap = await db.collection('unauthorized_access').get();
+        const cutoff24h = Date.now() - 86400000;
+        const recent = unauthSnap.docs.filter(d => (d.data().timestamp?.toDate?.()?.getTime?.() || 0) > cutoff24h).length;
+        setKpi('h-errors', recent);
+        checks.push({ label: 'Unauthorized-Zugriffe (24h)', sub: recent + ' Versuche', status: recent > 20 ? 'err' : recent > 5 ? 'warn' : 'ok', badge: recent > 20 ? 'Kritisch' : recent > 5 ? 'Auffällig' : 'OK' });
+
+        // 5. Online users
+        const presSnap = await db.collection('presence').get();
+        const now = Date.now();
+        const online = presSnap.docs.filter(d => (now - (d.data().lastSeen?.toDate?.()?.getTime?.() || 0)) < 90000).length;
+        setKpi('h-online', online);
+
+        // 6. Simulated read/write counters (from admin_logs today)
+        const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+        const logsSnap = await db.collection('admin_logs').orderBy('timestamp','desc').limit(500).get();
+        const todayLogs = logsSnap.docs.filter(d => (d.data().timestamp?.toDate?.() || new Date(0)) >= todayStart);
+        setKpi('h-reads', '~' + (todayLogs.length * 15 + totalDocs).toLocaleString('de-DE'));
+        setKpi('h-writes', '~' + todayLogs.length.toLocaleString('de-DE'));
+        setKpi('h-listeners', document.querySelectorAll('[id*="unsub"]').length || '—');
+
+        // 7. Shop status check
+        const mainSnap = await db.collection('settings').doc('main').get();
+        const shopClosed = mainSnap.exists && mainSnap.data().shop_closed === true;
+        checks.push({ label: 'Shop-Status', sub: shopClosed ? 'Shop ist geschlossen' : 'Shop ist geöffnet', status: shopClosed ? 'warn' : 'ok', badge: shopClosed ? 'Geschlossen' : 'Online' });
+
+        // 8. Pending reviews
+        const pendingRevSnap = await db.collection('reviews').where('approved','==',false).get();
+        const pending = pendingRevSnap.docs.filter(d => !d.data().rejected).length;
+        checks.push({ label: 'Ausstehende Bewertungen', sub: pending + ' warten auf Freigabe', status: pending > 10 ? 'warn' : 'ok', badge: pending > 0 ? pending + ' ausstehend' : 'Leer' });
+
+        // Render checklist
+        if (checklist) checklist.innerHTML = checks.map(c => `
+            <div class="health-check-item ${c.status === 'ok' ? 'health-ok' : c.status === 'warn' ? 'health-warn' : 'health-err'}">
+                <div class="health-check-icon"><i class="fa-solid fa-${c.status === 'ok' ? 'check' : c.status === 'warn' ? 'triangle-exclamation' : 'circle-xmark'}"></i></div>
+                <div style="flex:1"><div class="health-check-label">${c.label}</div><div class="health-check-sub">${c.sub}</div></div>
+                <div class="${c.status === 'ok' ? 'health-badge-ok' : c.status === 'warn' ? 'health-badge-warn' : 'health-badge-err'}">${c.badge}</div>
+            </div>`).join('');
+
+        // Overall status
+        const hasErr  = checks.some(c => c.status === 'err');
+        const hasWarn = checks.some(c => c.status === 'warn');
+        const dot  = document.getElementById('health-overall-dot');
+        const text = document.getElementById('health-overall-text');
+        const bar  = document.getElementById('health-status-bar');
+        if (dot && text) {
+            if (hasErr)        { dot.style.background='#f87171'; dot.style.boxShadow='0 0 12px #f87171'; text.textContent='⚠️ Kritische Probleme erkannt'; text.style.color='#f87171'; if(bar){bar.style.background='linear-gradient(135deg,rgba(248,113,113,.06),rgba(248,113,113,.02))';bar.style.borderColor='rgba(248,113,113,.2)';} }
+            else if (hasWarn)  { dot.style.background='#fbbf24'; dot.style.boxShadow='0 0 12px #fbbf24'; text.textContent='⚠️ Warnungen vorhanden'; text.style.color='#fbbf24'; if(bar){bar.style.background='linear-gradient(135deg,rgba(251,191,36,.06),rgba(251,191,36,.02))';bar.style.borderColor='rgba(251,191,36,.2)';} }
+            else               { dot.style.background='#34d399'; dot.style.boxShadow='0 0 12px #34d399'; text.textContent='✅ Alle Systeme betriebsbereit'; text.style.color='#34d399'; }
+        }
+        const lastCheck = document.getElementById('health-last-check');
+        if (lastCheck) lastCheck.textContent = 'Letzter Check: ' + new Date().toLocaleTimeString('de-DE');
+
+        // Latency chart
+        healthRenderLatencyChart();
+
+    } catch(e) {
+        showToast('❌ Health-Check fehlgeschlagen: ' + e.message, 'error');
+        if (checklist) checklist.innerHTML = `<div style="color:#f87171;font-size:12px;padding:16px">Fehler: ${escA(e.message)}</div>`;
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-rotate"></i> Health-Check starten'; }
+    }
+}
+
+function healthRenderLatencyChart() {
+    const el = document.getElementById('health-latency-chart');
+    if (!el || !_healthLatencyHistory.length) return;
+    const max = Math.max(..._healthLatencyHistory.map(h => h.ms), 1);
+    el.innerHTML = `
+        <div style="display:flex;align-items:flex-end;gap:6px;height:80px;margin-bottom:8px">
+            ${_healthLatencyHistory.map(h => `
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px" title="${h.ms}ms @ ${h.t.toLocaleTimeString('de-DE')}">
+                <div style="font-size:8px;color:rgba(255,255,255,.3)">${h.ms}</div>
+                <div style="width:100%;border-radius:3px 3px 0 0;background:${h.ms<500?'linear-gradient(180deg,#34d399,#059669)':h.ms<1500?'linear-gradient(180deg,#fbbf24,#d97706)':'linear-gradient(180deg,#f87171,#dc2626)'};height:${Math.max(4,Math.round(h.ms/max*60))}px"></div>
+            </div>`).join('')}
+        </div>
+        <div style="font-size:10px;color:rgba(255,255,255,.2);text-align:right">Firestore Latenz (ms) — letzte ${_healthLatencyHistory.length} Messungen</div>`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  AUDIT-TRAIL
+// ─────────────────────────────────────────────────────────────────────────────
+
+let _auditAllDocs = [];
+let _auditFiltered = [];
+let _auditPage = 0;
+const AUDIT_PAGE_SIZE = 50;
+
+async function auditLoad() {
+    const tbody = document.getElementById('audit-tbody');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="padding:40px;text-align:center;color:rgba(255,255,255,.2);font-size:13px"><i class="fa-solid fa-spinner fa-spin" style="margin-right:8px"></i>Lade Audit-Trail...</td></tr>';
+    try {
+        const snap = await db.collection('admin_logs').orderBy('timestamp','desc').limit(1000).get();
+        _auditAllDocs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        // Populate admin filter
+        const adminSel = document.getElementById('audit-filter-admin');
+        if (adminSel) {
+            const admins = [...new Set(_auditAllDocs.map(d => d.adminEmail).filter(Boolean))];
+            adminSel.innerHTML = '<option value="">Alle Admins</option>' + admins.map(a => `<option value="${escA(a)}">${escA(a)}</option>`).join('');
+        }
+
+        const totalBadge = document.getElementById('audit-total-badge');
+        if (totalBadge) totalBadge.textContent = snap.size + ' Einträge';
+
+        _auditPage = 0;
+        auditApplyFilter();
+    } catch(e) {
+        if (tbody) tbody.innerHTML = `<tr><td colspan="5" style="padding:40px;text-align:center;color:#f87171;font-size:13px">${escA(e.message)}</td></tr>`;
+    }
+}
+
+function auditGetType(action) {
+    if (!action) return 'other';
+    if (action.includes('danger') || action.includes('delete_all') || action.includes('lockdown') || action.includes('revoke')) return 'danger';
+    if (action.includes('access') || action.includes('login')) return 'access';
+    if (action.includes('admin_add') || action.includes('admin_rem') || action.includes('permissions')) return 'admin';
+    if (action.includes('export') || action.includes('backup')) return 'export';
+    if (action.includes('order')) return 'order';
+    if (action.includes('product') || action.includes('bulk')) return 'product';
+    if (action.includes('security') || action.includes('ip') || action.includes('ban')) return 'security';
+    if (action.includes('config') || action.includes('settings')) return 'config';
+    return 'other';
+}
+
+function auditApplyFilter() {
+    const q      = (document.getElementById('audit-search')?.value || '').toLowerCase();
+    const type   = document.getElementById('audit-filter-type')?.value || '';
+    const admin  = document.getElementById('audit-filter-admin')?.value || '';
+    const period = parseInt(document.getElementById('audit-filter-period')?.value || '0');
+    const cutoff = period > 0 ? Date.now() - period * 86400000 : 0;
+    const now    = Date.now();
+    const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+
+    _auditFiltered = _auditAllDocs.filter(d => {
+        const ts = d.timestamp?.toDate?.()?.getTime?.() || 0;
+        if (cutoff && ts < cutoff) return false;
+        if (admin && d.adminEmail !== admin) return false;
+        const t = auditGetType(d.action);
+        if (type && t !== type) return false;
+        if (q && !((d.action||'').toLowerCase().includes(q) || (d.adminEmail||'').toLowerCase().includes(q) || (d.target||'').toLowerCase().includes(q))) return false;
+        return true;
+    });
+
+    // Stats
+    const dangerCount = _auditFiltered.filter(d => auditGetType(d.action) === 'danger').length;
+    const admins = new Set(_auditFiltered.map(d => d.adminEmail).filter(Boolean));
+    const todayCount = _auditFiltered.filter(d => (d.timestamp?.toDate?.() || new Date(0)) >= todayStart).length;
+    const s = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    s('audit-filtered-count', _auditFiltered.length);
+    s('audit-danger-count', dangerCount);
+    s('audit-admin-count', admins.size);
+    s('audit-today-count', todayCount);
+
+    _auditPage = 0;
+    auditRenderTable();
+}
+
+const AUDIT_ACTION_LABELS = {
+    'superadmin_zone_access':    '🔓 SA-Zone aufgerufen',
+    'admin_added':               '➕ Admin hinzugefügt',
+    'admin_removed':             '➖ Admin entfernt',
+    'admin_permissions_updated': '⚙️ Berechtigungen geändert',
+    'ip_whitelist_updated':      '🌐 IP-Whitelist geändert',
+    'sa_security_settings':      '🔒 Sicherheitseinstellungen',
+    'sa_export':                 '💾 Daten exportiert',
+    'sa_fullexport':             '💾 Vollbackup erstellt',
+    'auto_backup_created':       '🔄 Auto-Backup erstellt',
+    'danger_shop_close':         '🔴 Shop geschlossen',
+    'danger_shop_open':          '🟢 Shop geöffnet',
+    'danger_clear_banned_ips':   '🧹 IP-Sperren aufgehoben',
+    'danger_reject_reviews':     '🗑️ Reviews massenabgelehnt',
+    'danger_purge_logs':         '🗑️ Alte Logs gelöscht',
+    'danger_reset_loyalty':      '🔄 Loyalty zurückgesetzt',
+    'danger_delete_orders':      '☢️ ALLE Bestellungen gelöscht',
+    'danger_delete_all_users':   '☢️ ALLE User gelöscht',
+    'danger_security_lockdown':  '🔒 Security Lockdown aktiviert',
+    'danger_revoke_admin_tokens':'🚫 Admin-Tokens revoked',
+    'danger_clear_click_events': '🗑️ Click-Events gelöscht',
+    'danger_delete_all_backups': '🗑️ Alle Backups gelöscht',
+    'sa_shop_config_saved':      '⚙️ Shop-Konfiguration gespeichert',
+    'bulk_edit':                 '📝 Bulk-Produkt-Edit',
+    'quickStatus':               '📦 Bestellstatus geändert',
+};
+const AUDIT_TYPE_LABELS = { danger:'⚡ Danger', access:'🔓 Zugriff', admin:'👑 Admin', export:'💾 Export', order:'📦 Bestellung', product:'🛍️ Produkt', security:'🔒 Security', config:'⚙️ Config', other:'• Sonstige' };
+
+function auditRenderTable() {
+    const tbody = document.getElementById('audit-tbody');
+    if (!tbody) return;
+    const start = _auditPage * AUDIT_PAGE_SIZE;
+    const page  = _auditFiltered.slice(start, start + AUDIT_PAGE_SIZE);
+
+    if (!_auditFiltered.length) {
+        tbody.innerHTML = '<tr><td colspan="5" style="padding:40px;text-align:center;color:rgba(255,255,255,.2);font-size:13px"><i class="fa-solid fa-inbox" style="font-size:28px;display:block;margin-bottom:10px;opacity:.3"></i>Keine Einträge in diesem Filter</td></tr>';
+        auditUpdateFooter();
+        return;
+    }
+
+    tbody.innerHTML = page.map(d => {
+        const ts  = d.timestamp?.toDate?.() || null;
+        const dt  = ts ? ts.toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+        const type = auditGetType(d.action);
+        const label = AUDIT_ACTION_LABELS[d.action] || ('⚡ ' + d.action);
+        const details = d.target ? escA(d.target.substring(0,30)) + (d.target.length>30?'…':'') : (d.details ? JSON.stringify(d.details).substring(0,40)+'…' : '—');
+        return `<tr class="audit-row">
+            <td style="color:rgba(255,255,255,.35);font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap">${dt}</td>
+            <td style="color:#a78bfa;font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escA(d.adminEmail || '—')}</td>
+            <td style="color:rgba(255,255,255,.85)">${label}</td>
+            <td style="color:rgba(255,255,255,.35);font-size:11px;font-family:'JetBrains Mono',monospace">${details}</td>
+            <td style="text-align:center"><span class="audit-type-badge audit-type-${type}">${AUDIT_TYPE_LABELS[type]||type}</span></td>
+        </tr>`;
+    }).join('');
+
+    auditUpdateFooter();
+}
+
+function auditUpdateFooter() {
+    const total = _auditFiltered.length;
+    const start = _auditPage * AUDIT_PAGE_SIZE + 1;
+    const end   = Math.min(start + AUDIT_PAGE_SIZE - 1, total);
+    const label = document.getElementById('audit-footer-label');
+    if (label) label.textContent = total > 0 ? `${start}–${end} von ${total} Einträgen` : '0 Einträge';
+    const prev = document.getElementById('audit-prev');
+    const next = document.getElementById('audit-next');
+    if (prev) prev.disabled = _auditPage === 0;
+    if (next) next.disabled = end >= total;
+}
+
+function auditPagePrev() { if (_auditPage > 0) { _auditPage--; auditRenderTable(); } }
+function auditPageNext() { if ((_auditPage+1)*AUDIT_PAGE_SIZE < _auditFiltered.length) { _auditPage++; auditRenderTable(); } }
+
+function auditExportCSV() {
+    if (!_auditFiltered.length) { showToast('ℹ️ Keine Daten zum Exportieren'); return; }
+    const keys = ['timestamp','adminEmail','action','target','type'];
+    const rows = _auditFiltered.map(d => [
+        d.timestamp?.toDate?.()?.toISOString?.() || '',
+        d.adminEmail || '',
+        d.action || '',
+        d.target || '',
+        auditGetType(d.action),
+    ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(';'));
+    const csv = '\uFEFF' + [keys.join(';'), ...rows].join('\n');
+    saDownload(`wavevapes_audit_${new Date().toISOString().slice(0,10)}.csv`, csv, 'text/csv;charset=utf-8');
+    showToast(`✅ ${_auditFiltered.length} Einträge exportiert`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  HOOK: saSwitchInner — extend for new panels
+// ─────────────────────────────────────────────────────────────────────────────
+const _origSaSwitchInner = saSwitchInner;
+window.saSwitchInner = function(panel, el) {
+    _origSaSwitchInner(panel, el);
+    if (panel === 'shopconfig')  { cfgLoad(); }
+    if (panel === 'health')      { healthRunCheck(); }
+    if (panel === 'audittrail')  { auditLoad(); }
+    if (panel === 'admins')      { setTimeout(saUpdateAdminStats, 200); }
+    if (panel === 'security')    { saLoadBruteForce(); }
+    if (panel === 'sessions')    { saStartSessionAutoRefresh(); }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  ADMIN-VERWALTUNG EXTENSIONS
+// ─────────────────────────────────────────────────────────────────────────────
+
+function saUpdateAdminStats() {
+    if (!window.saAllAdmins) return;
+    const superSnap_coUIDs = window.saCoSuperadminUIDs || [];
+    const total   = saAllAdmins.length;
+    const cosuper = saAllAdmins.filter(a => superSnap_coUIDs.includes(a.id)).length;
+    const with2fa = saAllAdmins.filter(a => a.twoFactorEnabled).length;
+    const rdonly  = saAllAdmins.filter(a => a.readOnly).length;
+    const today   = new Date(); today.setHours(0,0,0,0);
+    const todayActive = saAllAdmins.filter(a => {
+        const t = a.lastAdminLogin?.toDate?.()?.getTime?.() || 0;
+        return t >= today.getTime();
+    }).length;
+    const s = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    s('sa-admins-total',      total);
+    s('sa-admins-cosupercount', cosuper);
+    s('sa-admins-2facount',   with2fa);
+    s('sa-admins-rocount',    rdonly);
+    s('sa-admins-todaycount', todayActive);
+}
+
+function saFilterAdmins() {
+    if (!window.saAllAdmins) return;
+    const q      = (document.getElementById('sa-admins-search')?.value || '').toLowerCase();
+    const role   = document.getElementById('sa-admins-filter-role')?.value || '';
+    const fa2    = document.getElementById('sa-admins-filter-2fa')?.value || '';
+    const coUIDs = window.saCoSuperadminUIDs || [];
+    const superUID = window._superUID;
+
+    const grid = document.getElementById('sa-admin-grid');
+    if (!grid) return;
+
+    Array.from(grid.querySelectorAll('.sa-admin-card')).forEach(card => {
+        const uid = card.id.replace('sa-card-','');
+        const admin = saAllAdmins.find(a => a.id === uid);
+        if (!admin) return;
+        let show = true;
+        if (q && !((admin.email||'').toLowerCase().includes(q) || (admin.username||'').toLowerCase().includes(q))) show = false;
+        if (role) {
+            const isPrimary = admin.id === superUID;
+            const isCoS = coUIDs.includes(admin.id);
+            if (role === 'super'   && !isPrimary) show = false;
+            if (role === 'cosuper' && !isCoS)     show = false;
+            if (role === 'regular' && (isPrimary || isCoS)) show = false;
+        }
+        if (fa2 === 'yes' && !admin.twoFactorEnabled) show = false;
+        if (fa2 === 'no'  &&  admin.twoFactorEnabled) show = false;
+        card.style.display = show ? '' : 'none';
+    });
+}
+
+async function saToggleReadOnly(uid, isReadOnly) {
+    try {
+        await db.collection('users').doc(uid).update({ readOnly: isReadOnly });
+        await logAction('admin_readonly_toggled', uid, { readOnly: isReadOnly });
+        showToast(isReadOnly ? '👁️ Admin auf Nur-Lesen gesetzt' : '✏️ Schreibrechte wiederhergestellt', 'success');
+        saLoadAdmins();
+    } catch(e) { showToast('❌ Fehler: ' + e.message, 'error'); }
+}
+
+async function saToggleLoginHistory(uid) {
+    const wrapper = document.getElementById(`sa-loginhistory-${uid}`);
+    if (!wrapper) return;
+    const isOpen = wrapper.style.display !== 'none';
+    wrapper.style.display = isOpen ? 'none' : 'block';
+    if (isOpen) return;
+
+    const inner = document.getElementById(`sa-loginhistory-inner-${uid}`);
+    if (!inner) return;
+    try {
+        const snap = await db.collection('admin_logs')
+            .where('adminEmail', '==', saAllAdmins.find(a => a.id === uid)?.email)
+            .orderBy('timestamp', 'desc')
+            .limit(10)
+            .get();
+        if (snap.empty) { inner.innerHTML = '<div style="color:rgba(255,255,255,.2);font-size:11px">Keine Login-Einträge gefunden</div>'; return; }
+        inner.innerHTML = snap.docs.map(d => {
+            const data = d.data();
+            const ts = data.timestamp?.toDate?.() || null;
+            const dt = ts ? ts.toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+            return `<div style="display:flex;gap:10px;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04)">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(255,255,255,.3);white-space:nowrap">${dt}</div>
+                <div style="font-size:11px;color:rgba(255,255,255,.6);flex:1">${data.action||'—'}</div>
+                ${data.details?.ip ? `<div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:rgba(255,255,255,.2)">${data.details.ip}</div>` : ''}
+            </div>`;
+        }).join('');
+    } catch(e) {
+        inner.innerHTML = `<div style="color:#f87171;font-size:11px">${escA(e.message)}</div>`;
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  SESSION MONITOR EXTENSIONS — Kick + Auto-Refresh
+// ─────────────────────────────────────────────────────────────────────────────
+
+let _saSessionRefreshTimer = null;
+
+function saStartSessionAutoRefresh() {
+    if (_saSessionRefreshTimer) clearInterval(_saSessionRefreshTimer);
+    saLoadSessions();
+    _saSessionRefreshTimer = setInterval(() => {
+        if (document.getElementById('sa-panel-sessions')?.classList.contains('active')) {
+            saLoadSessions();
+        } else {
+            clearInterval(_saSessionRefreshTimer);
+            _saSessionRefreshTimer = null;
+        }
+    }, 30000); // refresh every 30s
+}
+
+async function saKickSession(uid, email) {
+    if (!confirm(`Session von "${email || uid}" beenden?\n\nDer Nutzer wird beim nächsten Seitenaufruf abgemeldet.`)) return;
+    try {
+        // Set a kick flag in presence doc — the shop frontend checks this
+        await db.collection('presence').doc(uid).set({ kicked: true, kickedAt: firebase.firestore.FieldValue.serverTimestamp(), kickedBy: auth.currentUser?.email }, { merge: true });
+        await logAction('session_kicked', uid, { targetEmail: email, by: auth.currentUser?.email });
+        showToast(`🚫 Session von ${email || uid} beendet`, 'success');
+        saLoadSessions();
+    } catch(e) { showToast('❌ Fehler: ' + e.message, 'error'); }
+}
+
+// Patch renderSessionList to include Kick button
+const _origRenderSessionList = renderSessionList;
+window.renderSessionList = function(el, sessions, now) {
+    if (!sessions.length) {
+        el.innerHTML = '<div style="color:rgba(255,255,255,.2);font-size:13px;padding:24px;text-align:center"><i class="fa-solid fa-moon" style="font-size:28px;display:block;margin-bottom:10px;opacity:.3"></i>Keine Sessions in diesem Filter</div>';
+        return;
+    }
+    el.innerHTML = sessions.map(s => {
+        const lastSeen = s.lastSeen?.toDate?.() || null;
+        const msAgo    = lastSeen ? now - lastSeen.getTime() : Infinity;
+        const isLive   = msAgo < 90000;
+        const timeStr  = lastSeen ? lastSeen.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}) : '—';
+        const initials = s._isAdmin ? '👑' : s.isGuest ? '👤' : (s.email||'?').substring(0,2).toUpperCase();
+        const avatarBg = s._isAdmin ? 'background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#000'
+                       : s.isGuest  ? 'background:rgba(255,255,255,.08);color:rgba(255,255,255,.4)'
+                       : 'background:linear-gradient(135deg,#67e8f9,#a78bfa);color:#000';
+        const label    = s._isAdmin ? (s.email||s.uid) : s.isGuest ? 'Gast' : (s.email || s.username || s.uid);
+        const metaParts = [];
+        if (s.username) metaParts.push('@'+s.username);
+        if (s.cartCount) metaParts.push('🛒 '+s.cartCount+' Item'+(s.cartCount>1?'s':''));
+        if (s.page) metaParts.push(s.page);
+        if (s.ip) metaParts.push(s.ip);
+        const isKicked = s.kicked === true;
+        const myUID = window.auth?.currentUser?.uid;
+        const canKick = s.uid !== myUID && !s.isGuest;
+        return `<div class="sa-sess-card" style="${isKicked?'opacity:.4;':''}">
+            <div class="sa-sess-avatar" style="${avatarBg};font-size:${s._isAdmin?'14px':'11px'}">${initials}</div>
+            <div style="flex:1;min-width:0">
+                <div class="sa-sess-email">${escA(label)} ${s._isAdmin?'<span style="font-size:10px;color:#fbbf24;margin-left:4px">Admin</span>':''}${isKicked?'<span style="font-size:10px;color:#f87171;margin-left:4px">KICKED</span>':''}</div>
+                <div class="sa-sess-meta">${metaParts.map(escA).join(' · ')} · ${timeStr}</div>
+            </div>
+            ${isLive
+                ? `<div class="sa-sess-live"><div class="sa-sess-live-dot"></div>Live</div>`
+                : `<div style="font-size:11px;color:rgba(255,255,255,.2);margin-left:auto;white-space:nowrap">${msAgo<3600000?Math.round(msAgo/60000)+' Min':Math.round(msAgo/3600000)+' Std'}</div>`}
+            ${canKick && !isKicked ? `<button onclick="saKickSession('${s.uid}','${escA(label)}')" title="Session beenden" style="margin-left:8px;padding:6px 10px;border-radius:9px;border:1px solid rgba(248,113,113,.25);background:rgba(248,113,113,.08);color:#f87171;font-size:10px;font-weight:700;cursor:pointer;flex-shrink:0;transition:all .15s" onmouseover="this.style.background='rgba(248,113,113,.18)'" onmouseout="this.style.background='rgba(248,113,113,.08)'"><i class="fa-solid fa-ban"></i></button>` : ''}
+        </div>`;
+    }).join('');
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  SECURITY PANEL EXTENSION — Brute-Force Monitor
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function saLoadBruteForce() {
+    const el = document.getElementById('sa-bf-log');
+    if (!el) return;
+    el.innerHTML = '<div style="color:rgba(255,255,255,.2);font-size:12px;padding:12px;text-align:center"><i class="fa-solid fa-spinner fa-spin" style="margin-right:6px"></i>Lade...</div>';
+    try {
+        const [unauthSnap, bannedSnap] = await Promise.all([
+            db.collection('unauthorized_access').orderBy('timestamp','desc').limit(200).get().catch(() => ({docs:[],size:0})),
+            db.collection('banned_ips').get().catch(() => ({size:0})),
+        ]);
+
+        const now = Date.now();
+        const cutoff24h = now - 86400000;
+        const docs = unauthSnap.docs.map(d => ({id:d.id,...d.data()}));
+        const recent = docs.filter(d => (d.timestamp?.toDate?.()?.getTime?.() || 0) > cutoff24h);
+
+        // Unique IPs + top attacker
+        const ipCounts = {};
+        recent.forEach(d => { if (d.ip && d.ip !== 'unbekannt') ipCounts[d.ip] = (ipCounts[d.ip]||0)+1; });
+        const sortedIPs = Object.entries(ipCounts).sort((a,b)=>b[1]-a[1]);
+        const topIP = sortedIPs[0]?.[0] || '—';
+
+        const s = (id,v) => { const el = document.getElementById(id); if(el) el.textContent=v; };
+        s('sa-bf-24h', recent.length);
+        s('sa-bf-banned', bannedSnap.size);
+        s('sa-bf-uniqueips', Object.keys(ipCounts).length);
+        s('sa-bf-topip', topIP);
+
+        if (!docs.length) {
+            el.innerHTML = '<div style="color:rgba(255,255,255,.2);font-size:12px;padding:24px;text-align:center"><i class="fa-solid fa-shield-check" style="font-size:28px;display:block;margin-bottom:10px;opacity:.3"></i>Keine Zugriffsversuche protokolliert</div>';
+            return;
+        }
+
+        el.innerHTML = docs.slice(0, 50).map(d => {
+            const ts = d.timestamp?.toDate?.() || null;
+            const dt = ts ? ts.toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+            const isRecent = ts && (now - ts.getTime()) < cutoff24h ? false : true;
+            const ipBanned = bannedSnap.size > 0; // simplified check
+            return `<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:rgba(248,113,113,.04);border:1px solid rgba(248,113,113,.1);border-radius:11px">
+                <i class="fa-solid fa-triangle-exclamation" style="color:#f87171;font-size:12px;flex-shrink:0"></i>
+                <div style="flex:1;min-width:0">
+                    <div style="font-size:12px;color:rgba(255,255,255,.7);font-weight:600">${escA(d.reason || 'Unbefugter Zugriff')}</div>
+                    <div style="font-size:10px;color:rgba(255,255,255,.3);margin-top:2px;font-family:'JetBrains Mono',monospace">${escA(d.ip||'?')} · ${escA(d.email||'nicht eingeloggt')}</div>
+                </div>
+                <div style="font-size:10px;color:rgba(255,255,255,.2);white-space:nowrap;font-family:'JetBrains Mono',monospace">${dt}</div>
+                ${d.ip && d.ip !== 'unbekannt' ? `<button onclick="saBanIPFromLog('${escA(d.ip)}')" title="IP sperren" style="padding:5px 9px;border-radius:8px;border:1px solid rgba(248,113,113,.3);background:rgba(248,113,113,.1);color:#f87171;font-size:10px;cursor:pointer;white-space:nowrap;transition:all .15s" onmouseover="this.style.background='rgba(248,113,113,.2)'" onmouseout="this.style.background='rgba(248,113,113,.1)'"><i class="fa-solid fa-ban"></i></button>` : ''}
+            </div>`;
+        }).join('');
+    } catch(e) {
+        el.innerHTML = `<div style="color:#f87171;font-size:12px;padding:12px">${escA(e.message)}</div>`;
+    }
+}
+
+async function saBanIPFromLog(ip) {
+    if (!confirm(`IP ${ip} dauerhaft sperren?`)) return;
+    try {
+        await db.collection('banned_ips').doc(ip).set({ ip, bannedAt: firebase.firestore.FieldValue.serverTimestamp(), reason: 'Manuell aus SA-Zone gesperrt', bannedBy: auth.currentUser?.email });
+        await logAction('ip_banned_manual', ip, { ip, by: auth.currentUser?.email });
+        showToast(`🚫 IP ${ip} gesperrt`, 'success');
+        saLoadBruteForce();
+    } catch(e) { showToast('❌ Fehler: ' + e.message, 'error'); }
+}
 const _origSaOpenTab = saOpenTab;
 // BUG FIX: _origSaOpenTab() is synchronous (CSS toggle), but saLoadDashboard()
 // was called immediately after, before the tab panel was fully visible.
@@ -11436,6 +12794,300 @@ const _patchedSaOpenTab = function() {
 };
 // Replace in window scope
 window.saOpenTab = _patchedSaOpenTab;
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  SECURITY SCORE + ALERT FEED  (SA Dashboard)
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function saDashLoadAlertFeed() {
+    const feed = document.getElementById('sa-alert-feed');
+    if (!feed) return;
+    try {
+        const [bannedSnap, unauthSnap, reviewSnap, settingsSnap, ordersSnap] = await Promise.all([
+            db.collection('banned_ips').get(),
+            db.collection('unauthorized_access').orderBy('timestamp','desc').limit(50).get().catch(()=>({docs:[]})),
+            db.collection('reviews').where('approved','==',false).get().catch(()=>({docs:[]})),
+            db.collection('settings').doc('main').get(),
+            db.collection('orders').where('status','==','Zahlung ausstehend').get().catch(()=>({docs:[],size:0})),
+        ]);
+        const alerts = [];
+        const now = Date.now();
+        const cutoff1h  = now - 3600000;
+
+        // Unauth access in last hour
+        const recentUnauth = unauthSnap.docs.filter(d=>(d.data().timestamp?.toDate?.()?.getTime?.()||0) > cutoff1h);
+        if (recentUnauth.length > 0) alerts.push({ level:'err', msg: `${recentUnauth.length} unbefugte${recentUnauth.length>1?' Zugriffsversuche':' Zugriffsversuch'} in der letzten Stunde` });
+
+        // High ban count
+        if (bannedSnap.size > 20) alerts.push({ level:'warn', msg: `${bannedSnap.size} gesperrte IPs — ungewöhnlich viele Bans` });
+
+        // Shop closed
+        if (settingsSnap.exists && settingsSnap.data().shop_closed) alerts.push({ level:'warn', msg: 'Shop ist derzeit geschlossen' });
+
+        // Pending reviews > 5
+        const pending = reviewSnap.docs.filter(d=>!d.data().rejected).length;
+        if (pending > 5) alerts.push({ level:'info', msg: `${pending} Bewertungen warten auf Freigabe` });
+
+        // Pending payments
+        if (ordersSnap.size > 3) alerts.push({ level:'warn', msg: `${ordersSnap.size} Bestellungen mit ausstehender Zahlung` });
+
+        if (!alerts.length) {
+            feed.innerHTML = '<div style="display:flex;align-items:center;gap:10px;padding:14px;background:rgba(52,211,153,.04);border:1px solid rgba(52,211,153,.15);border-radius:14px"><i class="fa-solid fa-circle-check" style="color:#34d399;font-size:18px"></i><span style="font-size:13px;color:#34d399;font-weight:600">Keine aktiven Alerts — alles im grünen Bereich</span></div>';
+        } else {
+            const badge = document.getElementById('sa-alert-badge');
+            if (badge) { badge.textContent = alerts.length + ' Alert' + (alerts.length>1?'s':''); badge.style.display=''; }
+            const colorMap = { err:'248,113,113', warn:'251,191,36', info:'103,232,249' };
+            const iconMap  = { err:'fa-circle-xmark', warn:'fa-triangle-exclamation', info:'fa-circle-info' };
+            feed.innerHTML = alerts.map(a => `
+                <div style="display:flex;align-items:flex-start;gap:10px;padding:12px 16px;background:rgba(${colorMap[a.level]},.05);border:1px solid rgba(${colorMap[a.level]},.18);border-radius:14px">
+                    <i class="fa-solid ${iconMap[a.level]}" style="color:rgba(${colorMap[a.level]},1);font-size:15px;margin-top:1px;flex-shrink:0"></i>
+                    <span style="font-size:13px;font-weight:600;color:rgba(255,255,255,.85)">${escA(a.msg)}</span>
+                </div>`).join('');
+        }
+
+        // Security Score
+        let score = 100;
+        const cutoff24h = now - 86400000;
+        const unauthRecent = unauthSnap.docs.filter(d=>(d.data().timestamp?.toDate?.()?.getTime?.()||0)>cutoff24h).length;
+        const secChecks = [
+            { label:'Unauth. Zugriffe (24h)', val: unauthRecent, threshold:5,  penalty:15, color:'#f87171' },
+            { label:'Gesperrte IPs',          val: bannedSnap.size, threshold:30, penalty:10, color:'#fbbf24' },
+            { label:'Ausstehende Reviews',    val: pending,    threshold:10, penalty:5,  color:'#a78bfa' },
+        ];
+        const breakdown = [];
+        secChecks.forEach(p => { const hit = p.val >= p.threshold; if (hit) score -= p.penalty; breakdown.push({ label:p.label, val:p.val, ok:!hit, color:p.color }); });
+        score = Math.max(0, Math.min(100, score));
+        const arc   = document.getElementById('sa-sec-score-arc');
+        const valEl = document.getElementById('sa-sec-score-val');
+        const lblEl = document.getElementById('sa-sec-score-label');
+        const subEl = document.getElementById('sa-sec-score-sub');
+        const brkEl = document.getElementById('sa-sec-score-breakdown');
+        if (arc)   { arc.style.strokeDashoffset = 176 - (176*score/100); arc.style.stroke = score>=80?'#34d399':score>=50?'#fbbf24':'#f87171'; }
+        if (valEl) valEl.textContent = score;
+        if (lblEl) { lblEl.textContent = score>=80?'Sehr sicher':score>=50?'Verbesserung nötig':'Kritisch'; lblEl.style.color=score>=80?'#34d399':score>=50?'#fbbf24':'#f87171'; }
+        if (subEl) subEl.textContent = (100-score)>0?`${100-score} Punkte Abzug durch aktive Risiken`:'Keine offenen Risiken erkannt';
+        if (brkEl) brkEl.innerHTML = breakdown.map(b=>`<div style="display:flex;align-items:center;justify-content:space-between;font-size:11px"><span style="color:rgba(255,255,255,.4)">${escA(b.label)}</span><div style="display:flex;align-items:center;gap:6px"><span style="font-family:'JetBrains Mono',monospace;color:${b.ok?'rgba(255,255,255,.5)':b.color}">${b.val}</span><i class="fa-solid fa-${b.ok?'check':'xmark'}" style="color:${b.ok?'#34d399':b.color};font-size:10px"></i></div></div>`).join('');
+    } catch(e) { if(feed) feed.innerHTML='<div style="color:rgba(255,255,255,.2);font-size:12px;padding:12px">Alert-Feed konnte nicht geladen werden.</div>'; }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  ROLLEN-MATRIX
+// ─────────────────────────────────────────────────────────────────────────────
+
+const ROLE_MATRIX_DATA = [
+    { perm:'Bestellungen einsehen',     sup:1, co:1, adm:1, ro:1 },
+    { perm:'Bestellstatus ändern',      sup:1, co:1, adm:1, ro:0 },
+    { perm:'Produkte verwalten',        sup:1, co:1, adm:1, ro:0 },
+    { perm:'Preise ändern',             sup:1, co:1, adm:1, ro:0 },
+    { perm:'Gutscheine verwalten',      sup:1, co:1, adm:1, ro:0 },
+    { perm:'Benutzer verwalten',        sup:1, co:1, adm:1, ro:0 },
+    { perm:'Bewertungen moderieren',    sup:1, co:1, adm:1, ro:0 },
+    { perm:'Admin-Logs einsehen',       sup:1, co:1, adm:1, ro:1 },
+    { perm:'Admins ernennen/entfernen', sup:1, co:1, adm:0, ro:0 },
+    { perm:'IP-Bans verwalten',         sup:1, co:1, adm:0, ro:0 },
+    { perm:'Shop öffnen / schließen',   sup:1, co:1, adm:0, ro:0 },
+    { perm:'Exporte / Backups',         sup:1, co:1, adm:0, ro:0 },
+    { perm:'Shop-Konfiguration',        sup:1, co:0, adm:0, ro:0 },
+    { perm:'Superadmin Zone',           sup:1, co:0, adm:0, ro:0 },
+    { perm:'Danger Zone',               sup:1, co:0, adm:0, ro:0 },
+    { perm:'Security Lockdown',         sup:1, co:0, adm:0, ro:0 },
+];
+
+function saRenderRoleMatrix() {
+    const tbody = document.getElementById('sa-role-matrix-tbody');
+    if (!tbody) return;
+    const c = (v, hi) => `<td style="text-align:center;padding:9px 16px;border-bottom:1px solid rgba(255,255,255,.04)"><i class="fa-solid fa-${v?'check':'minus'}" style="color:${v?(hi?'#fbbf24':'#34d399'):'rgba(255,255,255,.12)'};font-size:${v?13:12}px"></i></td>`;
+    tbody.innerHTML = ROLE_MATRIX_DATA.map(r=>`<tr class="table-row-hover"><td style="padding:9px 16px;font-size:12px;color:rgba(255,255,255,.6);border-bottom:1px solid rgba(255,255,255,.04)">${escA(r.perm)}</td>${c(r.sup,true)}${c(r.co,false)}${c(r.adm,false)}${c(r.ro,false)}</tr>`).join('');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  ADMIN DETAIL MODAL
+// ─────────────────────────────────────────────────────────────────────────────
+
+let _admModalData = null;
+
+async function admOpenModal(adminData) {
+    _admModalData = adminData;
+    const modal = document.getElementById('sa-admin-detail-modal');
+    if (!modal) return;
+    modal.style.display = 'flex';
+    const initials = (adminData.email||'?').substring(0,2).toUpperCase();
+    const av = document.getElementById('adm-modal-avatar');
+    const em = document.getElementById('adm-modal-email');
+    const rb = document.getElementById('adm-modal-role-badge');
+    if (av) { av.textContent=initials; av.style.background=adminData.role==='superadmin'?'linear-gradient(135deg,#fbbf24,#f59e0b)':adminData.role==='cosuper'?'linear-gradient(135deg,#fb923c,#f97316)':'linear-gradient(135deg,#67e8f9,#a78bfa)'; av.style.color='#000'; }
+    if (em) em.textContent = adminData.email || '—';
+    const roleLabels = { superadmin:'👑 Superadmin', cosuper:'🛡️ Co-Superadmin', admin:'👤 Admin', readonly:'👁️ Nur-Lesen' };
+    if (rb) rb.innerHTML = `<span class="sa-role-badge ${adminData.role==='superadmin'?'super':adminData.role==='cosuper'?'cosuper':'regular'}">${roleLabels[adminData.role]||adminData.role}</span>`;
+    const statusEl = document.getElementById('adm-modal-status');
+    if (statusEl) { statusEl.textContent=adminData.locked?'🔴 Gesperrt':'🟢 Aktiv'; statusEl.style.color=adminData.locked?'#f87171':'#34d399'; }
+    const timeline = document.getElementById('adm-modal-timeline');
+    const actEl    = document.getElementById('adm-modal-actions');
+    const lastEl   = document.getElementById('adm-modal-lastlogin');
+    try {
+        const snap = await db.collection('admin_logs').where('adminEmail','==',adminData.email).orderBy('timestamp','desc').limit(20).get();
+        if (actEl) actEl.textContent = snap.size;
+        if (snap.size>0 && lastEl) { const ts=snap.docs[0].data().timestamp?.toDate?.(); if(ts) lastEl.textContent=ts.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'2-digit'}); }
+        if (timeline) timeline.innerHTML = snap.size ? snap.docs.map(d=>{
+            const dd=d.data(); const ts=dd.timestamp?.toDate?.(); const dt=ts?ts.toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
+            const isDanger=(dd.action||'').includes('danger');
+            return `<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 12px;background:rgba(255,255,255,.03);border-radius:10px;border:1px solid rgba(255,255,255,.05)"><div style="width:8px;height:8px;border-radius:50%;background:${isDanger?'#f87171':'#67e8f9'};box-shadow:0 0 6px ${isDanger?'#f87171':'#67e8f9'};flex-shrink:0;margin-top:4px"></div><div><div style="font-size:12px;color:rgba(255,255,255,.75)">${typeof AUDIT_ACTION_LABELS!=='undefined'&&AUDIT_ACTION_LABELS[dd.action]?AUDIT_ACTION_LABELS[dd.action]:('⚡ '+(dd.action||''))}</div><div style="font-size:10px;color:rgba(255,255,255,.25);margin-top:2px;font-family:'JetBrains Mono',monospace">${dt}${dd.target?' · '+escA(dd.target.substring(0,20)):''}</div></div></div>`;
+        }).join('') : '<div style="color:rgba(255,255,255,.2);font-size:12px;padding:10px;text-align:center">Noch keine Aktionen protokolliert</div>';
+    } catch(e) { if(timeline) timeline.innerHTML=`<div style="color:rgba(248,113,113,.5);font-size:12px;padding:10px">Fehler: ${escA(e.message)}</div>`; }
+}
+
+async function admModalResetToken() {
+    if (!_admModalData||!confirm(`Admin-Token für ${_admModalData.email} zurücksetzen?`)) return;
+    try { const cur=_admModalData.adminTokenVersion||0; await db.collection('users').doc(_admModalData.uid).update({adminTokenVersion:cur+1}); await logAction('admin_token_reset',_admModalData.uid,{email:_admModalData.email}); showToast(`🔄 Token für ${_admModalData.email} zurückgesetzt`,'success'); } catch(e) { showToast('❌ '+e.message,'error'); }
+}
+async function admModalRemove() {
+    if (!_admModalData||!confirm(`Admin ${_admModalData.email} wirklich entfernen?`)) return;
+    try { await db.collection('users').doc(_admModalData.uid).update({role:'user',permissions:{}}); await logAction('admin_removed',_admModalData.uid,{email:_admModalData.email}); document.getElementById('sa-admin-detail-modal').style.display='none'; showToast(`✅ ${_admModalData.email} als Admin entfernt`,'success'); if(typeof saLoadAdmins==='function') saLoadAdmins(); } catch(e) { showToast('❌ '+e.message,'error'); }
+}
+function admModalPromote() { if(!_admModalData) return; showToast('ℹ️ Berechtigungen in der Admin-Karte anpassen'); }
+function admModalDemote()  { if(!_admModalData) return; showToast('ℹ️ Berechtigungen in der Admin-Karte anpassen'); }
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  SESSION BREAKDOWN
+// ─────────────────────────────────────────────────────────────────────────────
+
+function sessRenderBreakdown(sessions, now) {
+    const live   = sessions.filter(s=>(now-(s.lastSeen?.toDate?.()?.getTime?.()||0))<90000).length;
+    const guests = sessions.filter(s=>s.isGuest).length;
+    const users  = sessions.filter(s=>!s.isGuest&&!s._isAdmin).length;
+    const admins = sessions.filter(s=>s._isAdmin).length;
+    const cart   = sessions.filter(s=>(s.cartCount||0)>0).length;
+    const total  = sessions.length||1;
+    const typeBreakdown = document.getElementById('sess-type-breakdown');
+    if (typeBreakdown) {
+        const rows = [{label:'🟢 Live aktiv',val:live,color:'#34d399'},{label:'👑 Admins',val:admins,color:'#fbbf24'},{label:'👤 Eingeloggt',val:users,color:'#67e8f9'},{label:'👻 Gäste',val:guests,color:'rgba(255,255,255,.3)'},{label:'🛒 Mit Warenkorb',val:cart,color:'#a78bfa'}];
+        typeBreakdown.innerHTML = rows.map(r=>`<div><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:11px;color:rgba(255,255,255,.5)">${r.label}</span><span style="font-size:11px;font-weight:700;color:${r.color};font-family:'JetBrains Mono',monospace">${r.val}</span></div><div style="height:5px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden"><div style="height:100%;width:${Math.max(r.val>0?4:0,Math.round(r.val/total*100))}%;background:${r.color};border-radius:3px;transition:width .5s"></div></div></div>`).join('');
+    }
+    const pagesEl = document.getElementById('sess-top-pages');
+    if (pagesEl) {
+        const pagesMap = {}; sessions.forEach(s=>{if(s.page)pagesMap[s.page]=(pagesMap[s.page]||0)+1;});
+        const pages = Object.entries(pagesMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+        const maxP = pages[0]?.[1]||1;
+        pagesEl.innerHTML = pages.length ? pages.map(([pg,cnt])=>`<div><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:11px;color:rgba(255,255,255,.5);font-family:'JetBrains Mono',monospace;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escA(pg)}</span><span style="font-size:11px;font-weight:700;color:#67e8f9">${cnt}</span></div><div style="height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden"><div style="height:100%;width:${Math.round(cnt/maxP*100)}%;background:linear-gradient(90deg,#67e8f9,#a78bfa);border-radius:2px;transition:width .5s"></div></div></div>`).join('') : '<div style="color:rgba(255,255,255,.2);font-size:11px;text-align:center;padding:8px">Keine Seiten-Daten</div>';
+    }
+    const s=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+    s('sess-kpi-live',live); s('sess-kpi-total',sessions.length); s('sess-kpi-users',users); s('sess-kpi-guests',guests); s('sess-kpi-cart',cart); s('sess-kpi-admins',admins);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  SA-AKTIVITÄTSLOG EXTENSIONS
+// ─────────────────────────────────────────────────────────────────────────────
+
+let _actlogPeriod = 7;
+let _actlogView   = 'list';
+
+function saFilterLogPeriod(val) { _actlogPeriod=parseInt(val)||0; saRenderFilteredLog(); actlogUpdateStats(); }
+
+function actlogSetView(mode) {
+    _actlogView = mode;
+    ['list','timeline'].forEach(m=>{
+        const btn=document.getElementById('actlog-view-'+m);
+        if(btn){btn.style.background=mode===m?'rgba(255,255,255,.08)':'transparent';btn.style.color=mode===m?'#fff':'rgba(255,255,255,.4)';}
+        const panel=document.getElementById('actlog-view-'+m+'-panel');
+        if(panel) panel.style.display=mode===m?'':'none';
+    });
+    if(mode==='timeline') actlogRenderTimeline();
+}
+
+function actlogUpdateStats() {
+    if(!_saLogAllDocs.length) return;
+    const now=Date.now(); const todayStart=new Date(); todayStart.setHours(0,0,0,0);
+    const cutoff=_actlogPeriod>0?now-_actlogPeriod*86400000:0;
+    const filtered=cutoff?_saLogAllDocs.filter(d=>(d.data().timestamp?.toDate?.()?.getTime?.()||0)>cutoff):_saLogAllDocs;
+    const dangerC=filtered.filter(d=>['danger','delete','purge','reset','lockdown','close'].some(k=>(d.data().action||'').includes(k))).length;
+    const exportC=filtered.filter(d=>['export','backup'].some(k=>(d.data().action||'').includes(k))).length;
+    const todayC=_saLogAllDocs.filter(d=>(d.data().timestamp?.toDate?.())||new Date(0)>=todayStart).length;
+    const lastAccess=_saLogAllDocs.find(d=>(d.data().action||'').includes('access'));
+    const lastTs=lastAccess?.data().timestamp?.toDate?.();
+    const s=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+    s('actlog-total',filtered.length); s('actlog-today',todayC); s('actlog-danger',dangerC); s('actlog-exports',exportC);
+    s('actlog-lastaccess',lastTs?lastTs.toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—');
+}
+
+const _ACT_LABELS = typeof AUDIT_ACTION_LABELS !== 'undefined' ? AUDIT_ACTION_LABELS : {};
+
+function actlogRenderTimeline() {
+    const el = document.getElementById('actlog-timeline-view');
+    if (!el||!_saLogAllDocs.length) return;
+    const now=Date.now(); const cutoff=_actlogPeriod>0?now-_actlogPeriod*86400000:0;
+    const docs=_saLogAllDocs.filter(d=>!cutoff||(d.data().timestamp?.toDate?.()?.getTime?.()||0)>cutoff).slice(0,60);
+    const grouped={};
+    docs.forEach(d=>{const dd=d.data();const ts=dd.timestamp?.toDate?.()||new Date();const key=ts.toLocaleDateString('de-DE',{weekday:'short',day:'2-digit',month:'2-digit'});if(!grouped[key])grouped[key]=[];grouped[key].push({...dd,_ts:ts});});
+    el.innerHTML = Object.entries(grouped).map(([day,entries])=>`
+        <div style="margin-bottom:18px">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.25);margin-bottom:10px">${escA(day)}</div>
+            <div style="display:flex;flex-direction:column;gap:0">
+                ${entries.map((e,i)=>{
+                    const isDanger=['danger','delete','purge','reset','lockdown'].some(k=>(e.action||'').includes(k));
+                    const isExport=['export','backup'].some(k=>(e.action||'').includes(k));
+                    const dotColor=isDanger?'#f87171':isExport?'#a78bfa':'#67e8f9';
+                    const label=_ACT_LABELS[e.action]||('⚡ '+(e.action||''));
+                    const timeStr=e._ts.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+                    return `<div style="display:flex;gap:14px;align-items:flex-start;padding-bottom:${i<entries.length-1?12:0}px">
+                        <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0">
+                            <div style="width:10px;height:10px;border-radius:50%;background:${dotColor};box-shadow:0 0 8px ${dotColor};flex-shrink:0;margin-top:4px;z-index:1"></div>
+                            ${i<entries.length-1?`<div style="width:2px;flex:1;background:rgba(255,255,255,.06);min-height:20px;margin-top:4px"></div>`:''}
+                        </div>
+                        <div style="padding-bottom:6px"><div style="font-size:12px;color:rgba(255,255,255,.8)">${escA(label)}</div>
+                        <div style="font-size:10px;color:rgba(255,255,255,.25);margin-top:2px;font-family:'JetBrains Mono',monospace">${timeStr} · ${escA(e.adminEmail||'—')}${e.target?' · '+escA(e.target.substring(0,20)):''}</div></div>
+                    </div>`;
+                }).join('')}
+            </div>
+        </div>`).join('');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  HOOKS
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Extend saLoadDashboard to also load alert feed
+const _origSaLoadDashboard = window.saLoadDashboard;
+if (typeof _origSaLoadDashboard === 'function') {
+    window.saLoadDashboard = async function() { await _origSaLoadDashboard(); saDashLoadAlertFeed(); };
+}
+
+// Extend saLoadActivityLog to also update stats
+const _origSaLoadActivityLog = window.saLoadActivityLog;
+if (typeof _origSaLoadActivityLog === 'function') {
+    window.saLoadActivityLog = async function() { await _origSaLoadActivityLog(); actlogUpdateStats(); };
+}
+
+// Extend saSwitchInner for new panel init
+const _prevSaSwitchInner = window.saSwitchInner;
+window.saSwitchInner = function(panel, el) {
+    _prevSaSwitchInner(panel, el);
+    if (panel==='actlog')   { setTimeout(()=>{ actlogUpdateStats(); if(_actlogView==='timeline') actlogRenderTimeline(); },200); }
+    if (panel==='admins')   { setTimeout(saRenderRoleMatrix, 200); }
+    if (panel==='sessions') { setTimeout(()=>{ if(window._saAllSessions) sessRenderBreakdown(window._saAllSessions,Date.now()); },300); }
+};
+
+// Wire detail button on admin cards after they render
+const _origSaLoadAdmins = window.saLoadAdmins;
+if (typeof _origSaLoadAdmins === 'function') {
+    window.saLoadAdmins = async function() {
+        await _origSaLoadAdmins();
+        saRenderRoleMatrix();
+        setTimeout(() => {
+            document.querySelectorAll('#sa-admin-grid .sa-admin-card').forEach(card => {
+                if (card.querySelector('.adm-detail-btn')) return;
+                const btn = document.createElement('button');
+                btn.className = 'adm-detail-btn';
+                btn.style.cssText='width:100%;margin-top:8px;padding:7px;border-radius:10px;border:1px solid rgba(103,232,249,.15);background:rgba(103,232,249,.05);color:#67e8f9;font-size:11px;font-weight:600;cursor:pointer;transition:all .15s';
+                btn.innerHTML='<i class="fa-solid fa-eye" style="margin-right:6px"></i>Details & Timeline';
+                btn.addEventListener('mouseover',()=>btn.style.background='rgba(103,232,249,.12)');
+                btn.addEventListener('mouseout', ()=>btn.style.background='rgba(103,232,249,.05)');
+                const uid  =card.dataset.uid||''; const email=card.dataset.email||card.querySelector('.sa-admin-email')?.textContent||''; const role=card.dataset.role||'admin';
+                btn.addEventListener('click',()=>admOpenModal({uid,email,role}));
+                card.appendChild(btn);
+            });
+        }, 500);
+    };
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  WAVEVAPES AUTO-BACKUP SYSTEM v1.0

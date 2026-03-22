@@ -4646,7 +4646,7 @@ function initCustomSelect(id, options, currentValue, onChange) {
 
     const trigger = document.createElement('div');
     trigger.className = 'cs-trigger ' + triggerClass;
-    trigger.innerHTML = `<span class="cs-label">${placeholder}</span><i class="fa-solid fa-chevron-down cs-trigger-arrow"></i>`;
+    trigger.innerHTML = `<span class="cs-label">${escA(placeholder)}</span><i class="fa-solid fa-chevron-down cs-trigger-arrow"></i>`;
 
     const dropdown = document.createElement('div');
     dropdown.className = 'cs-dropdown';
@@ -5781,7 +5781,7 @@ function ordSelectStatus(el) {
     // sync hidden select
     const sel = document.getElementById('modal-status');
     if (sel) {
-        sel.innerHTML = `<option value="${el.dataset.s}" selected>${el.dataset.s}</option>`;
+        sel.innerHTML = `<option value="${escA(el.dataset.s)}" selected>${escA(el.dataset.s)}</option>`;
     }
 }
 
@@ -5831,7 +5831,7 @@ function ordRenderTable() {
 
         html += `<tr onclick="showOrderModal('${doc.id}')">
             <td style="padding-left:18px">
-                <div class="ord-num">#${o.orderNumber||'—'}</div>
+                <div class="ord-num">#${escA(String(o.orderNumber||'—'))}</div>
                 ${hasTracking ? `<div style="font-size:9px;color:var(--ord-purple);margin-top:2px;font-family:'JetBrains Mono',monospace">${o.carrier||''} ${o.trackingNumber}</div>` : ''}
                 ${o.orderNote ? `<div style="font-size:9px;color:#f59e0b;margin-top:2px" title="${(o.orderNote||'').replace(/"/g,'&quot;')}"><i class="fa-solid fa-comment-dots" style="margin-right:3px"></i>Wunsch</div>` : ''}
             </td>
@@ -6784,9 +6784,13 @@ async function clearUnauthorizedLogs() {
 }
 
 function openBanIPModal(ip) {
-    document.getElementById('edit-modal').innerHTML = `<div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]"><div class="bg-zinc-900 rounded-3xl p-8 max-w-md w-full mx-4 modal"><div class="flex justify-between items-center mb-6"><h3 class="text-2xl font-bold text-red-400 flex items-center gap-2"><i class="fa-solid fa-ban"></i> IP Bannen</h3><button onclick="closeEditModal()" class="text-3xl text-gray-400 hover:text-white">✕</button></div><div class="bg-zinc-950 border border-white/10 rounded-2xl px-6 py-4 mb-6 font-mono text-cyan-300 text-lg text-center">${ip}</div><div class="space-y-4 mb-6"><label class="block text-sm text-gray-400 mb-2">Ban-Dauer</label><div class="grid grid-cols-2 gap-3"><label class="flex items-center gap-3 bg-zinc-800 rounded-2xl px-5 py-4 cursor-pointer border-2 border-red-400 transition"><input type="radio" name="ban-duration" value="permanent" class="accent-red-400" checked><div><div class="font-semibold text-sm">Permanent</div><div class="text-xs text-gray-400">Keine Ablaufzeit</div></div></label><label class="flex items-center gap-3 bg-zinc-800 rounded-2xl px-5 py-4 cursor-pointer border-2 border-transparent hover:border-amber-400/50 transition"><input type="radio" name="ban-duration" value="temporary" class="accent-amber-400"><div><div class="font-semibold text-sm">Zeitraum</div><div class="text-xs text-gray-400">Datum wählen</div></div></label></div><div id="ban-date-picker" class="hidden"><label class="block text-sm text-gray-400 mb-2">Gesperrt bis</label><input type="datetime-local" id="ban-until-date" class="w-full bg-zinc-800 border border-white/10 focus:border-amber-400 rounded-2xl px-6 py-4"></div><div><label class="block text-sm text-gray-400 mb-2">Grund (optional)</label><input id="ban-reason-input" type="text" placeholder="z. B. Wiederholter Angriff" class="w-full bg-zinc-800 border border-white/10 focus:border-red-400 rounded-2xl px-6 py-4"></div></div><div class="flex gap-4"><button onclick="executeBanIP('${ip}')" class="flex-1 bg-red-600 hover:bg-red-500 py-5 rounded-3xl font-bold flex items-center justify-center gap-2"><i class="fa-solid fa-ban"></i> IP Bannen</button><button onclick="closeEditModal()" class="flex-1 bg-zinc-700 hover:bg-zinc-600 py-5 rounded-3xl">Abbrechen</button></div></div></div>`;
+    const safeIpDisplay = escA(ip); // XSS-Fix: ip kommt aus Firestore/API
+    document.getElementById('edit-modal').innerHTML = `<div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[99999]"><div class="bg-zinc-900 rounded-3xl p-8 max-w-md w-full mx-4 modal"><div class="flex justify-between items-center mb-6"><h3 class="text-2xl font-bold text-red-400 flex items-center gap-2"><i class="fa-solid fa-ban"></i> IP Bannen</h3><button onclick="closeEditModal()" class="text-3xl text-gray-400 hover:text-white">✕</button></div><div class="bg-zinc-950 border border-white/10 rounded-2xl px-6 py-4 mb-6 font-mono text-cyan-300 text-lg text-center">${safeIpDisplay}</div><div class="space-y-4 mb-6"><label class="block text-sm text-gray-400 mb-2">Ban-Dauer</label><div class="grid grid-cols-2 gap-3"><label class="flex items-center gap-3 bg-zinc-800 rounded-2xl px-5 py-4 cursor-pointer border-2 border-red-400 transition"><input type="radio" name="ban-duration" value="permanent" class="accent-red-400" checked><div><div class="font-semibold text-sm">Permanent</div><div class="text-xs text-gray-400">Keine Ablaufzeit</div></div></label><label class="flex items-center gap-3 bg-zinc-800 rounded-2xl px-5 py-4 cursor-pointer border-2 border-transparent hover:border-amber-400/50 transition"><input type="radio" name="ban-duration" value="temporary" class="accent-amber-400"><div><div class="font-semibold text-sm">Zeitraum</div><div class="text-xs text-gray-400">Datum wählen</div></div></label></div><div id="ban-date-picker" class="hidden"><label class="block text-sm text-gray-400 mb-2">Gesperrt bis</label><input type="datetime-local" id="ban-until-date" class="w-full bg-zinc-800 border border-white/10 focus:border-amber-400 rounded-2xl px-6 py-4"></div><div><label class="block text-sm text-gray-400 mb-2">Grund (optional)</label><input id="ban-reason-input" type="text" placeholder="z. B. Wiederholter Angriff" class="w-full bg-zinc-800 border border-white/10 focus:border-red-400 rounded-2xl px-6 py-4"></div></div><div class="flex gap-4"><button id="ban-ip-execute-btn" class="flex-1 bg-red-600 hover:bg-red-500 py-5 rounded-3xl font-bold flex items-center justify-center gap-2"><i class="fa-solid fa-ban"></i> IP Bannen</button><button onclick="closeEditModal()" class="flex-1 bg-zinc-700 hover:bg-zinc-600 py-5 rounded-3xl">Abbrechen</button></div></div></div>`;
     document.getElementById('edit-modal').classList.remove('hidden');
     document.querySelectorAll('input[name="ban-duration"]').forEach(radio => { radio.addEventListener('change', () => { document.getElementById('ban-date-picker').classList.toggle('hidden', radio.value !== 'temporary'); document.querySelectorAll('input[name="ban-duration"]').forEach(r => { r.closest('label').classList.toggle('border-red-400', r.value==='permanent'&&r.checked); r.closest('label').classList.toggle('border-amber-400', r.value==='temporary'&&r.checked); r.closest('label').classList.toggle('border-transparent', !r.checked); }); }); });
+    // XSS-Fix: ip wird über Closure sicher übergeben, nicht als onclick-String-Interpolation
+    const banExecBtn = document.getElementById('ban-ip-execute-btn');
+    if (banExecBtn) banExecBtn.addEventListener('click', () => executeBanIP(ip));
 }
 async function executeBanIP(ip) {
     const isPermanent = document.querySelector('input[name="ban-duration"]:checked').value === 'permanent'; const reason = document.getElementById('ban-reason-input').value.trim(); let bannedUntil = null;
@@ -7504,6 +7508,14 @@ async function saveProductOrder() {
     }
 }
 
+// ── Globale HTML-Escape-Funktion (BUG-001-admin: XSS-Schutz für innerHTML) ──
+const escA = s => String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
 function showToast(msg, type='success') {
     const container = document.getElementById('toast-container');
     if (!container) return;
@@ -7786,7 +7798,7 @@ async function euOpenDrawer(uid){
     db.collection('orders').where('userId','==',uid).orderBy('date','desc').limit(5).get()
       .then(snap=>{
           if(snap.empty){ol.innerHTML=`<div class="eu-empty" style="padding:14px;font-size:12px">Noch keine Bestellungen</div>`;return;}
-          let h='';snap.forEach(doc=>{const o=doc.data();const date=o.date?o.date.toDate().toLocaleDateString('de-DE'):'—';const sc=o.status==='Zugestellt'?'var(--eu-green)':o.status==='Storniert'?'var(--eu-red)':'var(--eu-amber)';h+=`<div class="eu-order-item"><span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--eu-cyan)">#${o.orderNumber||'—'}</span><span style="color:var(--eu-muted)">${date}</span><span style="font-weight:700;color:var(--eu-green)">${(o.total||0).toFixed(2)} €</span><span style="color:${sc}">${o.status||'—'}</span></div>`;});ol.innerHTML=h;
+          let h='';snap.forEach(doc=>{const o=doc.data();const date=o.date?o.date.toDate().toLocaleDateString('de-DE'):'—';const sc=o.status==='Zugestellt'?'var(--eu-green)':o.status==='Storniert'?'var(--eu-red)':'var(--eu-amber)'; /* sc: hardcoded CSS-var — sicher */h+=`<div class="eu-order-item"><span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--eu-cyan)">#${escA(String(o.orderNumber||'—'))}</span><span style="color:var(--eu-muted)">${date}</span><span style="font-weight:700;color:var(--eu-green)">${(o.total||0).toFixed(2)} €</span><span style="color:${sc}">${escA(String(o.status||'—'))}</span></div>`;});ol.innerHTML=h;
       }).catch(()=>{ol.innerHTML='<div style="color:var(--eu-red);font-size:12px;padding:8px">Fehler beim Laden</div>';});
     document.getElementById('eu-drawer').classList.add('open');
     document.getElementById('eu-overlay').classList.add('open');
@@ -8599,7 +8611,7 @@ function globalSearchInput() {
         results.orders.slice(0,3).forEach(o => {
             html += `<div class="hdr-search-item" onclick="switchTab(1);setTimeout(()=>showOrderModal('${o.id}'),400);document.getElementById('global-search').value='';document.getElementById('global-search-dd').classList.remove('open')">
                 <div class="hdr-search-item-icon" style="background:rgba(52,211,153,.1);color:#34d399"><i class="fa-solid fa-receipt"></i></div>
-                <div><div class="hdr-search-item-main">#${o.orderNumber||'—'}</div><div class="hdr-search-item-sub">${o.userEmail||'—'} · ${(o.total||0).toFixed(2)} €</div></div>
+                <div><div class="hdr-search-item-main">#${escA(String(o.orderNumber||'—'))}</div><div class="hdr-search-item-sub">${o.userEmail||'—'} · ${(o.total||0).toFixed(2)} €</div></div>
             </div>`;
         });
         html += `</div>`;
@@ -8742,7 +8754,7 @@ function watchNewOrders() {
         newOrders.forEach(change => {
             const o = change.doc.data();
             pushNotification('order',
-                `Neue Bestellung #${o.orderNumber||'—'}`,
+                `Neue Bestellung #${escA(String(o.orderNumber||'—'))}`,
                 `${o.userEmail||'—'} · ${(o.total||0).toFixed(2)} €`,
                 () => { switchTab(1); setTimeout(() => showOrderModal(change.doc.id), 400); }
             );
@@ -9417,7 +9429,7 @@ function loadClickAnalytics() {
             const hint = isPermission
                 ? '<br><span style="font-size:11px;opacity:.7">Firestore Rules: click_events braucht allow read: if isAdmin();</span>'
                 : '';
-            if (tbody) tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:40px;color:#f87171;font-size:13px"><i class="fa-solid fa-circle-exclamation" style="margin-right:8px"></i>${e.message}${hint}</td></tr>`;
+            if (tbody) tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:40px;color:#f87171;font-size:13px"><i class="fa-solid fa-circle-exclamation" style="margin-right:8px"></i>${escA(e.message)}${escA(hint)}</td></tr>`;
         });
 }
 
@@ -11099,7 +11111,7 @@ async function bkpLoadHistory() {
         }).join('');
 
     } catch(e) {
-        list.innerHTML = `<div style="color:#f87171;font-size:12px;padding:20px;text-align:center">❌ Fehler: ${e.message}</div>`;
+        list.innerHTML = `<div style="color:#f87171;font-size:12px;padding:20px;text-align:center">❌ Fehler: ${escA(e.message)}</div>`;
     }
 }
 
@@ -11461,7 +11473,7 @@ async function loadBundles() {
 
         bndRender();
     } catch(e) {
-        shell.innerHTML = `<div style="color:#f87171;padding:40px;text-align:center">❌ ${e.message}</div>`;
+        shell.innerHTML = `<div style="color:#f87171;padding:40px;text-align:center">❌ ${escA(e.message)}</div>`;
     }
 }
 
@@ -11895,14 +11907,14 @@ Schreibe NUR die Beschreibung, ohne Einleitung.`, 200
         );
         const p = isEdit ? 5 : 4, r = isEdit ? 7 : 6;
         result.style.display = 'block';
-        result.innerHTML = `<div style="color:rgba(255,255,255,.8)">${text.trim()}</div>
+        result.innerHTML = `<div style="color:rgba(255,255,255,.8)">${escA(text.trim())}</div>
             <div style="margin-top:${p*2}px;display:flex;gap:${r+1}px">
                 <button onclick="aiDescApply('${mode}')" style="padding:${p}px ${p*2+2}px;border-radius:${r}px;background:rgba(52,211,153,.15);border:1px solid rgba(52,211,153,.3);color:#34d399;font-size:${isEdit?11:10}px;font-weight:700;cursor:pointer"><i class="fa-solid fa-check" style="margin-right:${p-1}px"></i>Übernehmen</button>
                 <button onclick="_aiGenerateDescriptionFor('${mode}')" style="padding:${p}px ${p*2+2}px;border-radius:${r}px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.5);font-size:${isEdit?11:10}px;cursor:pointer">↺ Neu</button>
             </div>`;
         result._text = text.trim();
     } catch(e) {
-        result.innerHTML = `<span style="color:#f87171">❌ ${e.message}</span>`;
+        result.innerHTML = `<span style="color:#f87171">❌ ${escA(e.message)}</span>`;
     } finally {
         if (btn) { btn.disabled = false; btn.innerHTML = btnRestoreHTML; }
     }
@@ -11959,7 +11971,7 @@ Schreibe NUR die Antwort, ohne "Antwort:" o.ä.`, 250
             </div>
         </div>`;
     } catch(e) {
-        box.innerHTML = `<span style="color:#f87171;font-size:12px">❌ ${e.message}</span>`;
+        box.innerHTML = `<span style="color:#f87171;font-size:12px">❌ ${escA(e.message)}</span>`;
     }
 }
 
@@ -12232,7 +12244,7 @@ Antworte NUR in diesem Format auf Deutsch:
                 <button onclick="document.getElementById('usr-ai-churn-result').style.display='none'" style="padding:6px 12px;border-radius:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:rgba(255,255,255,.4);font-size:11px;cursor:pointer">✕ Schließen</button>
             </div>`;
     } catch(e) {
-        result.innerHTML = `<span style="color:#f87171;font-size:12px">❌ ${e.message}</span>`;
+        result.innerHTML = `<span style="color:#f87171;font-size:12px">❌ ${escA(e.message)}</span>`;
     } finally {
         if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> KI-Churn-Analyse'; }
     }
@@ -12259,7 +12271,7 @@ Beginne mit "Hey,". Kein Betreff, nur E-Mail-Text.`, 250
             <div id="churn-mail-text" style="font-size:12px;color:rgba(255,255,255,.82);line-height:1.7;white-space:pre-line">${mail.trim().replace(/</g,'&lt;')}</div>
             <button onclick="navigator.clipboard.writeText(document.getElementById('churn-mail-text').textContent).then(()=>showToast('✅ Mail kopiert!'))" style="margin-top:10px;padding:5px 12px;border-radius:7px;background:rgba(103,232,249,.1);border:1px solid rgba(103,232,249,.25);color:#67e8f9;font-size:10px;font-weight:700;cursor:pointer"><i class="fa-solid fa-copy" style="margin-right:3px"></i>Kopieren</button>`;
     } catch(e) {
-        mailBox.innerHTML = `<span style="color:#f87171;font-size:12px">❌ ${e.message}</span>`;
+        mailBox.innerHTML = `<span style="color:#f87171;font-size:12px">❌ ${escA(e.message)}</span>`;
     }
 }
 
@@ -12314,7 +12326,7 @@ Antworte NUR in diesem Format auf Deutsch:
                 <button onclick="document.getElementById('srt-ai-result').style.display='none'" style="padding:6px 12px;border-radius:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:rgba(255,255,255,.4);font-size:11px;cursor:pointer">✕ Schließen</button>
             </div>`;
     } catch(e) {
-        result.innerHTML = `<span style="color:#f87171;font-size:12px">❌ ${e.message}</span>`;
+        result.innerHTML = `<span style="color:#f87171;font-size:12px">❌ ${escA(e.message)}</span>`;
     } finally {
         if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-robot"></i> KI-Empfehlung'; }
     }
@@ -12373,7 +12385,7 @@ Antworte NUR in diesem Format auf Deutsch:
                 <button onclick="document.getElementById('prd-ai-stock-result').style.display='none'" style="padding:5px 10px;border-radius:7px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:rgba(255,255,255,.4);font-size:10px;cursor:pointer">✕</button>
             </div>`;
     } catch(e) {
-        result.innerHTML = `<span style="color:#f87171;font-size:12px">❌ ${e.message}</span>`;
+        result.innerHTML = `<span style="color:#f87171;font-size:12px">❌ ${escA(e.message)}</span>`;
     } finally {
         if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> KI-Nachbestellungsplan'; }
     }
@@ -12450,7 +12462,7 @@ Antworte NUR in diesem Format auf Deutsch:
                 <button onclick="document.getElementById('lg-ai-result').style.display='none'" style="padding:6px 12px;border-radius:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:rgba(255,255,255,.4);font-size:11px;cursor:pointer">✕ Schließen</button>
             </div>`;
     } catch(e) {
-        result.innerHTML = `<span style="color:#f87171;font-size:12px">❌ ${e.message}</span>`;
+        result.innerHTML = `<span style="color:#f87171;font-size:12px">❌ ${escA(e.message)}</span>`;
     } finally {
         if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> KI-Anomalie-Check'; }
     }
@@ -12525,7 +12537,7 @@ async function bndAICalc(strategy) {
     // Prüfen ob alle Einkaufspreise bekannt sind
     const missingEK = _bundleItems.filter(it => bndRealCost(it) === null);
     if (missingEK.length > 0) {
-        el.innerHTML = `<span style="color:#f87171"><i class="fa-solid fa-triangle-exclamation" style="margin-right:6px"></i>Einkaufspreis fehlt bei: <strong>${missingEK.map(it=>it.name).join(', ')}</strong><br><span style="font-size:11px;opacity:.7">Trage zuerst den Einkaufspreis ein (Produkte → Stift-Icon → Einkaufspreis), damit die KI profitabel rechnen kann.</span></span>`;
+        el.innerHTML = `<span style="color:#f87171"><i class="fa-solid fa-triangle-exclamation" style="margin-right:6px"></i>Einkaufspreis fehlt bei: <strong>${missingEK.map(it=>escA(it.name||'')).join(', ')}</strong><br><span style="font-size:11px;opacity:.7">Trage zuerst den Einkaufspreis ein (Produkte → Stift-Icon → Einkaufspreis), damit die KI profitabel rechnen kann.</span></span>`;
         return;
     }
 

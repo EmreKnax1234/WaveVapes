@@ -3012,7 +3012,7 @@
         .ped-drawer {
             position: fixed !important;
             top: auto !important;
-            bottom: 0 !important;
+            bottom: -100% !important;
             right: 0 !important;
             left: 0 !important;
             width: 100% !important;
@@ -3020,6 +3020,11 @@
             max-height: 92dvh !important;
             border-radius: 20px 20px 0 0 !important;
             overflow-y: auto !important;
+            transition: bottom .35s cubic-bezier(.34,1.1,.64,1) !important;
+        }
+        .ped-drawer.open {
+            bottom: 0 !important;
+            right: 0 !important;
         }
         .ped-body { flex-direction: column !important; padding: 14px !important; }
         .ped-img-col { width: 100% !important; }
@@ -3032,13 +3037,18 @@
         .ord-drawer {
             position: fixed !important;
             top: auto !important;
-            bottom: 0 !important;
+            bottom: -100% !important;
             right: 0 !important;
             left: 0 !important;
             width: 100% !important;
             max-width: 100% !important;
             max-height: 94dvh !important;
             border-radius: 20px 20px 0 0 !important;
+            transition: bottom .35s cubic-bezier(.34,1.1,.64,1) !important;
+        }
+        .ord-drawer.open {
+            bottom: 0 !important;
+            right: 0 !important;
         }
         .ord-drawer-hdr { padding: 14px 16px !important; }
         .ord-drawer-body { padding: 14px !important; }
@@ -3051,11 +3061,16 @@
         /* ── EU Drawer (Erw. Benutzer) ── */
         .eu-drawer {
             position: fixed !important;
-            top: auto !important; bottom: 0 !important;
+            top: auto !important; bottom: -100% !important;
             right: 0 !important; left: 0 !important;
             width: 100% !important; max-width: 100% !important;
             max-height: 93dvh !important;
             border-radius: 20px 20px 0 0 !important;
+            transition: bottom .35s cubic-bezier(.34,1.1,.64,1) !important;
+        }
+        .eu-drawer.open {
+            bottom: 0 !important;
+            right: 0 !important;
         }
         .eu-grid2 { grid-template-columns: 1fr !important; gap: 8px !important; }
 
@@ -8201,8 +8216,8 @@ function loadOrders() {
     // always null, so the second identical check was always false (dead code).
     if (_ordersUnsub) { _ordersUnsub(); _ordersUnsub = null; }
     _ordersUnsub = db.collection('orders').orderBy('date','desc').onSnapshot(snap => {
+        _ordAllDocs = snap.docs;
         window._ordAllDocs = snap.docs;
-        window.__ordAllDocsInternal = snap.docs;
         ordRenderTable();
     });
 }
@@ -8439,6 +8454,7 @@ function loadUsers() {
     if (_usersUnsub) { _usersUnsub(); _usersUnsub = null; }
     _usersUnsub = db.collection('users').onSnapshot(snapshot => {
         _usrAllDocs = snapshot.docs;
+        window._usrAllDocs = snapshot.docs;
         usrRenderTable();
     });
 }
@@ -17943,6 +17959,8 @@ window.switchTab = function(n) {
 const _origOrdRenderTable = window.ordRenderTable;
 window.ordRenderTable = function() {
     if (_origOrdRenderTable) _origOrdRenderTable();
+    // Sync _ordAllDocs to window so mobile can access it
+    if (typeof _ordAllDocs !== 'undefined') window._ordAllDocs = _ordAllDocs;
     if (_mobCurrentTab === 1) setTimeout(mobRenderOrderCards, 50);
     mobSyncBadges();
 };
@@ -17951,13 +17969,16 @@ window.ordRenderTable = function() {
 const _origRenderProducts = window.renderProducts;
 window.renderProducts = function(...args) {
     if (_origRenderProducts) _origRenderProducts(...args);
+    // Sync allProducts to window
+    if (typeof allProducts !== 'undefined') window.allProducts = allProducts;
     if (_mobCurrentTab === 0) setTimeout(mobRenderProductCards, 50);
 };
 
-// ── Override renderUsers to also update mobile ──
-const _origRenderUsers = window.renderUsers;
-window.renderUsers = function(...args) {
-    if (_origRenderUsers) _origRenderUsers(...args);
+// ── Override usrRenderTable to also update mobile ──
+const _origUsrRenderTable = window.usrRenderTable;
+window.usrRenderTable = function(...args) {
+    if (_origUsrRenderTable) _origUsrRenderTable(...args);
+    if (typeof _usrAllDocs !== 'undefined') window._usrAllDocs = _usrAllDocs;
     if (_mobCurrentTab === 2) setTimeout(mobRenderUserCards, 50);
 };
 
@@ -18007,7 +18028,17 @@ function mobBuildOrdersUI() {
             <div class="mob-loading"><div class="mob-spinner"></div>Lade Bestellungen…</div>
         </div>`;
     shell.insertBefore(wrap, shell.firstChild);
-    mobRenderOrderCards();
+    // Attempt render, retry until data arrives
+    let _mobOrdAttempts = 0;
+    const _mobOrdInterval = setInterval(() => {
+        _mobOrdAttempts++;
+        const docs = window._ordAllDocs || (typeof _ordAllDocs !== 'undefined' ? _ordAllDocs : []);
+        if (docs.length || _mobOrdAttempts > 20) {
+            clearInterval(_mobOrdInterval);
+            if (typeof _ordAllDocs !== 'undefined') window._ordAllDocs = _ordAllDocs;
+            mobRenderOrderCards();
+        }
+    }, 300);
 }
 
 function mobOrdFilter(status, el) {
@@ -18035,7 +18066,7 @@ function mobOrdSearch(val) {
 function mobRenderOrderCards() {
     const list = document.getElementById('mob-orders-list');
     if (!list) return;
-    const docs = (window._ordAllDocs || []).filter(doc => {
+    const docs = (window._ordAllDocs || _ordAllDocs || []).filter(doc => {
         const o = doc.data();
         const status = o.status || 'Zahlung erwartet';
         if (_mobOrdFilter && status !== _mobOrdFilter) return false;
@@ -18048,7 +18079,7 @@ function mobRenderOrderCards() {
     });
     // Update counts
     const counts = {};
-    (window._ordAllDocs||[]).forEach(doc => {
+    (window._ordAllDocs||_ordAllDocs||[]).forEach(doc => {
         const s = doc.data().status || 'Zahlung erwartet';
         counts[s] = (counts[s]||0)+1;
     });
@@ -18158,9 +18189,16 @@ function mobBuildProductsUI() {
     shell.insertBefore(wrap, addPanel);
     // Build category pills from loaded categories
     mobBuildCatPills();
-    mobRenderProductCards();
-    // Sync KPIs from original elements
-    setTimeout(mobSyncProdKpis, 500);
+    // Wait for product data
+    let _mobProdAttempts = 0;
+    const _mobProdInterval = setInterval(() => {
+        _mobProdAttempts++;
+        if ((window.allProducts && window.allProducts.length) || _mobProdAttempts > 20) {
+            clearInterval(_mobProdInterval);
+            mobRenderProductCards();
+            mobSyncProdKpis();
+        }
+    }, 300);
 }
 
 function mobSyncProdKpis() {
@@ -18234,7 +18272,7 @@ function mobRenderProductCards() {
         ].filter(Boolean).join('');
         return `<div class="mob-prod-card${p.available===false?' unavailable':''}" style="animation-delay:${i*20}ms">
             ${thumb}
-            <div class="mob-prod-info" onclick="openPedDrawer('${escA(p.id)}')">
+            <div class="mob-prod-info" onclick="openEditModal('${escA(p.id)}')">
                 <div class="mob-prod-name">${escA(p.name||'—')}</div>
                 <div class="mob-prod-meta">
                     <span class="mob-prod-price">${(p.price||0).toFixed(2)} €</span>
@@ -18244,7 +18282,7 @@ function mobRenderProductCards() {
             </div>
             <div class="mob-prod-right">
                 <span class="mob-prod-stock ${stockCls}">${stock}</span>
-                <div class="mob-prod-edit-btn" onclick="openPedDrawer('${escA(p.id)}')">
+                <div class="mob-prod-edit-btn" onclick="openEditModal('${escA(p.id)}')">
                     <i class="fa-solid fa-pen-to-square"></i>
                 </div>
             </div>
@@ -18287,64 +18325,53 @@ function mobBuildUsersUI() {
             <div class="mob-loading"><div class="mob-spinner"></div>Lade Benutzer…</div>
         </div>`;
     shell.insertBefore(wrap, shell.firstChild);
-    setTimeout(mobRenderUserCards, 200);
+    // Wait for data to be available
+    let _mobUserAttempts = 0;
+    const _mobUserInterval = setInterval(() => {
+        _mobUserAttempts++;
+        if ((window._usrAllDocs && window._usrAllDocs.length) || _mobUserAttempts > 20) {
+            clearInterval(_mobUserInterval);
+            mobRenderUserCards();
+        }
+    }, 300);
 }
 
 function mobUserSearch(val) {
     _mobUserSearch = val;
+    // Also update the original search input so usrRenderTable filter works
     const inp = document.getElementById('user-search');
-    if (inp) { inp.value = val; inp.dispatchEvent(new Event('input')); }
+    if (inp) { inp.value = val; }
+    // Use mobile render directly from _usrAllDocs
     mobRenderUserCards();
 }
 
 function mobRenderUserCards() {
     const list = document.getElementById('mob-users-list');
     if (!list) return;
-    // Get from original tbody
-    const rows = document.querySelectorAll('#users-tbody tr:not([colspan])');
-    if (!rows.length) {
-        // Try from allUsers
-        const users = window._allUsersCache || [];
-        if (!users.length) {
-            list.innerHTML = `<div class="mob-loading"><div class="mob-spinner"></div>Lade…</div>`;
-            return;
-        }
-        let filtered = users;
-        if (_mobUserSearch) {
-            const q = _mobUserSearch.toLowerCase();
-            filtered = users.filter(u => (u.email||'').toLowerCase().includes(q) || (u.username||'').toLowerCase().includes(q));
-        }
-        const countEl = document.getElementById('mob-usr-count');
-        if (countEl) countEl.textContent = `${filtered.length} User`;
-        list.innerHTML = filtered.slice(0,50).map((u, i) => mobUserCardHTML(u, i)).join('');
+    // Use _usrAllDocs (the real Firestore data)
+    const docs = window._usrAllDocs || [];
+    if (!docs.length) {
+        list.innerHTML = `<div class="mob-loading"><div class="mob-spinner"></div>Lade Benutzer…</div>`;
         return;
     }
-    // Parse from DOM rows
-    const usersFromDom = [];
-    rows.forEach(row => {
-        usersFromDom.push({
-            id: row.dataset.uid || '',
-            email: row.querySelector('.usr-email')?.textContent || row.cells[0]?.textContent || '—',
-            username: row.querySelector('.usr-name')?.textContent || '',
-            totalBonusPoints: parseInt(row.querySelector('.usr-pts')?.textContent || '0'),
-            freeShipping: row.querySelector('.usr-freeship')?.textContent?.includes('✓'),
-            disabled: row.querySelector('.usr-status')?.textContent?.includes('Gesperrt'),
-        });
+    const q = _mobUserSearch.toLowerCase();
+    const filtered = docs.filter(doc => {
+        const u = doc.data();
+        if (!q) return true;
+        return (u.email||'').toLowerCase().includes(q) || (u.username||'').toLowerCase().includes(q);
     });
-    let filtered = usersFromDom;
-    if (_mobUserSearch) {
-        const q = _mobUserSearch.toLowerCase();
-        filtered = usersFromDom.filter(u => u.email.toLowerCase().includes(q) || (u.username||'').toLowerCase().includes(q));
-    }
     const countEl = document.getElementById('mob-usr-count');
     if (countEl) countEl.textContent = `${filtered.length} User`;
-    list.innerHTML = filtered.slice(0,60).map((u, i) => mobUserCardHTML(u, i)).join('');
+    list.innerHTML = filtered.slice(0,60).map((doc, i) => {
+        const u = doc.data();
+        return mobUserCardHTML({...u, id: doc.id}, i);
+    }).join('');
 }
 
 function mobUserCardHTML(u, i) {
     const initials = (u.email||'?').slice(0,2).toUpperCase();
     const pts = u.totalBonusPoints || 0;
-    return `<div class="mob-user-card" style="animation-delay:${i*20}ms" onclick="openUserDrawer && openUserDrawer('${escA(u.id)}')">
+    return `<div class="mob-user-card" style="animation-delay:${i*20}ms" onclick="euOpenDrawer('${escA(u.id)}')">
         <div class="mob-user-av${u.disabled?' disabled':''}">${initials}</div>
         <div class="mob-user-info">
             <div class="mob-user-name">${escA(u.username || u.email?.split('@')[0] || '—')}</div>
@@ -18356,7 +18383,7 @@ function mobUserCardHTML(u, i) {
             </div>
         </div>
         <div class="mob-user-right">
-            <div class="mob-user-btn" onclick="event.stopPropagation();openUserDrawer && openUserDrawer('${escA(u.id)}')">
+            <div class="mob-user-btn" onclick="event.stopPropagation();euOpenDrawer('${escA(u.id)}')">
                 <i class="fa-solid fa-chevron-right"></i>
             </div>
         </div>
@@ -18501,7 +18528,7 @@ function mobSearchInput() {
     if (prods.length) {
         html += `<div style="font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.25);padding:8px 4px 6px">Produkte</div>`;
         prods.forEach(p => {
-            html += `<div class="mob-search-result" onclick="mobCloseSearch();mobSwitchTab(0);setTimeout(()=>openPedDrawer('${p.id}'),400)">
+            html += `<div class="mob-search-result" onclick="mobCloseSearch();mobSwitchTab(0);setTimeout(()=>openEditModal('${p.id}'),400)">
                 <div class="mob-search-result-icon" style="background:rgba(103,232,249,.1);color:#67e8f9"><i class="fa-solid fa-box"></i></div>
                 <div><div class="mob-search-result-main">${escA(p.name)}</div>
                 <div class="mob-search-result-sub">${p.category||'—'} · ${(p.price||0).toFixed(2)} € · Lager: ${p.stock||0}</div></div>
@@ -18625,10 +18652,13 @@ document.addEventListener('DOMContentLoaded', () => {
     mobUpdateFab(1);
     setTimeout(() => {
         mobBuildOrdersUI();
-        // Trigger data load for initial tab
         const title = document.getElementById('mob-page-title');
         if (title) title.textContent = 'Bestellungen';
-    }, 600);
+    }, 800);
+    // Also ensure switchTab(1) is called to set correct active state
+    setTimeout(() => {
+        if (typeof switchTab === 'function') switchTab(1);
+    }, 1200);
 });
 
 // User cache exposure (intercept users load)
@@ -18643,12 +18673,8 @@ window.loadUsers = function() {
     }, 1000);
 };
 
-// Expose ordAllDocs globally for mobile
-Object.defineProperty(window, '_ordAllDocs', {
-    get() { return window.__ordAllDocsInternal || []; },
-    set(v) { window.__ordAllDocsInternal = v; if(_mobCurrentTab===1) setTimeout(mobRenderOrderCards,30); },
-    configurable: true
-});
+// _ordAllDocs is already global — just watch for updates via override
+// ordRenderTable is already overridden above to call mobRenderOrderCards
 
 </script>
 
@@ -18669,21 +18695,17 @@ function mobWrapVerwaltungTabs() {
     }
 }
 
-// Patch switchTab to add wrapper for Verwaltung tabs
-const _origSwitchTabV = window.switchTab;
-window.switchTab = function(n) {
-    if (_origSwitchTabV) _origSwitchTabV(n);
-    // Give DOM time to update
+// Tab-specific helpers called from main switchTab override
+function mobRunTabHelpers(n) {
     setTimeout(() => {
         mobWrapVerwaltungTabs();
-        // Tab-specific helpers
         if (n === 4) mobFixCouponTab();
         if (n === 3) mobFixCategoryTab();
         if (n === 8) mobFixSortTab();
         if (n === 14) mobFixAktionenTab();
         if (n === 11) mobFixReviewsTab();
     }, 100);
-};
+}
 
 // ── Kategorien Tab ──
 function mobFixCategoryTab() {

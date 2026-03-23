@@ -5024,16 +5024,13 @@
                 cart.filter(i => i.id != MYSTERY_ID && !i.isBundle).forEach(i => {
                     qtyMap[String(i.id)] = (qtyMap[String(i.id)] || 0) + i.qty;
                 });
-                await db.runTransaction(async (tx) => {
-                    // FIX: Firestore requires ALL reads before ANY writes.
-                    // Use Promise.all to fetch all product docs in parallel first,
-                    // then validate and write in a separate loop afterwards.
-                    const refs  = cartProductIds.map(id => db.collection("products").doc(id));
-                    const snaps = await Promise.all(refs.map(ref => tx.get(ref)));
-
-                    // Validate all products (reads only)
+                // ── STOCK VALIDATION (read-only — public read erlaubt) ──────────────
+                // Wirft einen Fehler und bricht den Kauf ab, wenn Artikel nicht vorrätig.
+                {
+                    const stockRefs  = cartProductIds.map(id => db.collection("products").doc(id));
+                    const stockSnaps = await Promise.all(stockRefs.map(r => r.get()));
                     for (let i = 0; i < cartProductIds.length; i++) {
-                        const snap = snaps[i];
+                        const snap = stockSnaps[i];
                         const id   = cartProductIds[i];
                         if (!snap.exists) throw new Error(`Ein Produkt ist nicht mehr im Sortiment.`);
                         const p = snap.data();
@@ -5043,14 +5040,36 @@
                             throw new Error(`„${p.name}" ist leider nur noch ${p.stock || 0}× auf Lager.`);
                         }
                     }
+                }
 
-                    // All reads done — now perform all writes
-                    for (let i = 0; i < cartProductIds.length; i++) {
-                        const id     = cartProductIds[i];
-                        const needed = qtyMap[id] || 0;
-                        tx.update(refs[i], { stock: firebase.firestore.FieldValue.increment(-needed) });
-                    }
-                });
+                // ── STOCK DECREMENT (Write auf /products/ — nur Admin erlaubt) ───────
+                // FIX: Firestore Rules erlauben Nicht-Admins kein Write auf /products/.
+                // Das Dekrement wird daher non-blocking ausgeführt: Bestellung geht durch;
+                // der Lagerbestand wird vom Admin oder einer Cloud Function aktualisiert.
+                // → Firestore Rules für /products/ um folgende Update-Regel ergänzen,
+                //   damit der Bestand automatisch reserviert wird:
+                //
+                //   allow update: if isAdmin() ||
+                //     (isLoggedIn() && isNotDisabled() &&
+                //      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock']) &&
+                //      request.resource.data.stock < resource.data.stock &&
+                //      request.resource.data.stock >= 0);
+                //
+                let stockReserved = false;
+                try {
+                    await db.runTransaction(async (tx) => {
+                        const refs  = cartProductIds.map(id => db.collection("products").doc(id));
+                        const snaps = await Promise.all(refs.map(ref => tx.get(ref)));
+                        for (let i = 0; i < cartProductIds.length; i++) {
+                            const id     = cartProductIds[i];
+                            const needed = qtyMap[id] || 0;
+                            tx.update(refs[i], { stock: firebase.firestore.FieldValue.increment(-needed) });
+                        }
+                    });
+                    stockReserved = true;
+                } catch(e) {
+                    console.warn('Stock-Dekrement übersprungen (Firestore Rules — /products/ Write-Berechtigung fehlt):', e.message);
+                }
                 // Server-side subtotal (mystery vape excluded from subtotal)
                 let serverSubtotal = verifiedItems.reduce((sum, item) => {
                     return item.id === MYSTERY_ID ? sum : sum + item.qty * item.price;
@@ -5160,7 +5179,7 @@
                     carrier: null,
                     loyaltyEarned: loyaltyEarned,
                     loyaltyCredited: false,
-                    stockReserved: true,
+                    stockReserved: stockReserved,
                     ...(orderNote ? { orderNote } : {})   // nur speichern wenn nicht leer
                 };
                 if (savedCouponInfo) {

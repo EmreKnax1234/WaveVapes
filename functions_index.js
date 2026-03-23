@@ -1,24 +1,18 @@
-// WaveVapes — Firebase Cloud Function: Web Push Notifications versenden
+// WaveVapes — Firebase Cloud Function: FCM Push Notifications
 // Datei: functions/index.js
 //
 // Setup:
 //   cd functions
-//   npm install firebase-admin firebase-functions web-push
+//   npm install firebase-admin firebase-functions
 //   firebase deploy --only functions
+//
+// Kein web-push nötig — Firebase Admin SDK sendet direkt via FCM!
 
 const functions = require('firebase-functions');
 const admin     = require('firebase-admin');
-const webpush   = require('web-push');
 
 admin.initializeApp();
 const db = admin.firestore();
-
-// ── VAPID Keys ────────────────────────────────────────────────
-webpush.setVapidDetails(
-    'mailto:info@wavevapes.de',
-    'BE-rYQ5kRvk31rN63FAd9edEOGoFozah0WB-zc4jlWOzcGCFeBnPTW7nd9qeNNiLQ7VjNOmIyngAVF0q6ZzzyXw',
-    'cSidcgy-6OTh1_yTG4Apaa27zoJWx7gOQfseal6f1zY'
-);
 
 // ── Trigger: Neue push_notification → sofort versenden ────────
 exports.sendPushOnCreate = functions
@@ -43,58 +37,77 @@ exports.sendScheduledPush = functions
         await Promise.allSettled(snap.docs.map(d => _dispatch(d.id, d.data())));
     });
 
-// ── Kern: Subscriptions laden + Notifications senden ──────────
+// ── Kern: FCM Tokens laden + Notifications senden ─────────────
 async function _dispatch(notifId, n) {
     const { title, body, url = 'https://wavevapes.de', target = 'all' } = n;
-
     await db.collection('push_notifications').doc(notifId).update({ status: 'sending' });
 
-    // Subscriptions laden (alle Browser die "Ja" geklickt haben)
-    let subsSnap = await db.collection('push_subscriptions').get();
-    let subs = subsSnap.docs.map(d => ({ docId: d.id, ...d.data() }))
-        .filter(s => s.endpoint && s.keys && s.keys.p256dh && s.keys.auth);
+    // FCM Tokens aus push_subscriptions laden
+    const subsSnap = await db.collection('push_subscriptions').get();
+    let subs = subsSnap.docs
+        .map(d => ({ docId: d.id, ...d.data() }))
+        .filter(s => s.fcmToken);  // nur Docs mit gültigem FCM Token
 
-    // Zielgruppen-Filter
+    // Zielgruppen-Filter anwenden
     subs = await _filter(subs, n);
-    console.log(`Sende "${title}" → ${subs.length} Abonnenten (target: ${target})`);
+    console.log(`Sende "${title}" → ${subs.length} Tokens (target: ${target})`);
 
-    const payload = JSON.stringify({ title, body, url,
-        icon:  '/logo.png',
-        badge: '/logo.png',
-        tag:   notifId,
-    });
+    if (!subs.length) {
+        await db.collection('push_notifications').doc(notifId)
+            .update({ status: 'sent', delivered: 0, sentCount: 0, completedAt: admin.firestore.FieldValue.serverTimestamp() });
+        return;
+    }
+
+    const message = {
+        notification: { title, body },
+        webpush: {
+            notification: {
+                title, body,
+                icon:  'https://wavevapes.de/logo.png',
+                badge: 'https://wavevapes.de/logo.png',
+                requireInteraction: false,
+            },
+            fcmOptions: { link: url }
+        },
+        data: { url }
+    };
 
     let delivered = 0;
     const toDelete = [];
 
-    await Promise.allSettled(subs.map(async sub => {
-        try {
-            await webpush.sendNotification(
-                { endpoint: sub.endpoint, keys: { p256dh: sub.keys.p256dh, auth: sub.keys.auth } },
-                payload,
-                { TTL: 86400 }
-            );
-            delivered++;
-            // lastSeen aktuell halten
-            await db.collection('push_subscriptions').doc(sub.docId)
-                .update({ lastSeen: admin.firestore.FieldValue.serverTimestamp() })
-                .catch(() => {});
-        } catch (err) {
-            // 410/404 = Subscription abgelaufen, Browser hat sie widerrufen
-            if (err.statusCode === 410 || err.statusCode === 404) {
-                toDelete.push(sub.docId);
-            } else {
-                console.warn(`Push fehlgeschlagen (${sub.docId}):`, err.statusCode);
-            }
-        }
-    }));
+    // FCM erlaubt max. 500 Tokens pro sendEachForMulticast
+    const CHUNK = 500;
+    for (let i = 0; i < subs.length; i += CHUNK) {
+        const chunk = subs.slice(i, i + CHUNK);
+        const tokens = chunk.map(s => s.fcmToken);
 
-    // Abgelaufene Subscriptions aus Firestore entfernen
+        const response = await admin.messaging().sendEachForMulticast({
+            tokens,
+            ...message
+        });
+
+        response.responses.forEach((r, idx) => {
+            if (r.success) {
+                delivered++;
+            } else {
+                const code = r.error?.code || '';
+                // Ungültige/abgelaufene Tokens entfernen
+                if (code.includes('registration-token-not-registered') ||
+                    code.includes('invalid-registration-token') ||
+                    code.includes('invalid-argument')) {
+                    toDelete.push(chunk[idx].docId);
+                }
+                console.warn(`Token fehlgeschlagen (${chunk[idx].docId}):`, code);
+            }
+        });
+    }
+
+    // Ungültige Tokens aus Firestore löschen
     if (toDelete.length) {
         const batch = db.batch();
         toDelete.forEach(id => batch.delete(db.collection('push_subscriptions').doc(id)));
         await batch.commit();
-        console.log(`${toDelete.length} abgelaufene Subscriptions gelöscht`);
+        console.log(`${toDelete.length} ungültige Tokens gelöscht`);
     }
 
     await db.collection('push_notifications').doc(notifId).update({
@@ -113,7 +126,6 @@ async function _filter(subs, n) {
     const target = n.target || 'all';
     if (target === 'all') return subs;
 
-    // Einzelner Nutzer: Subscription per userId oder email suchen
     if (target === 'single-user') {
         const uid   = n.recipientUid;
         const email = n.recipientEmail;
@@ -123,46 +135,36 @@ async function _filter(subs, n) {
         );
     }
 
-    // Für Segmentierung: Nutzerdaten aus Firestore holen
     const usersSnap  = await db.collection('users').get();
     const ordersSnap = await db.collection('orders').get();
 
-    const userMap = {};   // uid → userData
-    usersSnap.docs.forEach(d => { userMap[d.id] = { ...d.data(), uid: d.id }; });
+    const userMap   = {};
+    usersSnap.docs.forEach(d => { userMap[d.id] = d.data(); });
 
-    const orderData = {}; // uid → {total, last}
+    const orderData = {};
     ordersSnap.docs.forEach(d => {
         const o = d.data();
         if (!o.userId) return;
-        if (!orderData[o.userId]) orderData[o.userId] = { total: 0, last: 0, count: 0 };
+        if (!orderData[o.userId]) orderData[o.userId] = { total: 0, last: 0 };
         orderData[o.userId].total += o.total || 0;
-        orderData[o.userId].count++;
         const ts = o.date?.toMillis?.() || 0;
         if (ts > orderData[o.userId].last) orderData[o.userId].last = ts;
     });
 
-    const now  = Date.now();
-    const d30  = now - 30 * 86400000;
-    const d60  = now - 60 * 86400000;
-    const d7   = now -  7 * 86400000;
+    const now = Date.now();
 
     return subs.filter(s => {
-        if (!s.userId) return false;
-        const u = userMap[s.userId];
-        const o = orderData[s.userId] || { total: 0, last: 0, count: 0 };
-        if (!u) return false;
-
+        if (!s.userId) return target === 'all';
+        const u = userMap[s.userId] || {};
+        const o = orderData[s.userId] || { total: 0, last: 0 };
         switch (target) {
-            case 'no-order-30':   return o.last < d30;
-            case 'no-order-60':   return o.last < d60;
-            case 'loyalty-high':  return (u.totalBonusPoints || 0) > 500;
-            case 'loyalty-low':   return (u.totalBonusPoints || 0) < 100;
-            case 'new-users': {
-                const reg = u.createdAt?.toMillis?.() || 0;
-                return reg > d7;
-            }
-            case 'vip':           return o.total >= 200;
-            default:              return true;
+            case 'no-order-30':  return o.last < now - 30 * 86400000;
+            case 'no-order-60':  return o.last < now - 60 * 86400000;
+            case 'loyalty-high': return (u.totalBonusPoints || 0) > 500;
+            case 'loyalty-low':  return (u.totalBonusPoints || 0) < 100;
+            case 'new-users':    return (u.createdAt?.toMillis?.() || 0) > now - 7 * 86400000;
+            case 'vip':          return o.total >= 200;
+            default:             return true;
         }
     });
 }

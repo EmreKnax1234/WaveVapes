@@ -3447,12 +3447,14 @@
         }
         function showAuthModal() {
             if (currentUser) {
-                // Eingeloggter User → direkt zur Account-Seite weiterleiten
-                window.location.href = 'https://wavevapes.de/account';
-                return;
+                document.getElementById("login-form").classList.add("hidden");
+                document.getElementById("register-form").classList.add("hidden");
+                document.getElementById("logged-in-view").classList.remove("hidden");
+                document.getElementById("logged-in-email").textContent = currentUser.email;
+                document.getElementById("auth-title").textContent = "Dein Account";
+            } else {
+                switchAuthTab(0);
             }
-            // Nicht eingeloggt → Login-Modal anzeigen
-            switchAuthTab(0);
             const modal = document.getElementById("auth-modal");
             modal.classList.remove("hidden"); modal.classList.add("flex");
             // iOS Scroll-Lock: verhindert dass der Hintergrund scrollt und

@@ -3149,47 +3149,213 @@
                 </div>
             </div>
 
-            <!-- Push-Benachrichtigungen Panel (NEU) -->
-            <div style="margin-top:16px;background:#13131f;border:1px solid rgba(103,232,249,.15);border-radius:20px;overflow:hidden">
-                <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.06)">
-                    <div style="display:flex;align-items:center;gap:10px">
-                        <div style="width:34px;height:34px;border-radius:10px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.2);display:flex;align-items:center;justify-content:center;color:#fbbf24;font-size:14px"><i class="fa-solid fa-bell"></i></div>
-                        <div>
-                            <div style="font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#fbbf24">Push-Benachrichtigungen</div>
-                            <div style="font-size:10px;color:rgba(255,255,255,.3);margin-top:1px">Gezielte Nachrichten an Kunden senden</div>
+            <!-- ═══════════════════════════════════════════════
+                 PUSH-BENACHRICHTIGUNGEN CENTER
+            ═══════════════════════════════════════════════ -->
+            <div style="margin-top:16px;background:#13131f;border:1px solid rgba(251,191,36,.2);border-radius:22px;overflow:hidden">
+
+                <!-- Header mit KPI-Leiste -->
+                <div style="background:linear-gradient(135deg,rgba(251,191,36,.08),rgba(251,191,36,.02));border-bottom:1px solid rgba(251,191,36,.15);padding:18px 22px">
+                    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+                        <div style="display:flex;align-items:center;gap:12px">
+                            <div style="width:40px;height:40px;border-radius:12px;background:rgba(251,191,36,.15);border:1px solid rgba(251,191,36,.3);display:flex;align-items:center;justify-content:center;color:#fbbf24;font-size:18px">
+                                <i class="fa-solid fa-bell"></i>
+                            </div>
+                            <div>
+                                <div style="font-family:'Orbitron',sans-serif;font-size:15px;font-weight:700;color:#fbbf24;letter-spacing:.04em">Push-Benachrichtigungen</div>
+                                <div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:2px">Gezielte Nachrichten an Kunden senden</div>
+                            </div>
+                        </div>
+                        <button onclick="pushRefreshStats()" style="display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:10px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.2);color:#fbbf24;font-size:11px;font-weight:700;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(251,191,36,.2)'" onmouseout="this.style.background='rgba(251,191,36,.1)'">
+                            <i class="fa-solid fa-rotate-right"></i> Aktualisieren
+                        </button>
+                    </div>
+                    <!-- KPI Strip -->
+                    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+                        <div style="background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:12px 14px">
+                            <div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:6px">Abonnenten</div>
+                            <div id="push-kpi-subs" style="font-size:22px;font-weight:700;color:#fbbf24;font-family:'JetBrains Mono',monospace">—</div>
+                        </div>
+                        <div style="background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:12px 14px">
+                            <div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:6px">Versendet (gesamt)</div>
+                            <div id="push-kpi-sent" style="font-size:22px;font-weight:700;color:#67e8f9;font-family:'JetBrains Mono',monospace">—</div>
+                        </div>
+                        <div style="background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:12px 14px">
+                            <div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:6px">Letzte 7 Tage</div>
+                            <div id="push-kpi-week" style="font-size:22px;font-weight:700;color:#a78bfa;font-family:'JetBrains Mono',monospace">—</div>
+                        </div>
+                        <div style="background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:12px 14px">
+                            <div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:6px">Zugestellt</div>
+                            <div id="push-kpi-delivered" style="font-size:22px;font-weight:700;color:#34d399;font-family:'JetBrains Mono',monospace">—</div>
                         </div>
                     </div>
-                    <span id="push-sub-count" style="font-size:11px;font-family:'JetBrains Mono',monospace;background:rgba(251,191,36,.1);color:#fbbf24;padding:3px 10px;border-radius:99px;border:1px solid rgba(251,191,36,.2)">— Abonnenten</span>
                 </div>
-                <div style="padding:18px 20px;display:flex;flex-direction:column;gap:12px">
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+
+                <!-- Tab-Navigation -->
+                <div style="display:flex;border-bottom:1px solid rgba(255,255,255,.06)">
+                    <button id="push-tab-compose" onclick="pushSwitchTab('compose')" style="flex:1;padding:12px;font-size:12px;font-weight:600;background:rgba(251,191,36,.08);border:none;border-bottom:2px solid #fbbf24;color:#fbbf24;cursor:pointer;transition:all .2s">
+                        <i class="fa-solid fa-pen-to-square"></i> Neue Nachricht
+                    </button>
+                    <button id="push-tab-templates" onclick="pushSwitchTab('templates')" style="flex:1;padding:12px;font-size:12px;font-weight:600;background:transparent;border:none;border-bottom:2px solid transparent;color:rgba(255,255,255,.4);cursor:pointer;transition:all .2s">
+                        <i class="fa-solid fa-layer-group"></i> Vorlagen
+                    </button>
+                    <button id="push-tab-history" onclick="pushSwitchTab('history')" style="flex:1;padding:12px;font-size:12px;font-weight:600;background:transparent;border:none;border-bottom:2px solid transparent;color:rgba(255,255,255,.4);cursor:pointer;transition:all .2s">
+                        <i class="fa-solid fa-clock-rotate-left"></i> Verlauf
+                    </button>
+                    <button id="push-tab-subscribers" onclick="pushSwitchTab('subscribers')" style="flex:1;padding:12px;font-size:12px;font-weight:600;background:transparent;border:none;border-bottom:2px solid transparent;color:rgba(255,255,255,.4);cursor:pointer;transition:all .2s">
+                        <i class="fa-solid fa-users"></i> Abonnenten
+                    </button>
+                </div>
+
+                <!-- TAB: NEUE NACHRICHT -->
+                <div id="push-panel-compose" style="padding:20px;display:flex;flex-direction:column;gap:14px">
+
+                    <!-- Vorschau -->
+                    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px;display:flex;gap:12px;align-items:flex-start">
+                        <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#0a0a0a,#1a1a2e);border:1px solid rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">🌊</div>
+                        <div style="flex:1;min-width:0">
+                            <div id="push-preview-title" style="font-size:13px;font-weight:700;color:#fff;margin-bottom:3px">Titel der Benachrichtigung</div>
+                            <div id="push-preview-body" style="font-size:11px;color:rgba(255,255,255,.5);line-height:1.5">Nachricht erscheint hier…</div>
+                        </div>
+                        <div style="font-size:9px;color:rgba(255,255,255,.25);flex-shrink:0">jetzt</div>
+                    </div>
+
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
                         <div>
-                            <div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:6px">Titel</div>
-                            <input id="push-title" placeholder="z.B. 🔥 Neue Aktion!" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 12px;color:#fff;font-size:12px;outline:none;box-sizing:border-box;transition:border-color .2s" onfocus="this.style.borderColor='rgba(103,232,249,.4)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">
+                            <div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:6px">Titel *</div>
+                            <input id="push-title" placeholder="z.B. 🔥 Neue Aktion!" oninput="pushUpdatePreview()" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px 13px;color:#fff;font-size:13px;outline:none;box-sizing:border-box;transition:border-color .2s" onfocus="this.style.borderColor='rgba(251,191,36,.5)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">
                         </div>
                         <div>
-                            <div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:6px">Zielgruppe</div>
-                            <select id="push-target" style="width:100%;background:#1a1a2e;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 12px;color:#fff;font-size:12px;outline:none;box-sizing:border-box;color-scheme:dark">
-                                <option value="all">Alle Abonnenten</option>
-                                <option value="no-order-30">Keine Bestellung 30+ Tage</option>
-                                <option value="loyalty-high">Loyalty &gt; 500 Punkte</option>
-                                <option value="loyalty-low">Loyalty &lt; 100 Punkte</option>
-                                <option value="new-users">Neue Kunden (letzte 7 Tage)</option>
+                            <div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:6px">Zielgruppe</div>
+                            <select id="push-target" style="width:100%;background:#1a1a2e;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px 13px;color:#fff;font-size:12px;outline:none;color-scheme:dark;box-sizing:border-box" onchange="pushUpdateAudienceInfo()">
+                                <option value="all">🌐 Alle Nutzer</option>
+                                <option value="no-order-30">😴 Inaktiv 30+ Tage</option>
+                                <option value="no-order-60">💤 Inaktiv 60+ Tage</option>
+                                <option value="loyalty-high">⭐ Loyalty &gt; 500 Punkte</option>
+                                <option value="loyalty-low">🌱 Neue Kunden (&lt; 100 Punkte)</option>
+                                <option value="new-users">🆕 Registriert letzte 7 Tage</option>
+                                <option value="vip">👑 VIP (Bestellwert &gt; 200 €)</option>
+                                <option value="single-user" id="push-target-single-opt" style="display:none">👤 Einzelner Nutzer</option>
                             </select>
                         </div>
                     </div>
-                    <div>
-                        <div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:6px">Nachricht</div>
-                        <textarea id="push-body" placeholder="Deine Nachricht an die Kunden..." rows="2" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 12px;color:#fff;font-size:12px;outline:none;resize:vertical;font-family:inherit;box-sizing:border-box;transition:border-color .2s" onfocus="this.style.borderColor='rgba(103,232,249,.4)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'"></textarea>
+
+                    <div id="push-audience-info" style="display:none;font-size:11px;color:#67e8f9;background:rgba(103,232,249,.06);border:1px solid rgba(103,232,249,.15);border-radius:8px;padding:8px 12px">
+                        <i class="fa-solid fa-circle-info"></i> <span id="push-audience-info-text"></span>
                     </div>
-                    <div style="display:flex;gap:10px;align-items:center">
-                        <input id="push-url" placeholder="Link (optional, z.B. https://wavevapes.de)" style="flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 12px;color:#fff;font-size:12px;outline:none;transition:border-color .2s" onfocus="this.style.borderColor='rgba(103,232,249,.4)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">
-                        <button onclick="sendPushNotification()" id="push-send-btn" style="padding:9px 20px;border-radius:10px;background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#000;font-weight:700;font-size:12px;border:none;cursor:pointer;white-space:nowrap;transition:opacity .2s">
+
+                    <div id="push-single-user-wrap" style="display:none">
+                        <div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:6px">Nutzer (E-Mail oder Name)</div>
+                        <div style="display:flex;gap:8px">
+                            <input id="push-single-user-input" placeholder="E-Mail eingeben…"
+                                style="flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 12px;color:#fff;font-size:12px;outline:none;transition:border-color .2s"
+                                onfocus="this.style.borderColor='rgba(251,191,36,.5)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">
+                        </div>
+                        <div id="push-single-user-info" style="margin-top:6px;font-size:11px;color:rgba(255,255,255,.35)"></div>
+                    </div>
+
+                    <div>
+                        <div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:6px">Nachricht *</div>
+                        <textarea id="push-body" placeholder="Deine Nachricht an die Kunden…" rows="3" oninput="pushUpdatePreview()" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px 13px;color:#fff;font-size:13px;outline:none;resize:vertical;font-family:inherit;box-sizing:border-box;transition:border-color .2s" onfocus="this.style.borderColor='rgba(251,191,36,.5)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'"></textarea>
+                    </div>
+
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                        <div>
+                            <div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:6px">Link (optional)</div>
+                            <input id="push-url" placeholder="https://wavevapes.de" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px 13px;color:#fff;font-size:13px;outline:none;box-sizing:border-box;transition:border-color .2s" onfocus="this.style.borderColor='rgba(251,191,36,.5)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">
+                        </div>
+                        <div>
+                            <div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:6px">Geplant für (optional)</div>
+                            <input id="push-schedule" type="datetime-local" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px 13px;color:#fff;font-size:12px;outline:none;box-sizing:border-box;color-scheme:dark;transition:border-color .2s" onfocus="this.style.borderColor='rgba(251,191,36,.5)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">
+                        </div>
+                    </div>
+
+                    <!-- Schnell-Tags -->
+                    <div>
+                        <div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:8px">Schnell-Einfügen</div>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap">
+                            <button onclick="pushInsertTag('🔥 Neue Aktion!')" style="padding:4px 12px;border-radius:99px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.6);font-size:11px;cursor:pointer;transition:all .15s" onmouseover="this.style.background='rgba(251,191,36,.1)';this.style.borderColor='rgba(251,191,36,.3)'" onmouseout="this.style.background='rgba(255,255,255,.05)';this.style.borderColor='rgba(255,255,255,.1)'">🔥 Neue Aktion</button>
+                            <button onclick="pushInsertTag('🎁 Mystery Vape gratis')" style="padding:4px 12px;border-radius:99px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.6);font-size:11px;cursor:pointer;transition:all .15s" onmouseover="this.style.background='rgba(251,191,36,.1)';this.style.borderColor='rgba(251,191,36,.3)'" onmouseout="this.style.background='rgba(255,255,255,.05)';this.style.borderColor='rgba(255,255,255,.1)'">🎁 Mystery Vape</button>
+                            <button onclick="pushInsertTag('🚚 Gratis Versand ab 100€')" style="padding:4px 12px;border-radius:99px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.6);font-size:11px;cursor:pointer;transition:all .15s" onmouseover="this.style.background='rgba(251,191,36,.1)';this.style.borderColor='rgba(251,191,36,.3)'" onmouseout="this.style.background='rgba(255,255,255,.05)';this.style.borderColor='rgba(255,255,255,.1)'">🚚 Gratis Versand</button>
+                            <button onclick="pushInsertTag('⭐ Loyalty-Punkte warten!')" style="padding:4px 12px;border-radius:99px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.6);font-size:11px;cursor:pointer;transition:all .15s" onmouseover="this.style.background='rgba(251,191,36,.1)';this.style.borderColor='rgba(251,191,36,.3)'" onmouseout="this.style.background='rgba(255,255,255,.05)';this.style.borderColor='rgba(255,255,255,.1)'">⭐ Loyalty-Punkte</button>
+                            <button onclick="pushInsertTag('🆕 Neue Produkte sind da!')" style="padding:4px 12px;border-radius:99px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.6);font-size:11px;cursor:pointer;transition:all .15s" onmouseover="this.style.background='rgba(251,191,36,.1)';this.style.borderColor='rgba(251,191,36,.3)'" onmouseout="this.style.background='rgba(255,255,255,.05)';this.style.borderColor='rgba(255,255,255,.1)'">🆕 Neue Produkte</button>
+                        </div>
+                    </div>
+
+                    <div style="display:flex;justify-content:flex-end;gap:10px;padding-top:4px">
+                        <button onclick="pushSaveAsTemplate()" style="display:flex;align-items:center;gap:7px;padding:10px 18px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.5);font-size:12px;font-weight:700;cursor:pointer;transition:all .2s" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,.5)'">
+                            <i class="fa-solid fa-floppy-disk"></i> Als Vorlage
+                        </button>
+                        <button id="push-send-btn" onclick="sendPushNotification()" style="display:flex;align-items:center;gap:8px;padding:10px 24px;border-radius:12px;background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#000;font-weight:700;font-size:13px;border:none;cursor:pointer;transition:opacity .2s">
                             <i class="fa-solid fa-paper-plane"></i> Senden
                         </button>
                     </div>
-                    <div id="push-log" style="max-height:150px;overflow-y:auto;display:flex;flex-direction:column;gap:6px"></div>
                 </div>
+
+                <!-- TAB: VORLAGEN -->
+                <div id="push-panel-templates" style="display:none;padding:20px">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+                        <div style="font-size:12px;color:rgba(255,255,255,.4)">Kampagnen-Vorlagen</div>
+                        <button onclick="pushLoadCustomTemplates()" style="font-size:11px;padding:5px 12px;border-radius:8px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.5);cursor:pointer">↻ Neu laden</button>
+                    </div>
+
+                    <div style="font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.25);margin-bottom:10px">Standard-Vorlagen</div>
+                    <div id="push-builtin-templates" style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px"></div>
+
+                    <div style="font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.25);margin-bottom:10px">Eigene Vorlagen</div>
+                    <div id="push-custom-templates-list" style="font-size:12px;color:rgba(255,255,255,.25);text-align:center;padding:20px">Noch keine eigenen Vorlagen</div>
+                </div>
+
+                <!-- TAB: VERLAUF -->
+                <div id="push-panel-history" style="display:none;padding:20px">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+                        <div style="font-size:12px;color:rgba(255,255,255,.4)">Zuletzt versendete Kampagnen</div>
+                        <button onclick="pushLoadHistory()" style="font-size:11px;padding:5px 12px;border-radius:8px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.5);cursor:pointer">↻ Neu laden</button>
+                    </div>
+                    <div id="push-history-list">
+                        <div style="text-align:center;padding:40px;color:rgba(255,255,255,.2);font-size:12px"><i class="fa-solid fa-spinner fa-spin"></i> Lade…</div>
+                    </div>
+                </div>
+
+                <!-- TAB: NUTZER / ABONNENTEN -->
+                <div id="push-panel-subscribers" style="display:none;padding:20px">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+                        <div style="font-size:12px;color:rgba(255,255,255,.4)">Alle registrierten Nutzer — direkt anschreiben</div>
+                        <div style="display:flex;gap:8px">
+                            <button onclick="pushExportSubscribers()" style="font-size:11px;padding:5px 12px;border-radius:8px;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.2);color:#34d399;cursor:pointer"><i class="fa-solid fa-file-csv"></i> Export</button>
+                            <button onclick="pushLoadSubscribers()" style="font-size:11px;padding:5px 12px;border-radius:8px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.5);cursor:pointer">↻ Laden</button>
+                        </div>
+                    </div>
+
+                    <!-- KPI-Zeile -->
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+                        <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:10px;text-align:center">
+                            <div id="push-seg-total" style="font-size:20px;font-weight:700;color:#fbbf24;font-family:'JetBrains Mono',monospace">—</div>
+                            <div style="font-size:9px;color:rgba(255,255,255,.3);margin-top:2px;text-transform:uppercase;letter-spacing:.06em">Nutzer gesamt</div>
+                        </div>
+                        <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:10px;text-align:center">
+                            <div id="push-seg-active" style="font-size:20px;font-weight:700;color:#34d399;font-family:'JetBrains Mono',monospace">—</div>
+                            <div style="font-size:9px;color:rgba(255,255,255,.3);margin-top:2px;text-transform:uppercase;letter-spacing:.06em">Aktiv (30T)</div>
+                        </div>
+                        <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:10px;text-align:center">
+                            <div id="push-seg-orders" style="font-size:20px;font-weight:700;color:#67e8f9;font-family:'JetBrains Mono',monospace">—</div>
+                            <div style="font-size:9px;color:rgba(255,255,255,.3);margin-top:2px;text-transform:uppercase;letter-spacing:.06em">Mit Bestellung</div>
+                        </div>
+                    </div>
+
+                    <!-- Suche -->
+                    <div style="position:relative;margin-bottom:12px">
+                        <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,.3);font-size:12px;pointer-events:none"></i>
+                        <input id="push-user-search" placeholder="Nutzer suchen (Name oder E-Mail)…" oninput="pushFilterUsers()"
+                            style="width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 12px 9px 34px;color:#fff;font-size:12px;outline:none;box-sizing:border-box;transition:border-color .2s"
+                            onfocus="this.style.borderColor='rgba(251,191,36,.4)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">
+                    </div>
+
+                    <div id="push-subscribers-list">
+                        <div style="text-align:center;padding:40px;color:rgba(255,255,255,.2);font-size:12px"><i class="fa-solid fa-spinner fa-spin"></i> Lade Nutzer…</div>
+                    </div>
+                </div>
+
             </div>
 
             <!-- Erweiterte Export-Optionen (NEU) -->
@@ -7726,10 +7892,12 @@ async function loadAnalyticsExtended(ordersSnap) {
 
     // Push-Abonnenten zählen
     try {
-        const pushSnap = await db.collection('push_subscriptions').get().catch(()=>({size:0}));
+        const pushSnap = await db.collection('push_subscriptions').get().catch(()=>({size:0,docs:[]}));
         const el = document.getElementById('push-sub-count');
         if (el) el.textContent = (pushSnap.size||0)+' Abonnenten';
     } catch(e) {}
+    // Aktualisiere das vollständige Push-Center
+    if (typeof pushRefreshStats === 'function') pushRefreshStats();
 }
 
 // Hook into loadAnalytics to also render extended charts
@@ -7752,44 +7920,400 @@ window.loadAnalytics = async function() {
     } catch(e) { console.warn('Extended analytics error:', e); }
 };
 
-// ── Push-Benachrichtigungen senden ────────────────────────
-async function sendPushNotification() {
-    const title = document.getElementById('push-title')?.value.trim();
-    const body  = document.getElementById('push-body')?.value.trim();
-    const target = document.getElementById('push-target')?.value || 'all';
-    const url   = document.getElementById('push-url')?.value.trim() || 'https://wavevapes.de';
-    if (!title || !body) { showToast('⚠️ Titel und Nachricht sind Pflichtfelder', 'error'); return; }
 
-    const btn = document.getElementById('push-send-btn');
-    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Senden...'; }
+// ═══════════════════════════════════════════════════════════════
+//  PUSH NOTIFICATION CENTER  — User-basiert (alle User = Abonnenten)
+// ═══════════════════════════════════════════════════════════════
+
+// ── Interne State ─────────────────────────────────────────────
+var _pushAllUsers = [];   // [{uid, email, username, points, lastOrderDate, orderCount}]
+var _pushFiltered = [];   // gefilterte Liste für Suche
+
+// ── Built-in Vorlagen ─────────────────────────────────────────
+var PUSH_BUILTIN = [
+    { icon:'🔥', color:'rgba(239,68,68,.12)', title:'Neue Aktion!',         body:'Schau dir unsere aktuellen Angebote an – jetzt bis zu 30% sparen! 🎉', target:'all' },
+    { icon:'😴', color:'rgba(167,139,250,.12)',title:'Wir vermissen dich!', body:'Lange nicht gesehen 👋 Schau vorbei – neue Produkte & tolle Angebote!', target:'no-order-30' },
+    { icon:'🎁', color:'rgba(52,211,153,.12)', title:'Mystery Vape gratis!', body:'Ab 100€ Bestellwert gibt\'s eine Mystery Vape gratis. Jetzt bestellen!', target:'all' },
+    { icon:'⭐', color:'rgba(251,191,36,.12)', title:'Deine Punkte warten!', body:'Du hast genug Loyalty-Punkte für einen Rabatt. Jetzt einlösen!',     target:'loyalty-high' },
+    { icon:'🆕', color:'rgba(103,232,249,.12)',title:'Neue Produkte da!',   body:'Frischer Nachschub im Shop! Entdecke neue Geschmacksrichtungen 🌊',   target:'all' },
+    { icon:'👑', color:'rgba(251,146,60,.12)', title:'VIP-Angebot für dich',body:'Als treuer Kunde erhältst du exklusiven Früh-Zugang zu unserer neuen Kollektion!', target:'vip' },
+];
+
+// ── Tab-Switching ─────────────────────────────────────────────
+function pushSwitchTab(tab) {
+    ['compose','templates','history','subscribers'].forEach(function(t) {
+        var panel = document.getElementById('push-panel-' + t);
+        var btn   = document.getElementById('push-tab-'  + t);
+        var active = t === tab;
+        if (panel) panel.style.display = active ? (t === 'compose' ? 'flex' : 'block') : 'none';
+        if (btn) {
+            btn.style.background   = active ? 'rgba(251,191,36,.08)' : 'transparent';
+            btn.style.borderBottom = active ? '2px solid #fbbf24'    : '2px solid transparent';
+            btn.style.color        = active ? '#fbbf24' : 'rgba(255,255,255,.4)';
+        }
+    });
+    if (tab === 'history')     pushLoadHistory();
+    if (tab === 'subscribers') pushLoadSubscribers();
+    if (tab === 'templates')   pushRenderBuiltinTemplates();
+}
+
+// ── Vorschau ──────────────────────────────────────────────────
+function pushUpdatePreview() {
+    var title = (document.getElementById('push-title') || {}).value || 'Titel';
+    var body  = (document.getElementById('push-body')  || {}).value || 'Nachricht erscheint hier…';
+    var pt = document.getElementById('push-preview-title');
+    var pb = document.getElementById('push-preview-body');
+    if (pt) pt.textContent = title;
+    if (pb) pb.textContent = body;
+}
+
+// ── Schnell-Tags ──────────────────────────────────────────────
+function pushInsertTag(text) {
+    var t = document.getElementById('push-title');
+    var b = document.getElementById('push-body');
+    if (!t || !b) return;
+    if (!t.value.trim()) t.value = text;
+    else b.value += (b.value ? ' ' : '') + text;
+    pushUpdatePreview();
+}
+
+// ── Zielgruppen-Info ──────────────────────────────────────────
+function pushUpdateAudienceInfo() {
+    var target = (document.getElementById('push-target') || {}).value;
+    var info   = document.getElementById('push-audience-info');
+    var txt    = document.getElementById('push-audience-info-text');
+    var suw    = document.getElementById('push-single-user-wrap');
+    var msgs = {
+        'all':          '🌐 Wird an alle registrierten Nutzer gesendet',
+        'no-order-30':  '😴 Nutzer die seit 30+ Tagen nicht bestellt haben',
+        'no-order-60':  '💤 Nutzer die seit 60+ Tagen inaktiv sind',
+        'loyalty-high': '⭐ Nutzer mit mehr als 500 Loyalty-Punkten',
+        'loyalty-low':  '🌱 Neue Nutzer mit weniger als 100 Punkten',
+        'new-users':    '🆕 In den letzten 7 Tagen registriert',
+        'vip':          '👑 VIP-Kunden mit Gesamtbestellwert über 200 €',
+        'single-user':  '👤 Nachricht an einen einzelnen Nutzer',
+    };
+    if (txt) txt.textContent = msgs[target] || '';
+    if (info) info.style.display = msgs[target] ? 'block' : 'none';
+    if (suw)  suw.style.display  = target === 'single-user' ? 'block' : 'none';
+}
+
+// ── Vorlagen rendern ──────────────────────────────────────────
+function pushRenderBuiltinTemplates() {
+    var cont = document.getElementById('push-builtin-templates');
+    if (!cont || cont.children.length > 0) return; // schon gerendert
+    cont.innerHTML = PUSH_BUILTIN.map(function(t, i) {
+        return '<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07)">' +
+            '<div style="width:38px;height:38px;border-radius:10px;background:' + t.color + ';display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">' + t.icon + '</div>' +
+            '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:3px">' + t.title + '</div>' +
+            '<div style="font-size:11px;color:rgba(255,255,255,.4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + t.body + '</div></div>' +
+            '<button data-tpl-idx="' + i + '" style="padding:6px 14px;border-radius:8px;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.25);color:#fbbf24;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0">Verwenden</button>' +
+            '</div>';
+    }).join('');
+    cont.addEventListener('click', function(e) {
+        var btn = e.target.closest('[data-tpl-idx]');
+        if (!btn) return;
+        pushUseTemplate(PUSH_BUILTIN[parseInt(btn.getAttribute('data-tpl-idx'))]);
+    });
+    pushLoadCustomTemplates();
+}
+
+// ── Vorlage verwenden ─────────────────────────────────────────
+function pushUseTemplate(t) {
+    var f = ['push-title','push-body','push-target','push-url'];
+    var vals = [t.title, t.body, t.target, t.url||''];
+    f.forEach(function(id, i) { var el = document.getElementById(id); if (el) el.value = vals[i]||''; });
+    pushUpdatePreview();
+    pushUpdateAudienceInfo();
+    pushSwitchTab('compose');
+    showToast('✅ Vorlage geladen', 'success');
+}
+
+// ── Eigene Vorlagen speichern/laden ───────────────────────────
+async function pushSaveAsTemplate() {
+    var title  = (document.getElementById('push-title')||{}).value||'';
+    var body   = (document.getElementById('push-body') ||{}).value||'';
+    var target = (document.getElementById('push-target')||{}).value||'all';
+    var url    = (document.getElementById('push-url')  ||{}).value||'';
+    if (!title.trim() || !body.trim()) { showToast('⚠️ Titel & Nachricht ausfüllen', 'error'); return; }
+    try {
+        await db.collection('push_templates').add({ title, body, target, url, createdAt: firebase.firestore.FieldValue.serverTimestamp(), createdBy: (auth.currentUser||{}).email||'admin' });
+        showToast('✅ Vorlage gespeichert', 'success');
+        pushLoadCustomTemplates();
+    } catch(e) { showToast('❌ ' + e.message, 'error'); }
+}
+
+async function pushLoadCustomTemplates() {
+    var el = document.getElementById('push-custom-templates-list');
+    if (!el) return;
+    try {
+        var snap = await db.collection('push_templates').orderBy('createdAt','desc').limit(20).get();
+        if (snap.empty) { el.innerHTML = '<div style="font-size:12px;color:rgba(255,255,255,.25);text-align:center;padding:16px">Noch keine eigenen Vorlagen</div>'; return; }
+        el.innerHTML = snap.docs.map(function(d) {
+            var t = d.data();
+            return '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);margin-bottom:6px">' +
+                '<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:#fff">' + (t.title||'') + '</div>' +
+                '<div style="font-size:11px;color:rgba(255,255,255,.35);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (t.body||'') + '</div></div>' +
+                '<button data-tpl=\'' + JSON.stringify({title:t.title,body:t.body,target:t.target,url:t.url}).replace(/'/g,"&#39;") + '\' style="padding:5px 12px;border-radius:8px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.2);color:#fbbf24;font-size:11px;cursor:pointer;font-weight:700;flex-shrink:0">Verwenden</button>' +
+                '<button data-del="' + d.id + '" style="padding:5px 10px;border-radius:8px;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.15);color:#f87171;font-size:11px;cursor:pointer;flex-shrink:0"><i class="fa-solid fa-trash"></i></button>' +
+                '</div>';
+        }).join('');
+        el.addEventListener('click', function handler(e) {
+            var useBtn = e.target.closest('[data-tpl]');
+            var delBtn = e.target.closest('[data-del]');
+            if (useBtn) { try { pushUseTemplate(JSON.parse(useBtn.getAttribute('data-tpl'))); } catch(ex){} }
+            if (delBtn) { db.collection('push_templates').doc(delBtn.getAttribute('data-del')).delete().then(function(){ showToast('🗑️ Gelöscht'); pushLoadCustomTemplates(); }); }
+        }, { once: true });
+    } catch(e) { /* ignore */ }
+}
+
+// ── Stats ─────────────────────────────────────────────────────
+async function pushRefreshStats() {
+    try {
+        var usersSnap = await db.collection('users').get();
+        var histSnap  = await db.collection('push_notifications').orderBy('sentAt','desc').limit(100).get().catch(function(){return {docs:[]};});
+        var el = document.getElementById('push-kpi-subs');
+        if (el) el.textContent = usersSnap.size;
+        var sc = document.getElementById('push-sub-count');
+        if (sc) sc.textContent = usersSnap.size + ' Nutzer';
+        var week7 = Date.now() - 7*86400000;
+        var sentTotal = histSnap.docs.length, sentWeek = 0, delivered = 0;
+        histSnap.docs.forEach(function(d) {
+            var nd = d.data();
+            if ((nd.sentAt && nd.sentAt.toMillis && nd.sentAt.toMillis() > week7)) sentWeek++;
+            delivered += nd.delivered || 0;
+        });
+        var ks = document.getElementById('push-kpi-sent');    if(ks) ks.textContent = sentTotal;
+        var kw = document.getElementById('push-kpi-week');    if(kw) kw.textContent = sentWeek;
+        var kd = document.getElementById('push-kpi-delivered');if(kd) kd.textContent = delivered;
+    } catch(e) { console.warn('pushRefreshStats:', e); }
+}
+
+// ── Verlauf ───────────────────────────────────────────────────
+async function pushLoadHistory() {
+    var el = document.getElementById('push-history-list');
+    if (!el) return;
+    el.innerHTML = '<div style="text-align:center;padding:30px;color:rgba(255,255,255,.2);font-size:12px"><i class="fa-solid fa-spinner fa-spin"></i></div>';
+    try {
+        var snap = await db.collection('push_notifications').orderBy('sentAt','desc').limit(30).get();
+        if (snap.empty) { el.innerHTML = '<div style="text-align:center;padding:30px;color:rgba(255,255,255,.2);font-size:12px">Noch keine Nachrichten versendet</div>'; return; }
+        var LABELS = {all:'Alle','no-order-30':'Inaktiv 30T','no-order-60':'Inaktiv 60T','loyalty-high':'Loyalty hoch','loyalty-low':'Neu','new-users':'Neu reg.','vip':'VIP','single-user':'Einzeln'};
+        el.innerHTML = snap.docs.map(function(d) {
+            var n = d.data();
+            var date = n.sentAt && n.sentAt.toDate ? n.sentAt.toDate().toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+            var lbl  = LABELS[n.target] || n.target || 'Alle';
+            var recipientInfo = n.recipientEmail ? ' · 👤 ' + n.recipientEmail : '';
+            return '<div style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);margin-bottom:8px">' +
+                '<div style="width:34px;height:34px;border-radius:9px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.2);display:flex;align-items:center;justify-content:center;color:#fbbf24;font-size:14px;flex-shrink:0"><i class="fa-solid fa-bell"></i></div>' +
+                '<div style="flex:1;min-width:0">' +
+                '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">' +
+                '<span style="font-size:13px;font-weight:600;color:#fff">' + (n.title||'(kein Titel)') + '</span>' +
+                '<span style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;background:rgba(251,191,36,.1);color:#fbbf24;border:1px solid rgba(251,191,36,.2)">' + lbl + recipientInfo + '</span>' +
+                '<span style="font-size:9px;color:rgba(255,255,255,.3);margin-left:auto">' + date + '</span></div>' +
+                '<div style="font-size:12px;color:rgba(255,255,255,.45);margin-bottom:6px">' + (n.body||'') + '</div>' +
+                '<div style="display:flex;gap:10px;font-size:10px;color:rgba(255,255,255,.3)">' +
+                (n.delivered ? '<span style="color:#34d399">📬 ' + n.delivered + ' zugestellt</span>' : '') +
+                '<button data-resend="' + d.id + '" style="margin-left:auto;padding:2px 10px;border-radius:6px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.2);color:#fbbf24;font-size:10px;cursor:pointer;font-weight:700">↻ Erneut</button>' +
+                '</div></div></div>';
+        }).join('');
+        el.addEventListener('click', function(e) {
+            var btn = e.target.closest('[data-resend]');
+            if (btn) pushResend(btn.getAttribute('data-resend'));
+        }, { once: true });
+    } catch(e) { el.innerHTML = '<div style="color:#f87171;font-size:12px;padding:16px">Fehler: ' + e.message + '</div>'; }
+}
+
+// ── Nutzer / Abonnenten laden ──────────────────────────────────
+async function pushLoadSubscribers() {
+    var el = document.getElementById('push-subscribers-list');
+    if (!el) return;
+    el.innerHTML = '<div style="text-align:center;padding:30px;color:rgba(255,255,255,.2);font-size:12px"><i class="fa-solid fa-spinner fa-spin"></i></div>';
 
     try {
-        // Push-Nachricht in Firestore speichern (Service Worker / FCM liest diese)
-        const pushRef = await db.collection('push_notifications').add({
-            title, body, url, target,
-            sentAt: firebase.firestore.FieldValue.serverTimestamp(),
-            sentBy: auth.currentUser?.email || 'admin',
-            delivered: 0,
-            status: 'queued'
+        var usersSnap  = await db.collection('users').get();
+        var ordersSnap = await db.collection('orders').get();
+
+        // Bestelldaten pro User aufbauen
+        var userOrders = {}; // uid → {count, total, last}
+        ordersSnap.docs.forEach(function(d) {
+            var o = d.data();
+            if (!o.userId) return;
+            if (!userOrders[o.userId]) userOrders[o.userId] = {count:0, total:0, last:0};
+            userOrders[o.userId].count++;
+            userOrders[o.userId].total += o.total || 0;
+            var ts = o.date && o.date.toMillis ? o.date.toMillis() : 0;
+            if (ts > userOrders[o.userId].last) userOrders[o.userId].last = ts;
         });
-        await logAction('push_notification_sent', pushRef.id, { title, target });
 
-        // Log-Eintrag im Panel
-        const logEl = document.getElementById('push-log');
-        if (logEl) {
-            const entry = document.createElement('div');
-            entry.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:rgba(52,211,153,.07);border:1px solid rgba(52,211,153,.2);font-size:11px;color:rgba(255,255,255,.7)';
-            entry.innerHTML = `<i class="fa-solid fa-circle-check" style="color:#34d399"></i> <span style="color:#34d399;font-weight:700">${title}</span> → <span style="color:rgba(255,255,255,.4)">${target}</span> <span style="margin-left:auto;color:rgba(255,255,255,.3)">${new Date().toLocaleTimeString('de-DE')}</span>`;
-            logEl.insertBefore(entry, logEl.firstChild);
+        var now = Date.now();
+        var day30 = now - 30*86400000;
+
+        _pushAllUsers = usersSnap.docs.map(function(d) {
+            var u = d.data();
+            var ord = userOrders[d.id] || {count:0, total:0, last:0};
+            return { uid: d.id, email: u.email||'', username: u.username||'', points: u.totalBonusPoints||0, orderCount: ord.count, orderTotal: ord.total, lastOrder: ord.last };
+        }).filter(function(u){ return u.email; });
+
+        var active = _pushAllUsers.filter(function(u){ return u.lastOrder > day30; }).length;
+        var withOrders = _pushAllUsers.filter(function(u){ return u.orderCount > 0; }).length;
+
+        var st = document.getElementById('push-seg-total');   if(st) st.textContent = _pushAllUsers.length;
+        var sa = document.getElementById('push-seg-active');  if(sa) sa.textContent = active;
+        var so = document.getElementById('push-seg-orders');  if(so) so.textContent = withOrders;
+
+        _pushFiltered = _pushAllUsers;
+        pushRenderUserList(_pushFiltered);
+    } catch(e) {
+        el.innerHTML = '<div style="color:#f87171;font-size:12px;padding:16px">Fehler: ' + e.message + '</div>';
+    }
+}
+
+function pushFilterUsers() {
+    var term = ((document.getElementById('push-user-search')||{}).value||'').toLowerCase().trim();
+    _pushFiltered = !term ? _pushAllUsers : _pushAllUsers.filter(function(u){
+        return u.email.toLowerCase().includes(term) || u.username.toLowerCase().includes(term);
+    });
+    pushRenderUserList(_pushFiltered);
+}
+
+function pushRenderUserList(users) {
+    var el = document.getElementById('push-subscribers-list');
+    if (!el) return;
+    if (!users.length) { el.innerHTML = '<div style="text-align:center;padding:30px;color:rgba(255,255,255,.2);font-size:12px">Keine Nutzer gefunden</div>'; return; }
+    el.innerHTML = users.slice(0,100).map(function(u) {
+        var lastStr = u.lastOrder ? new Date(u.lastOrder).toLocaleDateString('de-DE') : '—';
+        var active  = u.lastOrder > Date.now() - 30*86400000;
+        return '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.05);margin-bottom:6px">' +
+            '<div style="width:8px;height:8px;border-radius:50%;background:' + (active?'#34d399':'rgba(255,255,255,.15)') + ';flex-shrink:0"></div>' +
+            '<div style="flex:1;min-width:0">' +
+            '<div style="font-size:12px;font-weight:600;color:rgba(255,255,255,.85)">' + (u.username || u.email.split('@')[0]) + '</div>' +
+            '<div style="font-size:10px;color:rgba(255,255,255,.35)">' + u.email + ' · ' + u.orderCount + ' Bestellungen · ' + u.points + ' Pts · zuletzt ' + lastStr + '</div>' +
+            '</div>' +
+            '<button data-send-uid="' + u.uid + '" data-send-email="' + u.email + '" data-send-name="' + (u.username||u.email) + '" ' +
+            'style="padding:5px 12px;border-radius:8px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.2);color:#fbbf24;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;white-space:nowrap">' +
+            '<i class="fa-solid fa-paper-plane"></i> Schreiben</button>' +
+            '</div>';
+    }).join('') + (users.length > 100 ? '<div style="font-size:11px;color:rgba(255,255,255,.25);text-align:center;padding:10px">+ ' + (users.length-100) + ' weitere — Suche verwenden</div>' : '');
+
+    el.addEventListener('click', function(e) {
+        var btn = e.target.closest('[data-send-uid]');
+        if (!btn) return;
+        pushComposeSingle(btn.getAttribute('data-send-uid'), btn.getAttribute('data-send-email'), btn.getAttribute('data-send-name'));
+    }, { once: true });
+}
+
+// ── Einzelnutzer anschreiben ──────────────────────────────────
+function pushComposeSingle(uid, email, name) {
+    var targetEl = document.getElementById('push-target');
+    var singleOpt= document.getElementById('push-target-single-opt');
+    var inputEl  = document.getElementById('push-single-user-input');
+    var infoEl   = document.getElementById('push-single-user-info');
+    if (singleOpt) singleOpt.style.display = '';
+    if (targetEl)  targetEl.value = 'single-user';
+    if (inputEl)   inputEl.value  = email;
+    if (infoEl)    infoEl.innerHTML = '<i class="fa-solid fa-user" style="color:#fbbf24"></i> <b style="color:#fff">' + name + '</b> · ' + email;
+    pushUpdateAudienceInfo();
+    pushSwitchTab('compose');
+    showToast('✅ Nutzer ausgewählt — jetzt Nachricht verfassen', 'success');
+    // Titel-Feld fokussieren
+    setTimeout(function(){ var t = document.getElementById('push-title'); if(t) t.focus(); }, 300);
+}
+
+// ── Export ────────────────────────────────────────────────────
+async function pushExportSubscribers() {
+    try {
+        var snap = await db.collection('users').get();
+        var rows = [['E-Mail','Benutzername','Bestellungen','Loyalty-Punkte']];
+        snap.forEach(function(d) {
+            var u = d.data();
+            if (!u.email) return;
+            rows.push([u.email, u.username||'', u.orderCount||0, u.totalBonusPoints||0]);
+        });
+        downloadCSV('wavevapes-nutzer.csv', rows);
+        showToast('✅ Exportiert', 'success');
+    } catch(e) { showToast('❌ ' + e.message, 'error'); }
+}
+
+// ── Erneut senden ─────────────────────────────────────────────
+async function pushResend(docId) {
+    try {
+        var doc = await db.collection('push_notifications').doc(docId).get();
+        if (!doc.exists) return;
+        var n = doc.data();
+        var fields = {title:n.title||'',body:n.body||'',target:n.target||'all',url:n.url||''};
+        Object.keys(fields).forEach(function(k){ var el=document.getElementById('push-'+k); if(el) el.value=fields[k]; });
+        if (n.target === 'single-user' && n.recipientEmail) {
+            pushComposeSingle(n.recipientUid||'', n.recipientEmail, n.recipientEmail);
+        } else {
+            pushUpdateAudienceInfo();
+            pushSwitchTab('compose');
         }
+        pushUpdatePreview();
+        showToast('✅ Kampagne geladen — anpassen & senden', 'success');
+    } catch(e) { showToast('❌ ' + e.message, 'error'); }
+}
 
-        showToast('✅ Push-Benachrichtigung gespeichert & wird versendet', 'success');
-        if (document.getElementById('push-title')) document.getElementById('push-title').value = '';
-        if (document.getElementById('push-body'))  document.getElementById('push-body').value = '';
+// ── Senden ────────────────────────────────────────────────────
+async function sendPushNotification() {
+    var title    = ((document.getElementById('push-title')||{}).value||'').trim();
+    var body     = ((document.getElementById('push-body') ||{}).value||'').trim();
+    var target   = (document.getElementById('push-target')||{}).value || 'all';
+    var url      = ((document.getElementById('push-url')  ||{}).value||'').trim() || 'https://wavevapes.de';
+    var schedule = (document.getElementById('push-schedule')||{}).value || '';
+
+    if (!title || !body) { showToast('⚠️ Titel und Nachricht sind Pflichtfelder', 'error'); return; }
+
+    // Einzelnutzer: E-Mail prüfen
+    var recipientEmail = '', recipientUid = '';
+    if (target === 'single-user') {
+        recipientEmail = ((document.getElementById('push-single-user-input')||{}).value||'').trim();
+        if (!recipientEmail) { showToast('⚠️ Bitte einen Nutzer auswählen (Abonnenten-Tab)', 'error'); return; }
+        // UID aus Cache suchen
+        var found = _pushAllUsers.find(function(u){ return u.email === recipientEmail; });
+        if (found) recipientUid = found.uid;
+    }
+
+    var btn = document.getElementById('push-send-btn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Wird gesendet…'; }
+
+    try {
+        var payload = {
+            title:   title,
+            body:    body,
+            url:     url,
+            target:  target,
+            sentAt:  firebase.firestore.FieldValue.serverTimestamp(),
+            sentBy:  (auth.currentUser||{}).email || 'admin',
+            delivered: 0,
+            status:  'queued'
+        };
+        if (schedule)       payload.scheduledFor    = firebase.firestore.Timestamp.fromDate(new Date(schedule));
+        if (recipientEmail) payload.recipientEmail  = recipientEmail;
+        if (recipientUid)   payload.recipientUid    = recipientUid;
+
+        var ref = await db.collection('push_notifications').add(payload);
+        await logAction('push_notification_sent', ref.id, { title:title, target:target, recipient: recipientEmail||null });
+
+        // Felder leeren
+        ['push-title','push-body','push-url','push-schedule'].forEach(function(id){
+            var el=document.getElementById(id); if(el) el.value='';
+        });
+        var si = document.getElementById('push-single-user-input'); if(si) si.value='';
+        var sinfo = document.getElementById('push-single-user-info'); if(sinfo) sinfo.innerHTML='';
+        var sopt = document.getElementById('push-target-single-opt'); if(sopt) sopt.style.display='none';
+        var tgt = document.getElementById('push-target'); if(tgt) tgt.value='all';
+        pushUpdatePreview();
+        pushUpdateAudienceInfo();
+
+        var msg = schedule
+            ? '✅ Geplant für ' + new Date(schedule).toLocaleString('de-DE')
+            : (recipientEmail ? '✅ Nachricht an ' + recipientEmail + ' gespeichert!' : '✅ Push-Kampagne gespeichert & wird versendet!');
+        showToast(msg, 'success');
+        pushRefreshStats();
     } catch(e) {
         showToast('❌ Fehler: ' + e.message, 'error');
     } finally {
-        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Senden'; }
+        if (btn) { btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-paper-plane"></i> Senden'; }
     }
 }
 

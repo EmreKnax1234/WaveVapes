@@ -2409,9 +2409,406 @@
             color: rgba(255,255,255,.15);
             padding: 4px;
         }
-    </style>
+    
+        /* ════════════════════════════════════════════════════════════
+           MOBILE OVERHAUL v2.0 — Complete Mobile-First Redesign
+        ════════════════════════════════════════════════════════════ */
+
+        /* ── Pull to Refresh indicator ── */
+        #mob-ptr {
+            position: fixed; top: 52px; left: 0; right: 0;
+            height: 0; overflow: hidden; z-index: 150;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(103,232,249,.08);
+            transition: height .2s ease;
+            font-size: 12px; color: #67e8f9; gap: 8px;
+        }
+        #mob-ptr.active { height: 44px; }
+        #mob-ptr i { transition: transform .3s; }
+        #mob-ptr.releasing i { transform: rotate(180deg); }
+
+        /* ── Mobile Order Cards ── */
+        #mob-orders-list {
+            display: flex; flex-direction: column; gap: 10px;
+            padding: 4px 0;
+        }
+        .mob-order-card {
+            background: #13131f;
+            border: 1px solid rgba(255,255,255,.07);
+            border-radius: 16px; overflow: hidden;
+            transition: all .18s; cursor: pointer;
+            -webkit-user-select: none; user-select: none;
+        }
+        .mob-order-card:active { transform: scale(.98); opacity: .9; }
+        .mob-order-card.status-zahlung { border-left: 3px solid #facc15; }
+        .mob-order-card.status-wird    { border-left: 3px solid #60a5fa; }
+        .mob-order-card.status-versendet { border-left: 3px solid #a78bfa; }
+        .mob-order-card.status-zugestellt { border-left: 3px solid #34d399; }
+        .mob-order-card.status-storniert { border-left: 3px solid #f87171; }
+        .mob-oc-top {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 12px 14px 8px;
+        }
+        .mob-oc-num {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px; font-weight: 700; color: #67e8f9;
+        }
+        .mob-oc-status {
+            font-size: 10px; font-weight: 700; padding: 3px 9px;
+            border-radius: 99px; letter-spacing: .04em; white-space: nowrap;
+        }
+        .mob-oc-mid {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 14px 10px;
+        }
+        .mob-oc-email {
+            font-size: 12px; color: rgba(255,255,255,.65);
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            max-width: 180px;
+        }
+        .mob-oc-total {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px; font-weight: 700; color: #34d399;
+        }
+        .mob-oc-bottom {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 8px 14px; background: rgba(255,255,255,.02);
+            border-top: 1px solid rgba(255,255,255,.05);
+        }
+        .mob-oc-date { font-size: 10px; color: rgba(255,255,255,.3); }
+        .mob-oc-actions { display: flex; gap: 6px; }
+        .mob-oc-btn {
+            height: 30px; padding: 0 12px; border-radius: 8px;
+            border: 1px solid rgba(255,255,255,.1);
+            background: rgba(255,255,255,.04); color: rgba(255,255,255,.6);
+            font-size: 10px; font-weight: 700; cursor: pointer;
+            transition: all .15s; display: flex; align-items: center; gap: 5px;
+            -webkit-user-select: none; user-select: none;
+        }
+        .mob-oc-btn.ship { border-color: rgba(167,139,250,.3); color: #a78bfa; background: rgba(167,139,250,.08); }
+        .mob-oc-btn.ship:active { background: rgba(167,139,250,.2); }
+        .mob-oc-btn.view { border-color: rgba(103,232,249,.3); color: #67e8f9; background: rgba(103,232,249,.08); }
+        .mob-oc-btn.view:active { background: rgba(103,232,249,.2); }
+        .mob-oc-tracking { font-size: 9px; color: #a78bfa; font-family: 'JetBrains Mono', monospace; }
+        .mob-oc-note { font-size: 9px; color: #f59e0b; }
+
+        /* ── Mobile Order KPI Strip ── */
+        #mob-ord-kpis {
+            display: grid; grid-template-columns: repeat(3, 1fr);
+            gap: 8px; margin-bottom: 12px;
+        }
+        .mob-kpi-chip {
+            background: #13131f; border: 1px solid rgba(255,255,255,.07);
+            border-radius: 12px; padding: 10px 10px; cursor: pointer;
+            transition: all .18s; text-align: center;
+        }
+        .mob-kpi-chip:active { transform: scale(.96); }
+        .mob-kpi-chip.active { border-color: var(--chip-color, #67e8f9); background: rgba(103,232,249,.06); }
+        .mob-kpi-chip-val { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 700; color: var(--chip-color, #67e8f9); line-height: 1; }
+        .mob-kpi-chip-lbl { font-size: 9px; font-weight: 600; color: rgba(255,255,255,.3); margin-top: 3px; letter-spacing: .04em; }
+
+        /* ── Mobile Search Bar (inline) ── */
+        #mob-ord-search-bar {
+            display: flex; align-items: center; gap: 8px;
+            background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1);
+            border-radius: 12px; padding: 10px 14px; margin-bottom: 12px;
+        }
+        #mob-ord-search-bar i { color: rgba(255,255,255,.3); font-size: 12px; flex-shrink: 0; }
+        #mob-ord-search-bar input {
+            flex: 1; background: none; border: none; outline: none;
+            color: #fff; font-size: 13px; font-family: 'Inter', sans-serif;
+        }
+        #mob-ord-search-bar input::placeholder { color: rgba(255,255,255,.3); }
+        .mob-ord-filter-pills {
+            display: flex; gap: 6px; overflow-x: auto; margin-bottom: 12px;
+            padding-bottom: 4px; scrollbar-width: none;
+        }
+        .mob-ord-filter-pills::-webkit-scrollbar { display: none; }
+        .mob-filter-pill {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 5px 12px; border-radius: 99px; font-size: 11px; font-weight: 600;
+            border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.04);
+            color: rgba(255,255,255,.5); cursor: pointer; white-space: nowrap;
+            transition: all .15s; -webkit-user-select: none; user-select: none;
+            flex-shrink: 0;
+        }
+        .mob-filter-pill.active { background: rgba(103,232,249,.12); border-color: rgba(103,232,249,.4); color: #67e8f9; }
+
+        /* ── Mobile Product Cards ── */
+        #mob-products-list { display: flex; flex-direction: column; gap: 8px; padding: 4px 0; }
+        .mob-prod-card {
+            background: #13131f; border: 1px solid rgba(255,255,255,.07);
+            border-radius: 14px; padding: 12px 14px;
+            display: flex; align-items: center; gap: 12px;
+            cursor: pointer; transition: all .15s;
+            -webkit-user-select: none; user-select: none;
+        }
+        .mob-prod-card:active { transform: scale(.98); }
+        .mob-prod-card.unavailable { opacity: .5; }
+        .mob-prod-thumb {
+            width: 52px; height: 52px; border-radius: 12px; object-fit: cover;
+            border: 1px solid rgba(255,255,255,.07); flex-shrink: 0;
+            background: rgba(255,255,255,.04);
+        }
+        .mob-prod-thumb-ph {
+            width: 52px; height: 52px; border-radius: 12px; flex-shrink: 0;
+            background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.07);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px; color: rgba(255,255,255,.2);
+        }
+        .mob-prod-info { flex: 1; min-width: 0; }
+        .mob-prod-name {
+            font-size: 13px; font-weight: 600; color: rgba(255,255,255,.9);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            margin-bottom: 3px;
+        }
+        .mob-prod-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .mob-prod-price { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: #34d399; }
+        .mob-prod-cat { font-size: 10px; color: rgba(255,255,255,.3); }
+        .mob-prod-badges { display: flex; gap: 4px; margin-top: 3px; }
+        .mob-prod-badge { font-size: 8px; font-weight: 800; padding: 1px 6px; border-radius: 6px; }
+        .mob-prod-badge.new { background: rgba(163,230,53,.15); color: #a3e635; border: 1px solid rgba(163,230,53,.25); }
+        .mob-prod-badge.off { background: rgba(248,113,113,.12); color: #f87171; border: 1px solid rgba(248,113,113,.2); }
+        .mob-prod-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+        .mob-prod-stock {
+            font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700;
+            padding: 3px 8px; border-radius: 8px;
+        }
+        .mob-prod-stock.ok { color: #fff; background: rgba(255,255,255,.07); }
+        .mob-prod-stock.warn { color: #f59e0b; background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.2); }
+        .mob-prod-stock.crit { color: #f87171; background: rgba(248,113,113,.1); border: 1px solid rgba(248,113,113,.2); }
+        .mob-prod-edit-btn {
+            width: 30px; height: 30px; border-radius: 8px; border: 1px solid rgba(103,232,249,.25);
+            background: rgba(103,232,249,.08); color: #67e8f9; font-size: 11px;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+        }
+
+        /* ── Mobile Product KPI row ── */
+        #mob-prod-kpis {
+            display: grid; grid-template-columns: repeat(2, 1fr);
+            gap: 8px; margin-bottom: 12px;
+        }
+
+        /* ── Mobile Category filter ── */
+        .mob-cat-bar {
+            display: flex; gap: 6px; overflow-x: auto; margin-bottom: 12px;
+            padding-bottom: 4px; scrollbar-width: none;
+        }
+        .mob-cat-bar::-webkit-scrollbar { display: none; }
+        .mob-cat-pill {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 5px 12px; border-radius: 99px; font-size: 11px; font-weight: 600;
+            border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.04);
+            color: rgba(255,255,255,.5); cursor: pointer; white-space: nowrap;
+            transition: all .15s; flex-shrink: 0;
+        }
+        .mob-cat-pill.active { background: rgba(103,232,249,.12); border-color: rgba(103,232,249,.4); color: #67e8f9; }
+
+        /* ── Mobile User Cards ── */
+        #mob-users-list { display: flex; flex-direction: column; gap: 8px; padding: 4px 0; }
+        .mob-user-card {
+            background: #13131f; border: 1px solid rgba(255,255,255,.07);
+            border-radius: 14px; padding: 12px 14px;
+            display: flex; align-items: center; gap: 12px;
+            cursor: pointer; transition: all .15s;
+        }
+        .mob-user-card:active { transform: scale(.98); }
+        .mob-user-av {
+            width: 44px; height: 44px; border-radius: 13px; flex-shrink: 0;
+            background: linear-gradient(135deg, #67e8f9, #a78bfa);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px; font-weight: 800; color: #000;
+        }
+        .mob-user-av.disabled { background: linear-gradient(135deg, #3f3f46, #27272a); color: rgba(255,255,255,.3); }
+        .mob-user-info { flex: 1; min-width: 0; }
+        .mob-user-name { font-size: 13px; font-weight: 600; color: rgba(255,255,255,.9); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .mob-user-email { font-size: 11px; color: rgba(255,255,255,.35); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+        .mob-user-meta { display: flex; gap: 5px; margin-top: 4px; flex-wrap: wrap; }
+        .mob-user-chip { font-size: 9px; font-weight: 700; padding: 1px 7px; border-radius: 6px; }
+        .mob-user-pts { background: rgba(251,191,36,.1); color: #fbbf24; border: 1px solid rgba(251,191,36,.18); }
+        .mob-user-ship { background: rgba(52,211,153,.1); color: #34d399; border: 1px solid rgba(52,211,153,.18); }
+        .mob-user-ban { background: rgba(248,113,113,.1); color: #f87171; border: 1px solid rgba(248,113,113,.18); }
+        .mob-user-right { flex-shrink: 0; }
+        .mob-user-btn {
+            width: 32px; height: 32px; border-radius: 9px; border: 1px solid rgba(255,255,255,.1);
+            background: rgba(255,255,255,.04); color: rgba(255,255,255,.5); font-size: 12px;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+        }
+
+        /* ── Mobile Analytics Cards ── */
+        #mob-analytics-view { display: flex; flex-direction: column; gap: 12px; }
+        .mob-an-kpi-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 8px; }
+        .mob-an-kpi {
+            background: #13131f; border: 1px solid rgba(255,255,255,.07);
+            border-radius: 14px; padding: 14px 14px; position: relative; overflow: hidden;
+        }
+        .mob-an-kpi-glow {
+            position: absolute; width: 70px; height: 70px; border-radius: 50%;
+            filter: blur(28px); opacity: .25; top: -10px; right: -10px;
+            background: var(--glow, #67e8f9); pointer-events: none;
+        }
+        .mob-an-kpi-lbl { font-size: 9px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: rgba(255,255,255,.3); margin-bottom: 6px; }
+        .mob-an-kpi-val { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 700; color: var(--val-color, #67e8f9); line-height: 1; }
+        .mob-an-kpi-sub { font-size: 10px; color: rgba(255,255,255,.25); margin-top: 4px; }
+        .mob-an-chart-card {
+            background: #13131f; border: 1px solid rgba(255,255,255,.07);
+            border-radius: 16px; padding: 16px;
+        }
+        .mob-an-chart-title { font-size: 12px; font-weight: 700; color: rgba(255,255,255,.7); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+
+        /* ── Mobile Empty States ── */
+        .mob-empty {
+            text-align: center; padding: 48px 20px;
+            color: rgba(255,255,255,.2); font-size: 13px;
+        }
+        .mob-empty i { font-size: 36px; display: block; margin-bottom: 10px; opacity: .2; }
+
+        /* ── Mobile Loading Spinner ── */
+        .mob-loading {
+            display: flex; align-items: center; justify-content: center;
+            gap: 10px; padding: 32px; color: rgba(255,255,255,.3); font-size: 12px;
+        }
+        .mob-spinner {
+            width: 18px; height: 18px; border-radius: 50%;
+            border: 2px solid rgba(103,232,249,.2); border-top-color: #67e8f9;
+            animation: mob-spin .7s linear infinite;
+        }
+        @keyframes mob-spin { to { transform: rotate(360deg); } }
+
+        /* ── Mobile Tab containers ── */
+        .mob-tab-wrap { padding: 12px; }
+
+        /* ── Sticky search header on orders/products ── */
+        .mob-sticky-top {
+            position: sticky; top: 52px; z-index: 100;
+            background: rgba(10,10,10,.95); backdrop-filter: blur(12px);
+            padding: 10px 12px 8px; margin: -12px -12px 4px;
+        }
+
+        /* ── Toast: bottom offset for nav ── */
+        .toast-container-mob { bottom: 76px !important; }
+
+        /* ── Swipe feedback ── */
+        @keyframes mob-card-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        .mob-order-card, .mob-prod-card, .mob-user-card {
+            animation: mob-card-in .2s ease both;
+        }
+
+        /* ── Overrides for tab content padding ── */
+        #tab-content-0, #tab-content-1, #tab-content-2,
+        #tab-content-5, #tab-content-3, #tab-content-4,
+        #tab-content-7, #tab-content-8, #tab-content-9,
+        #tab-content-10, #tab-content-11, #tab-content-12,
+        #tab-content-13, #tab-content-14, #tab-content-15,
+        #tab-content-16, #tab-content-17, #tab-content-18 {
+            padding: 0 !important;
+        }
+        #tab-content-0 .ord-shell,
+        #tab-content-1 .ord-shell,
+        #tab-content-2 .usr-shell { padding: 12px !important; }
+
+        /* Hide original table-based renders when mob view active */
+        body.mob-active .ord-table-card { display: none !important; }
+        body.mob-active .ord-kpi-strip  { display: none !important; }
+        body.mob-active .ord-toolbar    { display: none !important; }
+        body.mob-active #tab-content-1 .ord-page-hdr { display: none !important; }
+
+        body.mob-active .prd-table-wrap { display: none !important; }
+        body.mob-active .prd-kpis       { display: none !important; }
+        body.mob-active #tab-content-0 .prd-page-hdr { display: none !important; }
+
+        body.mob-active .usr-table-card { display: none !important; }
+        body.mob-active .usr-toolbar    { display: none !important; }
+        body.mob-active #tab-content-2 .usr-page-hdr { display: none !important; }
+
+        /* ── Add product button (mobile) ── */
+        #mob-add-prod-btn {
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            padding: 12px; border-radius: 12px; margin-bottom: 10px;
+            background: rgba(103,232,249,.08); border: 1px solid rgba(103,232,249,.2);
+            color: #67e8f9; font-size: 12px; font-weight: 700; cursor: pointer;
+        }
+
+        /* ── Section headers ── */
+        .mob-section-hdr {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 10px; padding: 0 2px;
+        }
+        .mob-section-title { font-family: 'Orbitron', sans-serif; font-size: 13px; font-weight: 700; color: #67e8f9; text-shadow: 0 0 10px rgba(103,232,249,.3); display: flex; align-items: center; gap: 8px; }
+        .mob-section-sub { font-size: 11px; color: rgba(255,255,255,.3); }
+        .mob-live-dot { width: 7px; height: 7px; border-radius: 50%; background: #34d399; box-shadow: 0 0 6px #34d399; animation: sb-pulse 2s infinite; display: inline-block; }
+
+        /* ── Order status color map ── */
+        .mob-st-zahlung   { background: rgba(250,204,21,.12); color: #facc15; border: 1px solid rgba(250,204,21,.22); }
+        .mob-st-wird      { background: rgba(96,165,250,.12);  color: #60a5fa; border: 1px solid rgba(96,165,250,.22); }
+        .mob-st-versendet { background: rgba(167,139,250,.12); color: #a78bfa; border: 1px solid rgba(167,139,250,.22); }
+        .mob-st-zugestellt{ background: rgba(52,211,153,.12);  color: #34d399; border: 1px solid rgba(52,211,153,.22); }
+        .mob-st-storniert { background: rgba(248,113,113,.12); color: #f87171; border: 1px solid rgba(248,113,113,.22); }
+
+        /* ── Settings tab mobile ── */
+        .cfg-shell { grid-template-columns: 1fr !important; }
+
+        /* ── Analytics period toggle ── */
+        .mob-period-bar { display: flex; gap: 6px; margin-bottom: 12px; overflow-x: auto; padding-bottom: 4px; }
+        .mob-period-bar::-webkit-scrollbar { display: none; }
+        .mob-period-btn {
+            flex-shrink: 0; padding: 6px 14px; border-radius: 99px; font-size: 11px;
+            font-weight: 600; border: 1px solid rgba(103,232,249,.2);
+            background: rgba(103,232,249,.06); color: rgba(103,232,249,.6); cursor: pointer;
+        }
+        .mob-period-btn.active { background: rgba(103,232,249,.15); color: #67e8f9; border-color: rgba(103,232,249,.4); }
+
+        /* ── Superadmin quick actions grid ── */
+        .sa-kpi-grid { grid-template-columns: repeat(2,1fr) !important; }
+
+        /* ── Live Online mobile ── */
+        .prs-stats { grid-template-columns: repeat(3,1fr) !important; }
+
+        /* ── Swipe-to-dismiss hint ── */
+        .mob-swipe-hint {
+            text-align: center; font-size: 10px; color: rgba(255,255,255,.15);
+            padding: 4px 0 8px; letter-spacing: .04em;
+        }
+
+        /* ── Page-specific padding ── */
+        .mob-tab-wrap > * + * { margin-top: 0; }
+
+        /* ── Stock warning banner mobile ── */
+        .prd-warn-banner { margin-bottom: 12px !important; }
+
+        /* ── Gutschein mobile ── */
+        .cpn-shell { grid-template-columns: 1fr !important; gap: 12px !important; }
+        .cpn-cards-grid { grid-template-columns: 1fr !important; }
+
+        /* ── Kategorien mobile ── */  
+        .cat-shell { grid-template-columns: 1fr !important; gap: 12px !important; }
+        .cat-list-panel { overflow: visible !important; }
+
+        /* ── User danger zone mobile ── */
+        .usr-danger-zone { flex-direction: column !important; gap: 10px !important; }
+
+        /* ── Product add form mobile ── */
+        .prd-add-grid { grid-template-columns: 1fr 1fr !important; }
+        .prd-add-grid > [style*="span 3"] { grid-column: span 2 !important; }
+
+        /* ── Analytics top products ── */
+        .an-prod-list { max-height: 200px !important; }
+
+        /* ── Review tab mobile ── */
+        .rv-admin-grid { grid-template-columns: 1fr !important; }
+
+        /* ── Bundles tab ── */
+        #tab-content-16 .bnd-shell { flex-direction: column !important; }
+        #tab-content-16 .bnd-left, #tab-content-16 .bnd-right { width: 100% !important; }
+
+</style>
 </head>
 <body class="min-h-screen">
+<!-- Pull to Refresh indicator -->
+<div id="mob-ptr">
+    <i class="fa-solid fa-rotate-right"></i>
+    <span>↓ Zum Aktualisieren ziehen</span>
+</div>
 <header class="hdr-root">
     <div class="hdr-inner">
         <div class="hdr-logo-area">
@@ -7478,7 +7875,8 @@ function loadOrders() {
     // always null, so the second identical check was always false (dead code).
     if (_ordersUnsub) { _ordersUnsub(); _ordersUnsub = null; }
     _ordersUnsub = db.collection('orders').orderBy('date','desc').onSnapshot(snap => {
-        _ordAllDocs = snap.docs;
+        window._ordAllDocs = snap.docs;
+        window.__ordAllDocsInternal = snap.docs;
         ordRenderTable();
     });
 }
@@ -17128,8 +17526,17 @@ async function executeCatCostUpdate() {
      MOBILE JAVASCRIPT
 ═══════════════════════════════════════════════════════ -->
 <script>
-// ── Mobile Tab Navigation ──
-const MOB_MAIN_TABS = [0, 1, 2, 5]; // Tabs in Bottom Nav
+
+// ════════════════════════════════════════════════════════════
+//  WAVEVAPES MOBILE ADMIN v2.0
+//  Complete mobile-first override of all key render functions
+// ════════════════════════════════════════════════════════════
+
+// ── Activate mobile mode ──
+document.body.classList.add('mob-active');
+
+// ── Constants ──
+const MOB_MAIN_TABS = [1, 0, 5, 2];
 const TAB_NAMES_MOB = {
     0:'Produkte', 1:'Bestellungen', 2:'Benutzer', 3:'Kategorien',
     4:'Gutscheine', 5:'Analytics', 6:'IP-Sicherheit', 7:'Settings',
@@ -17137,94 +17544,610 @@ const TAB_NAMES_MOB = {
     12:'Superadmin', 13:'Kunden', 14:'Aktionen', 15:'Klick-Analyse',
     16:'Bundles', 17:'Admin Logs', 18:'Review Gen.'
 };
+const ORD_STATUS_MOB = {
+    'Zahlung erwartet': { cls:'mob-st-zahlung', card:'status-zahlung', short:'Zahlung' },
+    'Wird bearbeitet':  { cls:'mob-st-wird',    card:'status-wird',    short:'Bearbeitung' },
+    'Versendet':        { cls:'mob-st-versendet',card:'status-versendet',short:'Versendet' },
+    'Zugestellt':       { cls:'mob-st-zugestellt',card:'status-zugestellt',short:'Zugestellt' },
+    'Storniert':        { cls:'mob-st-storniert',card:'status-storniert', short:'Storniert' }
+};
 let _mobCurrentTab = 1;
+let _mobOrdFilter = '';
+let _mobOrdSearch = '';
+let _mobProdSearch = '';
+let _mobProdCat = 'Alle';
+let _mobUserSearch = '';
+let _mobPullStartY = 0;
+let _mobPullDist = 0;
+let _mobIsPulling = false;
 
+// ── Tab switching ──
 function mobSwitchTab(n) {
     _mobCurrentTab = n;
-    // Call original switchTab
     switchTab(n);
-    // Update bottom nav active state
+    // Bottom nav
     MOB_MAIN_TABS.forEach(t => {
         const el = document.getElementById('mob-nav-' + t);
         if (el) el.classList.toggle('active', t === n);
     });
-    // Update page title
+    const moreBtn = document.getElementById('mob-nav-more');
+    if (moreBtn) moreBtn.classList.toggle('active', !MOB_MAIN_TABS.includes(n));
+    // Title
     const title = document.getElementById('mob-page-title');
     if (title) title.textContent = TAB_NAMES_MOB[n] || '';
-    // Update drawer active states
+    // Drawer items
     document.querySelectorAll('.mob-drawer-item').forEach(el => el.classList.remove('active'));
     const di = document.getElementById('mob-di-' + n);
     if (di) di.classList.add('active');
-    // FAB context
+    // FAB
     mobUpdateFab(n);
-    // Scroll to top
+    // Inject mobile UI for this tab
+    setTimeout(() => mobInjectTabUI(n), 80);
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function mobUpdateFab(n) {
-    const fab = document.getElementById('mob-fab');
-    const icon = document.getElementById('mob-fab-icon');
-    if (!fab) return;
-    // Show FAB only on relevant tabs
-    if ([0,1,4,3].includes(n)) {
-        fab.style.display = 'flex';
-        if (n === 0) icon.className = 'fa-solid fa-plus'; // Produkt
-        else if (n === 1) icon.className = 'fa-solid fa-receipt'; // Bestellungen
-        else if (n === 4) icon.className = 'fa-solid fa-ticket'; // Gutschein
-        else if (n === 3) icon.className = 'fa-solid fa-tag'; // Kategorie
-    } else {
-        fab.style.display = 'none';
-    }
+function mobInjectTabUI(n) {
+    if (n === 1) mobBuildOrdersUI();
+    else if (n === 0) mobBuildProductsUI();
+    else if (n === 2) mobBuildUsersUI();
+    else if (n === 5) mobBuildAnalyticsUI();
 }
 
-function mobFabAction() {
-    if (_mobCurrentTab === 0) {
-        // Produkt hinzufügen - scroll to add form
-        const panel = document.getElementById('prd-add-panel');
-        if (panel) {
-            if (!panel.classList.contains('open')) prdToggleAddPanel();
-            panel.scrollIntoView({ behavior: 'smooth' });
+// ── Override switchTab to also update mobile ──
+const _origSwitchTab = window.switchTab;
+window.switchTab = function(n) {
+    if (_origSwitchTab) _origSwitchTab(n);
+    _mobCurrentTab = n;
+    MOB_MAIN_TABS.forEach(t => {
+        const el = document.getElementById('mob-nav-' + t);
+        if (el) el.classList.toggle('active', t === n);
+    });
+    const moreBtn = document.getElementById('mob-nav-more');
+    if (moreBtn) moreBtn.classList.toggle('active', !MOB_MAIN_TABS.includes(n));
+    const title = document.getElementById('mob-page-title');
+    if (title) title.textContent = TAB_NAMES_MOB[n] || '';
+    mobUpdateFab(n);
+    document.querySelectorAll('.mob-drawer-item').forEach(el => el.classList.remove('active'));
+    const di = document.getElementById('mob-di-' + n);
+    if (di) di.classList.add('active');
+    setTimeout(() => mobInjectTabUI(n), 80);
+};
+
+// ── Override ordRenderTable to also update mobile cards ──
+const _origOrdRenderTable = window.ordRenderTable;
+window.ordRenderTable = function() {
+    if (_origOrdRenderTable) _origOrdRenderTable();
+    if (_mobCurrentTab === 1) setTimeout(mobRenderOrderCards, 50);
+    mobSyncBadges();
+};
+
+// ── Override renderProducts to also update mobile ──
+const _origRenderProducts = window.renderProducts;
+window.renderProducts = function(...args) {
+    if (_origRenderProducts) _origRenderProducts(...args);
+    if (_mobCurrentTab === 0) setTimeout(mobRenderProductCards, 50);
+};
+
+// ── Override renderUsers to also update mobile ──
+const _origRenderUsers = window.renderUsers;
+window.renderUsers = function(...args) {
+    if (_origRenderUsers) _origRenderUsers(...args);
+    if (_mobCurrentTab === 2) setTimeout(mobRenderUserCards, 50);
+};
+
+// ══════════════════════════════════════════════════════════
+//  ORDERS TAB — Mobile UI
+// ══════════════════════════════════════════════════════════
+function mobBuildOrdersUI() {
+    const shell = document.querySelector('#tab-content-1 .ord-shell');
+    if (!shell) return;
+    // Remove existing mob UI if any
+    document.getElementById('mob-orders-wrap')?.remove();
+    const wrap = document.createElement('div');
+    wrap.id = 'mob-orders-wrap';
+    wrap.className = 'mob-tab-wrap';
+    wrap.innerHTML = `
+        <!-- KPI Chips -->
+        <div id="mob-ord-kpis">
+            <div class="mob-kpi-chip active" id="mob-kpi-all" style="--chip-color:#67e8f9" onclick="mobOrdFilter('')">
+                <div class="mob-kpi-chip-val" id="mob-cnt-all">—</div>
+                <div class="mob-kpi-chip-lbl">Gesamt</div>
+            </div>
+            <div class="mob-kpi-chip" id="mob-kpi-zahlung" style="--chip-color:#facc15" onclick="mobOrdFilter('Zahlung erwartet')">
+                <div class="mob-kpi-chip-val" id="mob-cnt-zahlung">—</div>
+                <div class="mob-kpi-chip-lbl">Zahlung</div>
+            </div>
+            <div class="mob-kpi-chip" id="mob-kpi-wird" style="--chip-color:#60a5fa" onclick="mobOrdFilter('Wird bearbeitet')">
+                <div class="mob-kpi-chip-val" id="mob-cnt-wird">—</div>
+                <div class="mob-kpi-chip-lbl">Bearbeitung</div>
+            </div>
+        </div>
+        <!-- Filter Pills -->
+        <div class="mob-ord-filter-pills">
+            <span class="mob-filter-pill active" data-status="" onclick="mobOrdFilter('',this)">Alle</span>
+            <span class="mob-filter-pill" data-status="Zahlung erwartet" onclick="mobOrdFilter('Zahlung erwartet',this)">💳 Zahlung</span>
+            <span class="mob-filter-pill" data-status="Wird bearbeitet"  onclick="mobOrdFilter('Wird bearbeitet',this)">⚙️ Bearbeitung</span>
+            <span class="mob-filter-pill" data-status="Versendet"       onclick="mobOrdFilter('Versendet',this)">🚚 Versendet</span>
+            <span class="mob-filter-pill" data-status="Zugestellt"      onclick="mobOrdFilter('Zugestellt',this)">✅ Zugestellt</span>
+            <span class="mob-filter-pill" data-status="Storniert"       onclick="mobOrdFilter('Storniert',this)">❌ Storniert</span>
+        </div>
+        <!-- Search -->
+        <div id="mob-ord-search-bar">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input placeholder="Bestellnr. oder E-Mail..." oninput="mobOrdSearch(this.value)" value="${escA(_mobOrdSearch)}">
+        </div>
+        <!-- Cards list -->
+        <div id="mob-orders-list">
+            <div class="mob-loading"><div class="mob-spinner"></div>Lade Bestellungen…</div>
+        </div>`;
+    shell.insertBefore(wrap, shell.firstChild);
+    mobRenderOrderCards();
+}
+
+function mobOrdFilter(status, el) {
+    _mobOrdFilter = status;
+    // Sync with original filter
+    const sel = document.getElementById('status-filter');
+    if (sel) { sel.value = status; }
+    ordSyncKpiFilter();
+    // Update pills
+    document.querySelectorAll('.mob-filter-pill').forEach(p => p.classList.toggle('active', p.dataset.status === status));
+    // Update chips
+    const chipMap = { '':'mob-kpi-all','Zahlung erwartet':'mob-kpi-zahlung','Wird bearbeitet':'mob-kpi-wird' };
+    document.querySelectorAll('.mob-kpi-chip').forEach(c => c.classList.remove('active'));
+    if (chipMap[status]) document.getElementById(chipMap[status])?.classList.add('active');
+    mobRenderOrderCards();
+}
+
+function mobOrdSearch(val) {
+    _mobOrdSearch = val;
+    const inp = document.getElementById('order-search');
+    if (inp) { inp.value = val; }
+    mobRenderOrderCards();
+}
+
+function mobRenderOrderCards() {
+    const list = document.getElementById('mob-orders-list');
+    if (!list) return;
+    const docs = (window._ordAllDocs || []).filter(doc => {
+        const o = doc.data();
+        const status = o.status || 'Zahlung erwartet';
+        if (_mobOrdFilter && status !== _mobOrdFilter) return false;
+        if (_mobOrdSearch) {
+            const q = _mobOrdSearch.toLowerCase();
+            if (!String(o.orderNumber||'').toLowerCase().includes(q) &&
+                !String(o.userEmail||'').toLowerCase().includes(q)) return false;
         }
-    } else if (_mobCurrentTab === 1) {
-        // Bestellungen - scroll to top / filter
-        document.getElementById('order-search')?.focus();
-    } else if (_mobCurrentTab === 4) {
-        // Gutschein erstellen - scroll to form
-        document.querySelector('.cpn-create')?.scrollIntoView({ behavior: 'smooth' });
-    } else if (_mobCurrentTab === 3) {
-        // Kategorie - scroll to create form
-        document.querySelector('.cat-create')?.scrollIntoView({ behavior: 'smooth' });
+        return true;
+    });
+    // Update counts
+    const counts = {};
+    (window._ordAllDocs||[]).forEach(doc => {
+        const s = doc.data().status || 'Zahlung erwartet';
+        counts[s] = (counts[s]||0)+1;
+    });
+    const total = (window._ordAllDocs||[]).length;
+    const setEl = (id,v) => { const e=document.getElementById(id); if(e) e.textContent=v; };
+    setEl('mob-cnt-all', total);
+    setEl('mob-cnt-zahlung', counts['Zahlung erwartet']||0);
+    setEl('mob-cnt-wird', counts['Wird bearbeitet']||0);
+    // Badge
+    const pending = (counts['Zahlung erwartet']||0) + (counts['Wird bearbeitet']||0);
+    const mobBadge = document.getElementById('mob-badge-orders');
+    if (mobBadge) { mobBadge.textContent = pending; mobBadge.style.display = pending > 0 ? 'inline' : 'none'; }
+
+    if (!docs.length) {
+        list.innerHTML = `<div class="mob-empty"><i class="fa-solid fa-receipt"></i>Keine Bestellungen</div>`;
+        return;
+    }
+    list.innerHTML = docs.map((doc, i) => {
+        const o = doc.data();
+        const status = o.status || 'Zahlung erwartet';
+        const sm = ORD_STATUS_MOB[status] || ORD_STATUS_MOB['Zahlung erwartet'];
+        const date = o.date ? o.date.toDate().toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'2-digit'}) : '—';
+        const time = o.date ? o.date.toDate().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}) : '';
+        const email = o.userEmail || '—';
+        return `<div class="mob-order-card ${sm.card}" onclick="showOrderModal('${doc.id}')" style="animation-delay:${i*30}ms">
+            <div class="mob-oc-top">
+                <div class="mob-oc-num">#${escA(String(o.orderNumber||'—'))}</div>
+                <span class="mob-oc-status ${sm.cls}">${status}</span>
+            </div>
+            <div class="mob-oc-mid">
+                <div class="mob-oc-email">${escA(email)}</div>
+                <div class="mob-oc-total">${(o.total||0).toFixed(2)} €</div>
+            </div>
+            <div class="mob-oc-bottom">
+                <div>
+                    <div class="mob-oc-date">${date}${time ? ' · '+time : ''}</div>
+                    ${o.trackingNumber ? `<div class="mob-oc-tracking">📦 ${escA(o.carrier||'DHL')} · ${escA(o.trackingNumber)}</div>` : ''}
+                    ${o.orderNote ? `<div class="mob-oc-note">💬 Kundenwunsch</div>` : ''}
+                </div>
+                <div class="mob-oc-actions" onclick="event.stopPropagation()">
+                    ${status !== 'Versendet' && status !== 'Zugestellt' && status !== 'Storniert'
+                        ? `<button class="mob-oc-btn ship" onclick="mobQuickShip('${doc.id}',event)"><i class="fa-solid fa-truck"></i> Versenden</button>`
+                        : ''}
+                    <button class="mob-oc-btn view" onclick="showOrderModal('${doc.id}')"><i class="fa-solid fa-pen"></i></button>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function mobQuickShip(id, e) {
+    e.stopPropagation();
+    if (confirm('Bestellung als "Versendet" markieren?')) {
+        quickStatus(id, 'Versendet');
     }
 }
 
-// ── More Drawer ──
+// ══════════════════════════════════════════════════════════
+//  PRODUCTS TAB — Mobile UI
+// ══════════════════════════════════════════════════════════
+function mobBuildProductsUI() {
+    const shell = document.querySelector('#tab-content-0');
+    if (!shell) return;
+    document.getElementById('mob-products-wrap')?.remove();
+    const wrap = document.createElement('div');
+    wrap.id = 'mob-products-wrap';
+    wrap.className = 'mob-tab-wrap';
+    wrap.innerHTML = `
+        <!-- KPI chips -->
+        <div id="mob-prod-kpis">
+            <div class="mob-kpi-chip" style="--chip-color:#34d399">
+                <div class="mob-kpi-chip-val" id="mob-total-revenue" style="color:#34d399;font-size:15px">0 €</div>
+                <div class="mob-kpi-chip-lbl">Umsatz</div>
+            </div>
+            <div class="mob-kpi-chip" style="--chip-color:#67e8f9">
+                <div class="mob-kpi-chip-val" id="mob-active-products" style="color:#67e8f9">0</div>
+                <div class="mob-kpi-chip-lbl">Aktive Produkte</div>
+            </div>
+            <div class="mob-kpi-chip" style="--chip-color:#a78bfa">
+                <div class="mob-kpi-chip-val" id="mob-total-sold" style="color:#a78bfa">0</div>
+                <div class="mob-kpi-chip-lbl">Verkauft</div>
+            </div>
+            <div class="mob-kpi-chip" style="--chip-color:#fbbf24">
+                <div class="mob-kpi-chip-val" id="mob-top-seller" style="color:#fbbf24;font-size:11px">—</div>
+                <div class="mob-kpi-chip-lbl">Top-Seller</div>
+            </div>
+        </div>
+        <!-- Add product button -->
+        <div id="mob-add-prod-btn" onclick="prdToggleAddPanel();document.getElementById('prd-add-panel')?.scrollIntoView({behavior:'smooth'})">
+            <i class="fa-solid fa-plus"></i> Neues Produkt
+        </div>
+        <!-- Category filter -->
+        <div class="mob-cat-bar" id="mob-cat-bar">
+            <span class="mob-cat-pill active" data-cat="Alle" onclick="mobProdCat('Alle',this)">Alle</span>
+        </div>
+        <!-- Search -->
+        <div id="mob-ord-search-bar">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input placeholder="Produkt suchen..." oninput="mobProdSearch(this.value)" value="${escA(_mobProdSearch)}">
+        </div>
+        <!-- Cards -->
+        <div id="mob-products-list">
+            <div class="mob-loading"><div class="mob-spinner"></div>Lade Produkte…</div>
+        </div>`;
+    // Insert before the original add panel
+    const addPanel = shell.querySelector('.prd-add-panel') || shell.firstChild;
+    shell.insertBefore(wrap, addPanel);
+    // Build category pills from loaded categories
+    mobBuildCatPills();
+    mobRenderProductCards();
+    // Sync KPIs from original elements
+    setTimeout(mobSyncProdKpis, 500);
+}
+
+function mobSyncProdKpis() {
+    const map = {
+        'mob-total-revenue': 'total-revenue',
+        'mob-active-products': 'active-products',
+        'mob-total-sold': 'total-sold',
+        'mob-top-seller': 'top-seller',
+    };
+    Object.entries(map).forEach(([mobId, origId]) => {
+        const orig = document.getElementById(origId);
+        const mob = document.getElementById(mobId);
+        if (orig && mob) mob.textContent = orig.textContent;
+    });
+}
+
+function mobBuildCatPills() {
+    const bar = document.getElementById('mob-cat-bar');
+    if (!bar) return;
+    const cats = [...new Set((window.allProducts||[]).map(p => p.category).filter(Boolean))].sort();
+    cats.forEach(cat => {
+        if (!bar.querySelector(`[data-cat="${CSS.escape(cat)}"]`)) {
+            const pill = document.createElement('span');
+            pill.className = 'mob-cat-pill';
+            pill.dataset.cat = cat;
+            pill.textContent = cat;
+            pill.onclick = () => mobProdCat(cat, pill);
+            bar.appendChild(pill);
+        }
+    });
+}
+
+function mobProdCat(cat, el) {
+    _mobProdCat = cat;
+    document.querySelectorAll('.mob-cat-pill').forEach(p => p.classList.toggle('active', p.dataset.cat === cat));
+    mobRenderProductCards();
+}
+
+function mobProdSearch(val) {
+    _mobProdSearch = val;
+    mobRenderProductCards();
+}
+
+function mobRenderProductCards() {
+    const list = document.getElementById('mob-products-list');
+    if (!list) return;
+    let prods = window.allProducts || [];
+    if (_mobProdCat !== 'Alle') prods = prods.filter(p => p.category === _mobProdCat);
+    if (_mobProdSearch) {
+        const q = _mobProdSearch.toLowerCase();
+        prods = prods.filter(p => (p.name||'').toLowerCase().includes(q) || (p.category||'').toLowerCase().includes(q));
+    }
+    // Build cat pills if not done
+    mobBuildCatPills();
+    mobSyncProdKpis();
+    if (!prods.length) {
+        list.innerHTML = `<div class="mob-empty"><i class="fa-solid fa-box"></i>Keine Produkte gefunden</div>`;
+        return;
+    }
+    const critT = window.stockCriticalThreshold || 3;
+    const warnT = window.stockWarningThreshold || 10;
+    list.innerHTML = prods.map((p, i) => {
+        const stock = p.stock || 0;
+        const stockCls = stock <= critT ? 'crit' : stock <= warnT ? 'warn' : 'ok';
+        const thumb = p.image
+            ? `<img class="mob-prod-thumb" src="${escA(p.image)}" loading="lazy">`
+            : `<div class="mob-prod-thumb-ph">📦</div>`;
+        const badges = [
+            p.isNew ? `<span class="mob-prod-badge new">NEW</span>` : '',
+            p.available === false ? `<span class="mob-prod-badge off">OFFLINE</span>` : ''
+        ].filter(Boolean).join('');
+        return `<div class="mob-prod-card${p.available===false?' unavailable':''}" style="animation-delay:${i*20}ms">
+            ${thumb}
+            <div class="mob-prod-info" onclick="openPedDrawer('${escA(p.id)}')">
+                <div class="mob-prod-name">${escA(p.name||'—')}</div>
+                <div class="mob-prod-meta">
+                    <span class="mob-prod-price">${(p.price||0).toFixed(2)} €</span>
+                    <span class="mob-prod-cat">${escA(p.category||'—')}</span>
+                </div>
+                ${badges ? `<div class="mob-prod-badges">${badges}</div>` : ''}
+            </div>
+            <div class="mob-prod-right">
+                <span class="mob-prod-stock ${stockCls}">${stock}</span>
+                <div class="mob-prod-edit-btn" onclick="openPedDrawer('${escA(p.id)}')">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// ══════════════════════════════════════════════════════════
+//  USERS TAB — Mobile UI
+// ══════════════════════════════════════════════════════════
+function mobBuildUsersUI() {
+    const shell = document.querySelector('#tab-content-2 .usr-shell');
+    if (!shell) return;
+    document.getElementById('mob-users-wrap')?.remove();
+    const wrap = document.createElement('div');
+    wrap.id = 'mob-users-wrap';
+    wrap.className = 'mob-tab-wrap';
+    wrap.innerHTML = `
+        <!-- Header -->
+        <div class="mob-section-hdr">
+            <div class="mob-section-title"><i class="fa-solid fa-users"></i> Benutzer</div>
+            <span class="mob-section-sub" id="mob-usr-count">—</span>
+        </div>
+        <!-- Search -->
+        <div id="mob-ord-search-bar" style="margin-bottom:10px">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input placeholder="E-Mail oder Username..." oninput="mobUserSearch(this.value)" value="${escA(_mobUserSearch)}">
+        </div>
+        <!-- Export button -->
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+            <button onclick="exportUsersToCSV()" style="flex:1;padding:9px;border-radius:10px;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.2);color:#34d399;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
+                <i class="fa-solid fa-file-csv"></i> CSV Export
+            </button>
+            <button onclick="aiChurnAnalysis()" style="flex:1;padding:9px;border-radius:10px;background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.2);color:#a78bfa;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> KI-Churn
+            </button>
+        </div>
+        <!-- Cards -->
+        <div id="mob-users-list">
+            <div class="mob-loading"><div class="mob-spinner"></div>Lade Benutzer…</div>
+        </div>`;
+    shell.insertBefore(wrap, shell.firstChild);
+    setTimeout(mobRenderUserCards, 200);
+}
+
+function mobUserSearch(val) {
+    _mobUserSearch = val;
+    const inp = document.getElementById('user-search');
+    if (inp) { inp.value = val; inp.dispatchEvent(new Event('input')); }
+    mobRenderUserCards();
+}
+
+function mobRenderUserCards() {
+    const list = document.getElementById('mob-users-list');
+    if (!list) return;
+    // Get from original tbody
+    const rows = document.querySelectorAll('#users-tbody tr:not([colspan])');
+    if (!rows.length) {
+        // Try from allUsers
+        const users = window._allUsersCache || [];
+        if (!users.length) {
+            list.innerHTML = `<div class="mob-loading"><div class="mob-spinner"></div>Lade…</div>`;
+            return;
+        }
+        let filtered = users;
+        if (_mobUserSearch) {
+            const q = _mobUserSearch.toLowerCase();
+            filtered = users.filter(u => (u.email||'').toLowerCase().includes(q) || (u.username||'').toLowerCase().includes(q));
+        }
+        const countEl = document.getElementById('mob-usr-count');
+        if (countEl) countEl.textContent = `${filtered.length} User`;
+        list.innerHTML = filtered.slice(0,50).map((u, i) => mobUserCardHTML(u, i)).join('');
+        return;
+    }
+    // Parse from DOM rows
+    const usersFromDom = [];
+    rows.forEach(row => {
+        usersFromDom.push({
+            id: row.dataset.uid || '',
+            email: row.querySelector('.usr-email')?.textContent || row.cells[0]?.textContent || '—',
+            username: row.querySelector('.usr-name')?.textContent || '',
+            totalBonusPoints: parseInt(row.querySelector('.usr-pts')?.textContent || '0'),
+            freeShipping: row.querySelector('.usr-freeship')?.textContent?.includes('✓'),
+            disabled: row.querySelector('.usr-status')?.textContent?.includes('Gesperrt'),
+        });
+    });
+    let filtered = usersFromDom;
+    if (_mobUserSearch) {
+        const q = _mobUserSearch.toLowerCase();
+        filtered = usersFromDom.filter(u => u.email.toLowerCase().includes(q) || (u.username||'').toLowerCase().includes(q));
+    }
+    const countEl = document.getElementById('mob-usr-count');
+    if (countEl) countEl.textContent = `${filtered.length} User`;
+    list.innerHTML = filtered.slice(0,60).map((u, i) => mobUserCardHTML(u, i)).join('');
+}
+
+function mobUserCardHTML(u, i) {
+    const initials = (u.email||'?').slice(0,2).toUpperCase();
+    const pts = u.totalBonusPoints || 0;
+    return `<div class="mob-user-card" style="animation-delay:${i*20}ms" onclick="openUserDrawer && openUserDrawer('${escA(u.id)}')">
+        <div class="mob-user-av${u.disabled?' disabled':''}">${initials}</div>
+        <div class="mob-user-info">
+            <div class="mob-user-name">${escA(u.username || u.email?.split('@')[0] || '—')}</div>
+            <div class="mob-user-email">${escA(u.email||'—')}</div>
+            <div class="mob-user-meta">
+                ${pts > 0 ? `<span class="mob-user-chip mob-user-pts">⭐ ${pts} Pts</span>` : ''}
+                ${u.freeShipping ? `<span class="mob-user-chip mob-user-ship">🚚 Gratis</span>` : ''}
+                ${u.disabled ? `<span class="mob-user-chip mob-user-ban">🚫 Gesperrt</span>` : ''}
+            </div>
+        </div>
+        <div class="mob-user-right">
+            <div class="mob-user-btn" onclick="event.stopPropagation();openUserDrawer && openUserDrawer('${escA(u.id)}')">
+                <i class="fa-solid fa-chevron-right"></i>
+            </div>
+        </div>
+    </div>`;
+}
+
+// ══════════════════════════════════════════════════════════
+//  ANALYTICS TAB — Mobile UI
+// ══════════════════════════════════════════════════════════
+function mobBuildAnalyticsUI() {
+    const tc = document.getElementById('tab-content-5');
+    if (!tc) return;
+    document.getElementById('mob-analytics-wrap')?.remove();
+    const wrap = document.createElement('div');
+    wrap.id = 'mob-analytics-wrap';
+    wrap.className = 'mob-tab-wrap';
+    // Clone the KPI values from original elements if they exist
+    setTimeout(() => {
+        const kpis = [
+            { id:'an-kpi-revenue', label:'Umsatz',   color:'#34d399', glow:'#34d399', icon:'💰' },
+            { id:'an-kpi-orders',  label:'Bestellungen', color:'#67e8f9', glow:'#67e8f9', icon:'🧾' },
+            { id:'an-kpi-users',   label:'Neue User', color:'#a78bfa', glow:'#a78bfa', icon:'👤' },
+            { id:'an-kpi-aov',     label:'Ø Bestellwert', color:'#fbbf24', glow:'#fbbf24', icon:'📊' },
+        ];
+        let kpiHTML = `<div class="mob-an-kpi-grid">`;
+        kpis.forEach(k => {
+            const orig = document.getElementById(k.id);
+            const val = orig?.textContent || '—';
+            kpiHTML += `<div class="mob-an-kpi" style="--glow:${k.glow};--val-color:${k.color}">
+                <div class="mob-an-kpi-glow"></div>
+                <div class="mob-an-kpi-lbl">${k.icon} ${k.label}</div>
+                <div class="mob-an-kpi-val" id="mob-${k.id}">${val}</div>
+            </div>`;
+        });
+        kpiHTML += `</div>`;
+        // Period buttons
+        const periodHTML = `<div class="mob-period-bar" id="mob-period-bar">
+            <button class="mob-period-btn" onclick="anSetPeriod(7,this)">7 Tage</button>
+            <button class="mob-period-btn active" onclick="anSetPeriod(30,this)">30 Tage</button>
+            <button class="mob-period-btn" onclick="anSetPeriod(90,this)">90 Tage</button>
+            <button class="mob-period-btn" onclick="anSetPeriod(365,this)">12 Monate</button>
+        </div>`;
+        // Chart cards - reuse existing canvases
+        const chartsHTML = `
+            <div class="mob-an-chart-card">
+                <div class="mob-an-chart-title"><i class="fa-solid fa-chart-line" style="color:#67e8f9"></i> Umsatz-Verlauf</div>
+                <div style="position:relative;height:180px"><canvas id="revenueChart"></canvas></div>
+            </div>
+            <div class="mob-an-chart-card">
+                <div class="mob-an-chart-title"><i class="fa-solid fa-chart-bar" style="color:#a78bfa"></i> Bestellungen/Tag</div>
+                <div style="position:relative;height:160px"><canvas id="dailyOrdersChart"></canvas></div>
+            </div>
+            <div class="mob-an-chart-card">
+                <div class="mob-an-chart-title"><i class="fa-solid fa-trophy" style="color:#fbbf24"></i> Top Produkte</div>
+                <div id="mob-top-prods-list" style="max-height:200px;overflow-y:auto"></div>
+            </div>
+            <div class="mob-an-chart-card">
+                <div class="mob-an-chart-title"><i class="fa-solid fa-fire" style="color:#fb923c"></i> Nach Wochentag</div>
+                <div style="position:relative;height:150px"><canvas id="weekdayChart"></canvas></div>
+            </div>`;
+        wrap.innerHTML = `
+            <div class="mob-section-hdr" style="margin-bottom:10px">
+                <div class="mob-section-title"><i class="fa-solid fa-chart-line"></i> Analytics</div>
+                <button onclick="loadAnalytics()" style="padding:6px 12px;border-radius:8px;background:rgba(103,232,249,.08);border:1px solid rgba(103,232,249,.2);color:#67e8f9;font-size:11px;font-weight:700;cursor:pointer"><i class="fa-solid fa-rotate-right"></i></button>
+            </div>
+            ${periodHTML}
+            ${kpiHTML}
+            <div id="mob-analytics-view">${chartsHTML}</div>`;
+        tc.insertBefore(wrap, tc.firstChild);
+        // Sync KPI values periodically
+        setInterval(mobSyncAnalyticsKpis, 2000);
+        // Copy top products
+        setTimeout(mobSyncTopProducts, 1000);
+    }, 300);
+}
+
+function mobSyncAnalyticsKpis() {
+    const kpis = ['an-kpi-revenue','an-kpi-orders','an-kpi-users','an-kpi-aov'];
+    kpis.forEach(id => {
+        const orig = document.getElementById(id);
+        const mob = document.getElementById('mob-' + id);
+        if (orig && mob && orig.textContent !== mob.textContent) {
+            mob.textContent = orig.textContent;
+        }
+    });
+}
+
+function mobSyncTopProducts() {
+    const origList = document.getElementById('an-prod-list');
+    const mobList = document.getElementById('mob-top-prods-list');
+    if (!origList || !mobList) return;
+    const rows = origList.querySelectorAll('.an-prod-row');
+    if (!rows.length) { mobList.innerHTML = '<div style="color:rgba(255,255,255,.25);font-size:12px;text-align:center;padding:20px">Keine Daten</div>'; return; }
+    mobList.innerHTML = Array.from(rows).map(r => r.outerHTML).join('');
+}
+
+// ══════════════════════════════════════════════════════════
+//  MORE DRAWER
+// ══════════════════════════════════════════════════════════
 function mobOpenMore() {
     document.getElementById('mob-more-overlay').classList.add('open');
     document.getElementById('mob-more-drawer').classList.add('open');
-    // Deactivate all bottom nav items
-    MOB_MAIN_TABS.forEach(t => {
-        const el = document.getElementById('mob-nav-' + t);
-        if (el && t !== _mobCurrentTab) el.classList.remove('active');
-    });
     document.getElementById('mob-nav-more').classList.add('active');
 }
 function mobCloseMore() {
     document.getElementById('mob-more-overlay').classList.remove('open');
     document.getElementById('mob-more-drawer').classList.remove('open');
-    // Restore active state
+    document.getElementById('mob-nav-more').classList.remove('active');
     MOB_MAIN_TABS.forEach(t => {
         const el = document.getElementById('mob-nav-' + t);
         if (el) el.classList.toggle('active', t === _mobCurrentTab);
     });
-    const moreBtn = document.getElementById('mob-nav-more');
-    if (moreBtn && !MOB_MAIN_TABS.includes(_mobCurrentTab)) {
-        moreBtn.classList.add('active');
-    } else if (moreBtn) {
-        moreBtn.classList.remove('active');
-    }
 }
 
-// ── Search Overlay ──
+// ══════════════════════════════════════════════════════════
+//  SEARCH OVERLAY
+// ══════════════════════════════════════════════════════════
 function mobOpenSearch() {
     const overlay = document.getElementById('mob-search-overlay');
     overlay.classList.add('open');
@@ -17232,176 +18155,175 @@ function mobOpenSearch() {
 }
 function mobCloseSearch() {
     document.getElementById('mob-search-overlay').classList.remove('open');
-    document.getElementById('mob-search-input').value = '';
-    document.getElementById('mob-search-results').innerHTML = `
-        <div style="text-align:center;color:rgba(255,255,255,.25);font-size:13px;padding:40px 0">
-            <i class="fa-solid fa-magnifying-glass" style="font-size:28px;display:block;margin-bottom:10px;opacity:.3"></i>
-            Tippe um zu suchen...
-        </div>`;
+    const inp = document.getElementById('mob-search-input');
+    if (inp) inp.value = '';
+    document.getElementById('mob-search-results').innerHTML = mobSearchEmptyHTML();
+}
+function mobSearchEmptyHTML() {
+    return `<div style="text-align:center;color:rgba(255,255,255,.2);font-size:13px;padding:60px 20px">
+        <i class="fa-solid fa-magnifying-glass" style="font-size:36px;display:block;margin-bottom:12px;opacity:.2"></i>
+        Tippe um zu suchen…
+    </div>`;
 }
 function mobSearchInput() {
-    const q = document.getElementById('mob-search-input').value.trim().toLowerCase();
+    const q = (document.getElementById('mob-search-input')?.value || '').trim().toLowerCase();
     const results = document.getElementById('mob-search-results');
-    if (!q) { mobCloseSearch(); mobOpenSearch(); return; }
-
+    if (!q) { results.innerHTML = mobSearchEmptyHTML(); return; }
     let html = '';
-    // Search products
-    const prods = (window.allProducts || []).filter(p =>
-        (p.name||'').toLowerCase().includes(q)
-    ).slice(0, 5);
+    // Products
+    const prods = (window.allProducts||[]).filter(p => (p.name||'').toLowerCase().includes(q)).slice(0,6);
     if (prods.length) {
-        html += `<div style="font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.25);padding:8px 4px 4px">Produkte</div>`;
+        html += `<div style="font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.25);padding:8px 4px 6px">Produkte</div>`;
         prods.forEach(p => {
-            html += `<div class="mob-search-result" onclick="mobSearchGoProduct('${p.id}')">
+            html += `<div class="mob-search-result" onclick="mobCloseSearch();mobSwitchTab(0);setTimeout(()=>openPedDrawer('${p.id}'),400)">
                 <div class="mob-search-result-icon" style="background:rgba(103,232,249,.1);color:#67e8f9"><i class="fa-solid fa-box"></i></div>
                 <div><div class="mob-search-result-main">${escA(p.name)}</div>
-                <div class="mob-search-result-sub">${p.category||'—'} • ${(p.price||0).toFixed(2)} €</div></div>
+                <div class="mob-search-result-sub">${p.category||'—'} · ${(p.price||0).toFixed(2)} € · Lager: ${p.stock||0}</div></div>
             </div>`;
         });
     }
-    // Search orders (by order number / email)
-    const ords = (window._allOrdersCache || []).filter(o =>
-        (o.orderNumber||'').toLowerCase().includes(q) ||
-        (o.email||'').toLowerCase().includes(q)
-    ).slice(0, 5);
-    if (ords.length) {
-        html += `<div style="font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.25);padding:8px 4px 4px">Bestellungen</div>`;
-        ords.forEach(o => {
-            html += `<div class="mob-search-result" onclick="mobCloseSearch();mobSwitchTab(1);setTimeout(()=>{const s=document.getElementById('order-search');if(s){s.value='${escA(o.orderNumber||'')}';s.dispatchEvent(new Event('input'));}},400)">
+    // Orders from cached docs
+    const ordDocs = (window._ordAllDocs||[]).filter(doc => {
+        const o = doc.data();
+        return String(o.orderNumber||'').toLowerCase().includes(q) || String(o.userEmail||'').toLowerCase().includes(q);
+    }).slice(0,5);
+    if (ordDocs.length) {
+        html += `<div style="font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.25);padding:8px 4px 6px">Bestellungen</div>`;
+        ordDocs.forEach(doc => {
+            const o = doc.data();
+            const status = o.status || 'Zahlung erwartet';
+            const sm = ORD_STATUS_MOB[status];
+            html += `<div class="mob-search-result" onclick="mobCloseSearch();mobSwitchTab(1);setTimeout(()=>showOrderModal('${doc.id}'),400)">
                 <div class="mob-search-result-icon" style="background:rgba(52,211,153,.1);color:#34d399"><i class="fa-solid fa-receipt"></i></div>
-                <div><div class="mob-search-result-main">#${escA(o.orderNumber||o.id||'—')}</div>
-                <div class="mob-search-result-sub">${escA(o.email||'—')} • ${(o.total||0).toFixed(2)} €</div></div>
+                <div><div class="mob-search-result-main">#${escA(String(o.orderNumber||'—'))} · ${(o.total||0).toFixed(2)} €</div>
+                <div class="mob-search-result-sub">${escA(o.userEmail||'—')} · <span class="${sm?.cls||''}">${status}</span></div></div>
             </div>`;
         });
     }
     if (!html) {
-        html = `<div style="text-align:center;color:rgba(255,255,255,.25);font-size:13px;padding:40px 0">
-            <i class="fa-solid fa-search-minus" style="font-size:28px;display:block;margin-bottom:10px;opacity:.3"></i>
-            Keine Ergebnisse für "${escA(q)}"</div>`;
+        html = `<div class="mob-empty" style="padding:40px 20px"><i class="fa-solid fa-search-minus"></i>Keine Ergebnisse für „${escA(q)}"</div>`;
     }
     results.innerHTML = html;
 }
 
-function mobSearchGoProduct(id) {
-    mobCloseSearch();
-    mobSwitchTab(0);
-    setTimeout(() => {
-        const row = document.querySelector(`[data-product-id="${id}"]`);
-        if (row) { row.scrollIntoView({ behavior: 'smooth' }); }
-    }, 500);
+// ══════════════════════════════════════════════════════════
+//  FAB
+// ══════════════════════════════════════════════════════════
+function mobUpdateFab(n) {
+    const fab = document.getElementById('mob-fab');
+    const icon = document.getElementById('mob-fab-icon');
+    if (!fab) return;
+    const fabTabs = { 0: 'fa-plus', 1: 'fa-magnifying-glass', 4: 'fa-ticket', 3: 'fa-tag' };
+    if (fabTabs[n]) {
+        fab.style.display = 'flex';
+        icon.className = 'fa-solid ' + fabTabs[n];
+    } else {
+        fab.style.display = 'none';
+    }
+}
+function mobFabAction() {
+    if (_mobCurrentTab === 0) {
+        const panel = document.getElementById('prd-add-panel');
+        if (panel) { if (!panel.classList.contains('open')) prdToggleAddPanel(); panel.scrollIntoView({behavior:'smooth'}); }
+    } else if (_mobCurrentTab === 1) {
+        document.querySelector('#mob-orders-wrap input')?.focus();
+    } else if (_mobCurrentTab === 4) {
+        document.querySelector('.cpn-create')?.scrollIntoView({behavior:'smooth'});
+    } else if (_mobCurrentTab === 3) {
+        document.querySelector('.cat-create')?.scrollIntoView({behavior:'smooth'});
+    }
 }
 
-// ── Sync badges from desktop sidebar to mobile ──
+// ══════════════════════════════════════════════════════════
+//  PULL TO REFRESH
+// ══════════════════════════════════════════════════════════
+const _ptr = document.getElementById('mob-ptr');
+document.addEventListener('touchstart', e => {
+    if (window.scrollY === 0) { _mobPullStartY = e.touches[0].clientY; _mobIsPulling = true; }
+}, { passive: true });
+document.addEventListener('touchmove', e => {
+    if (!_mobIsPulling) return;
+    _mobPullDist = e.touches[0].clientY - _mobPullStartY;
+    if (_mobPullDist > 0 && _mobPullDist < 80) {
+        if (_ptr) { _ptr.classList.add('active'); if (_mobPullDist > 55) _ptr.classList.add('releasing'); else _ptr.classList.remove('releasing'); }
+    }
+}, { passive: true });
+document.addEventListener('touchend', () => {
+    if (_mobIsPulling && _mobPullDist > 55) {
+        if (_ptr) { _ptr.querySelector('span').textContent = 'Aktualisiere…'; }
+        mobRefreshCurrent();
+        setTimeout(() => { if(_ptr){_ptr.classList.remove('active','releasing'); _ptr.querySelector('span').textContent = '↓ Zum Aktualisieren ziehen'; }}, 1200);
+    } else { if(_ptr) _ptr.classList.remove('active','releasing'); }
+    _mobIsPulling = false; _mobPullDist = 0;
+});
+function mobRefreshCurrent() {
+    if (_mobCurrentTab === 1) { loadOrders(); showToast('🔄 Bestellungen aktualisiert'); }
+    else if (_mobCurrentTab === 0) { loadProducts(); showToast('🔄 Produkte aktualisiert'); }
+    else if (_mobCurrentTab === 2) { loadUsers(); showToast('🔄 User aktualisiert'); }
+    else if (_mobCurrentTab === 5) { loadAnalytics(); showToast('🔄 Analytics aktualisiert'); }
+}
+
+// ══════════════════════════════════════════════════════════
+//  BADGE SYNC
+// ══════════════════════════════════════════════════════════
 function mobSyncBadges() {
-    // Orders badge
-    const ordBadge = document.getElementById('sb-badge-orders');
-    const mobOrdBadge = document.getElementById('mob-badge-orders');
-    if (ordBadge && mobOrdBadge) {
-        const show = ordBadge.style.display !== 'none' && ordBadge.textContent !== '0';
-        mobOrdBadge.style.display = show ? 'inline' : 'none';
-        mobOrdBadge.textContent = ordBadge.textContent;
-    }
-    // Reviews badge
-    const rvBadge = document.getElementById('sb-reviews-badge');
-    const mobRvBadge = document.getElementById('mob-di-badge-11');
-    if (rvBadge && mobRvBadge) {
-        const show = rvBadge.style.display !== 'none';
-        mobRvBadge.style.display = show ? 'inline' : 'none';
-        mobRvBadge.textContent = rvBadge.textContent;
-    }
-    // Promos badge
-    const promoBadge = document.getElementById('sb-promos-badge');
-    const mobPromoBadge = document.getElementById('mob-di-badge-14');
-    if (promoBadge && mobPromoBadge) {
-        mobPromoBadge.style.display = promoBadge.style.display;
-        mobPromoBadge.textContent = promoBadge.textContent;
-    }
-    // Bundles badge
-    const bundlesBadge = document.getElementById('sb-bundles-badge');
-    const mobBundlesBadge = document.getElementById('mob-di-badge-16');
-    if (bundlesBadge && mobBundlesBadge) {
-        mobBundlesBadge.style.display = bundlesBadge.style.display;
-        mobBundlesBadge.textContent = bundlesBadge.textContent;
-    }
+    const badges = [
+        ['sb-badge-orders','mob-badge-orders'],
+        ['sb-reviews-badge','mob-di-badge-11'],
+        ['sb-promos-badge','mob-di-badge-14'],
+        ['sb-bundles-badge','mob-di-badge-16'],
+    ];
+    badges.forEach(([origId, mobId]) => {
+        const orig = document.getElementById(origId);
+        const mob = document.getElementById(mobId);
+        if (!orig || !mob) return;
+        mob.textContent = orig.textContent;
+        mob.style.display = orig.style.display;
+    });
 }
-// Sync badges every 3 seconds
-setInterval(mobSyncBadges, 3000);
+setInterval(mobSyncBadges, 2000);
 
-// ── Init: Start on Bestellungen (Tab 1) on mobile ──
+// ══════════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
-    // Set initial page title
-    const title = document.getElementById('mob-page-title');
-    if (title) title.textContent = 'Bestellungen';
-    // Update email display in more drawer
+    // Email in drawer
     const emailDisp = document.getElementById('mob-email-display');
     if (emailDisp) {
-        const interval = setInterval(() => {
-            const adminEmailEl = document.getElementById('admin-email');
-            if (adminEmailEl && adminEmailEl.textContent) {
-                emailDisp.textContent = adminEmailEl.textContent;
-                clearInterval(interval);
-            }
+        const iv = setInterval(() => {
+            const e = document.getElementById('admin-email');
+            if (e?.textContent) { emailDisp.textContent = e.textContent; clearInterval(iv); }
         }, 500);
     }
-    // Initial FAB
+    // Initial tab (Bestellungen)
     mobUpdateFab(1);
+    setTimeout(() => {
+        mobBuildOrdersUI();
+        // Trigger data load for initial tab
+        const title = document.getElementById('mob-page-title');
+        if (title) title.textContent = 'Bestellungen';
+    }, 600);
 });
 
-// ── Override switchTab to update mobile UI ──
-const _origSwitchTab = switchTab;
-// Patch: sync mobile UI whenever switchTab is called from anywhere
-const _mobPatchSwitchTab = function(n) {
-    _mobCurrentTab = n;
-    // Update bottom nav
-    MOB_MAIN_TABS.forEach(t => {
-        const el = document.getElementById('mob-nav-' + t);
-        if (el) el.classList.toggle('active', t === n);
-    });
-    // More button active if not main tab
-    const moreBtn = document.getElementById('mob-nav-more');
-    if (moreBtn) moreBtn.classList.toggle('active', !MOB_MAIN_TABS.includes(n));
-    // Page title
-    const title = document.getElementById('mob-page-title');
-    if (title) title.textContent = TAB_NAMES_MOB[n] || '';
-    // FAB
-    mobUpdateFab(n);
-    // Sync drawer items
-    document.querySelectorAll('.mob-drawer-item').forEach(el => el.classList.remove('active'));
-    const di = document.getElementById('mob-di-' + n);
-    if (di) di.classList.add('active');
+// User cache exposure (intercept users load)
+window._allUsersCache = [];
+const _origLoadUsers = window.loadUsers;
+window.loadUsers = function() {
+    if (_origLoadUsers) _origLoadUsers();
+    // After load, intercept tbody
+    setTimeout(() => {
+        const rows = document.querySelectorAll('#users-tbody tr');
+        if (rows.length && _mobCurrentTab === 2) mobRenderUserCards();
+    }, 1000);
 };
 
-// Wrap original switchTab
-window.switchTab = function(n) {
-    _origSwitchTab(n);
-    _mobPatchSwitchTab(n);
-};
+// Expose ordAllDocs globally for mobile
+Object.defineProperty(window, '_ordAllDocs', {
+    get() { return window.__ordAllDocsInternal || []; },
+    set(v) { window.__ordAllDocsInternal = v; if(_mobCurrentTab===1) setTimeout(mobRenderOrderCards,30); },
+    configurable: true
+});
 
-// ── Live dot sync ──
-const _origLiveDot = document.getElementById('sb-live-dot');
-if (_origLiveDot) {
-    const mobDot = document.getElementById('mob-di-dot-9');
-    const observer = new MutationObserver(() => {
-        if (mobDot) mobDot.style.display = _origLiveDot.style.display;
-    });
-    observer.observe(_origLiveDot, { attributes: true, attributeFilter: ['style'] });
-}
-
-// ── Handle order cache for search ──
-// Intercept orders loading to cache for mobile search
-window._allOrdersCache = [];
-const _checkOrdersInterval = setInterval(() => {
-    // Try to grab orders from tbody
-    const rows = document.querySelectorAll('#orders-tbody tr[data-order-id]');
-    if (rows.length > 0) {
-        window._allOrdersCache = Array.from(rows).map(r => ({
-            id: r.dataset.orderId || '',
-            orderNumber: r.querySelector('.ord-num')?.textContent?.replace('#','') || '',
-            email: r.querySelector('.ord-customer-email')?.textContent || '',
-            total: parseFloat(r.querySelector('[data-total]')?.dataset.total || 0)
-        }));
-    }
-}, 3000);
 </script>
 
 </body>

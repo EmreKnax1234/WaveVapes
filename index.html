@@ -2088,7 +2088,7 @@
                 <input id="login-email" type="email" inputmode="email" placeholder="E-Mail Adresse" onkeydown="if(event.key==='Enter')document.getElementById('login-password').focus()" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-4 outline-none mb-4">
                 <input id="login-password" type="password" autocomplete="current-password" placeholder="Passwort" onkeydown="if(event.key==='Enter')loginUser()" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-4 outline-none mb-6">
                 <button onclick="loginUser()" class="w-full bg-cyan-400 hover:bg-cyan-300 text-black py-5 rounded-3xl font-bold text-xl">Einloggen</button>
-                <button onclick="sendPasswordReset()" class="mt-3 w-full text-gray-400 hover:text-white text-sm py-2 transition">Passwort vergessen?</button>
+                <button onclick="openPasswordResetModal()" class="mt-3 w-full text-gray-400 hover:text-white text-sm py-2 transition">Passwort vergessen?</button>
             </div>
             <div id="register-form" class="hidden">
                 <input id="register-email" type="email" inputmode="email" autocomplete="email" placeholder="E-Mail Adresse" onkeydown="if(event.key==='Enter')document.getElementById('register-password').focus()" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-4 outline-none mb-4">
@@ -7961,8 +7961,123 @@
         // Push nach Load starten
         window.addEventListener('load', () => setTimeout(initFCM, 2000));
 
+        // ═══════════════════════════════════════════════════════════════
+        //  PASSWORT VERGESSEN — MODAL
+        // ═══════════════════════════════════════════════════════════════
+        function openPasswordResetModal() {
+            const loginEmail = document.getElementById('login-email')?.value.trim() || '';
+            const input = document.getElementById('pw-reset-email-input');
+            if (input && loginEmail) input.value = loginEmail;
+            const modal = document.getElementById('pw-reset-modal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.style.opacity = '0';
+                setTimeout(() => { modal.style.opacity = '1'; }, 10);
+            }
+            document.getElementById('pw-reset-status').classList.add('hidden');
+            const btn = document.getElementById('pw-reset-send-btn');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-paper-plane mr-2"></i>Reset-Link senden';
+        }
+
+        function closePasswordResetModal() {
+            const modal = document.getElementById('pw-reset-modal');
+            if (modal) {
+                modal.style.opacity = '0';
+                setTimeout(() => modal.classList.add('hidden'), 250);
+            }
+        }
+
+        async function submitPasswordReset() {
+            const email  = document.getElementById('pw-reset-email-input').value.trim();
+            const btn    = document.getElementById('pw-reset-send-btn');
+            const status = document.getElementById('pw-reset-status');
+
+            if (!email) {
+                status.innerHTML = '<i class="fa-solid fa-circle-exclamation mr-2"></i>Bitte gib deine E-Mail-Adresse ein.';
+                status.className = 'mt-4 text-sm rounded-2xl px-4 py-3 bg-red-500/20 text-red-400 border border-red-500/30';
+                status.classList.remove('hidden');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Wird gesendet…';
+            status.classList.add('hidden');
+
+            try {
+                await auth.sendPasswordResetEmail(email);
+                status.innerHTML = '<div style="display:flex;gap:12px;align-items:flex-start"><i class="fa-solid fa-circle-check" style="color:#22d3ee;font-size:1.1rem;margin-top:2px;flex-shrink:0"></i><div><p style="font-weight:600;color:#fff;margin-bottom:4px">E-Mail wurde gesendet!</p><p>Wir haben einen Passwort-Reset-Link an <strong>' + email + '</strong> geschickt.</p><ul style="margin-top:8px;display:flex;flex-direction:column;gap:4px;color:#d1d5db;font-size:0.75rem;list-style:none;padding:0"><li>📬 Bitte prüfe dein Postfach (auch Spam/Junk).</li><li>⏱️ Der Link ist <strong>1 Stunde</strong> gültig.</li><li>🔒 Klicke den Link und vergib ein neues Passwort.</li></ul></div></div>';
+                status.className = 'mt-4 text-sm rounded-2xl px-4 py-3 bg-cyan-500/10 text-cyan-300 border border-cyan-500/30';
+                status.classList.remove('hidden');
+                btn.innerHTML = '<i class="fa-solid fa-check mr-2"></i>Gesendet';
+                setTimeout(closePasswordResetModal, 6000);
+            } catch(e) {
+                const msg = e.code === 'auth/user-not-found'     ? 'Kein Konto mit dieser E-Mail-Adresse gefunden.'
+                          : e.code === 'auth/invalid-email'       ? 'Ungültige E-Mail-Adresse.'
+                          : e.code === 'auth/too-many-requests'   ? 'Zu viele Versuche. Bitte kurz warten.'
+                          : 'Fehler: ' + e.message;
+                status.innerHTML = '<i class="fa-solid fa-circle-exclamation mr-2"></i>' + msg;
+                status.className = 'mt-4 text-sm rounded-2xl px-4 py-3 bg-red-500/20 text-red-400 border border-red-500/30';
+                status.classList.remove('hidden');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-paper-plane mr-2"></i>Erneut versuchen';
+            }
+        }
+
         // Nach Login: Token mit User verknüpfen
         // (wird in onAuthStateChanged aufgerufen)
     </script>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         PASSWORT VERGESSEN — POPUP MODAL
+    ═══════════════════════════════════════════════════════════════ -->
+    <div id="pw-reset-modal" class="hidden fixed inset-0 z-[9999] flex items-center justify-center px-4"
+         style="background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);transition:opacity 0.25s ease;"
+         onclick="if(event.target===this)closePasswordResetModal()">
+        <div style="background:#111827;border:1px solid rgba(34,211,238,0.25);border-radius:1.5rem;width:100%;max-width:420px;padding:2rem;box-shadow:0 0 60px rgba(34,211,238,0.12);position:relative;">
+            <!-- Schließen-Button -->
+            <button onclick="closePasswordResetModal()" style="position:absolute;top:1rem;right:1rem;background:none;border:none;color:#6b7280;font-size:1.25rem;cursor:pointer;line-height:1;padding:4px 8px;border-radius:0.5rem;" onmouseenter="this.style.color='#fff'" onmouseleave="this.style.color='#6b7280'">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <!-- Icon + Titel -->
+            <div style="text-align:center;margin-bottom:1.5rem;">
+                <div style="display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:50%;background:rgba(34,211,238,0.1);border:1px solid rgba(34,211,238,0.3);margin-bottom:1rem;">
+                    <i class="fa-solid fa-key" style="color:#22d3ee;font-size:1.4rem;"></i>
+                </div>
+                <h2 style="color:#fff;font-size:1.25rem;font-weight:700;margin:0 0 6px 0;">Passwort zurücksetzen</h2>
+                <p style="color:#9ca3af;font-size:0.875rem;margin:0;">Kein Problem! Gib deine E-Mail-Adresse ein und wir schicken dir einen Reset-Link.</p>
+            </div>
+
+            <!-- E-Mail Eingabe -->
+            <input id="pw-reset-email-input"
+                   type="email" inputmode="email" autocomplete="email"
+                   placeholder="deine@email.de"
+                   onkeydown="if(event.key==='Enter')submitPasswordReset()"
+                   style="width:100%;background:#1f2937;border:1px solid rgba(34,211,238,0.3);border-radius:2rem;padding:14px 20px;color:#fff;font-size:1rem;outline:none;box-sizing:border-box;transition:border-color 0.2s;"
+                   onfocus="this.style.borderColor='rgba(34,211,238,0.8)'"
+                   onblur="this.style.borderColor='rgba(34,211,238,0.3)'">
+
+            <!-- Status-Meldung -->
+            <div id="pw-reset-status" class="hidden"></div>
+
+            <!-- Senden-Button -->
+            <button id="pw-reset-send-btn"
+                    onclick="submitPasswordReset()"
+                    style="margin-top:1rem;width:100%;background:#22d3ee;color:#000;border:none;border-radius:2rem;padding:14px;font-size:1rem;font-weight:700;cursor:pointer;transition:background 0.2s;"
+                    onmouseenter="if(!this.disabled)this.style.background='#67e8f9'"
+                    onmouseleave="if(!this.disabled)this.style.background='#22d3ee'">
+                <i class="fa-solid fa-paper-plane mr-2"></i>Reset-Link senden
+            </button>
+
+            <!-- Zurück-Link -->
+            <p style="text-align:center;margin-top:1rem;margin-bottom:0;">
+                <button onclick="closePasswordResetModal()" style="background:none;border:none;color:#6b7280;font-size:0.875rem;cursor:pointer;transition:color 0.2s;"
+                        onmouseenter="this.style.color='#fff'" onmouseleave="this.style.color='#6b7280'">
+                    <i class="fa-solid fa-arrow-left mr-1"></i>Zurück zum Login
+                </button>
+            </p>
+        </div>
+    </div>
 </body>
 </html>

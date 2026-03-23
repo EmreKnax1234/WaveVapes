@@ -589,7 +589,7 @@
                     </div>
                     <div style="text-align:right;">
                         <div style="font-size:12px;color:var(--muted);">Pro Bestellung</div>
-                        <div style="font-size:1.1rem;font-weight:800;color:var(--cyan)">+10 Pkt./€</div>
+                        <div style="font-size:1.1rem;font-weight:800;color:var(--cyan)" id="acc-loyalty-rate-display">+10 Pkt./€</div>
                     </div>
                 </div>
                 <div class="loyalty-progress-wrap">
@@ -880,6 +880,16 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
+
+// Loyalty-Rate aus Shop-Einstellungen laden und anzeigen
+db.collection('settings').doc('main').onSnapshot(doc => {
+    if (!doc.exists) return;
+    const s = doc.data();
+    if (typeof s.loyalty_rate !== 'undefined') {
+        const el = document.getElementById('acc-loyalty-rate-display');
+        if (el) el.textContent = '+' + s.loyalty_rate + ' Pkt./€';
+    }
+});
 
 // ═══════════════════════════════════════════════════
 //  CONSTANTS

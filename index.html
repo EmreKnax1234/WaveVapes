@@ -325,6 +325,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
@@ -3301,8 +3302,8 @@
             updateAuthUI();
             updateUserDisplay();
             if (user) {
-                // Push-Subscription mit User-ID verknüpfen (falls bereits subscribed)
-                setTimeout(linkPushSubscriptionToUser, 2000);
+                // FCM-Token mit User-ID verknüpfen (falls bereits subscribed)
+                setTimeout(linkFCMToUser, 2000);
                 const userRef = db.collection("users").doc(user.uid);
                 if (userSnapshotUnsubscribe) userSnapshotUnsubscribe();
                 userSnapshotUnsubscribe = userRef.onSnapshot(async doc => {
@@ -7830,144 +7831,125 @@
         });
 
         // ═══════════════════════════════════════════════════════════════
-        //  WEB PUSH NOTIFICATIONS
+        //  FIREBASE CLOUD MESSAGING (FCM) — Browser Push Notifications
         // ═══════════════════════════════════════════════════════════════
 
-        // VAPID Public Key — muss mit dem Private Key auf deinem Server übereinstimmen.
-        // Generieren: https://vapidkeys.com/ oder `npx web-push generate-vapid-keys`
-        // Dann hier den PUBLIC KEY eintragen:
-        const VAPID_PUBLIC_KEY = 'BE-rYQ5kRvk31rN63FAd9edEOGoFozah0WB-zc4jlWOzcGCFeBnPTW7nd9qeNNiLQ7VjNOmIyngAVF0q6ZzzyXw';
+        // VAPID Key (Web Push Cert) aus Firebase Console:
+        // Projekteinstellungen → Cloud Messaging → Web-Push-Zertifikate → Schlüsselpaar
+        const FCM_VAPID_KEY = 'BE-rYQ5kRvk31rN63FAd9edEOGoFozah0WB-zc4jlWOzcGCFeBnPTW7nd9qeNNiLQ7VjNOmIyngAVF0q6ZzzyXw';
 
-        function urlBase64ToUint8Array(base64String) {
-            const padding = '='.repeat((4 - base64String.length % 4) % 4);
-            const base64  = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-            const raw     = window.atob(base64);
-            return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
-        }
+        let _fcmMessaging = null;
 
-        // Service Worker registrieren & Push-Banner nach 30 Sek. zeigen
-        async function initPush() {
-            if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-            if (localStorage.getItem('push_dismissed') === 'true') return;
+        async function initFCM() {
+            if (!('serviceWorker' in navigator)) return;
             if (Notification.permission === 'denied') return;
-            if (Notification.permission === 'granted') {
-                // Bereits erlaubt → Subscription prüfen & ggf. erneuern
-                await registerSW();
+            if (localStorage.getItem('push_dismissed') === 'true') return;
+
+            try {
+                _fcmMessaging = firebase.messaging();
+            } catch(e) {
+                console.warn('FCM init error:', e);
                 return;
             }
-            // Nach 30 Sek. Banner zeigen (nicht sofort — nicht aufdringlich)
-            setTimeout(() => {
-                if (document.getElementById('push-optin-banner')) {
-                    document.getElementById('push-optin-banner').style.display = 'block';
+
+            // Foreground messages (Tab offen) → als Toast anzeigen
+            _fcmMessaging.onMessage(payload => {
+                const title = payload.notification?.title || 'WaveVapes';
+                const body  = payload.notification?.body  || '';
+                const url   = payload.data?.url || payload.fcmOptions?.link || '';
+                showToast(`🔔 ${title}${body ? ': ' + body : ''}`, 'success');
+                if (url) {
+                    setTimeout(() => { if (confirm(`${title}\n${body}\n\nJetzt öffnen?`)) window.open(url, '_blank'); }, 500);
                 }
-            }, 30000);
+            });
+
+            if (Notification.permission === 'granted') {
+                await fcmGetAndSaveToken();
+                return;
+            }
+
+            // Banner nach 20 Sek. zeigen
+            setTimeout(() => {
+                const banner = document.getElementById('push-optin-banner');
+                if (banner) banner.style.display = 'block';
+            }, 20000);
         }
 
-        async function registerSW() {
+        async function fcmGetAndSaveToken() {
+            if (!_fcmMessaging) return;
             try {
-                const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
-                await navigator.serviceWorker.ready;
-
-                let sub = await reg.pushManager.getSubscription();
-                if (!sub) {
-                    sub = await reg.pushManager.subscribe({
-                        userVisibleOnly:      true,
-                        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-                    });
-                }
-                await savePushSubscription(sub);
-                return sub;
+                // SW für FCM registrieren
+                const swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+                const token = await _fcmMessaging.getToken({
+                    vapidKey:           FCM_VAPID_KEY,
+                    serviceWorkerRegistration: swReg
+                });
+                if (token) await fcmSaveToken(token);
+                return token;
             } catch(e) {
-                console.warn('Push SW register error:', e);
+                console.warn('FCM getToken error:', e.message);
             }
         }
 
-        async function savePushSubscription(subscription) {
-            if (!subscription) return;
-            const subJson = subscription.toJSON();
-            // Doc-ID = Hash des Endpoints (stabil, kein btoa overflow)
-            const docId = subJson.endpoint.replace(/[^a-zA-Z0-9]/g, '').slice(-40);
+        async function fcmSaveToken(token) {
+            if (!token) return;
+            const docId = token.slice(-40);
             try {
                 await db.collection('push_subscriptions').doc(docId).set({
-                    endpoint:     subJson.endpoint,
-                    keys: {
-                        p256dh: subJson.keys?.p256dh || '',
-                        auth:   subJson.keys?.auth   || '',
-                    },
-                    userAgent:    navigator.userAgent,
+                    fcmToken:     token,
                     userId:       currentUser?.uid   || null,
                     email:        currentUser?.email || null,
+                    userAgent:    navigator.userAgent,
                     subscribedAt: firebase.firestore.FieldValue.serverTimestamp(),
                     lastSeen:     firebase.firestore.FieldValue.serverTimestamp(),
                 }, { merge: true });
             } catch(e) {
-                console.warn('savePushSubscription error:', e);
+                console.warn('fcmSaveToken error:', e.message);
             }
         }
 
-        // Nach Login: bestehende Subscription mit User-ID verknüpfen
-        async function linkPushSubscriptionToUser() {
-            if (!currentUser || !('serviceWorker' in navigator)) return;
+        async function linkFCMToUser() {
+            if (!currentUser || !_fcmMessaging) return;
             try {
-                const reg = await navigator.serviceWorker.getRegistration('/sw.js');
-                if (!reg) return;
-                const sub = await reg.pushManager.getSubscription();
-                if (!sub) return;
-                // Subscription mit eingeloggtem User verknüpfen
-                await savePushSubscription(sub);
+                const swReg = await navigator.serviceWorker.getRegistration('/firebase-messaging-sw.js');
+                if (!swReg) return;
+                const token = await _fcmMessaging.getToken({ vapidKey: FCM_VAPID_KEY, serviceWorkerRegistration: swReg });
+                if (token) await fcmSaveToken(token);
             } catch(e) { /* non-blocking */ }
         }
 
-        // Opt-in Banner: "Ja erlauben" Klick
         async function pushSubscribe() {
             const btn = document.getElementById('push-optin-btn');
             if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Verbinde…'; }
             try {
                 const permission = await Notification.requestPermission();
                 if (permission === 'granted') {
-                    await registerSW();
-                    document.getElementById('push-optin-banner').style.display = 'none';
-                    showToast('🔔 Benachrichtigungen aktiviert! Du erhältst jetzt Push-Updates.');
+                    await fcmGetAndSaveToken();
+                    const banner = document.getElementById('push-optin-banner');
+                    if (banner) banner.style.display = 'none';
+                    showToast('🔔 Benachrichtigungen aktiviert!');
                 } else {
                     pushDismiss();
                 }
             } catch(e) {
                 console.warn('pushSubscribe error:', e);
                 pushDismiss();
+            } finally {
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-bell"></i> Ja, Benachrichtigungen erlauben'; }
             }
         }
 
-        // "Nein danke" / Schließen
         function pushDismiss() {
             const banner = document.getElementById('push-optin-banner');
             if (banner) banner.style.display = 'none';
             localStorage.setItem('push_dismissed', 'true');
         }
 
-        // lastSeen aktualisieren wenn User zurückkommt
-        async function updatePushLastSeen() {
-            if (!('serviceWorker' in navigator)) return;
-            try {
-                const reg = await navigator.serviceWorker.getRegistration('/sw.js');
-                if (!reg) return;
-                const sub = await reg.pushManager.getSubscription();
-                if (!sub) return;
-                const docId = btoa(sub.endpoint).slice(0, 40).replace(/[^a-zA-Z0-9]/g, '');
-                await db.collection('push_subscriptions').doc(docId).update({
-                    lastSeen: firebase.firestore.FieldValue.serverTimestamp(),
-                    userId:   currentUser?.uid   || null,
-                    email:    currentUser?.email || null,
-                }).catch(() => {});
-            } catch(e) { /* non-blocking */ }
-        }
+        // Push nach Load starten
+        window.addEventListener('load', () => setTimeout(initFCM, 2000));
 
-        // Push nach Seitenload initialisieren
-        window.addEventListener('load', () => {
-            setTimeout(initPush, 2000); // kurz nach Load starten
-        });
-
-        // lastSeen täglich aktualisieren
-        setInterval(updatePushLastSeen, 60 * 60 * 1000);
+        // Nach Login: Token mit User verknüpfen
+        // (wird in onAuthStateChanged aufgerufen)
     </script>
 </body>
 </html>

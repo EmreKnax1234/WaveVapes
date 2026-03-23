@@ -2227,13 +2227,9 @@
         .sa-admin-grid { grid-template-columns: 1fr !important; }
 
         /* ── DRAWERS & MODALS: full screen on mobile ── */
-        .ped-drawer, .ord-drawer, .eu-drawer {
-            width: 100% !important;
-            max-width: 100% !important;
-            border-radius: 20px 20px 0 0 !important;
-            top: auto !important;
-            bottom: 0 !important;
-            max-height: 92dvh !important;
+        /* Drawers: hidden by default, slide up on .open */
+        .ped-drawer, .ord-drawer {
+            /* handled individually below */
         }
         .ped-body { flex-direction: column !important; }
         .ped-img-col { width: 100% !important; }
@@ -2373,8 +2369,19 @@
         .usr-table td:nth-child(5) { display: none; }
 
         /* ── Benutzer detail drawer ── */
-        #eu-drawer { width: 100% !important; max-width: 100% !important; right: -100% !important; border-radius: 20px 20px 0 0 !important; top: auto !important; bottom: 0 !important; height: 90dvh !important; }
-        #eu-drawer.open { right: 0 !important; }
+        #eu-drawer {
+            width: 100% !important; max-width: 100% !important;
+            right: 0 !important; left: 0 !important;
+            top: auto !important;
+            bottom: -100vh !important;
+            height: 90dvh !important;
+            border-radius: 20px 20px 0 0 !important;
+            transition: bottom .35s cubic-bezier(.34,1.1,.64,1) !important;
+            transform: none !important;
+        }
+        #eu-drawer.open {
+            bottom: 0 !important;
+        }
 
         /* ── Notification panel: Mobile full-width ── */
         .notif-panel { 
@@ -12705,7 +12712,7 @@ auth.onAuthStateChanged(async (user) => {
     // E-08 FIX: updateStats() and populateAdminCategoryFilter() are now called inside
     // loadProducts() and loadCategories() on their first snapshot, replacing the
     // fragile setTimeout(500) that could fire before data arrived on slow connections.
-    switchTab(0);
+    switchTab(1); // Mobile: start on Bestellungen
     // New features
     requestNotifPermission();
     watchNewOrders();
@@ -18960,6 +18967,26 @@ function mobOpenUserActions(uid, email, disabled, points, freeShipping) {
         </div>`;
     document.body.appendChild(overlay);
 }
+
+
+// ── Force all drawers closed on load (mobile safety) ──
+document.addEventListener('DOMContentLoaded', () => {
+    const drawerIds = ['ped-drawer', 'ord-drawer', 'eu-drawer', 'bke-sheet'];
+    drawerIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.classList.remove('open');
+        }
+    });
+    const overlayIds = ['ped-overlay', 'ord-overlay', 'eu-overlay', 'bke-overlay'];
+    overlayIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.classList.remove('open');
+            el.style.display = 'none';
+        }
+    });
+});
 
 </body>
 </html>

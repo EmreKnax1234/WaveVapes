@@ -3301,6 +3301,8 @@
             updateAuthUI();
             updateUserDisplay();
             if (user) {
+                // Push-Subscription mit User-ID verknüpfen (falls bereits subscribed)
+                setTimeout(linkPushSubscriptionToUser, 2000);
                 const userRef = db.collection("users").doc(user.uid);
                 if (userSnapshotUnsubscribe) userSnapshotUnsubscribe();
                 userSnapshotUnsubscribe = userRef.onSnapshot(async doc => {
@@ -7883,20 +7885,37 @@
         async function savePushSubscription(subscription) {
             if (!subscription) return;
             const subJson = subscription.toJSON();
-            const docId   = btoa(subJson.endpoint).slice(0, 40).replace(/[^a-zA-Z0-9]/g, '');
+            // Doc-ID = Hash des Endpoints (stabil, kein btoa overflow)
+            const docId = subJson.endpoint.replace(/[^a-zA-Z0-9]/g, '').slice(-40);
             try {
                 await db.collection('push_subscriptions').doc(docId).set({
-                    endpoint:      subJson.endpoint,
-                    keys:          subJson.keys || {},
-                    userAgent:     navigator.userAgent,
-                    userId:        currentUser?.uid   || null,
-                    email:         currentUser?.email || null,
-                    subscribedAt:  firebase.firestore.FieldValue.serverTimestamp(),
-                    lastSeen:      firebase.firestore.FieldValue.serverTimestamp(),
+                    endpoint:     subJson.endpoint,
+                    keys: {
+                        p256dh: subJson.keys?.p256dh || '',
+                        auth:   subJson.keys?.auth   || '',
+                    },
+                    userAgent:    navigator.userAgent,
+                    userId:       currentUser?.uid   || null,
+                    email:        currentUser?.email || null,
+                    subscribedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    lastSeen:     firebase.firestore.FieldValue.serverTimestamp(),
                 }, { merge: true });
             } catch(e) {
                 console.warn('savePushSubscription error:', e);
             }
+        }
+
+        // Nach Login: bestehende Subscription mit User-ID verknüpfen
+        async function linkPushSubscriptionToUser() {
+            if (!currentUser || !('serviceWorker' in navigator)) return;
+            try {
+                const reg = await navigator.serviceWorker.getRegistration('/sw.js');
+                if (!reg) return;
+                const sub = await reg.pushManager.getSubscription();
+                if (!sub) return;
+                // Subscription mit eingeloggtem User verknüpfen
+                await savePushSubscription(sub);
+            } catch(e) { /* non-blocking */ }
         }
 
         // Opt-in Banner: "Ja erlauben" Klick

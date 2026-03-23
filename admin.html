@@ -5116,12 +5116,9 @@
                         <button class="sa-danger-btn" onclick="saDangerShopOpen()" style="border-color:rgba(52,211,153,.3);background:rgba(52,211,153,.08);color:#34d399"><i class="fa-solid fa-door-open"></i> Shop öffnen</button>
                     </div>
                     <div class="sa-danger-card">
-                        <div class="sa-danger-title"><i class="fa-solid fa-ticket"></i> Gutscheine</div>
-                        <div class="sa-danger-desc">Alle aktiven Gutscheine deaktivieren (z.B. bei Missbrauch) oder alle inaktiven Gutscheine wieder aktivieren.</div>
-                        <div style="display:flex;gap:8px;flex-wrap:wrap">
-                            <button class="sa-danger-btn" onclick="saDangerDisableAllCoupons()" style="border-color:rgba(251,191,36,.3);background:rgba(251,191,36,.07);color:#fbbf24;flex:1;min-width:120px"><i class="fa-solid fa-ban"></i> Alle deaktivieren</button>
-                            <button class="sa-danger-btn" onclick="saDangerEnableAllCoupons()" style="border-color:rgba(52,211,153,.3);background:rgba(52,211,153,.07);color:#34d399;flex:1;min-width:120px"><i class="fa-solid fa-circle-check"></i> Alle aktivieren</button>
-                        </div>
+                        <div class="sa-danger-title"><i class="fa-solid fa-ticket"></i> Alle Gutscheine deaktivieren</div>
+                        <div class="sa-danger-desc">Setzt alle aktiven Gutscheine auf inaktiv. Nützlich bei Missbrauch oder Fehlern.</div>
+                        <button class="sa-danger-btn" onclick="saDangerDisableAllCoupons()" style="border-color:rgba(251,191,36,.3);background:rgba(251,191,36,.07);color:#fbbf24"><i class="fa-solid fa-ticket"></i> Alle deaktivieren</button>
                     </div>
                     <div class="sa-danger-card">
                         <div class="sa-danger-title"><i class="fa-solid fa-box-open"></i> Alle Produkte deaktivieren</div>
@@ -7148,6 +7145,7 @@ function cpnRenderGrid(coupons) {
                 <div class="cpn-usage-count">${uses}${c.oneTimeUse ? '/1' : maxUses !== null ? '/'+maxUses : ''}</div>
                 <div class="cpn-card-actions">
                     <button class="cpn-act-btn amber" onclick="showCouponHistory('${c.id}')" title="Einlösungs-History"><i class="fa-solid fa-clock-rotate-left"></i></button>
+                    <button class="cpn-act-btn" onclick="resetCoupon('${c.id}','${c.code}')" title="Einlösungen zurücksetzen" style="background:rgba(52,211,153,.12);border-color:rgba(52,211,153,.3);color:#34d399"><i class="fa-solid fa-rotate-left"></i></button>
                     <button class="cpn-act-btn red"   onclick="deleteCoupon('${c.id}')" title="Löschen"><i class="fa-solid fa-trash"></i></button>
                 </div>
             </div>
@@ -7182,6 +7180,19 @@ document.getElementById('add-coupon-form').addEventListener('submit', async e =>
     showToast('✅ Gutschein erstellt!');
     loadCoupons();
 });
+
+async function resetCoupon(id, code) {
+    if (!confirm(`Gutschein „${code}" zurücksetzen?\n\nDies setzt alle Einlösungen (usedBy & totalUsages) auf 0 zurück — der Gutschein kann danach von allen Nutzern erneut eingelöst werden.`)) return;
+    try {
+        await db.collection('coupons').doc(id).update({
+            usedBy: [],
+            totalUsages: 0
+        });
+        await logAction('coupon_reset', code, { couponId: id });
+        showToast(`✅ Gutschein „${code}" zurückgesetzt`, 'success');
+        loadCoupons();
+    } catch(e) { showToast('❌ Fehler: ' + e.message, 'error'); }
+}
 
 async function loadCoupons() {
     const snap = await db.collection('coupons').orderBy('createdAt','desc').get();
@@ -13685,21 +13696,6 @@ async function saDangerDisableAllCoupons() {
         }
         await logAction('danger_disable_coupons', 'coupons', { count: snap.size });
         showToast(`🎟️ ${snap.size} Gutscheine deaktiviert`, 'success');
-    } catch(e) { showToast('❌ Fehler: ' + e.message, 'error'); }
-}
-
-async function saDangerEnableAllCoupons() {
-    if (!confirm('Alle inaktiven Gutscheine wieder aktivieren?')) return;
-    try {
-        const snap = await db.collection('coupons').where('active', '==', false).get();
-        if (snap.empty) { showToast('ℹ️ Keine inaktiven Gutscheine vorhanden'); return; }
-        for (let i = 0; i < snap.docs.length; i += 400) {
-            const batch = db.batch();
-            snap.docs.slice(i, i + 400).forEach(d => batch.update(d.ref, { active: true }));
-            await batch.commit();
-        }
-        await logAction('danger_enable_coupons', 'coupons', { count: snap.size });
-        showToast(`✅ ${snap.size} Gutscheine aktiviert`, 'success');
     } catch(e) { showToast('❌ Fehler: ' + e.message, 'error'); }
 }
 

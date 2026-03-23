@@ -1334,6 +1334,8 @@
         .cpn-hist-body { flex:1; overflow-y:auto; padding:14px 22px; }
         .cpn-hist-body::-webkit-scrollbar { width:3px; }
         .cpn-hist-body::-webkit-scrollbar-thumb { background:rgba(251,191,36,.2); border-radius:99px; }
+        #bulk-code-list::-webkit-scrollbar { width:3px; }
+        #bulk-code-list::-webkit-scrollbar-thumb { background:rgba(167,139,250,.25); border-radius:99px; }
         .cpn-hist-user { display:flex; align-items:center; gap:11px; padding:10px 12px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.05); border-radius:12px; margin-bottom:7px; transition:background .15s; }
         .cpn-hist-user:hover { background:rgba(251,191,36,.05); border-color:rgba(251,191,36,.12); }
         .cpn-hist-av { width:30px; height:30px; border-radius:50%; background:rgba(251,191,36,.12); color:var(--cpn-amber); font-size:10px; font-weight:700; font-family:'JetBrains Mono',monospace; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
@@ -2933,9 +2935,22 @@
 
                 <!-- ── Create form (left column, sticky) ── -->
                 <div class="cpn-create">
-                    <div class="cpn-create-hdr">
-                        <div class="cpn-create-icon"><i class="fa-solid fa-plus"></i></div>
-                        <div class="cpn-create-title">Neuen Gutschein erstellen</div>
+                    <div class="cpn-create-hdr" style="flex-direction:column;align-items:stretch;gap:10px">
+                        <div style="display:flex;align-items:center;gap:10px">
+                            <div class="cpn-create-icon"><i class="fa-solid fa-plus"></i></div>
+                            <div class="cpn-create-title">Gutschein erstellen</div>
+                        </div>
+                        <!-- Mode switcher -->
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+                            <button type="button" id="cpn-mode-single" onclick="cpnSwitchMode('single')"
+                                style="padding:8px;border-radius:9px;border:1px solid rgba(251,191,36,.4);background:rgba(251,191,36,.12);color:#fbbf24;font-size:11px;font-weight:700;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px">
+                                <i class="fa-solid fa-ticket"></i> Einzeln
+                            </button>
+                            <button type="button" id="cpn-mode-bulk" onclick="cpnSwitchMode('bulk')"
+                                style="padding:8px;border-radius:9px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);color:rgba(255,255,255,.4);font-size:11px;font-weight:700;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px">
+                                <i class="fa-solid fa-layer-group"></i> Bulk Generator
+                            </button>
+                        </div>
                     </div>
                     <form id="add-coupon-form" class="cpn-form">
 
@@ -3002,6 +3017,115 @@
                             <div id="cpn-ai-result" style="font-size:12px;color:rgba(255,255,255,.35);line-height:1.6">← Ziel wählen für KI-Empfehlung zu Rabatt, Gültigkeitsdauer und Nutzungstyp.</div>
                         </div>
                     </form>
+
+                    <!-- ══════════════════════════════════════════════
+                         BULK GENERATOR PANEL
+                    ══════════════════════════════════════════════ -->
+                    <div id="cpn-bulk-panel" class="cpn-form" style="display:none">
+
+                        <!-- Info banner -->
+                        <div style="display:flex;align-items:flex-start;gap:10px;padding:11px 13px;background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.2);border-radius:11px">
+                            <i class="fa-solid fa-layer-group" style="color:#a78bfa;margin-top:2px;flex-shrink:0;font-size:13px"></i>
+                            <div style="font-size:11px;color:rgba(255,255,255,.6);line-height:1.55">
+                                Generiert mehrere eindeutige Codes auf einmal.<br>
+                                <strong style="color:#a78bfa">Jeder Code ist nur einmal einlösbar</strong> — genau 1 Person, 1 Mal.
+                            </div>
+                        </div>
+
+                        <!-- Prefix + Count -->
+                        <div class="cpn-field-row">
+                            <div class="cpn-field">
+                                <label class="cpn-label">Prefix</label>
+                                <input id="bulk-prefix" class="cpn-input" placeholder="WAVE" maxlength="10"
+                                    style="text-transform:uppercase;letter-spacing:.08em"
+                                    oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'');cpnBulkPreview()">
+                            </div>
+                            <div class="cpn-field">
+                                <label class="cpn-label">Anzahl</label>
+                                <select id="bulk-count" class="cpn-input cpn-select" onchange="cpnBulkPreview()">
+                                    <option value="5">5 Codes</option>
+                                    <option value="10" selected>10 Codes</option>
+                                    <option value="25">25 Codes</option>
+                                    <option value="50">50 Codes</option>
+                                    <option value="100">100 Codes</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Type toggle -->
+                        <div class="cpn-field">
+                            <label class="cpn-label">Rabatt-Typ</label>
+                            <div class="cpn-type-toggle" id="bulk-type-toggle">
+                                <div class="cpn-type-opt active" data-val="percent" onclick="cpnBulkSelectType('percent',this)"><i class="fa-solid fa-percent" style="margin-right:5px"></i> Prozent</div>
+                                <div class="cpn-type-opt"        data-val="fixed"   onclick="cpnBulkSelectType('fixed',this)"><i class="fa-solid fa-euro-sign" style="margin-right:5px"></i> Festbetrag</div>
+                            </div>
+                            <select id="bulk-type" style="display:none"><option value="percent">Prozent</option><option value="fixed">Festbetrag €</option></select>
+                        </div>
+
+                        <!-- Value + Expiry -->
+                        <div class="cpn-field-row">
+                            <div class="cpn-field">
+                                <label class="cpn-label">Wert</label>
+                                <input id="bulk-value" type="number" step="0.01" min="0.01" class="cpn-input" placeholder="10" required>
+                            </div>
+                            <div class="cpn-field">
+                                <label class="cpn-label">Ablaufdatum</label>
+                                <input id="bulk-expiry" type="date" class="cpn-input" required>
+                            </div>
+                        </div>
+
+                        <!-- Single-use lock (always on, shown as info) -->
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 13px;background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.25);border-radius:10px">
+                            <div>
+                                <div class="cpn-toggle-lbl" style="color:#a78bfa;font-weight:700">
+                                    <i class="fa-solid fa-lock" style="margin-right:5px;font-size:11px"></i>Nur 1× einlösbar — global
+                                </div>
+                                <div class="cpn-toggle-sub">Jeder Code kann nur von <strong style="color:rgba(255,255,255,.5)">einer einzigen Person</strong> einmal genutzt werden</div>
+                            </div>
+                            <i class="fa-solid fa-circle-check" style="color:#a78bfa;font-size:18px;flex-shrink:0"></i>
+                        </div>
+
+                        <!-- Preview line -->
+                        <div id="bulk-preview-line" style="font-size:11px;color:rgba(255,255,255,.3);font-family:'JetBrains Mono',monospace;text-align:center;padding:4px 0">
+                            z.B. WAVE-A3F9K2, WAVE-X7BQ81, …
+                        </div>
+
+                        <!-- Generate button -->
+                        <button type="button" onclick="cpnBulkGenerate()"
+                            style="width:100%;padding:13px;background:linear-gradient(135deg,rgba(167,139,250,.2),rgba(139,92,246,.12));border:1px solid rgba(167,139,250,.4);border-radius:12px;font-weight:700;font-size:12px;letter-spacing:.05em;color:#a78bfa;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .25s"
+                            onmouseover="this.style.background='linear-gradient(135deg,rgba(167,139,250,.3),rgba(139,92,246,.2))'"
+                            onmouseout="this.style.background='linear-gradient(135deg,rgba(167,139,250,.2),rgba(139,92,246,.12))'">
+                            <i class="fa-solid fa-layer-group"></i> <span id="bulk-btn-label">Codes generieren</span>
+                        </button>
+
+                        <!-- Result panel (hidden until generated) -->
+                        <div id="bulk-result-panel" style="display:none;flex-direction:column;gap:10px">
+                            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+                                <div style="font-size:11px;font-weight:700;color:#a78bfa;display:flex;align-items:center;gap:6px">
+                                    <i class="fa-solid fa-circle-check"></i>
+                                    <span id="bulk-result-title">— Codes erstellt</span>
+                                </div>
+                                <div style="display:flex;gap:6px">
+                                    <button type="button" onclick="cpnBulkCopyAll()"
+                                        style="padding:6px 12px;border-radius:8px;border:1px solid rgba(167,139,250,.3);background:rgba(167,139,250,.08);color:#a78bfa;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .2s"
+                                        onmouseover="this.style.background='rgba(167,139,250,.16)'" onmouseout="this.style.background='rgba(167,139,250,.08)'">
+                                        <i class="fa-solid fa-copy"></i> Alle kopieren
+                                    </button>
+                                    <button type="button" onclick="cpnBulkDownloadCSV()"
+                                        style="padding:6px 12px;border-radius:8px;border:1px solid rgba(52,211,153,.3);background:rgba(52,211,153,.08);color:#34d399;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .2s"
+                                        onmouseover="this.style.background='rgba(52,211,153,.16)'" onmouseout="this.style.background='rgba(52,211,153,.08)'">
+                                        <i class="fa-solid fa-download"></i> CSV
+                                    </button>
+                                </div>
+                            </div>
+                            <!-- Code list -->
+                            <div id="bulk-code-list"
+                                style="max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;padding-right:4px">
+                            </div>
+                        </div>
+
+                    </div><!-- /cpn-bulk-panel -->
+
                 </div>
 
                 <!-- ── Coupons list (right column) ── -->
@@ -6785,6 +6909,170 @@ function populateAdminCategoryFilter() {
             renderProductTable();
         });
     }
+}
+
+// ====================== GUTSCHEINE BULK GENERATOR ======================
+
+let _bulkLastCodes = []; // store for copy/download
+
+function cpnSwitchMode(mode) {
+    const isBulk = mode === 'bulk';
+    document.getElementById('add-coupon-form').style.display   = isBulk ? 'none' : 'flex';
+    document.getElementById('cpn-bulk-panel').style.display    = isBulk ? 'flex' : 'none';
+    // Button styles
+    const btnSingle = document.getElementById('cpn-mode-single');
+    const btnBulk   = document.getElementById('cpn-mode-bulk');
+    if (isBulk) {
+        btnBulk.style.cssText   = btnBulk.style.cssText.replace(/border:[^;]+;background:[^;]+;color:[^;]+/g,'') + ';border:1px solid rgba(167,139,250,.4);background:rgba(167,139,250,.12);color:#a78bfa';
+        btnSingle.style.cssText = btnSingle.style.cssText.replace(/border:[^;]+;background:[^;]+;color:[^;]+/g,'') + ';border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);color:rgba(255,255,255,.4)';
+    } else {
+        btnSingle.style.cssText = btnSingle.style.cssText.replace(/border:[^;]+;background:[^;]+;color:[^;]+/g,'') + ';border:1px solid rgba(251,191,36,.4);background:rgba(251,191,36,.12);color:#fbbf24';
+        btnBulk.style.cssText   = btnBulk.style.cssText.replace(/border:[^;]+;background:[^;]+;color:[^;]+/g,'') + ';border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);color:rgba(255,255,255,.4)';
+    }
+}
+
+function cpnBulkSelectType(val, el) {
+    document.querySelectorAll('#bulk-type-toggle .cpn-type-opt').forEach(o => o.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('bulk-type').value = val;
+}
+
+function cpnBulkPreview() {
+    const prefix = document.getElementById('bulk-prefix').value || 'CODE';
+    const count  = parseInt(document.getElementById('bulk-count').value) || 10;
+    const ex1 = prefix + '-' + _cpnRandSuffix();
+    const ex2 = prefix + '-' + _cpnRandSuffix();
+    document.getElementById('bulk-preview-line').textContent =
+        `z.B. ${ex1}, ${ex2}, … (${count} Codes)`;
+}
+
+function _cpnRandSuffix(len = 6) {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0,O,1,I to avoid confusion
+    let s = '';
+    for (let i = 0; i < len; i++) s += chars[Math.floor(Math.random() * chars.length)];
+    return s;
+}
+
+function _cpnGenerateCodes(prefix, count) {
+    const codes = new Set();
+    while (codes.size < count) {
+        codes.add((prefix ? prefix + '-' : '') + _cpnRandSuffix());
+    }
+    return [...codes];
+}
+
+async function cpnBulkGenerate() {
+    const prefix  = document.getElementById('bulk-prefix').value.trim().toUpperCase() || 'CODE';
+    const count   = parseInt(document.getElementById('bulk-count').value) || 10;
+    const type    = document.getElementById('bulk-type').value;
+    const value   = parseFloat(document.getElementById('bulk-value').value);
+    const expiryV = document.getElementById('bulk-expiry').value;
+
+    if (!value || value <= 0) return showToast('❌ Bitte einen Wert eingeben.', 'error');
+    if (!expiryV)             return showToast('❌ Bitte ein Ablaufdatum wählen.', 'error');
+
+    const expiry = new Date(expiryV);
+    const btnLabel = document.getElementById('bulk-btn-label');
+    btnLabel.innerHTML = '<span class="eu-spinner" style="width:14px;height:14px;border-width:2px"></span> Erstelle Codes…';
+
+    // Check for existing codes to avoid collisions
+    let existingCodes = new Set();
+    try {
+        const snap = await db.collection('coupons').get();
+        snap.forEach(d => existingCodes.add(d.data().code));
+    } catch(e) {}
+
+    // Generate unique codes
+    let codes = _cpnGenerateCodes(prefix, count);
+    // Retry any collisions
+    codes = codes.map(c => {
+        let attempt = c;
+        while (existingCodes.has(attempt)) { attempt = (prefix ? prefix + '-' : '') + _cpnRandSuffix(); }
+        return attempt;
+    });
+
+    // Batch write to Firestore
+    const batch = db.batch();
+    const now = firebase.firestore.FieldValue.serverTimestamp();
+    const expTs = firebase.firestore.Timestamp.fromDate(expiry);
+    codes.forEach(code => {
+        const ref = db.collection('coupons').doc();
+        batch.set(ref, {
+            code,
+            type,
+            value,
+            expiresAt: expTs,
+            oneTimeUse: true,      // nur 1× pro User
+            maxUsages: 1,          // ← global: nur 1 Person kann diesen Code je einlösen
+            usedBy: [],
+            totalUsages: 0,
+            active: true,
+            bulkGenerated: true,
+            bulkPrefix: prefix,
+            createdAt: now
+        });
+    });
+
+    try {
+        await batch.commit();
+        await logAction('bulk_coupons_created', `${prefix} ×${count}`);
+        showToast(`✅ ${count} Codes erfolgreich erstellt!`);
+    } catch(e) {
+        showToast('❌ Fehler beim Speichern: ' + e.message, 'error');
+        btnLabel.textContent = 'Codes generieren';
+        return;
+    }
+
+    btnLabel.innerHTML = '<i class="fa-solid fa-layer-group"></i> Nochmal generieren';
+
+    // Store for copy/download
+    _bulkLastCodes = codes;
+
+    // Render result list
+    const discountStr = type === 'percent' ? value + '%' : value.toFixed(2) + ' €';
+    document.getElementById('bulk-result-title').textContent = `${count} Codes erstellt · ${discountStr} · nur 1× einlösbar`;
+    const listEl = document.getElementById('bulk-code-list');
+    listEl.innerHTML = codes.map(c =>
+        `<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 11px;background:rgba(167,139,250,.05);border:1px solid rgba(167,139,250,.12);border-radius:9px;gap:8px">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:rgba(255,255,255,.85);letter-spacing:.06em">${c}</span>
+            <button onclick="navigator.clipboard.writeText('${c}').then(()=>showToast('📋 ${c} kopiert'))"
+                style="padding:3px 9px;border-radius:6px;border:1px solid rgba(167,139,250,.25);background:rgba(167,139,250,.07);color:#a78bfa;font-size:10px;font-weight:600;cursor:pointer;flex-shrink:0;transition:all .15s"
+                onmouseover="this.style.background='rgba(167,139,250,.18)'" onmouseout="this.style.background='rgba(167,139,250,.07)'">
+                <i class="fa-solid fa-copy"></i>
+            </button>
+        </div>`
+    ).join('');
+    document.getElementById('bulk-result-panel').style.display = 'flex';
+
+    loadCoupons();
+}
+
+function cpnBulkCopyAll() {
+    if (!_bulkLastCodes.length) return;
+    navigator.clipboard.writeText(_bulkLastCodes.join('\n')).then(() => {
+        showToast(`📋 ${_bulkLastCodes.length} Codes kopiert`);
+    });
+}
+
+function cpnBulkDownloadCSV() {
+    if (!_bulkLastCodes.length) return;
+    const type    = document.getElementById('bulk-type').value;
+    const value   = parseFloat(document.getElementById('bulk-value').value) || 0;
+    const expiryV = document.getElementById('bulk-expiry').value;
+    const discStr = type === 'percent' ? value + '%' : value.toFixed(2) + ' EUR';
+
+    const header = 'Code,Rabatt,Typ,Gültig bis,Max. Einlösungen\n';
+    const rows   = _bulkLastCodes.map(c =>
+        `${c},${discStr},${type === 'percent' ? 'Prozent' : 'Festbetrag'},${expiryV},1`
+    ).join('\n');
+    const blob = new Blob(['\uFEFF' + header + rows], { type: 'text/csv;charset=utf-8' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url;
+    a.download = `wavevapes-gutscheine-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('⬇️ CSV heruntergeladen');
 }
 
 // ====================== GUTSCHEINE v2 ======================

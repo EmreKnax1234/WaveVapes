@@ -381,6 +381,31 @@
         .sidebar-item-locked i { font-size:13px; width:18px; text-align:center; }
         .sidebar-item-disabled { opacity:.3; cursor:not-allowed !important; pointer-events:none; }
 
+        /* ══════════════════════════════════════════
+           NUR-LESEN MODUS
+        ══════════════════════════════════════════ */
+        #admin-readonly-banner {
+            display: none; position: sticky; top: 60px; z-index: 390;
+            background: linear-gradient(90deg, rgba(251,191,36,.1), rgba(251,191,36,.04));
+            border-bottom: 1px solid rgba(251,191,36,.22);
+            padding: 7px 20px; align-items: center; gap: 10px;
+            font-size: 12px; font-weight: 600; color: rgba(251,191,36,.85);
+            backdrop-filter: blur(8px);
+        }
+        body.admin-readonly #admin-readonly-banner { display: flex; }
+        body.admin-readonly .ro-write-btn {
+            opacity: 0.28 !important; pointer-events: none !important;
+            cursor: not-allowed !important; filter: grayscale(0.4);
+        }
+        body.admin-readonly .ro-write-btn * { pointer-events: none !important; }
+        .ro-banner-icon { font-size: 14px; flex-shrink: 0; }
+        .ro-banner-text { flex: 1; }
+        .ro-banner-badge {
+            background: rgba(251,191,36,.15); border: 1px solid rgba(251,191,36,.3);
+            border-radius: 99px; padding: 2px 10px; font-size: 10px;
+            color: #fbbf24; font-weight: 700; white-space: nowrap;
+        }
+
         /* ── Health Monitor ── */
         .health-check-item { display:flex; align-items:center; gap:12px; padding:11px 16px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); border-radius:14px; transition:background .15s; }
         .health-check-item:hover { background:rgba(255,255,255,.05); }
@@ -2028,6 +2053,13 @@
         </div>
     </div>
 </header>
+
+<!-- ═══ NUR-LESEN BANNER ═══ -->
+<div id="admin-readonly-banner">
+    <i class="fa-solid fa-eye ro-banner-icon"></i>
+    <span class="ro-banner-text">Du bist im <strong>Nur-Lesen Modus</strong> — alle Tabs sind sichtbar, aber Änderungen sind gesperrt.</span>
+    <span class="ro-banner-badge">👁️ READ ONLY</span>
+</div>
 
 <!-- Notification Panel -->
 <div class="notif-overlay" id="notif-overlay" onclick="closeNotifPanel()"></div>
@@ -10134,8 +10166,8 @@ const TAB_NAMES = {
 };
 
 function switchTab(n) {
-    // Block if no permission (non-superadmin)
-    if (!saCurrentUserIsSuperadmin && n !== 12) {
+    // Block if no permission (non-superadmin) — ABER Nur-Lesen darf alle Tabs sehen
+    if (!saCurrentUserIsSuperadmin && !window._isReadOnly && n !== 12) {
         const perm = SA_PERMISSIONS.find(p => p.tab === n);
         if (perm) {
             const userDoc_perms = window._currentAdminPerms;
@@ -10186,6 +10218,8 @@ function switchTab(n) {
     if(n===16) { if(!_promos.length) loadPromos(); loadBundles(); }
     if(n===17) loadAdminLogs();
     if(n===18) frvInit();
+    // Re-apply write button locks for dynamically rendered content
+    if (window._isReadOnly) setTimeout(markWriteButtons, 400);
 }
 function toggleSidebar(){
     const s=document.getElementById('sidebar');
@@ -11416,9 +11450,13 @@ auth.onAuthStateChanged(async (user) => {
     const superUID = superSnap.exists ? superSnap.data().superadminUID : null;
     saCurrentUserIsSuperadmin = (superUID === user.uid) || (!superUID); // auto-super if first admin
     window._currentAdminPerms = userData.adminPermissions || SA_PERMISSIONS.map(p => p.key);
+    window._isReadOnly = !saCurrentUserIsSuperadmin && !!userData.readOnly;
 
     if (!saCurrentUserIsSuperadmin) {
         applyAdminPermissions(window._currentAdminPerms);
+    }
+    if (window._isReadOnly) {
+        applyReadOnlyMode();
     }
     // ─────────────────────
 
@@ -12417,6 +12455,123 @@ function applyAdminPermissions(perms) {
             sidebarEl.title = '⛔ Keine Berechtigung';
         }
     });
+}
+
+// ── Nur-Lesen Modus ──────────────────────────────────
+function applyReadOnlyMode() {
+    document.body.classList.add('admin-readonly');
+
+    // 1. Alle Sidebar-Items bleiben anklickbar (Nur-Lesen darf alle Tabs sehen)
+    SA_PERMISSIONS.forEach(p => {
+        const sidebarEl = document.getElementById('sidebar-' + p.tab);
+        if (sidebarEl) {
+            sidebarEl.classList.remove('sidebar-item-disabled');
+            sidebarEl.style.pointerEvents = '';
+            sidebarEl.style.opacity = '';
+        }
+    });
+
+    // 2. Schreib-Buttons mit ro-write-btn markieren (nach kurzer Verzögerung, damit DOM bereit ist)
+    setTimeout(markWriteButtons, 1200);
+
+    // 3. Firestore-Patch: alle .set/.update/.delete/.add blockieren
+    const _col = db.collection.bind(db);
+    db.collection = function(...args) {
+        const ref = _col(...args);
+        const _doc = ref.doc.bind(ref);
+        ref.doc = function(...dargs) {
+            const docRef = _doc(...dargs);
+            docRef.set    = () => { showToast('⛔ Nur-Lesen: Keine Schreibrechte', 'error'); return Promise.reject(new Error('readonly')); };
+            docRef.update = () => { showToast('⛔ Nur-Lesen: Keine Schreibrechte', 'error'); return Promise.reject(new Error('readonly')); };
+            docRef.delete = () => { showToast('⛔ Nur-Lesen: Keine Schreibrechte', 'error'); return Promise.reject(new Error('readonly')); };
+            return docRef;
+        };
+        ref.add = () => { showToast('⛔ Nur-Lesen: Keine Schreibrechte', 'error'); return Promise.reject(new Error('readonly')); };
+        return ref;
+    };
+}
+
+function markWriteButtons() {
+    // Selektoren für alle Schreib-Aktionen
+    const writeSelectors = [
+        'button[onclick*="save"]',   'button[onclick*="Save"]',
+        'button[onclick*="delete"]', 'button[onclick*="Delete"]',
+        'button[onclick*="add"]',    'button[onclick*="Add"]',
+        'button[onclick*="create"]', 'button[onclick*="Create"]',
+        'button[onclick*="update"]', 'button[onclick*="Update"]',
+        'button[onclick*="remove"]', 'button[onclick*="Remove"]',
+        'button[onclick*="edit"]',   'button[onclick*="Edit"]',
+        'button[onclick*="submit"]', 'button[onclick*="Submit"]',
+        'button[onclick*="upload"]', 'button[onclick*="Upload"]',
+        'button[onclick*="toggle"]', 'button[onclick*="Toggle"]',
+        'button[onclick*="ban"]',    'button[onclick*="Ban"]',
+        'button[onclick*="unban"]',
+        'button[onclick*="approve"]','button[onclick*="reject"]',
+        'button[onclick*="promote"]','button[onclick*="demote"]',
+        'button[onclick*="export"]', // exports are fine to keep
+        '[onclick*="saveProduct"]',  '[onclick*="deleteProduct"]',
+        '[onclick*="saveOrder"]',    '[onclick*="deleteOrder"]',
+        '[onclick*="saveUser"]',     '[onclick*="deleteUser"]',
+        '[onclick*="saveCoupon"]',   '[onclick*="deleteCoupon"]',
+        '[onclick*="saveCategory"]', '[onclick*="deleteCategory"]',
+        '[onclick*="saveSettings"]', '[onclick*="saveSort"]',
+        '[onclick*="saveBundle"]',   '[onclick*="deleteBundle"]',
+        '[onclick*="saveReview"]',   '[onclick*="deleteReview"]',
+        '[onclick*="savePromo"]',    '[onclick*="deletePromo"]',
+        '[onclick*="saveAction"]',   '[onclick*="deleteAction"]',
+        '[onclick*="euSaveDrawer"]', '[onclick*="euDrawerDanger"]',
+        '[onclick*="applyDiscount"]','[onclick*="setBanned"]',
+        '[onclick*="ipBanDo"]',      '[onclick*="quickBan"]',
+        '[onclick*="saToggle"]',     '[onclick*="saSave"]',
+        '[onclick*="saRemove"]',     '[onclick*="saAdd"]',
+        '[onclick*="saPromote"]',    '[onclick*="saDemote"]',
+        '[onclick*="bkp"]',          '[onclick*="runDanger"]',
+        '[onclick*="generateFake"]', '[onclick*="deleteAllFake"]',
+        // FAB & add buttons
+        '#mob-fab', '.prd-page-hdr button', '.ord-page-hdr button',
+        '.usr-page-hdr button',
+        // Form submits
+        'form button[type="submit"]',
+        // Input fields that trigger saves (disable them)
+        '.ped-drawer input', '.ped-drawer select', '.ped-drawer textarea',
+        '.ord-drawer input', '.ord-drawer select', '.ord-drawer textarea',
+        '.eu-drawer input',  '.eu-drawer select',  '.eu-drawer textarea',
+    ];
+    writeSelectors.forEach(sel => {
+        try {
+            document.querySelectorAll(sel).forEach(el => {
+                if (!el.classList.contains('ro-write-btn')) {
+                    el.classList.add('ro-write-btn');
+                }
+            });
+        } catch(e) {}
+    });
+
+    // Also intercept clicks globally as fallback
+    document.addEventListener('click', roClickInterceptor, true);
+}
+
+const RO_WRITE_PATTERNS = [
+    /save/i, /delete/i, /remove/i, /create/i, /edit/i, /update/i,
+    /upload/i, /submit/i, /ban/i, /approve/i, /reject/i,
+    /promote/i, /demote/i, /toggle.*read/i, /addAdmin/i,
+    /euSave/i, /euDanger/i, /bkp/i, /runDanger/i,
+    /saveProd/i, /saveOrd/i, /saveCat/i, /saveCoup/i,
+    /saveSet/i, /saveSort/i, /saveBund/i, /saveRev/i,
+    /savePromo/i, /ipBan/i, /quickBan/i,
+    /generateFake/i, /deleteAllFake/i,
+];
+
+function roClickInterceptor(e) {
+    if (!window._isReadOnly) return;
+    const el = e.target.closest('[onclick]') || e.target.closest('button') || e.target.closest('[role="button"]');
+    if (!el) return;
+    const onclick = el.getAttribute('onclick') || '';
+    if (RO_WRITE_PATTERNS.some(p => p.test(onclick))) {
+        e.stopImmediatePropagation();
+        e.preventDefault();
+        showToast('⛔ Nur-Lesen: Keine Schreibrechte', 'error');
+    }
 }
 
 // ── Init: fetch IP on load ────────────────────────────

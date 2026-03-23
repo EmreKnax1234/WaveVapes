@@ -12740,6 +12740,7 @@ async function saLoadDashboard() {
     } catch(e) { console.warn('SA Dashboard error:', e); }
 
     saLoadRecentSALog();
+    adminActivityLoad();
 }
 
 async function saLoadRecentSALog() {
@@ -12971,6 +12972,131 @@ function renderLogEntries(el, docs, compact) {
             </div>
         </div>`;
     }).join('');
+}
+
+// ── Admin-Aktivität (letzte 30 Tage) ──────────────────
+async function adminActivityLoad() {
+    const el = document.getElementById('admin-activity-table');
+    if (!el) return;
+
+    el.innerHTML = '<div style="color:rgba(255,255,255,.2);font-size:12px;padding:12px;text-align:center"><i class="fa-solid fa-spinner fa-spin" style="margin-right:6px"></i>Lade...</div>';
+
+    try {
+        const cutoff = firebase.firestore.Timestamp.fromDate(new Date(Date.now() - 30 * 86400000));
+        const snap = await db.collection('admin_logs')
+            .where('timestamp', '>=', cutoff)
+            .orderBy('timestamp', 'desc')
+            .get();
+
+        if (snap.empty) {
+            el.innerHTML = '<div style="color:rgba(255,255,255,.2);font-size:12px;padding:20px;text-align:center"><i class="fa-solid fa-inbox" style="font-size:22px;display:block;margin-bottom:8px;opacity:.3"></i>Keine Aktivitäten in den letzten 30 Tagen</div>';
+            return;
+        }
+
+        // Gruppieren nach Admin-E-Mail
+        const byAdmin = {};
+        snap.forEach(doc => {
+            const d = doc.data();
+            const email = d.adminEmail || 'Unbekannt';
+            if (!byAdmin[email]) {
+                byAdmin[email] = {
+                    total: 0,
+                    lastTs: null,
+                    byAction: {}
+                };
+            }
+            byAdmin[email].total++;
+            const ts = d.timestamp?.toDate?.() || null;
+            if (ts && (!byAdmin[email].lastTs || ts > byAdmin[email].lastTs)) {
+                byAdmin[email].lastTs = ts;
+            }
+            const action = d.action || 'unknown';
+            byAdmin[email].byAction[action] = (byAdmin[email].byAction[action] || 0) + 1;
+        });
+
+        // Nach Gesamtanzahl sortieren
+        const sorted = Object.entries(byAdmin).sort((a, b) => b[1].total - a[1].total);
+        const maxActions = sorted[0]?.[1].total || 1;
+
+        const ROLE_COLORS = { superadmin: '#fbbf24', cosuper: '#fb923c', admin: '#67e8f9' };
+
+        const ACTION_LABEL = {
+            product_created: '📦 Produkt erstellt',
+            product_deleted: '🗑️ Produkt gelöscht',
+            product_availability_changed: '👁️ Verfügbarkeit',
+            product_duplicated: '📋 Produkt dupliziert',
+            order_status_changed: '📬 Status geändert',
+            order_updated: '✏️ Bestellung bearbeitet',
+            order_deleted: '🗑️ Bestellung gelöscht',
+            coupon_created: '🎟️ Coupon erstellt',
+            coupon_deleted: '🗑️ Coupon gelöscht',
+            category_created: '🗂️ Kategorie erstellt',
+            category_updated: '✏️ Kategorie bearbeitet',
+            category_deleted: '🗑️ Kategorie gelöscht',
+            user_disabled_with_ip_ban: '🚫 User gesperrt',
+            user_enabled: '✅ User entsperrt',
+            user_deleted: '🗑️ User gelöscht',
+            user_loyalty_reset: '🔄 Punkte zurückgesetzt',
+            password_reset_requested: '🔑 Passwort-Reset',
+            push_notification_sent: '🔔 Push gesendet',
+            free_shipping_enabled: '🚚 Gratisversand an',
+            free_shipping_disabled: '🚚 Gratisversand aus',
+            superadmin_zone_access: '🔓 SA-Zone aufgerufen',
+            admin_added: '➕ Admin hinzugefügt',
+            admin_removed: '➖ Admin entfernt',
+            export_analytics_csv: '💾 Export',
+            sa_export: '💾 Daten exportiert',
+            danger_shop_close: '🔴 Shop geschlossen',
+            danger_shop_open: '🟢 Shop geöffnet',
+            danger_purge_logs: '🗑️ Logs gelöscht',
+            danger_reset_loyalty: '🔄 Loyalty-Reset',
+            danger_delete_orders: '☢️ Bestellungen gelöscht',
+        };
+
+        el.innerHTML = sorted.map(([email, data]) => {
+            const pct = Math.round((data.total / maxActions) * 100);
+            const lastStr = data.lastTs
+                ? data.lastTs.toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+                : '—';
+
+            // Top-3-Aktionen dieses Admins
+            const topActions = Object.entries(data.byAction)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 3)
+                .map(([action, cnt]) => {
+                    const label = ACTION_LABEL[action] || ('⚡ ' + action.replace(/_/g, ' '));
+                    return `<span style="font-size:10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:6px;padding:2px 7px;white-space:nowrap">${label} <strong style="color:#fff">${cnt}×</strong></span>`;
+                }).join('');
+
+            const initials = email.slice(0, 2).toUpperCase();
+            const hue = [...email].reduce((h, c) => h + c.charCodeAt(0), 0) % 360;
+
+            return `
+            <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:13px;padding:12px 14px">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+                    <div style="width:34px;height:34px;border-radius:10px;background:hsl(${hue},55%,28%);border:1px solid hsl(${hue},55%,40%);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0">${initials}</div>
+                    <div style="flex:1;min-width:0">
+                        <div style="font-size:12px;font-weight:600;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${email}</div>
+                        <div style="font-size:10px;color:rgba(255,255,255,.3);margin-top:1px">Letzte Aktion: ${lastStr}</div>
+                    </div>
+                    <div style="text-align:right;flex-shrink:0">
+                        <div style="font-size:18px;font-weight:800;color:#67e8f9;font-family:'JetBrains Mono',monospace;line-height:1">${data.total}</div>
+                        <div style="font-size:9px;color:rgba(255,255,255,.25);text-transform:uppercase;letter-spacing:.06em">Aktionen</div>
+                    </div>
+                </div>
+                <!-- Balken -->
+                <div style="height:4px;background:rgba(255,255,255,.06);border-radius:3px;margin-bottom:8px;overflow:hidden">
+                    <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#22d3ee,#818cf8);border-radius:3px;transition:width .5s ease"></div>
+                </div>
+                <!-- Top-Aktionen -->
+                <div style="display:flex;flex-wrap:wrap;gap:4px">${topActions || '<span style="font-size:10px;color:rgba(255,255,255,.2)">—</span>'}</div>
+            </div>`;
+        }).join('');
+
+    } catch(e) {
+        console.warn('adminActivityLoad error:', e);
+        el.innerHTML = '<div style="color:rgba(248,113,113,.6);font-size:12px;padding:12px;text-align:center"><i class="fa-solid fa-circle-exclamation" style="margin-right:6px"></i>Fehler beim Laden: ' + e.message + '</div>';
+    }
 }
 
 // ── Security Settings ─────────────────────────────────

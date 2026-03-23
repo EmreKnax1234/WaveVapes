@@ -3142,6 +3142,97 @@
         .bke-input { font-size: 14px !important; padding: 11px !important; }
         .bke-submit { padding: 14px !important; }
 
+
+        /* Bottom padding for all tabs to clear nav bar */
+        #tab-content-0 .prd-add-panel,
+        #tab-content-0 { padding-bottom: 80px !important; }
+        #tab-content-1 .ord-shell { padding-bottom: 80px !important; }
+        #tab-content-2 .usr-shell { padding-bottom: 80px !important; }
+        #tab-content-5 { padding-bottom: 80px !important; }
+
+        /* Analytics tab: padding for content below mobile header */
+        #tab-content-5 .an-kpi-strip { margin-top: 0 !important; }
+        #tab-content-5 .an-header { margin-bottom: 12px !important; }
+        #tab-content-5 .mob-tab-wrap + * { margin-top: 0 !important; }
+
+        /* Fix table overflow on mobile */
+        #tab-content-5 .an-chart-grid { gap: 10px !important; }
+        #tab-content-5 .an-chart-card { padding: 12px !important; border-radius: 14px !important; }
+        #tab-content-5 .an-chart-inner { height: 180px !important; }
+        #tab-content-5 .an-chart-inner.tall { height: 200px !important; }
+
+        /* Period bar in analytics */
+        #tab-content-5 .an-period-bar {
+            display: none !important; /* hide desktop period bar, we have mobile one */
+        }
+
+        /* Hide desktop analytics header (replaced by mobile one) */
+        #tab-content-5 .an-header { display: none !important; }
+
+        /* Fix ord-status-grid (quick status buttons in order drawer) */
+        .ord-status-grid { 
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 6px !important;
+        }
+
+        /* Fix bke-sheet (bulk edit) bottom */
+        .bke-sheet { padding-bottom: 80px !important; }
+
+        /* Better FAB position */
+        #mob-fab { bottom: 76px !important; right: 16px !important; }
+
+        /* Fix more drawer max-height */
+        #mob-more-drawer { max-height: 80dvh !important; }
+
+        /* Coupon create form: full width */
+        #tab-content-4 .cpn-create { width: 100% !important; }
+        #tab-content-4 .cpn-list-panel { width: 100% !important; }
+
+        /* Category: full width */
+        #tab-content-3 .cat-create,
+        #tab-content-3 .cat-list-panel { width: 100% !important; }
+
+        /* Settings: remove max-width constraints */
+        #tab-content-7 .cfg-shell { max-width: 100% !important; }
+        
+        /* Sortierung: items easier to grab */
+        .srt-item { min-height: 56px !important; }
+        .srt-handle { min-width: 32px !important; font-size: 20px !important; }
+
+        /* Review cards: stack actions */
+        .rv-card-actions { flex-wrap: wrap !important; gap: 6px !important; }
+        .rv-action-btn { flex: 1 1 calc(50% - 3px) !important; min-height: 40px !important; justify-content: center !important; }
+
+        /* Admin logs: readable on mobile */
+        .lg-entry { flex-wrap: nowrap !important; }
+        .lg-entry-body { min-width: 0 !important; overflow: hidden !important; }
+        .lg-entry-main { font-size: 12px !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
+
+        /* Superadmin kpis */
+        .sa-kpi-grid { grid-template-columns: repeat(2,1fr) !important; }
+        
+        /* Fix bundle form */
+        #tab-content-16 .bnd-form-grid {
+            grid-template-columns: 1fr 1fr !important;
+        }
+        #tab-content-16 .bnd-form-grid > [style*="span 2"] {
+            grid-column: span 2 !important;
+        }
+        
+        /* Fix push notification tab buttons */
+        #push-tab-compose, #push-tab-templates,
+        #push-tab-history, #push-tab-subscribers {
+            font-size: 10px !important; padding: 10px 4px !important;
+            flex: 1 !important;
+        }
+        
+        /* Fix countdown grid */
+        #tab-content-14 .cfg-2col,
+        #tab-content-14 [style*="grid-template-columns:1fr 1fr"] {
+            grid-template-columns: 1fr !important;
+        }
+
 </style>
 </head>
 <body class="min-h-screen">
@@ -6974,6 +7065,8 @@ let selectedProductIds = [];
 let presenceRefreshInterval = null;
 let stockCriticalThreshold = 3;
 let stockWarningThreshold = 10;
+window.stockCriticalThreshold = 3;
+window.stockWarningThreshold = 10;
 
 // ====================== LOG ACTION ======================
 
@@ -17932,7 +18025,10 @@ function mobInjectTabUI(n) {
     if (n === 1) mobBuildOrdersUI();
     else if (n === 0) mobBuildProductsUI();
     else if (n === 2) mobBuildUsersUI();
-    else if (n === 5) mobBuildAnalyticsUI();
+    else if (n === 5) {
+        mobBuildAnalyticsUI();
+        setTimeout(mobSyncAnalyticsKpis, 500);
+    }
 }
 
 // ── Override switchTab to also update mobile ──
@@ -17965,11 +18061,10 @@ window.ordRenderTable = function() {
     mobSyncBadges();
 };
 
-// ── Override renderProducts to also update mobile ──
-const _origRenderProducts = window.renderProducts;
-window.renderProducts = function(...args) {
-    if (_origRenderProducts) _origRenderProducts(...args);
-    // Sync allProducts to window
+// ── Override renderProductTable to also update mobile ──
+const _origRenderProductTable = window.renderProductTable;
+window.renderProductTable = function(...args) {
+    if (_origRenderProductTable) _origRenderProductTable(...args);
     if (typeof allProducts !== 'undefined') window.allProducts = allProducts;
     if (_mobCurrentTab === 0) setTimeout(mobRenderProductCards, 50);
 };
@@ -17986,10 +18081,14 @@ window.usrRenderTable = function(...args) {
 //  ORDERS TAB — Mobile UI
 // ══════════════════════════════════════════════════════════
 function mobBuildOrdersUI() {
-    const shell = document.querySelector('#tab-content-1 .ord-shell');
-    if (!shell) return;
-    // Remove existing mob UI if any
-    document.getElementById('mob-orders-wrap')?.remove();
+    const tc = document.getElementById('tab-content-1');
+    if (!tc) return;
+    if (document.getElementById('mob-orders-wrap')) {
+        // Already built — just re-render cards
+        mobRenderOrderCards();
+        return;
+    }
+    const shell = tc.querySelector('.ord-shell') || tc;
     const wrap = document.createElement('div');
     wrap.id = 'mob-orders-wrap';
     wrap.className = 'mob-tab-wrap';
@@ -18066,7 +18165,8 @@ function mobOrdSearch(val) {
 function mobRenderOrderCards() {
     const list = document.getElementById('mob-orders-list');
     if (!list) return;
-    const docs = (window._ordAllDocs || _ordAllDocs || []).filter(doc => {
+    const _docs = window._ordAllDocs || (typeof _ordAllDocs !== 'undefined' ? _ordAllDocs : []);
+    const docs = _docs.filter(doc => {
         const o = doc.data();
         const status = o.status || 'Zahlung erwartet';
         if (_mobOrdFilter && status !== _mobOrdFilter) return false;
@@ -18079,7 +18179,8 @@ function mobRenderOrderCards() {
     });
     // Update counts
     const counts = {};
-    (window._ordAllDocs||_ordAllDocs||[]).forEach(doc => {
+    const _allDocs2 = window._ordAllDocs || (typeof _ordAllDocs !== 'undefined' ? _ordAllDocs : []);
+    _allDocs2.forEach(doc => {
         const s = doc.data().status || 'Zahlung erwartet';
         counts[s] = (counts[s]||0)+1;
     });
@@ -18141,9 +18242,12 @@ function mobQuickShip(id, e) {
 //  PRODUCTS TAB — Mobile UI
 // ══════════════════════════════════════════════════════════
 function mobBuildProductsUI() {
-    const shell = document.querySelector('#tab-content-0');
+    const shell = document.getElementById('tab-content-0');
     if (!shell) return;
-    document.getElementById('mob-products-wrap')?.remove();
+    if (document.getElementById('mob-products-wrap')) {
+        mobRenderProductCards();
+        return;
+    }
     const wrap = document.createElement('div');
     wrap.id = 'mob-products-wrap';
     wrap.className = 'mob-tab-wrap';
@@ -18294,9 +18398,13 @@ function mobRenderProductCards() {
 //  USERS TAB — Mobile UI
 // ══════════════════════════════════════════════════════════
 function mobBuildUsersUI() {
-    const shell = document.querySelector('#tab-content-2 .usr-shell');
-    if (!shell) return;
-    document.getElementById('mob-users-wrap')?.remove();
+    const tc = document.getElementById('tab-content-2');
+    if (!tc) return;
+    if (document.getElementById('mob-users-wrap')) {
+        mobRenderUserCards();
+        return;
+    }
+    const shell = tc.querySelector('.usr-shell') || tc;
     const wrap = document.createElement('div');
     wrap.id = 'mob-users-wrap';
     wrap.className = 'mob-tab-wrap';
@@ -18371,7 +18479,7 @@ function mobRenderUserCards() {
 function mobUserCardHTML(u, i) {
     const initials = (u.email||'?').slice(0,2).toUpperCase();
     const pts = u.totalBonusPoints || 0;
-    return `<div class="mob-user-card" style="animation-delay:${i*20}ms" onclick="euOpenDrawer('${escA(u.id)}')">
+    return `<div class="mob-user-card" style="animation-delay:${i*20}ms" onclick="mobOpenUserActions('${escA(u.id)}','${escA(u.email||'')}','${u.disabled?1:0}','${u.totalBonusPoints||0}','${u.freeShipping?1:0}')">
         <div class="mob-user-av${u.disabled?' disabled':''}">${initials}</div>
         <div class="mob-user-info">
             <div class="mob-user-name">${escA(u.username || u.email?.split('@')[0] || '—')}</div>
@@ -18384,7 +18492,7 @@ function mobUserCardHTML(u, i) {
         </div>
         <div class="mob-user-right">
             <div class="mob-user-btn" onclick="event.stopPropagation();euOpenDrawer('${escA(u.id)}')">
-                <i class="fa-solid fa-chevron-right"></i>
+                <i class="fa-solid fa-pen-to-square"></i>
             </div>
         </div>
     </div>`;
@@ -18392,93 +18500,82 @@ function mobUserCardHTML(u, i) {
 
 // ══════════════════════════════════════════════════════════
 //  ANALYTICS TAB — Mobile UI
+//  Injects a mobile KPI grid + period bar ABOVE the existing charts
 // ══════════════════════════════════════════════════════════
 function mobBuildAnalyticsUI() {
     const tc = document.getElementById('tab-content-5');
     if (!tc) return;
-    document.getElementById('mob-analytics-wrap')?.remove();
+    if (document.getElementById('mob-analytics-wrap')) return; // already built
     const wrap = document.createElement('div');
     wrap.id = 'mob-analytics-wrap';
-    wrap.className = 'mob-tab-wrap';
-    // Clone the KPI values from original elements if they exist
-    setTimeout(() => {
-        const kpis = [
-            { id:'an-kpi-revenue', label:'Umsatz',   color:'#34d399', glow:'#34d399', icon:'💰' },
-            { id:'an-kpi-orders',  label:'Bestellungen', color:'#67e8f9', glow:'#67e8f9', icon:'🧾' },
-            { id:'an-kpi-users',   label:'Neue User', color:'#a78bfa', glow:'#a78bfa', icon:'👤' },
-            { id:'an-kpi-aov',     label:'Ø Bestellwert', color:'#fbbf24', glow:'#fbbf24', icon:'📊' },
-        ];
-        let kpiHTML = `<div class="mob-an-kpi-grid">`;
-        kpis.forEach(k => {
-            const orig = document.getElementById(k.id);
-            const val = orig?.textContent || '—';
-            kpiHTML += `<div class="mob-an-kpi" style="--glow:${k.glow};--val-color:${k.color}">
+    wrap.style.cssText = 'padding:12px 12px 0;';
+    wrap.innerHTML = `
+        <div class="mob-section-hdr" style="margin-bottom:10px">
+            <div class="mob-section-title"><i class="fa-solid fa-chart-line"></i> Analytics</div>
+            <button onclick="loadAnalytics()" style="padding:6px 12px;border-radius:8px;background:rgba(103,232,249,.08);border:1px solid rgba(103,232,249,.2);color:#67e8f9;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px"><i class="fa-solid fa-rotate-right"></i> Aktualisieren</button>
+        </div>
+        <div class="mob-period-bar">
+            <button class="mob-period-btn" onclick="mobAnPeriod(7,this)">7 Tage</button>
+            <button class="mob-period-btn active" onclick="mobAnPeriod(30,this)">30 Tage</button>
+            <button class="mob-period-btn" onclick="mobAnPeriod(90,this)">90 Tage</button>
+            <button class="mob-period-btn" onclick="mobAnPeriod(365,this)">1 Jahr</button>
+        </div>
+        <div class="mob-an-kpi-grid" style="margin-bottom:12px">
+            <div class="mob-an-kpi" style="--glow:#34d399;--val-color:#34d399">
                 <div class="mob-an-kpi-glow"></div>
-                <div class="mob-an-kpi-lbl">${k.icon} ${k.label}</div>
-                <div class="mob-an-kpi-val" id="mob-${k.id}">${val}</div>
-            </div>`;
-        });
-        kpiHTML += `</div>`;
-        // Period buttons
-        const periodHTML = `<div class="mob-period-bar" id="mob-period-bar">
-            <button class="mob-period-btn" onclick="anSetPeriod(7,this)">7 Tage</button>
-            <button class="mob-period-btn active" onclick="anSetPeriod(30,this)">30 Tage</button>
-            <button class="mob-period-btn" onclick="anSetPeriod(90,this)">90 Tage</button>
-            <button class="mob-period-btn" onclick="anSetPeriod(365,this)">12 Monate</button>
+                <div class="mob-an-kpi-lbl">💰 Umsatz</div>
+                <div class="mob-an-kpi-val" id="mob-metric-revenue">—</div>
+            </div>
+            <div class="mob-an-kpi" style="--glow:#67e8f9;--val-color:#67e8f9">
+                <div class="mob-an-kpi-glow"></div>
+                <div class="mob-an-kpi-lbl">🧾 Bestellungen</div>
+                <div class="mob-an-kpi-val" id="mob-metric-orders">—</div>
+            </div>
+            <div class="mob-an-kpi" style="--glow:#a78bfa;--val-color:#a78bfa">
+                <div class="mob-an-kpi-glow"></div>
+                <div class="mob-an-kpi-lbl">👤 Neue User</div>
+                <div class="mob-an-kpi-val" id="mob-metric-users">—</div>
+            </div>
+            <div class="mob-an-kpi" style="--glow:#fbbf24;--val-color:#fbbf24">
+                <div class="mob-an-kpi-glow"></div>
+                <div class="mob-an-kpi-lbl">📊 Ø Wert</div>
+                <div class="mob-an-kpi-val" id="mob-metric-avg">—</div>
+            </div>
         </div>`;
-        // Chart cards - reuse existing canvases
-        const chartsHTML = `
-            <div class="mob-an-chart-card">
-                <div class="mob-an-chart-title"><i class="fa-solid fa-chart-line" style="color:#67e8f9"></i> Umsatz-Verlauf</div>
-                <div style="position:relative;height:180px"><canvas id="revenueChart"></canvas></div>
-            </div>
-            <div class="mob-an-chart-card">
-                <div class="mob-an-chart-title"><i class="fa-solid fa-chart-bar" style="color:#a78bfa"></i> Bestellungen/Tag</div>
-                <div style="position:relative;height:160px"><canvas id="dailyOrdersChart"></canvas></div>
-            </div>
-            <div class="mob-an-chart-card">
-                <div class="mob-an-chart-title"><i class="fa-solid fa-trophy" style="color:#fbbf24"></i> Top Produkte</div>
-                <div id="mob-top-prods-list" style="max-height:200px;overflow-y:auto"></div>
-            </div>
-            <div class="mob-an-chart-card">
-                <div class="mob-an-chart-title"><i class="fa-solid fa-fire" style="color:#fb923c"></i> Nach Wochentag</div>
-                <div style="position:relative;height:150px"><canvas id="weekdayChart"></canvas></div>
-            </div>`;
-        wrap.innerHTML = `
-            <div class="mob-section-hdr" style="margin-bottom:10px">
-                <div class="mob-section-title"><i class="fa-solid fa-chart-line"></i> Analytics</div>
-                <button onclick="loadAnalytics()" style="padding:6px 12px;border-radius:8px;background:rgba(103,232,249,.08);border:1px solid rgba(103,232,249,.2);color:#67e8f9;font-size:11px;font-weight:700;cursor:pointer"><i class="fa-solid fa-rotate-right"></i></button>
-            </div>
-            ${periodHTML}
-            ${kpiHTML}
-            <div id="mob-analytics-view">${chartsHTML}</div>`;
-        tc.insertBefore(wrap, tc.firstChild);
-        // Sync KPI values periodically
-        setInterval(mobSyncAnalyticsKpis, 2000);
-        // Copy top products
-        setTimeout(mobSyncTopProducts, 1000);
-    }, 300);
+    tc.insertBefore(wrap, tc.firstChild);
+    // Hide desktop header (period bar + title) since we replace it
+    const anHdr = tc.querySelector('.an-header');
+    if (anHdr) anHdr.style.display = 'none';
+    // Sync KPI values every second
+    setInterval(mobSyncAnalyticsKpis, 1000);
+    // Add padding to tab content
+    tc.style.paddingBottom = '12px';
+}
+
+function mobAnPeriod(days, btn) {
+    // Update mobile period pills
+    document.querySelectorAll('.mob-period-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    // Also sync desktop period buttons
+    document.querySelectorAll('.an-period-btn').forEach(b => {
+        b.classList.toggle('active', parseInt(b.textContent) === days ||
+            (days === 365 && b.textContent.includes('Jahr')) ||
+            (days === 7 && b.textContent.includes('7')) ||
+            (days === 30 && b.textContent.includes('30')) ||
+            (days === 90 && b.textContent.includes('90')));
+    });
+    anSetPeriod(days);
 }
 
 function mobSyncAnalyticsKpis() {
-    const kpis = ['an-kpi-revenue','an-kpi-orders','an-kpi-users','an-kpi-aov'];
-    kpis.forEach(id => {
+    ['metric-revenue','metric-orders','metric-users','metric-avg'].forEach(id => {
         const orig = document.getElementById(id);
-        const mob = document.getElementById('mob-' + id);
-        if (orig && mob && orig.textContent !== mob.textContent) {
-            mob.textContent = orig.textContent;
-        }
+        const mob  = document.getElementById('mob-' + id);
+        if (orig && mob) mob.textContent = orig.textContent || '—';
     });
 }
 
-function mobSyncTopProducts() {
-    const origList = document.getElementById('an-prod-list');
-    const mobList = document.getElementById('mob-top-prods-list');
-    if (!origList || !mobList) return;
-    const rows = origList.querySelectorAll('.an-prod-row');
-    if (!rows.length) { mobList.innerHTML = '<div style="color:rgba(255,255,255,.25);font-size:12px;text-align:center;padding:20px">Keine Daten</div>'; return; }
-    mobList.innerHTML = Array.from(rows).map(r => r.outerHTML).join('');
-}
+function mobSyncTopProducts() { /* no-op: analytics shown inline */ }
 
 // ══════════════════════════════════════════════════════════
 //  MORE DRAWER
@@ -18655,10 +18752,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const title = document.getElementById('mob-page-title');
         if (title) title.textContent = 'Bestellungen';
     }, 800);
-    // Also ensure switchTab(1) is called to set correct active state
+    // After auth, trigger mobile tab builds once data starts loading
     setTimeout(() => {
-        if (typeof switchTab === 'function') switchTab(1);
-    }, 1200);
+        // Mark nav item 1 as active
+        document.querySelectorAll('.mob-nav-item').forEach(el => el.classList.remove('active'));
+        document.getElementById('mob-nav-1')?.classList.add('active');
+        const title = document.getElementById('mob-page-title');
+        if (title) title.textContent = 'Bestellungen';
+    }, 400);
 });
 
 // User cache exposure (intercept users load)
@@ -18691,7 +18792,23 @@ function mobWrapVerwaltungTabs() {
         const tc = document.getElementById('tab-content-' + n);
         if (!tc || tc.dataset.mobWrapped) continue;
         tc.style.padding = '12px';
+        tc.style.paddingBottom = '80px';
         tc.dataset.mobWrapped = '1';
+        // Fix any sticky positioned children (like cpn-create, cat-create)
+        tc.querySelectorAll('[style*="position:sticky"],[style*="position: sticky"]').forEach(el => {
+            el.style.position = 'static';
+            el.style.top = 'auto';
+        });
+        // Fix any inline grid styles with too many columns
+        tc.querySelectorAll('[style*="grid-template-columns"]').forEach(el => {
+            const cols = el.style.gridTemplateColumns;
+            if (cols && cols.includes('repeat') && !cols.includes('1fr')) {
+                const match = cols.match(/repeat\((\d+)/);
+                if (match && parseInt(match[1]) > 2) {
+                    el.style.gridTemplateColumns = 'repeat(2, 1fr)';
+                }
+            }
+        });
     }
 }
 
@@ -18798,6 +18915,51 @@ function mobFixInlineGrids() {
 
 // Re-run grid fixes when switching tabs
 window.addEventListener('popstate', mobFixInlineGrids);
+
+
+// ── Mobile User Action Sheet ──
+function mobOpenUserActions(uid, email, disabled, points, freeShipping) {
+    disabled = disabled == '1'; freeShipping = freeShipping == '1';
+    const initials = (email||'?').slice(0,2).toUpperCase();
+    // Create action sheet
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);z-index:99999;display:flex;align-items:flex-end';
+    overlay.onclick = e => { if(e.target===overlay) document.body.removeChild(overlay); };
+    overlay.innerHTML = `
+        <div style="width:100%;background:#13131f;border-radius:20px 20px 0 0;padding:20px 16px 32px;border-top:1px solid rgba(255,255,255,.08)">
+            <div style="width:40px;height:4px;border-radius:99px;background:rgba(255,255,255,.15);margin:0 auto 16px"></div>
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,.07)">
+                <div style="width:44px;height:44px;border-radius:13px;background:linear-gradient(135deg,#67e8f9,#a78bfa);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#000;flex-shrink:0">${escA(initials)}</div>
+                <div style="min-width:0">
+                    <div style="font-size:13px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escA(email)}</div>
+                    <div style="font-size:10px;color:rgba(255,255,255,.35);margin-top:2px">⭐ ${points} Punkte · ${disabled?'🚫 Gesperrt':'✅ Aktiv'}</div>
+                </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+                <button onclick="euOpenDrawer('${escA(uid)}');document.body.removeChild(this.closest('[style*=fixed]'))" 
+                    style="padding:14px;border-radius:12px;background:rgba(103,232,249,.08);border:1px solid rgba(103,232,249,.2);color:#67e8f9;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:10px">
+                    <i class="fa-solid fa-pen-to-square"></i> Benutzer bearbeiten
+                </button>
+                <button onclick="toggleFreeShipping('${escA(uid)}',${!freeShipping});document.body.removeChild(this.closest('[style*=fixed]'))"
+                    style="padding:14px;border-radius:12px;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.2);color:#34d399;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:10px">
+                    <i class="fa-solid fa-truck"></i> Gratisversand ${freeShipping?'deaktivieren':'aktivieren'}
+                </button>
+                <button onclick="resetPassword('${escA(email)}');document.body.removeChild(this.closest('[style*=fixed]'))"
+                    style="padding:14px;border-radius:12px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.2);color:#fbbf24;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:10px">
+                    <i class="fa-solid fa-key"></i> Passwort zurücksetzen
+                </button>
+                <button onclick="toggleDisable('${escA(uid)}',${!disabled});document.body.removeChild(this.closest('[style*=fixed]'))"
+                    style="padding:14px;border-radius:12px;background:${disabled?'rgba(52,211,153,.08)':'rgba(248,113,113,.08)'};border:1px solid ${disabled?'rgba(52,211,153,.2)':'rgba(248,113,113,.2)'};color:${disabled?'#34d399':'#f87171'};font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:10px">
+                    <i class="fa-solid fa-${disabled?'unlock':'lock'}"></i> ${disabled?'Entsperren':'Sperren'}
+                </button>
+                <button onclick="document.body.removeChild(this.closest('[style*=fixed]'))"
+                    style="padding:14px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:rgba(255,255,255,.4);font-size:13px;font-weight:600;cursor:pointer;text-align:center">
+                    Abbrechen
+                </button>
+            </div>
+        </div>`;
+    document.body.appendChild(overlay);
+}
 
 </body>
 </html>

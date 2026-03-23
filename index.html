@@ -5159,7 +5159,8 @@
                 const _shippingRate = window._SHIPPING_COST !== undefined ? window._SHIPPING_COST : SHIPPING_COST;
                 const shippingCost = userHasFreeShipping || verifiedProductTotal >= _threshold ? 0 : _shippingRate;
                 const verifiedTotal = Math.max(0, verifiedProductTotal + shippingCost);
-                const loyaltyEarned = Math.floor(verifiedProductTotal);
+                const _loyaltyRate = window._LOYALTY_RATE !== undefined ? window._LOYALTY_RATE : 10;
+                const loyaltyEarned = Math.floor(verifiedProductTotal * _loyaltyRate);
                 const orderNumber = generateOrderNumber();
 
                 // Kundenwunsch aus dem Textfeld lesen
@@ -6995,6 +6996,7 @@
                 if (s.iban)       window._BANK_IBAN  = s.iban;
                 else if (s.bank_iban) window._BANK_IBAN = s.bank_iban;
                 if (s.bic)        window._BANK_BIC   = s.bic;
+                if (typeof s.loyalty_rate !== 'undefined')            window._LOYALTY_RATE  = s.loyalty_rate;
                 if (typeof s.shipping_cost !== 'undefined')           window._SHIPPING_COST = s.shipping_cost;
                 if (typeof s.free_shipping_threshold !== 'undefined') {
                     window._FREE_THRESHOLD = s.free_shipping_threshold;

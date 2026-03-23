@@ -2035,6 +2035,8 @@
             backdrop-filter: blur(20px);
             padding-bottom: env(safe-area-inset-bottom, 0);
         }
+        /* Hide the old hidden mehr button completely */
+        #mob-btn-more { display: none !important; }
         .mob-nav-btn {
             flex: 1; display: flex; flex-direction: column; align-items: center;
             justify-content: center; gap: 3px; cursor: pointer;
@@ -2052,21 +2054,22 @@
             border: 1.5px solid #0a0a0a; display: none;
         }
 
-        /* ── MORE DRAWER ── */
+        /* ── MORE DRAWER (top dropdown) ── */
         #mob-more-overlay {
             display: none; position: fixed; inset: 0; z-index: 600;
             background: rgba(0,0,0,.6); backdrop-filter: blur(6px);
         }
         #mob-more-overlay.open { display: block; }
         #mob-more-drawer {
-            position: fixed; bottom: 60px; left: 0; right: 0; z-index: 700;
-            background: #0f0f1a; border-top: 1px solid rgba(103,232,249,.15);
-            border-radius: 20px 20px 0 0; padding: 12px 14px 20px;
-            transform: translateY(100%); transition: transform .3s cubic-bezier(.34,1.56,.64,1);
-            max-height: 78vh; overflow-y: auto;
+            position: fixed; top: 52px; left: 0; right: 0; z-index: 700;
+            background: #0f0f1a; border-bottom: 1px solid rgba(103,232,249,.15);
+            border-radius: 0 0 24px 24px; padding: 10px 14px 18px;
+            transform: translateY(-105%); transition: transform .3s cubic-bezier(.34,1.2,.64,1);
+            max-height: calc(100vh - 112px); overflow-y: auto;
+            box-shadow: 0 12px 40px rgba(0,0,0,.6);
         }
         #mob-more-drawer.open { transform: translateY(0); }
-        .mob-drawer-handle { width: 36px; height: 4px; border-radius: 99px; background: rgba(255,255,255,.15); margin: 0 auto 14px; }
+        .mob-drawer-handle { width: 36px; height: 4px; border-radius: 99px; background: rgba(255,255,255,.15); margin: 4px auto 12px; }
         .mob-drawer-section-label { font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.25); padding: 0 4px; margin-bottom: 8px; }
         .mob-drawer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 14px; }
         .mob-drawer-item {
@@ -2391,6 +2394,9 @@
 <header class="hdr-root" id="mob-header">
     <div class="hdr-inner">
         <div class="hdr-logo-area">
+            <div class="hdr-notif-btn mob-hamburger-btn" id="mob-hamburger" onclick="mobOpenMore()" style="width:38px!important;height:38px!important;flex-shrink:0;border-color:rgba(103,232,249,.2);background:rgba(103,232,249,.05);">
+                <i class="fa-solid fa-bars" id="mob-hamburger-icon" style="font-size:16px;color:rgba(103,232,249,.7);transition:all .2s;"></i>
+            </div>
             <img src="logo.png" alt="WaveVapes" class="hdr-logo" loading="eager">
             <span class="hdr-brand">ADMIN</span>
         </div>
@@ -16982,9 +16988,7 @@ async function executeCatCostUpdate() {
     <div class="mob-nav-btn" id="mob-btn-2" onclick="mobTab(2)">
         <i class="fa-solid fa-users"></i><span>User</span>
     </div>
-    <div class="mob-nav-btn" id="mob-btn-more" onclick="mobOpenMore()">
-        <i class="fa-solid fa-grip"></i><span>Mehr</span>
-    </div>
+    <div class="mob-nav-btn" id="mob-btn-more" onclick="mobOpenMore()" style="display:none!important"></div>
 </nav>
 
 <button id="mob-fab" onclick="mobFabAction()">
@@ -17144,6 +17148,11 @@ window.mobOpenMore = function() {
     document.getElementById('mob-more-overlay').classList.add('open');
     document.getElementById('mob-more-drawer').classList.add('open');
     document.getElementById('mob-btn-more').classList.add('active');
+    // Toggle hamburger → X
+    const icon = document.getElementById('mob-hamburger-icon');
+    const btn  = document.getElementById('mob-hamburger');
+    if (icon) { icon.className = 'fa-solid fa-xmark'; icon.style.color = '#67e8f9'; }
+    if (btn)  { btn.style.borderColor = 'rgba(103,232,249,.5)'; btn.style.background = 'rgba(103,232,249,.1)'; }
 };
 window.mobCloseMore = function() {
     document.getElementById('mob-more-overlay').classList.remove('open');
@@ -17154,6 +17163,11 @@ window.mobCloseMore = function() {
     });
     const moreBtn = document.getElementById('mob-btn-more');
     if (moreBtn) moreBtn.classList.toggle('active', !MAIN_TABS.includes(curTab));
+    // Restore hamburger icon
+    const icon = document.getElementById('mob-hamburger-icon');
+    const btn  = document.getElementById('mob-hamburger');
+    if (icon) { icon.className = 'fa-solid fa-bars'; icon.style.color = 'rgba(103,232,249,.7)'; }
+    if (btn)  { btn.style.borderColor = 'rgba(103,232,249,.2)'; btn.style.background = 'rgba(103,232,249,.05)'; }
 };
 
 // ════════════════════════════════

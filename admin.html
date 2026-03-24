@@ -13482,6 +13482,160 @@ function renderSessionList(el, sessions, now) {
     }).join('');
 }
 
+// ── anlzSetPeriod: Zeitraum-Tabs im Analytics-Chart ───────────────────────────
+// Wird aufgerufen von den 7/14/30/90-Tage-Buttons in #sa-panel-analytics.
+// Rendert einen Bar-Chart der täglichen Umsätze im gewählten Zeitraum
+// und aktualisiert #anlz-period-total sowie #anlz-trend-badge.
+async function anlzSetPeriod(days, btn) {
+    // Tab-Highlighting
+    document.querySelectorAll('#sa-panel-analytics .sa-inner-tab').forEach(t => t.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+
+    const timelineEl  = document.getElementById('sa-revenue-timeline');
+    const totalEl     = document.getElementById('anlz-period-total');
+    const trendEl     = document.getElementById('anlz-trend-badge');
+    if (!timelineEl) return;
+
+    timelineEl.innerHTML = '<div style="color:rgba(255,255,255,.2);font-size:12px;width:100%;text-align:center;padding-top:50px"><i class="fa-solid fa-spinner fa-spin" style="margin-right:6px"></i>Lade…</div>';
+
+    try {
+        const cutoff = new Date(Date.now() - days * 86400000);
+        const snap = await db.collection('orders')
+            .where('date', '>=', firebase.firestore.Timestamp.fromDate(cutoff))
+            .get();
+
+        // Tägliche Umsätze aggregieren
+        const dayMap = {};
+        snap.forEach(doc => {
+            const o   = doc.data();
+            const ts  = o.date?.toDate?.() || null;
+            if (!ts) return;
+            const key = ts.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+            dayMap[key] = (dayMap[key] || 0) + parseFloat(o.total || 0);
+        });
+
+        // Lückenlose Tages-Sequenz aufbauen (ältestes → neuestes)
+        const entries = [];
+        for (let i = days - 1; i >= 0; i--) {
+            const d   = new Date(Date.now() - i * 86400000);
+            const key = d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+            entries.push([key, dayMap[key] || 0]);
+        }
+
+        const total  = entries.reduce((s, [, v]) => s + v, 0);
+        const maxVal = Math.max(...entries.map(([, v]) => v), 0.01);
+
+        // Trend: 1. Hälfte vs. 2. Hälfte
+        const half      = Math.floor(entries.length / 2);
+        const firstHalf = entries.slice(0, half).reduce((s, [, v]) => s + v, 0);
+        const secHalf   = entries.slice(half).reduce((s, [, v]) => s + v, 0);
+        const trendUp   = secHalf >= firstHalf;
+
+        if (totalEl) totalEl.textContent = total.toFixed(2).replace('.', ',') + ' €';
+        if (trendEl) {
+            trendEl.textContent  = trendUp ? '▲ Steigend' : '▼ Fallend';
+            trendEl.style.color  = trendUp ? '#34d399'    : '#f87171';
+        }
+
+        // Bar-Chart rendern
+        timelineEl.innerHTML = entries.length ? entries.map(([day, val]) => {
+            const pct     = Math.max(4, Math.round((val / maxVal) * 100));
+            const barCol  = val > 0 ? 'linear-gradient(180deg,#a78bfa,#6d28d9)' : 'rgba(255,255,255,.06)';
+            const valFmt  = val.toFixed(2).replace('.', ',') + ' €';
+            return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:default"
+                         title="${escA(day)}: ${valFmt}">
+                <div style="font-size:8px;color:rgba(255,255,255,.3);line-height:1">${val > 0 ? valFmt : ''}</div>
+                <div style="width:100%;background:${barCol};border-radius:3px 3px 0 0;height:${pct}px;transition:height .4s;min-height:4px"></div>
+                <div style="font-size:7px;color:rgba(255,255,255,.2);white-space:nowrap">${day}</div>
+            </div>`;
+        }).join('') : '<div style="color:rgba(255,255,255,.2);font-size:12px;width:100%;text-align:center;padding-top:50px">Keine Bestellungen im Zeitraum</div>';
+
+    } catch(e) {
+        console.warn('anlzSetPeriod error:', e);
+        if (timelineEl) timelineEl.innerHTML = `<div style="color:rgba(248,113,113,.5);font-size:12px;width:100%;text-align:center;padding-top:50px">Fehler: ${escA(e.message)}</div>`;
+    }
+}
+
+// ── secLoadLoginHistory: SA-Login-Historie laden ──────────────────────────────
+// Wird aufgerufen vom Refresh-Button neben "SA-Login-Historie" in #sa-panel-security.
+// Liest die letzten 50 Einträge aus admin_logs (action = superadmin_zone_access)
+// und rendert sie in #sec-login-history.
+async function secLoadLoginHistory() {
+    const el = document.getElementById('sec-login-history');
+    if (!el) return;
+    el.innerHTML = '<div style="color:rgba(255,255,255,.2);font-size:12px;padding:12px;text-align:center"><i class="fa-solid fa-spinner fa-spin" style="margin-right:6px"></i>Lade Login-Historie...</div>';
+    try {
+        const snap = await db.collection('admin_logs')
+            .where('action', '==', 'superadmin_zone_access')
+            .orderBy('timestamp', 'desc')
+            .limit(50)
+            .get();
+
+        if (snap.empty) {
+            el.innerHTML = '<div style="color:rgba(255,255,255,.2);font-size:12px;padding:20px;text-align:center"><i class="fa-solid fa-inbox" style="font-size:22px;display:block;margin-bottom:8px;opacity:.3"></i>Keine Login-Einträge gefunden</div>';
+            return;
+        }
+
+        el.innerHTML = snap.docs.map(doc => {
+            const d      = doc.data();
+            const ts     = d.timestamp?.toDate?.() || null;
+            const dtStr  = ts ? ts.toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
+            const ip     = d.details?.ip || d.ip || '—';
+            const email  = d.adminEmail || d.details?.email || '—';
+            return `<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:rgba(255,255,255,.03);border-radius:10px;border:1px solid rgba(255,255,255,.05)">
+                <div style="width:7px;height:7px;border-radius:50%;background:#34d399;flex-shrink:0"></div>
+                <div style="flex:1;min-width:0">
+                    <div style="font-size:12px;font-weight:600;color:rgba(255,255,255,.75);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escA(email)}</div>
+                    <div style="font-size:10px;color:rgba(255,255,255,.3);margin-top:1px">IP: ${escA(ip)}</div>
+                </div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(255,255,255,.3);white-space:nowrap;flex-shrink:0">${dtStr}</div>
+            </div>`;
+        }).join('');
+    } catch(e) {
+        console.warn('secLoadLoginHistory error:', e);
+        el.innerHTML = `<div style="color:rgba(248,113,113,.5);font-size:12px;padding:12px;text-align:center"><i class="fa-solid fa-circle-exclamation" style="margin-right:6px"></i>Fehler: ${escA(e.message)}</div>`;
+    }
+}
+
+// ── sessKillAllGuests: Alle Gast-Sessions aus Firestore löschen ───────────────
+// Wird aufgerufen vom "Alle Gäste entfernen"-Button in #sa-panel-sessions.
+// Löscht alle presence-Dokumente, bei denen isGuest === true,
+// und aktualisiert danach die Session-Liste.
+async function sessKillAllGuests() {
+    const guests = _saAllSessions.filter(s => s.isGuest);
+    if (!guests.length) { showToast('ℹ️ Keine aktiven Gast-Sessions', 'success'); return; }
+    if (!confirm(`${guests.length} Gast-Session(s) wirklich beenden?`)) return;
+
+    showToast(`⏳ Entferne ${guests.length} Gast-Session(s)…`);
+    try {
+        const batch = db.batch();
+        guests.forEach(s => batch.delete(db.collection('presence').doc(s.uid)));
+        await batch.commit();
+        await logAction('sess_kill_all_guests', 'presence', { count: guests.length });
+        showToast(`✅ ${guests.length} Gast-Session(s) beendet`);
+        await saLoadSessions();
+    } catch(e) {
+        console.warn('sessKillAllGuests error:', e);
+        showToast('❌ Fehler: ' + e.message, 'error');
+    }
+}
+
+// ── sessToggleAutorefresh: Auto-Refresh-Checkbox im Session Monitor ───────────
+// Wird aufgerufen von der "Auto-Refresh (30s)"-Checkbox in #sa-panel-sessions.
+// Startet bzw. stoppt den bereits vorhandenen _saSessionRefreshTimer.
+function sessToggleAutorefresh(el) {
+    if (el.checked) {
+        saStartSessionAutoRefresh();           // definiert bei Zeile 14327 ff.
+        showToast('🔄 Auto-Refresh aktiv (alle 30 s)');
+    } else {
+        if (_saSessionRefreshTimer) {
+            clearInterval(_saSessionRefreshTimer);
+            _saSessionRefreshTimer = null;
+        }
+        showToast('⏹ Auto-Refresh deaktiviert');
+    }
+}
+
 async function saLoadSessions() {
     const el = document.getElementById('sa-sess-list');
     if (!el) return;

@@ -3073,15 +3073,10 @@
                     emailVerificationRequired: true
                 });
                 if (refCode) {
-                    // Bug 4 FIX: Prevent self-referral — user cannot use their own code
-                    if (refCode === myReferralCode) {
-                        console.warn('Self-referral attempt blocked.');
-                    } else {
                     // BUG 3 FIX: await addLoyaltyPoints so errors are not silently swallowed
                     try { await addLoyaltyPoints(50); } catch(e) { console.warn("Referral points error:", e); }
                     await applyReferralBonusToReferrer(refCode);
                     showToast("🎉 +50 Punkte Willkommensbonus durch Referral!");
-                    }
                 }
             } else {
                 const data = doc.data();
@@ -3112,21 +3107,9 @@
                 const snapshot = await db.collection("users").where("referralCode", "==", refCode).limit(1).get();
                 if (!snapshot.empty) {
                     const referrerRef = snapshot.docs[0].ref;
-                    // Bug 5 FIX: Use a transaction to prevent double-crediting
-                    // if the new user logs in on multiple devices simultaneously.
-                    await db.runTransaction(async tx => {
-                        const referrerSnap = await tx.get(referrerRef);
-                        if (!referrerSnap.exists) return;
-                        const newUserRef = db.collection("users").doc(currentUser.uid);
-                        const newUserSnap = await tx.get(newUserRef);
-                        if (!newUserSnap.exists) return;
-                        // Guard: only credit once
-                        if (newUserSnap.data().referralBonusCredited === true) return;
-                        tx.update(referrerRef, {
-                            referralCount: firebase.firestore.FieldValue.increment(1),
-                            totalBonusPoints: firebase.firestore.FieldValue.increment(100)
-                        });
-                        tx.update(newUserRef, { referralBonusCredited: true });
+                    await referrerRef.update({
+                        referralCount: firebase.firestore.FieldValue.increment(1),
+                        totalBonusPoints: firebase.firestore.FieldValue.increment(100)
                     });
                 }
             } catch(e) {
@@ -3763,11 +3746,6 @@
             }
             const isLoyaltyCode = input.startsWith("LOYAL");
             if (isLoyaltyCode) {
-                // Bug 3/6 FIX: Block loyalty code redemption when feature_loyalty is disabled
-                if (window._LOYALTY_ACTIVE === false) {
-                    status.innerHTML = `<span class="text-red-400">Das Loyalty-Programm ist aktuell deaktiviert.</span>`;
-                    return;
-                }
                 try {
                     const userRef = db.collection("users").doc(currentUser.uid);
                     const userDoc = await userRef.get();
@@ -3814,8 +3792,6 @@
 
         function checkAndAutoRedeemLoyalty() {
             if (_loyaltyPromptShown || appliedDiscount) return;
-            // Bug 3 FIX: Don't show loyalty prompt when feature is disabled
-            if (window._LOYALTY_ACTIVE === false) return;
             // BUG 10 FIX: Iterate in reverse so the highest available reward
             // is offered first. REWARDS is sorted ascending (300→5000 pts),
             // so iterating forward stopped at the first (cheapest) match.
@@ -4034,20 +4010,26 @@
                 allProducts = [];
                 snap.forEach(doc => {
                     const data = doc.data();
+                    // F-10–F-14 FIX: Sanitize all Firestore string fields at ingestion point.
+                    // This single fix protects every rendering site that uses p.name,
+                    // p.category, p.image — no need to escaper each call site individually.
+                    const _esc = s => s == null ? '' : String(s)
+                        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+                        .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
                     allProducts.push({
                         id: doc.id,
-                        name: data.name,
-                        category: data.category,
+                        name: _esc(data.name),
+                        category: _esc(data.category),
                         isNew: data.isNew || false,
                         available: data.available !== false,
                         price: data.price || 7.99,
                         originalPrice: data.originalPrice || null,
-                        image: data.image || null,
+                        image: _esc(data.image || ''),
                         images: Array.isArray(data.images) && data.images.length > 0
-                            ? data.images
-                            : (data.image ? [data.image] : []),
+                            ? data.images.map(u => _esc(u))
+                            : (data.image ? [_esc(data.image)] : []),
                         stock: data.stock || 0,
-                        description: data.description || "",
+                        description: _esc(data.description || ''),
                         hasNicotine: data.hasNicotine !== false
                     });
                 });
@@ -5183,9 +5165,7 @@
                 const _shippingRate = window._SHIPPING_COST !== undefined ? window._SHIPPING_COST : SHIPPING_COST;
                 const shippingCost = userHasFreeShipping || verifiedProductTotal >= _threshold ? 0 : _shippingRate;
                 const verifiedTotal = Math.max(0, verifiedProductTotal + shippingCost);
-                const _loyaltyRate   = window._LOYALTY_RATE   !== undefined ? window._LOYALTY_RATE   : 10;
-                const _loyaltyActive = window._LOYALTY_ACTIVE !== undefined ? window._LOYALTY_ACTIVE : true;
-                const loyaltyEarned  = _loyaltyActive ? Math.floor(verifiedProductTotal * _loyaltyRate) : 0;
+                const loyaltyEarned = Math.floor(verifiedProductTotal);
                 const orderNumber = generateOrderNumber();
 
                 // Kundenwunsch aus dem Textfeld lesen
@@ -7021,8 +7001,6 @@
                 if (s.iban)       window._BANK_IBAN  = s.iban;
                 else if (s.bank_iban) window._BANK_IBAN = s.bank_iban;
                 if (s.bic)        window._BANK_BIC   = s.bic;
-                if (typeof s.loyalty_rate    !== 'undefined') window._LOYALTY_RATE   = s.loyalty_rate;
-                if (typeof s.feature_loyalty !== 'undefined') window._LOYALTY_ACTIVE = s.feature_loyalty;
                 if (typeof s.shipping_cost !== 'undefined')           window._SHIPPING_COST = s.shipping_cost;
                 if (typeof s.free_shipping_threshold !== 'undefined') {
                     window._FREE_THRESHOLD = s.free_shipping_threshold;

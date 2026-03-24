@@ -581,6 +581,12 @@
             <div class="page-title">Punkte & Belohnungen</div>
             <div class="page-sub">Sammle Punkte und löse sie gegen Gutscheine ein</div>
 
+            <!-- Bug 10 FIX: shown/hidden based on feature_loyalty flag -->
+            <div id="loyalty-disabled-notice" style="display:none;background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.2);border-radius:16px;padding:16px 20px;margin-bottom:16px;color:#f87171;font-size:14px;">
+                <i class="fa-solid fa-circle-exclamation" style="margin-right:8px;"></i>
+                Das Loyalty-Programm ist aktuell deaktiviert. Punkte werden vorübergehend nicht vergeben.
+            </div>
+
             <div class="loyalty-card">
                 <div class="loyalty-header">
                     <div>
@@ -589,7 +595,7 @@
                     </div>
                     <div style="text-align:right;">
                         <div style="font-size:12px;color:var(--muted);">Pro Bestellung</div>
-                        <div style="font-size:1.1rem;font-weight:800;color:var(--cyan)">+10 Pkt./€</div>
+                        <div style="font-size:1.1rem;font-weight:800;color:var(--cyan)" id="acc-loyalty-rate-display">+10 Pkt./€</div>
                     </div>
                 </div>
                 <div class="loyalty-progress-wrap">
@@ -880,6 +886,26 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
+
+// ── Settings live listener: loyalty rate + active flag ──────────────────────
+db.collection('settings').doc('main').onSnapshot(doc => {
+    if (!doc.exists) return;
+    const s = doc.data();
+    // Bug 7 FIX: Update loyalty rate display dynamically
+    if (typeof s.loyalty_rate !== 'undefined') {
+        const rateEl = document.getElementById('acc-loyalty-rate-display');
+        if (rateEl) rateEl.textContent = '+' + s.loyalty_rate + ' Pkt./€';
+    }
+    // Bug 10 FIX: Show/hide loyalty section and sidebar link based on feature flag
+    if (typeof s.feature_loyalty !== 'undefined') {
+        const isActive = !!s.feature_loyalty;
+        const notice   = document.getElementById('loyalty-disabled-notice');
+        const sbItem   = document.getElementById('sb-loyalty');
+        if (notice) notice.style.display = isActive ? 'none' : 'block';
+        if (sbItem) sbItem.style.opacity = isActive ? '1' : '0.4';
+        if (sbItem) sbItem.title = isActive ? '' : 'Loyalty-Programm aktuell deaktiviert';
+    }
+});
 
 // ═══════════════════════════════════════════════════
 //  CONSTANTS

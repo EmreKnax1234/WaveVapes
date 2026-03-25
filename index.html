@@ -5200,11 +5200,25 @@
                 // Calculate verified totals — entirely from Firestore data
                 // ═══════════════════════════════════════════════════════
                 const verifiedProductTotal = Math.max(0, serverSubtotal - verifiedDiscountAmount);
-                // BUG FIX: Calculate shipping from server-verified product total,
-                // not from client-side getShippingCost() which could be manipulated.
+                // BUG FIX: Re-fetch freeShipping from Firestore at checkout time.
+                // The client-side userHasFreeShipping variable may be stale if the
+                // admin activated free shipping after the user loaded the page and
+                // before the Firestore listener fired. Always use the server value.
                 const _threshold = window._FREE_THRESHOLD !== undefined ? window._FREE_THRESHOLD : FREE_SHIPPING_THRESHOLD;
                 const _shippingRate = window._SHIPPING_COST !== undefined ? window._SHIPPING_COST : SHIPPING_COST;
-                const shippingCost = userHasFreeShipping || verifiedProductTotal >= _threshold ? 0 : _shippingRate;
+                let _serverFreeShipping = userHasFreeShipping;
+                try {
+                    const _userSnap = await db.collection('users').doc(currentUser.uid).get();
+                    if (_userSnap.exists) {
+                        _serverFreeShipping = _userSnap.data().freeShipping === true;
+                        // Keep client-side variable in sync
+                        userHasFreeShipping = _serverFreeShipping;
+                    }
+                } catch(_e) {
+                    // Non-blocking: fall back to cached client-side value
+                    console.warn('freeShipping re-fetch failed, using cached value:', _e.message);
+                }
+                const shippingCost = _serverFreeShipping || verifiedProductTotal >= _threshold ? 0 : _shippingRate;
                 const verifiedTotal = Math.max(0, verifiedProductTotal + shippingCost);
                 const loyaltyEarned = Math.floor(verifiedProductTotal);
                 const orderNumber = generateOrderNumber();

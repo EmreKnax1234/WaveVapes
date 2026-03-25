@@ -8,11 +8,12 @@
     <meta name="theme-color" content="#0a0a0a">
     <link rel="canonical" href="https://wavevapes.de/account">
 
-    <!-- Fonts -->
+    <!-- Preconnect -->
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
@@ -39,6 +40,15 @@
 
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
         html, body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; min-height: 100%; }
+        /* Force dark dropdown menu on all native selects */
+        select { color-scheme: dark; background-color: var(--card2); color: #fff; }
+        /* iOS Safari: prevent auto-zoom on input focus (needs font-size ≥ 16px) */
+        @media (max-width: 639px) {
+            input[type="text"], input[type="email"], input[type="password"],
+            input[type="search"], input[type="tel"], textarea, select {
+                font-size: 16px !important;
+            }
+        }
 
         /* ── SCROLLBAR ── */
         ::-webkit-scrollbar { width: 6px; }
@@ -673,7 +683,7 @@
             <div class="card">
                 <div class="card-title"><i class="fa-solid fa-users"></i> Deine Freunde <span id="ref-count-badge" style="font-size:10px;font-weight:800;background:rgba(103,232,249,0.12);color:var(--cyan);border:1px solid rgba(103,232,249,0.2);border-radius:99px;padding:1px 9px;margin-left:6px;font-family:'Inter';letter-spacing:0;">0</span></div>
                 <div id="friends-list"></div>
-                <div id="friends-empty" style="display:none;" class="empty-state" style="padding:28px;">
+                <div id="friends-empty" style="display:none;padding:28px;" class="empty-state">
                     <i class="fa-solid fa-user-group" style="font-size:28px;"></i>
                     <h3>Noch keine Freunde</h3>
                     <p>Teile deinen Code und lade Freunde ein!</p>
@@ -872,6 +882,14 @@
 </div>
 
 <script>
+// ── HTML-Escape (XSS-Schutz für alle dynamischen innerHTML-Einsetzungen) ──
+const esc = s => String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
 // ═══════════════════════════════════════════════════
 //  FIREBASE INIT
 // ═══════════════════════════════════════════════════
@@ -1195,20 +1213,20 @@ function buildOrderCard(order) {
 
     const itemsHTML = (order.items || []).map(item =>
         `<div class="order-item-row">
-            <span>${item.name} × ${item.qty}${item.nicotine ? ' <span style="color:var(--muted);font-size:11px;">(${item.nicotine})</span>' : ''}</span>
+            <span>${esc(item.name)} × ${item.qty}${item.nicotine ? ` <span style="color:var(--muted);font-size:11px;">(${esc(item.nicotine)})</span>` : ''}</span>
             <span style="font-weight:600;">${((item.price||0)*item.qty).toFixed(2).replace('.',',')} €</span>
         </div>`
     ).join('');
 
     const trackingHTML = order.trackingNumber
         ? `<div class="tracking-box">
-            <div class="tracking-label">Trackingnummer (${order.carrier || '—'})</div>
-            <div class="tracking-num">${order.trackingNumber}</div>
+            <div class="tracking-label">Trackingnummer (${esc(order.carrier || '—')})</div>
+            <div class="tracking-num">${esc(order.trackingNumber)}</div>
           </div>` : '';
 
     const trackBtn = (order.carrier === 'DHL' && order.trackingNumber)
         ? `<a href="https://www.dhl.de/de/privatkunden/dhl-sendungsverfolgung.html?piececode=${encodeURIComponent(order.trackingNumber)}"
-              target="_blank" rel="noopener" class="btn btn-track">
+              target="_blank" rel="noopener noreferrer" class="btn btn-track">
               <i class="fa-solid fa-truck"></i> Sendung verfolgen
            </a>` : '';
 
@@ -1231,7 +1249,7 @@ function buildOrderCard(order) {
         ${timelineHTML}
         <div class="order-items">${itemsHTML}</div>
         ${trackingHTML}
-        ${order.order_note ? `<div style="background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.15);border-radius:10px;padding:10px 14px;font-size:12px;color:rgba(251,191,36,0.8);margin-top:8px;"><i class="fa-solid fa-note-sticky" style="margin-right:6px;"></i>${order.order_note}</div>` : ''}
+        ${order.order_note ? `<div style="background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.15);border-radius:10px;padding:10px 14px;font-size:12px;color:rgba(251,191,36,0.8);margin-top:8px;"><i class="fa-solid fa-note-sticky" style="margin-right:6px;"></i>${esc(order.order_note)}</div>` : ''}
         <div class="order-actions">
             ${trackBtn}
             <button class="btn btn-reorder reorder-btn">
@@ -1274,8 +1292,8 @@ async function loadReferrals() {
             const name = u.username || u.email?.split('@')[0] || 'Anonym';
             const color = colorKeys[i % colorKeys.length];
             return `<div class="friend-row">
-                <div class="friend-avatar" style="background:${color}22;color:${color};">${name.charAt(0).toUpperCase()}</div>
-                <div class="friend-name">${name}</div>
+                <div class="friend-avatar" style="background:${color}22;color:${color};">${esc(name.charAt(0).toUpperCase())}</div>
+                <div class="friend-name">${esc(name)}</div>
                 <div class="friend-pts"><i class="fa-solid fa-star" style="font-size:10px;margin-right:4px;"></i>+100 Pkt.</div>
             </div>`;
         }).join('');

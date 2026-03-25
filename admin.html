@@ -8533,11 +8533,13 @@ function pushRenderUserList(users) {
             '</div>';
     }).join('') + (users.length > 100 ? '<div style="font-size:11px;color:rgba(255,255,255,.25);text-align:center;padding:10px">+ ' + (users.length-100) + ' weitere — Suche verwenden</div>' : '');
 
+    // BUG-6 FIX: { once: true } entfernt — der Listener wurde nach dem ersten Klick
+    // permanent entfernt, sodass alle weiteren "Schreiben"-Buttons wirkungslos waren.
     el.addEventListener('click', function(e) {
         var btn = e.target.closest('[data-send-uid]');
         if (!btn) return;
         pushComposeSingle(btn.getAttribute('data-send-uid'), btn.getAttribute('data-send-email'), btn.getAttribute('data-send-name'));
-    }, { once: true });
+    });
 }
 
 // ── Einzelnutzer anschreiben ──────────────────────────────────
@@ -8560,12 +8562,22 @@ function pushComposeSingle(uid, email, name) {
 // ── Export ────────────────────────────────────────────────────
 async function pushExportSubscribers() {
     try {
-        var snap = await db.collection('users').get();
+        // BUG-7 FIX: u.orderCount existiert nicht im User-Dokument — es wird nur lokal
+        // durch einen Orders-Join berechnet. Deshalb hier erneut Orders laden und joinen.
+        var [usersSnap, ordersSnap] = await Promise.all([
+            db.collection('users').get(),
+            db.collection('orders').get()
+        ]);
+        var orderCountMap = {};
+        ordersSnap.forEach(function(d) {
+            var uid = d.data().userId;
+            if (uid) orderCountMap[uid] = (orderCountMap[uid] || 0) + 1;
+        });
         var rows = [['E-Mail','Benutzername','Bestellungen','Loyalty-Punkte']];
-        snap.forEach(function(d) {
+        usersSnap.forEach(function(d) {
             var u = d.data();
             if (!u.email) return;
-            rows.push([u.email, u.username||'', u.orderCount||0, u.totalBonusPoints||0]);
+            rows.push([u.email, u.username||'', orderCountMap[d.id]||0, u.totalBonusPoints||0]);
         });
         downloadCSV('wavevapes-nutzer.csv', rows);
         showToast('✅ Exportiert', 'success');

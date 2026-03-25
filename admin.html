@@ -5547,18 +5547,29 @@
 
                     <div id="frv-info-banner" style="font-size:11px;color:#67e8f9;background:rgba(103,232,249,.06);border:1px solid rgba(103,232,249,.15);border-radius:8px;padding:8px 12px;display:none"></div>
 
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-                        <div>
-                            <div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:6px">Reviews pro Produkt</div>
-                            <input id="frv-count" type="number" min="1" max="20" value="3" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 12px;color:#fff;font-size:13px;outline:none;box-sizing:border-box">
+                    <div>
+                        <div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:8px">Reviews pro Produkt <span style="color:rgba(167,139,250,.6);font-size:9px;font-weight:600">(SPANNE)</span></div>
+                        <div style="display:flex;align-items:center;gap:8px">
+                            <div style="flex:1">
+                                <div style="font-size:9px;color:rgba(255,255,255,.25);margin-bottom:4px;text-align:center">MIN</div>
+                                <input id="frv-count-min" type="number" min="1" max="20" value="2"
+                                    style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 8px;color:#fff;font-size:14px;font-weight:700;outline:none;box-sizing:border-box;text-align:center">
+                            </div>
+                            <div style="color:rgba(255,255,255,.2);font-size:16px;font-weight:300;padding-top:14px">—</div>
+                            <div style="flex:1">
+                                <div style="font-size:9px;color:rgba(255,255,255,.25);margin-bottom:4px;text-align:center">MAX</div>
+                                <input id="frv-count-max" type="number" min="1" max="20" value="5"
+                                    style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 8px;color:#fff;font-size:14px;font-weight:700;outline:none;box-sizing:border-box;text-align:center">
+                            </div>
+                            <div style="flex:1.2">
+                                <div style="font-size:9px;color:rgba(255,255,255,.25);margin-bottom:4px;text-align:center">SPRACHE</div>
+                                <select id="frv-lang" style="width:100%;background:#1a1a2e;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 8px;color:#fff;font-size:11px;outline:none;color-scheme:dark">
+                                    <option value="de">🇩🇪 DE</option>
+                                    <option value="en">🇬🇧 EN</option>
+                                </select>
+                            </div>
                         </div>
-                        <div>
-                            <div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:6px">Sprache</div>
-                            <select id="frv-lang" style="width:100%;background:#1a1a2e;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 12px;color:#fff;font-size:12px;outline:none;color-scheme:dark">
-                                <option value="de">🇩🇪 Deutsch</option>
-                                <option value="en">🇬🇧 Englisch</option>
-                            </select>
-                        </div>
+                        <div id="frv-range-hint" style="margin-top:6px;font-size:10px;color:rgba(103,232,249,.5);text-align:center">Jedes Produkt bekommt zufällig 2–5 Reviews</div>
                     </div>
 
                     <div>
@@ -17325,8 +17336,11 @@ async function executeCatCostUpdate() {
         if (sel) sel.style.display = mode === 'one' ? '' : 'none';
         if (info) {
             if (mode === 'all' && _products.length) {
-                var cnt = parseInt((g('frv-count') || {}).value) || 3;
-                info.innerHTML = '<i class="fa-solid fa-circle-info"></i> ' + _products.length + ' Produkte × ' + cnt + ' = <b>' + (_products.length * cnt) + '</b> Reviews';
+                var cMin = parseInt((g('frv-count-min')||{}).value)||2;
+                var cMax = parseInt((g('frv-count-max')||{}).value)||5;
+                if (cMin > cMax) cMax = cMin;
+                var avgEst = Math.round(_products.length * (cMin + cMax) / 2);
+                info.innerHTML = '<i class="fa-solid fa-circle-info"></i> ' + _products.length + ' Produkte × ' + cMin + '–' + cMax + ' = ca. <b>' + avgEst + '</b> Reviews';
                 info.style.display = 'block';
             } else { info.style.display = 'none'; }
         }
@@ -17368,7 +17382,9 @@ async function executeCatCostUpdate() {
         var tone = (g('frv-tone')||{}).value || 'gemischt';
         var ns   = (g('frv-name-style')||{}).value || 'mixed';
         var days = parseInt((g('frv-date-spread')||{}).value) || 90;
-        var cnt  = Math.min(20, Math.max(1, parseInt((g('frv-count')||{}).value) || 3));
+        var cntMin = Math.min(20, Math.max(1, parseInt((g('frv-count-min')||{}).value) || 2));
+        var cntMax = Math.min(20, Math.max(1, parseInt((g('frv-count-max')||{}).value) || 5));
+        if (cntMin > cntMax) cntMax = cntMin;
         var stars = Array.from(document.querySelectorAll('#frv-star-dist input:checked')).map(function(e){return e.value;});
         if (!stars.length) { showToast('⚠️ Mindestens eine Sternzahl wählen','error'); return; }
 
@@ -17405,6 +17421,8 @@ async function executeCatCostUpdate() {
                 if (rv.productId === p.id) usedTextsForProduct.add(rv.text.toLowerCase().trim());
             });
 
+            // Zufällige Anzahl Reviews für dieses Produkt innerhalb der Spanne
+            var cnt = cntMin + Math.floor(Math.random() * (cntMax - cntMin + 1));
             var rows = [];
             try { rows = await callAI(p.name, cnt, tone, lang, stars); } catch(e) { rows = []; }
             for (var j = 0; j < cnt; j++) {
@@ -17527,6 +17545,14 @@ async function executeCatCostUpdate() {
         } catch(e) { hideStatus(); showToast('❌ Laden fehlgeschlagen: ' + e.message, 'error'); }
     }
 
+    function _updateRangeHint() {
+        var mn = parseInt((g('frv-count-min')||{}).value) || 2;
+        var mx = parseInt((g('frv-count-max')||{}).value) || 5;
+        if (mn > mx) { mx = mn; var el = g('frv-count-max'); if (el) el.value = mx; }
+        var hint = g('frv-range-hint');
+        if (hint) hint.textContent = 'Jedes Produkt bekommt zufällig ' + mn + '–' + mx + ' Reviews';
+    }
+
     function wireUp() {
         var btnGen   = g('frv-btn-gen');
         var btnPub   = g('frv-btn-pub');
@@ -17537,7 +17563,8 @@ async function executeCatCostUpdate() {
         var btnDesel = g('frv-btn-desel');
         var btnDels  = g('frv-btn-delsel');
         var grid     = g('frv-preview-grid');
-        var cntInput = g('frv-count');
+        var cntInput = g('frv-count-min');
+        var cntInputMax = g('frv-count-max');
 
         if (btnGen)  btnGen.addEventListener('click',  generate);
         if (btnPub)  btnPub.addEventListener('click',  publish);
@@ -17547,7 +17574,8 @@ async function executeCatCostUpdate() {
         if (btnSelA) btnSelA.addEventListener('click',  function(){ _previews.forEach(function(r){ r.selected=true; }); renderPreviews(); });
         if (btnDesel)btnDesel.addEventListener('click', function(){ _previews.forEach(function(r){ r.selected=false; }); renderPreviews(); });
         if (btnDels) btnDels.addEventListener('click',  function(){ _previews=_previews.filter(function(r){return !r.selected;}); renderPreviews(); showToast('🗑️ Entfernt'); });
-        if (cntInput)cntInput.addEventListener('input', function(){ if (_mode==='all') setMode('all'); });
+        if (cntInput) cntInput.addEventListener('input', function(){ _updateRangeHint(); if (_mode==='all') setMode('all'); });
+        if (cntInputMax) cntInputMax.addEventListener('input', function(){ _updateRangeHint(); if (_mode==='all') setMode('all'); });
 
         if (grid) {
             grid.addEventListener('change', function(e) {

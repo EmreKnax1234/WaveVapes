@@ -6533,15 +6533,25 @@ document.getElementById('add-form').addEventListener('submit', async e => {
     const description = document.getElementById('prod-description').value.trim();
     const categorySelect = document.getElementById('prod-category');
     const category = categorySelect && categorySelect.value ? categorySelect.value : (isNew ? "Neue Sorten" : "Normale Sorten");
-    const docRef = await db.collection('products').add({ name, price, originalPrice, costPrice, stock, category, isNew: isNew||false, available: !unavailable, hasNicotine, description: description||"", sold: 0 });
-    if (selectedFile) {
-        const formData = new FormData(); formData.append("file", selectedFile); formData.append("upload_preset", "wavevapes");
-        const res = await fetch("https://api.cloudinary.com/v1_1/dbbkmjsr5/image/upload", { method: "POST", body: formData });
-        const json = await res.json(); if (json.secure_url) await docRef.update({ image: json.secure_url });
+    // BUG FIX: Wrap in try/catch — previously a Firestore or Cloudinary error
+    // would silently fail with no feedback to the admin.
+    const submitBtn = e.target.querySelector('[type="submit"]');
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Wird gespeichert…'; }
+    try {
+        const docRef = await db.collection('products').add({ name, price, originalPrice, costPrice, stock, category, isNew: isNew||false, available: !unavailable, hasNicotine, description: description||"", sold: 0 });
+        if (selectedFile) {
+            const formData = new FormData(); formData.append("file", selectedFile); formData.append("upload_preset", "wavevapes");
+            const res = await fetch("https://api.cloudinary.com/v1_1/dbbkmjsr5/image/upload", { method: "POST", body: formData });
+            const json = await res.json(); if (json.secure_url) await docRef.update({ image: json.secure_url });
+        }
+        await logAction("product_created", docRef.id, { name, category });
+        e.target.reset(); document.getElementById('preview-thumb').classList.add('hidden'); selectedFile = null;
+        showToast('✅ Produkt erfolgreich angelegt!');
+    } catch(err) {
+        showToast('❌ Fehler beim Anlegen: ' + err.message, 'error');
+    } finally {
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Produkt anlegen'; }
     }
-    await logAction("product_created", docRef.id, { name, category });
-    e.target.reset(); document.getElementById('preview-thumb').classList.add('hidden'); selectedFile = null;
-    showToast('✅ Produkt erfolgreich angelegt!');
 });
 const dropzone = document.getElementById('dropzone');
 dropzone.addEventListener('click', () => {
@@ -7634,6 +7644,10 @@ async function deleteOrder() {
             await batch.commit();
             showToast(`↩ Lager wiederhergestellt`, 'warning');
         }
+        // BUG FIX: Reverse loyalty points if they were already credited.
+        // Previously deleteOrder() skipped this, meaning customers kept points
+        // for orders that were hard-deleted instead of cancelled.
+        try { await reverseLoyaltyIfCredited(currentOrderId); } catch(_e) {}
     }
 
     try {
@@ -11481,7 +11495,7 @@ async function saveEdit() {
     const price          = parseFloat(document.getElementById('edit-price').value);
     const originalPrice  = parseFloat(document.getElementById('edit-original-price').value) || null;
     const costPrice      = parseFloat(document.getElementById('edit-cost-price').value) || null;
-    const stock          = parseInt(document.getElementById('edit-stock', 10).value);
+    const stock          = parseInt(document.getElementById('edit-stock').value, 10); // BUG FIX: Radix 10 gehört zu parseInt, nicht getElementById
     const description    = document.getElementById('edit-description').value;
     const adminNotes     = document.getElementById('edit-admin-notes').value.trim();
     const isNew          = document.getElementById('edit-new').checked;

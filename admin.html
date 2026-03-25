@@ -17183,15 +17183,69 @@ async function executeCatCostUpdate() {
     function randDate(d) { return new Date(Date.now() - Math.floor(Math.random() * d * 86400000)); }
 
     var FB = {
-        5:['Super Qualität! Schnelle Lieferung. Gerne wieder 🔥','Mega zufrieden! Beste Qualität. Klare Empfehlung!','Absolut top! {n} übertrifft alle Erwartungen. ★★★★★','Wieder bestellt und wieder begeistert. {n} ist einfach perfekt!','Unglaublich gut! {n} macht einfach Spaß 🚀'],
-        4:['Sehr gut! {n} – kleiner Abzug aber insgesamt top.','Fast 5 Sterne! {n} überzeugt. Lieferung war schnell.','Bin zufrieden! {n} ist gut, kommt gerne wieder.'],
-        3:['Solides Produkt. {n} ist ok für den Preis.','Geht so. Hatte mehr erwartet.'],
-        2:['Leider enttäuscht. Hatte mehr von {n} erwartet.'],
-        1:['Nicht mein Fall. {n} hat mich nicht überzeugt.']
+        5:[
+            'Super Qualität! Schnelle Lieferung. Gerne wieder 🔥',
+            'Mega zufrieden! Beste Qualität. Klare Empfehlung!',
+            'Absolut top! {n} übertrifft alle Erwartungen. ★★★★★',
+            'Wieder bestellt und wieder begeistert. {n} ist einfach perfekt!',
+            'Unglaublich gut! {n} macht einfach Spaß 🚀',
+            'Hammer Produkt! {n} läuft einwandfrei. Sehr gerne wieder 👌',
+            'Bin begeistert! {n} hält genau was es verspricht.',
+            'Lieferung super schnell, Qualität top. {n} – volle Punktzahl!',
+            '{n} ist der Wahnsinn. Hab schon mehrfach nachbestellt 🙌',
+            'Einfach klasse! {n} ist sein Geld definitiv wert.',
+            'Absolut empfehlenswert. {n} macht richtig Laune 🔥',
+            'Sehr zufrieden mit {n}. Versand war blitzschnell!',
+            'Top Produkt, top Service. {n} – mehr brauche ich nicht.',
+            'Alles perfekt! {n} überzeugt auf ganzer Linie.',
+            '{n} ist mein neuer Favorit. Nie wieder was anderes 😍',
+            'Qualität ist außergewöhnlich gut. {n} – absolute Kaufempfehlung!',
+            'Schnell, diskret, perfekte Qualität. {n} macht einfach Spaß.',
+            'Zweite Bestellung, wieder top. {n} enttäuscht nie 👍',
+            'Freunde haben mich gefragt – natürlich {n} empfohlen!',
+            'Preis-Leistung bei {n} ist unschlagbar. Immer wieder gerne!'
+        ],
+        4:[
+            'Sehr gut! {n} – kleiner Abzug aber insgesamt top.',
+            'Fast 5 Sterne! {n} überzeugt. Lieferung war schnell.',
+            'Bin zufrieden! {n} ist gut, kommt gerne wieder.',
+            '{n} ist wirklich gut. Nur minimal Luft nach oben.',
+            'Lieferung etwas langsamer als erwartet, aber {n} selbst ist top.',
+            'Gutes Produkt! {n} macht was es soll. 4/5 🙂',
+            '{n} überzeugt größtenteils. Würde ich weiterempfehlen.',
+            'Solide Qualität bei {n}. Kleine Abstriche, aber insgesamt zufrieden.',
+            'Fast perfekt! {n} hat mich überzeugt. Nächste Bestellung kommt bestimmt.',
+            'Sehr ordentlich. {n} hält gut, was versprochen wird.'
+        ],
+        3:[
+            'Solides Produkt. {n} ist ok für den Preis.',
+            'Geht so. Hatte mehr erwartet.',
+            '{n} ist in Ordnung – weder begeistert noch enttäuscht.',
+            'Mittelfeld. {n} tut was es soll, mehr aber auch nicht.',
+            'Ok für den Preis. {n} könnte aber besser sein.'
+        ],
+        2:[
+            'Leider enttäuscht. Hatte mehr von {n} erwartet.',
+            '{n} hat mich nicht wirklich überzeugt. Mal abwarten.',
+            'Unter meinen Erwartungen. {n} war solala.'
+        ],
+        1:[
+            'Nicht mein Fall. {n} hat mich nicht überzeugt.',
+            'Leider gar nicht meins. {n} werde ich nicht nochmal bestellen.'
+        ]
     };
-    function localTxt(name, r) {
-        var p = FB[r] || FB[5];
-        return p[Math.floor(Math.random() * p.length)].replace(/{n}/g, name);
+    // Shuffled pool pro Produkt+Rating – verhindert Wiederholungen bis alle Texte einmal genutzt
+    var _fbIdx = {};
+    function localTxt(productId, name, r) {
+        var key = productId + '_' + r;
+        var base = (FB[r] || FB[5]).slice();
+        if (!_fbIdx[key]) _fbIdx[key] = { pool: base.slice(), used: [] };
+        var state = _fbIdx[key];
+        if (state.pool.length === 0) { state.pool = state.used.slice(); state.used = []; }
+        var idx = Math.floor(Math.random() * state.pool.length);
+        var tpl = state.pool.splice(idx, 1)[0];
+        state.used.push(tpl);
+        return tpl.replace(/{n}/g, name);
     }
 
     function g(id) { return document.getElementById(id); }
@@ -17315,14 +17369,14 @@ async function executeCatCostUpdate() {
 
                 var ai = rows[j];
                 var rating = (ai && ai.rating && stars.indexOf(String(ai.rating)) >= 0) ? Number(ai.rating) : pickStars(stars);
-                var text = (ai && ai.text && ai.text.trim().length > 4) ? ai.text.trim() : localTxt(p.name, rating);
+                var text = (ai && ai.text && ai.text.trim().length > 4) ? ai.text.trim() : localTxt(p.id, p.name, rating);
 
                 // Sicherstellen, dass der Text-Inhalt für dieses Produkt einmalig ist
                 var textTries = 0;
                 while (usedTextsForProduct.has(text.toLowerCase().trim()) && textTries < 15) {
                     // KI-Texte aus dem nächsten ungenutzten Slot versuchen, sonst lokal generieren
                     var nextAI = rows[cnt + textTries];
-                    text = (nextAI && nextAI.text && nextAI.text.trim().length > 4) ? nextAI.text.trim() : localTxt(p.name, rating);
+                    text = (nextAI && nextAI.text && nextAI.text.trim().length > 4) ? nextAI.text.trim() : localTxt(p.id, p.name, rating);
                     textTries++;
                 }
                 usedTextsForProduct.add(text.toLowerCase().trim());

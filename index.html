@@ -2762,10 +2762,16 @@
                     ? `<img src="${imgUrl}" style="width:100%;height:100%;object-fit:cover" loading="lazy">`
                     : `<span style="font-size:22px">🧪</span>`;
             }
-            // Checkmark aktualisieren
+            // BUG-I3 FIX: row.querySelector('span') grabs the first span which may be
+            // the emoji placeholder (🧪), not the product name span. Use the dedicated
+            // text span which is always the last <span> before the SVG checkmark.
             if (menu) {
+                const strippedName = name.replace(/^Elfliq\s*/i, '');
                 Array.from(menu.children).forEach(row => {
-                    const isSelected = row.querySelector('span')?.textContent?.trim() === name.replace(/^Elfliq\s*/i, '');
+                    // Find the name span: last <span> whose content matches (not the img/emoji span)
+                    const spans = row.querySelectorAll('span');
+                    const nameSpan = Array.from(spans).find(s => !s.style.fontSize && s.textContent.trim() !== '🧪');
+                    const isSelected = nameSpan?.textContent?.trim() === strippedName;
                     const chk = row.querySelector('svg');
                     if (chk) chk.style.display = isSelected ? '' : 'none';
                 });
@@ -5420,7 +5426,7 @@
                                         data-reorder-items="${encodeURIComponent(JSON.stringify(order.items))}">
                                     <i class="fa-solid fa-cart-plus"></i> Nochmal bestellen
                                 </button>
-                                <button onclick="showPaymentInfo('${order.orderNumber}', ${order.total})"
+                                <button onclick="showPaymentInfo('${order.orderNumber}', ${order.total||0})"
                                         class="w-full bg-zinc-800 hover:bg-zinc-700 text-cyan-300 py-3 rounded-2xl text-sm font-medium transition-all">
                                     Überweisungsdaten anzeigen
                                 </button>

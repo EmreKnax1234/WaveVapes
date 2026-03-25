@@ -17171,13 +17171,61 @@ async function executeCatCostUpdate() {
 (function() {
     var _mode = 'all', _products = [], _previews = [], _inited = false;
 
-    var NAMES_DE   = ['Leon K.','Mia S.','Noah W.','Emma T.','Luca M.','Hannah B.','Felix R.','Sophie L.','Tim G.','Laura H.','Jonas P.','Anna F.','Max D.','Julia N.','Markus E.','Nina W.','Stefan R.','Michael T.'];
-    var NAMES_INT  = ['Alex C.','Sam R.','Jordan M.','Taylor B.','Morgan K.','Casey W.','Mateusz K.','Ahmed S.','Ivan P.','Marco B.','Giulia M.'];
-    var NAMES_ANON = ['Max M.','Lisa K.','Jan S.','Sara B.','Tom W.','Eva H.','Kai R.','Lea T.','Ben F.','Nina G.'];
+    var NAMES_DE = [
+        'Leon K.','Mia S.','Noah W.','Emma T.','Luca M.','Hannah B.','Felix R.','Sophie L.',
+        'Tim G.','Laura H.','Jonas P.','Anna F.','Max D.','Julia N.','Markus E.','Nina W.',
+        'Stefan R.','Michael T.','Tobias H.','Sabrina K.','Fabian L.','Carina M.','Patrick S.',
+        'Sandra B.','Lukas F.','Melanie R.','Simon G.','Katharina W.','David N.','Jennifer P.',
+        'Florian T.','Christina H.','Alexander B.','Nadine L.','Kevin M.','Vanessa S.',
+        'Philipp K.','Jasmin R.','Dominik F.','Marie G.','Benjamin W.','Alina T.','Lars N.',
+        'Leonie H.','Steffen B.','Franziska M.','Niklas P.','Lena S.','Moritz K.','Jana R.',
+        'Christian L.','Tanja F.','Sebastian G.','Isabell W.','Manuel N.','Bianca T.',
+        'Dennis H.','Verena B.','Christoph M.','Rebecca S.','Jannik P.','Sonja K.',
+        'Marcel L.','Antonia R.','René F.','Stefanie G.','Thorsten W.','Kerstin N.',
+        'Oliver H.','Claudia B.','Adrian M.','Johanna T.','Hendrik S.','Petra K.'
+    ];
+    var NAMES_INT = [
+        'Alex C.','Sam R.','Jordan M.','Taylor B.','Morgan K.','Casey W.','Mateusz K.',
+        'Ahmed S.','Ivan P.','Marco B.','Giulia M.','Liam O.','Noah A.','Olivia J.',
+        'Emma W.','Ava L.','Lucas D.','Mason T.','Ethan N.','Aiden C.','Sofia R.',
+        'Isabella F.','Amelia G.','Mia H.','Charlotte K.','William S.','James B.',
+        'Benjamin V.','Elijah Q.','Logan X.','Charlotte Z.','Harper Y.','Evelyn U.',
+        'Abigail I.','Emily E.','Elizabeth A.','Mila O.','Ella P.','Avery J.','Scarlett D.',
+        'Chloe N.','Zoey M.','Penelope L.','Riley K.','Layla H.','Nora G.','Lily F.',
+        'Eleanor C.','Hannah B.','Aubrey W.','Addison V.','Ellie T.','Stella S.',
+        'Natalie R.','Zoe Q.','Leah P.','Hazel O.','Violet N.','Aurora M.','Savannah L.',
+        'Audrey K.','Brooklyn J.','Bella I.','Claire H.','Skylar G.','Lucy F.','Paisley E.'
+    ];
+    var NAMES_ANON = [
+        'Max M.','Lisa K.','Jan S.','Sara B.','Tom W.','Eva H.','Kai R.','Lea T.',
+        'Ben F.','Nina G.','Paul H.','Anna L.','Mike R.','Julia S.','Chris B.',
+        'Sarah T.','Marc F.','Lena N.','Tobi K.','Vera M.','René P.','Ines W.',
+        'Lars D.','Tina G.','Sven H.','Maja R.','Alex B.','Kim S.','Nico F.','Dana L.'
+    ];
 
+    // Globaler Name-Pool – einmal befüllt, dann werden Namen gezogen (nie doppelt im ganzen Shop)
+    var _globalNamePool = null;
+    function _initNamePool(style) {
+        var base = style === 'de' ? NAMES_DE.slice()
+                 : style === 'anonym' ? NAMES_ANON.slice()
+                 : NAMES_DE.concat(NAMES_INT);
+        // Shuffle
+        for (var i = base.length - 1; i > 0; i--) {
+            var j = Math.floor(Math.random() * (i + 1));
+            var tmp = base[i]; base[i] = base[j]; base[j] = tmp;
+        }
+        return base;
+    }
     function pickName(s) {
-        var p = s === 'de' ? NAMES_DE : s === 'anonym' ? NAMES_ANON : NAMES_DE.concat(NAMES_INT);
-        return p[Math.floor(Math.random() * p.length)];
+        if (!_globalNamePool || _globalNamePool.length === 0) {
+            // Pool leer oder nicht initialisiert → neu befüllen (Fallback, sollte selten passieren)
+            _globalNamePool = _initNamePool(s);
+        }
+        return _globalNamePool.pop();
+    }
+    // Pool beim Start der Session zurücksetzen
+    function resetNamePool(style) {
+        _globalNamePool = _initNamePool(style || 'mixed');
     }
     function pickStars(a) { return a.length ? parseInt(a[Math.floor(Math.random() * a.length)]) : 5; }
     function randDate(d) { return new Date(Date.now() - Math.floor(Math.random() * d * 86400000)); }
@@ -17337,44 +17385,45 @@ async function executeCatCostUpdate() {
         var btn = g('frv-btn-gen');
         if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generiere…'; }
 
+        // Globalen Name-Pool für diesen Generier-Lauf initialisieren.
+        // Bereits in _previews verwendete Namen entfernen, damit keine Doppelungen im Shop entstehen.
+        resetNamePool(ns);
+        var allUsedNames = new Set(_previews.map(function(rv){ return rv.username; }));
+        _globalNamePool = _globalNamePool.filter(function(n){ return !allUsedNames.has(n); });
+
         var generated = [];
         for (var i = 0; i < targets.length; i++) {
             var p = targets[i];
             setStatus((i+1) + ' / ' + targets.length + ': ' + p.name, Math.round(i/targets.length*100));
 
-            // Pro Produkt: bereits verwendete Namen & Texte aus bestehenden Previews sammeln
-            var usedNamesForProduct = new Set();
+            // Texte pro Produkt verfolgen (Namen sind global eindeutig)
             var usedTextsForProduct = new Set();
             _previews.forEach(function(rv) {
-                if (rv.productId === p.id) {
-                    usedNamesForProduct.add(rv.username);
-                    usedTextsForProduct.add(rv.text.toLowerCase().trim());
-                }
+                if (rv.productId === p.id) usedTextsForProduct.add(rv.text.toLowerCase().trim());
             });
-            // Auch bereits in diesem Batch generierte Reviews berücksichtigen
             generated.forEach(function(rv) {
-                if (rv.productId === p.id) {
-                    usedNamesForProduct.add(rv.username);
-                    usedTextsForProduct.add(rv.text.toLowerCase().trim());
-                }
+                if (rv.productId === p.id) usedTextsForProduct.add(rv.text.toLowerCase().trim());
             });
 
             var rows = [];
             try { rows = await callAI(p.name, cnt, tone, lang, stars); } catch(e) { rows = []; }
             for (var j = 0; j < cnt; j++) {
-                // Eindeutiger Name pro Produkt (darf bei anderen Produkten wieder vorkommen)
-                var name; var t = 0;
-                do { name = pickName(ns); t++; } while (usedNamesForProduct.has(name) && t < 50);
-                usedNamesForProduct.add(name);
+                // Name global eindeutig (jeder Name nur einmal im gesamten Shop)
+                var name = pickName(ns);
+                // Bereits in diesem Batch verwendete Namen überspringen
+                var usedInBatch = new Set(generated.map(function(r){ return r.username; }));
+                var fallbackTries = 0;
+                while (usedInBatch.has(name) && fallbackTries < 10) {
+                    name = pickName(ns); fallbackTries++;
+                }
 
                 var ai = rows[j];
                 var rating = (ai && ai.rating && stars.indexOf(String(ai.rating)) >= 0) ? Number(ai.rating) : pickStars(stars);
                 var text = (ai && ai.text && ai.text.trim().length > 4) ? ai.text.trim() : localTxt(p.id, p.name, rating);
 
-                // Sicherstellen, dass der Text-Inhalt für dieses Produkt einmalig ist
+                // Text pro Produkt eindeutig
                 var textTries = 0;
                 while (usedTextsForProduct.has(text.toLowerCase().trim()) && textTries < 15) {
-                    // KI-Texte aus dem nächsten ungenutzten Slot versuchen, sonst lokal generieren
                     var nextAI = rows[cnt + textTries];
                     text = (nextAI && nextAI.text && nextAI.text.trim().length > 4) ? nextAI.text.trim() : localTxt(p.id, p.name, rating);
                     textTries++;

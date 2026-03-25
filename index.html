@@ -3069,6 +3069,16 @@
                 myReferralCode = "WV-" + Math.random().toString(36).substring(2,8).toUpperCase();
                 const urlParams = new URLSearchParams(window.location.search);
                 const refCode = urlParams.get("ref");
+
+                // Read email-verify setting – determines if new user needs to verify
+                let requireVerify = true;
+                try {
+                    const settingsSnap = await db.collection('settings').doc('main').get();
+                    if (settingsSnap.exists && settingsSnap.data().require_email_verify === false) {
+                        requireVerify = false;
+                    }
+                } catch(_) { /* keep default */ }
+
                 await userRef.set({
                     email: currentUser.email,
                     username: localStorage.getItem("wavevapes_username") || currentUser.email.split('@')[0],
@@ -3078,7 +3088,7 @@
                     totalBonusPoints: 0,
                     redeemedLoyaltyCodes: [],
                     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    emailVerificationRequired: true
+                    emailVerificationRequired: requireVerify
                 });
                 if (refCode) {
                     // BUG 3 FIX: await addLoyaltyPoints so errors are not silently swallowed
@@ -3500,21 +3510,35 @@
             const password = document.getElementById("register-password").value.trim();
             if (!email || password.length < 6) { showToast("❌ Bitte gültige E-Mail und Passwort (min. 6 Zeichen) eingeben", "error"); return; }
             try {
+                // Read email-verify setting from Firestore (set by Superadmin)
+                let requireVerify = true; // secure default
+                try {
+                    const settingsSnap = await db.collection('settings').doc('main').get();
+                    if (settingsSnap.exists && settingsSnap.data().require_email_verify === false) {
+                        requireVerify = false;
+                    }
+                } catch(_) { /* keep default */ }
+
                 const cred = await auth.createUserWithEmailAndPassword(email, password);
-                await cred.user.sendEmailVerification();
-                // Store email for banner, then show banner instead of toast
-                document.getElementById("verify-email-addr").textContent = email;
-                // Hide all views, show banner
-                document.getElementById("login-form").classList.add("hidden");
-                document.getElementById("register-form").classList.add("hidden");
-                document.getElementById("logged-in-view").classList.add("hidden");
-                document.getElementById("verify-email-view").classList.remove("hidden");
-                document.getElementById("auth-title").textContent = "E-Mail bestätigen";
-                document.getElementById("tab-login").classList.remove("auth-tab-active");
-                document.getElementById("tab-register").classList.remove("auth-tab-active");
-                // Store email only — password intentionally NOT stored (security fix).
-                // resendVerificationFromBanner() uses auth.currentUser directly.
-                window._verifyEmail = email;
+
+                if (requireVerify) {
+                    await cred.user.sendEmailVerification();
+                    // Store email for banner, then show banner instead of toast
+                    document.getElementById("verify-email-addr").textContent = email;
+                    // Hide all views, show banner
+                    document.getElementById("login-form").classList.add("hidden");
+                    document.getElementById("register-form").classList.add("hidden");
+                    document.getElementById("logged-in-view").classList.add("hidden");
+                    document.getElementById("verify-email-view").classList.remove("hidden");
+                    document.getElementById("auth-title").textContent = "E-Mail bestätigen";
+                    document.getElementById("tab-login").classList.remove("auth-tab-active");
+                    document.getElementById("tab-register").classList.remove("auth-tab-active");
+                    window._verifyEmail = email;
+                } else {
+                    // No verification required – close modal and welcome the user
+                    closeAuthModal();
+                    showToast("✅ Registrierung erfolgreich! Willkommen bei WaveVapes 🌊");
+                }
             } catch (e) {
                 const msg = e.code === 'auth/email-already-in-use' ? 'Diese E-Mail ist bereits registriert.'
                           : e.code === 'auth/invalid-email' ? 'Ungültige E-Mail-Adresse.'

@@ -7375,7 +7375,7 @@ function ordRenderTable() {
         html += `<tr onclick="showOrderModal('${doc.id}')">
             <td style="padding-left:18px">
                 <div class="ord-num">#${escA(String(o.orderNumber||'—'))}</div>
-                ${hasTracking ? `<div style="font-size:9px;color:var(--ord-purple);margin-top:2px;font-family:'JetBrains Mono',monospace">${o.carrier||''} ${o.trackingNumber}</div>` : ''}
+                ${hasTracking ? `<div style="font-size:9px;color:var(--ord-purple);margin-top:2px;font-family:'JetBrains Mono',monospace">${escA(o.carrier||'')} ${escA(o.trackingNumber)}</div>` : ''}
                 ${o.orderNote ? `<div style="font-size:9px;color:#f59e0b;margin-top:2px" title="${(o.orderNote||'').replace(/"/g,'&quot;')}"><i class="fa-solid fa-comment-dots" style="margin-right:3px"></i>Wunsch</div>` : ''}
             </td>
             <td style="white-space:nowrap;color:var(--ord-muted);font-size:11px">${date}</td>
@@ -7720,7 +7720,7 @@ function usrRenderTable() {
         const ipCell = lastIp
             ? `<div style="display:flex;align-items:center;justify-content:center;gap:6px">
                  <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,.7);background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:2px 8px">${lastIp}</span>
-                 <button onclick="quickBanIp('${lastIp}','${email}')" title="IP bannen" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);color:#f87171;border-radius:6px;padding:2px 6px;cursor:pointer;font-size:10px;font-weight:700" onmouseover="this.style.background='rgba(239,68,68,.3)'" onmouseout="this.style.background='rgba(239,68,68,.15)'">
+                 <button onclick="quickBanIp('${lastIp}','${email.replace(/'/g,"\\'")}') " title="IP bannen" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);color:#f87171;border-radius:6px;padding:2px 6px;cursor:pointer;font-size:10px;font-weight:700" onmouseover="this.style.background='rgba(239,68,68,.3)'" onmouseout="this.style.background='rgba(239,68,68,.15)'">
                    <i class="fa-solid fa-ban"></i>
                  </button>
                </div>`
@@ -8184,7 +8184,7 @@ async function loadAnalytics() {
     // Referrer chart
     const usersSnap = await db.collection("users").orderBy("referralCount","desc").limit(8).get();
     const refLabels=[], refData=[];
-    usersSnap.forEach(doc=>{ const u=doc.data(); refLabels.push(u.username||u.email.split("@")[0]); refData.push(u.referralCount||0); });
+    usersSnap.forEach(doc=>{ const u=doc.data(); refLabels.push(u.username||(u.email||'').split("@")[0]||'Anonym'); refData.push(u.referralCount||0); });
     if(referralChart) referralChart.destroy();
     const refCtx = document.getElementById("referralChart").getContext('2d');
     const refColors = ['#f472b6','#a78bfa','#67e8f9','#34d399','#fbbf24','#fb923c','#22d3ee','#8b5cf6'];
@@ -8205,7 +8205,7 @@ async function generatePDFReport() {
     // M-03 FIX: Auto page break to prevent content overflow
     let y=82;topProducts.forEach(([name,qty])=>{ if(y>260){pdfDoc.addPage();y=20;} pdfDoc.text(`${name}: ${qty} Stück`,25,y);y+=7;});
     const usersSnap=await db.collection("users").orderBy("referralCount","desc").limit(10).get(); if(y>245){pdfDoc.addPage();y=20;} pdfDoc.text("Top Referrer:",20,y+10);y+=17;
-    usersSnap.forEach(doc=>{const u=doc.data(); if(y>260){pdfDoc.addPage();y=20;} pdfDoc.text(`${u.username||u.email.split("@")[0]} – ${u.referralCount||0} Freunde`,25,y);y+=7;});
+    usersSnap.forEach(doc=>{const u=doc.data(); if(y>260){pdfDoc.addPage();y=20;} pdfDoc.text(`${u.username||(u.email||'').split("@")[0]||'Anonym'} – ${u.referralCount||0} Freunde`,25,y);y+=7;});
     pdfDoc.setFontSize(10);pdfDoc.text("WaveVapes Admin Panel v2.0",20,280); pdfDoc.save(`wavevapes-monatsbericht_${new Date().toISOString().slice(0,10)}.pdf`);
     await logAction("monthly_report_generated"); showToast("✅ PDF heruntergeladen!","success");
 }
@@ -9263,7 +9263,7 @@ async function loadBannedIPs() {
                         <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:rgba(255,255,255,.8)">${g.ip}${isBanned ? ' <span style="font-size:9px;background:rgba(239,68,68,.2);color:#f87171;padding:1px 6px;border-radius:4px;font-weight:700">GEBANNT</span>' : ''}</div>
                         <div style="font-size:10px;color:rgba(255,255,255,.3);margin-top:1px">${escA(g.email || g.username)} · ${g.isGuest ? 'Gast' : 'Registriert'} · zuletzt ${lastSeenStr}</div>
                     </div>
-                    ${!isBanned ? `<button onclick="quickBanIp('${g.ip}','${g.email || g.username}')" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);color:#f87171;border-radius:7px;padding:4px 10px;cursor:pointer;font-size:11px;font-weight:700;flex-shrink:0" onmouseover="this.style.background='rgba(239,68,68,.25)'" onmouseout="this.style.background='rgba(239,68,68,.12)'"><i class="fa-solid fa-ban"></i> Ban</button>`
+                    ${!isBanned ? `<button onclick="quickBanIp(\'${g.ip}\',\'${(g.email || g.username || "").replace(/\'/g,"")}\') " style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);color:#f87171;border-radius:7px;padding:4px 10px;cursor:pointer;font-size:11px;font-weight:700;flex-shrink:0" onmouseover="this.style.background='rgba(239,68,68,.25)'" onmouseout="this.style.background='rgba(239,68,68,.12)'"><i class="fa-solid fa-ban"></i> Ban</button>`
                     : `<button onclick="unbanByIp('${g.ip}')" style="background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.25);color:#34d399;border-radius:7px;padding:4px 10px;cursor:pointer;font-size:11px;font-weight:700;flex-shrink:0" onmouseover="this.style.background='rgba(52,211,153,.2)'" onmouseout="this.style.background='rgba(52,211,153,.1)'"><i class="fa-solid fa-unlock"></i> Entban</button>`}
                 </div>`;
             });
@@ -10425,7 +10425,7 @@ function bcRenderList() {
             <input type="checkbox" ${checked ? 'checked' : ''} onchange="bcToggleUser('${u.id}', this.checked)" style="accent-color:#fbbf24;width:15px;height:15px;flex-shrink:0">
             <div style="width:30px;height:30px;border-radius:8px;background:rgba(103,232,249,.15);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#67e8f9;flex-shrink:0">${initials}</div>
             <div style="flex:1;min-width:0">
-                <div style="font-size:12px;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.email}</div>
+                <div style="font-size:12px;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escA(u.email)}</div>
                 <div style="font-size:10px;color:rgba(255,255,255,.35)">${u.username || 'kein Username'}</div>
             </div>
         </label>`;
@@ -10522,7 +10522,7 @@ function euExportCSV(){
 
 function euShowTopCustomers(){
     const top5=[...euAllUsers].sort((a,b)=>(b.totalSpent||0)-(a.totalSpent||0)).slice(0,5);
-    showToast('🏆 Top 5: ' + top5.slice(0,3).map((u,i)=>`${i+1}. ${u.email.split('@')[0]} (${(u.totalSpent||0).toFixed(0)}€)`).join(' | '), 'success');
+    showToast('🏆 Top 5: ' + top5.slice(0,3).map((u,i)=>`${i+1}. ${(u.email||'').split('@')[0]||u.username||'Anonym'} (${(u.totalSpent||0).toFixed(0)}€)`).join(' | '), 'success');
 }
 
 // ====================== SIDEBAR & TABS ======================
@@ -11067,7 +11067,7 @@ function globalSearchInput() {
         results.products.slice(0,4).forEach(p => {
             html += `<div class="hdr-search-item" onclick="switchTab(0);setTimeout(()=>{const s=document.getElementById('product-search');if(s){s.value='${p.name.replace(/'/g,"\\'")}';applyAdminFilters();}},100);document.getElementById('global-search').value='';document.getElementById('global-search-dd').classList.remove('open')">
                 <div class="hdr-search-item-icon" style="background:rgba(103,232,249,.1);color:#67e8f9">${p.image?`<img src="${p.image}" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`:'<i class="fa-solid fa-box"></i>'}</div>
-                <div><div class="hdr-search-item-main">${p.name}</div><div class="hdr-search-item-sub">${(p.price||0).toFixed(2)} € · Lager: ${p.stock||0}</div></div>
+                <div><div class="hdr-search-item-main">${escA(p.name)}</div><div class="hdr-search-item-sub">${(p.price||0).toFixed(2)} € · Lager: ${p.stock||0}</div></div>
             </div>`;
         });
         html += `</div>`;
@@ -11089,7 +11089,7 @@ function globalSearchInput() {
         results.users.slice(0,3).forEach(u => {
             html += `<div class="hdr-search-item" onclick="switchTab(2);setTimeout(()=>{const s=document.getElementById('user-search');if(s){s.value='${(u.email||'').replace(/'/g,"\\'")}';usrRenderTable();}},100);document.getElementById('global-search').value='';document.getElementById('global-search-dd').classList.remove('open')">
                 <div class="hdr-search-item-icon" style="background:rgba(167,139,250,.1);color:#a78bfa"><i class="fa-solid fa-user"></i></div>
-                <div><div class="hdr-search-item-main">${u.email||'—'}</div><div class="hdr-search-item-sub">${u.username||'kein Username'} · ${u.totalBonusPoints||0} Punkte</div></div>
+                <div><div class="hdr-search-item-main">${escA(u.email||'—')}</div><div class="hdr-search-item-sub">${escA(u.username||'kein Username')} · ${u.totalBonusPoints||0} Punkte</div></div>
             </div>`;
         });
         html += `</div>`;
@@ -11287,7 +11287,7 @@ function loadPresence() {
                     <div class="prs-avatar" style="background:${avBg};color:${avColor}">${initials}</div>
                     <div style="flex:1;min-width:0">
                         <div class="prs-name">${name}</div>
-                        ${d.email ? `<div class="prs-email">${d.email}</div>` : ''}
+                        ${d.email ? `<div class="prs-email">${escA(d.email)}</div>` : ''}
                     </div>
                     <span class="${isGuest ? 'prs-badge-guest' : 'prs-badge-live'}">${isGuest ? '👤 Gast' : '● Eingeloggt'}</span>
                 </div>
@@ -12630,9 +12630,9 @@ async function saLoadAdmins() {
                 <div style="display:flex;align-items:center;gap:12px">
                     <div class="sa-admin-avatar ${avatarClass}">${initials}</div>
                     <div>
-                        <div class="sa-admin-email">${admin.email || admin.id}</div>
+                        <div class="sa-admin-email">${escA(admin.email || admin.id)}</div>
                         <div class="sa-admin-uid">${admin.id.substring(0,16)}...</div>
-                        ${admin.username ? `<div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:2px">@${admin.username}</div>` : ''}
+                        ${admin.username ? `<div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:2px">@${escA(admin.username)}</div>` : ''}
                         ${admin.lastAdminLogin ? `<div style="font-size:10px;color:rgba(255,255,255,.2);margin-top:2px;font-family:'JetBrains Mono',monospace"><i class="fa-solid fa-clock" style="margin-right:4px;opacity:.5"></i>${new Date(admin.lastAdminLogin?.toDate?.() || admin.lastAdminLogin).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</div>` : '<div style="font-size:10px;color:rgba(255,255,255,.15);margin-top:2px"><i class="fa-solid fa-clock" style="margin-right:4px;opacity:.4"></i>Noch kein Login aufgezeichnet</div>'}
                     </div>
                 </div>

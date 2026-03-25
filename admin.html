@@ -2629,6 +2629,10 @@
                         <span style="font-size:11px;font-weight:700;color:rgba(251,191,36,.7)"><i class="fa-solid fa-tag" style="margin-right:5px"></i><span id="ord-d-discount-code">—</span></span>
                         <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#fbbf24" id="ord-d-discount-val">−0,00 €</span>
                     </div>
+                    <div id="ord-d-shipping-row" style="display:none;align-items:center;justify-content:space-between;padding:8px 14px;background:rgba(103,232,249,.04);border:1px solid rgba(103,232,249,.12);border-radius:10px;margin-top:6px">
+                        <span style="font-size:11px;font-weight:700;color:rgba(103,232,249,.6)"><i class="fa-solid fa-truck" style="margin-right:5px"></i><span id="ord-d-shipping-label">Versand</span></span>
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#67e8f9" id="ord-d-shipping-val">0,00 €</span>
+                    </div>
                     <div class="ord-d-total">
                         <span class="ord-d-total-lbl">GESAMT</span>
                         <span class="ord-d-total-val" id="ord-d-total">0,00 €</span>
@@ -7479,6 +7483,34 @@ async function showOrderModal(orderId) {
     });
     document.getElementById('ord-d-items').innerHTML = itemsHTML;
     document.getElementById('ord-d-total').textContent = (order.total||0).toFixed(2) + ' €';
+
+    // Shipping row — show whenever shipping info is stored on the order
+    const shippingRow = document.getElementById('ord-d-shipping-row');
+    const shippingVal = document.getElementById('ord-d-shipping-val');
+    const shippingLbl = document.getElementById('ord-d-shipping-label');
+    if (shippingRow && shippingVal && shippingLbl) {
+        const hasFree   = order.freeShipping === true;
+        const shipAmt   = typeof order.shipping === 'number' ? order.shipping : null;
+        // Show the row if we have explicit shipping data or a freeShipping flag
+        if (hasFree || shipAmt !== null) {
+            shippingRow.style.display = 'flex';
+            if (hasFree || shipAmt === 0) {
+                shippingLbl.innerHTML = '<i class="fa-solid fa-truck" style="margin-right:5px"></i>Versand <span style="font-size:9px;background:rgba(52,211,153,.15);color:#34d399;border:1px solid rgba(52,211,153,.3);border-radius:99px;padding:1px 7px;margin-left:5px;font-weight:800">GRATIS</span>';
+                shippingVal.style.color = '#34d399';
+                shippingVal.textContent = '0,00 €';
+                shippingRow.style.background = 'rgba(52,211,153,.04)';
+                shippingRow.style.borderColor = 'rgba(52,211,153,.2)';
+            } else {
+                shippingLbl.innerHTML = '<i class="fa-solid fa-truck" style="margin-right:5px"></i>Versand';
+                shippingVal.style.color = '#67e8f9';
+                shippingVal.textContent = shipAmt.toFixed(2).replace('.', ',') + ' €';
+                shippingRow.style.background = 'rgba(103,232,249,.04)';
+                shippingRow.style.borderColor = 'rgba(103,232,249,.12)';
+            }
+        } else {
+            shippingRow.style.display = 'none';
+        }
+    }
     // Show discount row if order has a verified coupon
     const discRow = document.getElementById('ord-d-discount');
     if (order.discountCode && order.discountAmount > 0) {

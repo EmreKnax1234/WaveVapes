@@ -1261,7 +1261,7 @@ function buildOrderCard(order) {
         <div class="order-items">${itemsHTML}</div>
         ${shippingHTML}
         ${trackingHTML}
-        ${order.order_note ? `<div style="background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.15);border-radius:10px;padding:10px 14px;font-size:12px;color:rgba(251,191,36,0.8);margin-top:8px;"><i class="fa-solid fa-note-sticky" style="margin-right:6px;"></i>${esc(order.order_note)}</div>` : ''}
+        ${order.orderNote || order.order_note ? `<div style="background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.15);border-radius:10px;padding:10px 14px;font-size:12px;color:rgba(251,191,36,0.8);margin-top:8px;"><i class="fa-solid fa-note-sticky" style="margin-right:6px;"></i>${esc(order.orderNote || order.order_note)}</div>` : ''}
         <div class="order-actions">
             ${trackBtn}
             <button class="btn btn-reorder reorder-btn">
@@ -1283,7 +1283,7 @@ async function loadReferrals() {
         if (!refCode) return;
 
         const snap = await db.collection('users')
-            .where('usedReferralCode', '==', refCode)
+            .where('referredBy', '==', refCode)
             .get();
 
         const list = document.getElementById('friends-list');
@@ -1472,7 +1472,9 @@ async function sendPasswordReset() {
 // ═══════════════════════════════════════════════════
 function copyReferralCode() {
     const code = document.getElementById('ref-code').textContent;
-    copyText(code);
+    // BUG-A3 FIX: copyText() already shows a "Kopiert!" toast — calling showToast()
+    // again immediately overrides it. Use copyTextSilent() to avoid the duplicate.
+    copyTextSilent(code);
     showToast('✅ Referral-Code kopiert: ' + code);
 }
 
@@ -1511,10 +1513,16 @@ async function doLogout() {
 // ═══════════════════════════════════════════════════
 //  HELPERS
 // ═══════════════════════════════════════════════════
-function copyText(text) {
+// BUG-A3 FIX: copyText() must not show its own toast when callers show a custom one.
+// copyTextSilent() copies without triggering a toast — used by callers that
+// already call showToast() with a more specific message.
+function copyTextSilent(text) {
     if (navigator.clipboard) {
         navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
     } else { fallbackCopy(text); }
+}
+function copyText(text) {
+    copyTextSilent(text);
     showToast('✅ Kopiert!');
 }
 function fallbackCopy(text) {
@@ -1526,7 +1534,8 @@ function fallbackCopy(text) {
 
 function copyPaymentInfo(orderNum, total) {
     const info = `Empfänger: Jakob Hellrung\nIBAN: DE38360200300003395812\nBIC: NBAGDE3EXXX\nBank: NATIONAL-BANK AG\nBetrag: ${(total||0).toFixed(2).replace('.',',')} €\nVerwendungszweck: ${orderNum}`;
-    copyText(info);
+    // BUG-A3 FIX: Use copyTextSilent to avoid double-toast
+    copyTextSilent(info);
     showToast('✅ Überweisungsdaten kopiert!');
 }
 

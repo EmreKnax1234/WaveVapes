@@ -17283,19 +17283,50 @@ async function executeCatCostUpdate() {
         var btn = g('frv-btn-gen');
         if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generiere…'; }
 
-        var used = new Set(), generated = [];
+        var generated = [];
         for (var i = 0; i < targets.length; i++) {
             var p = targets[i];
             setStatus((i+1) + ' / ' + targets.length + ': ' + p.name, Math.round(i/targets.length*100));
+
+            // Pro Produkt: bereits verwendete Namen & Texte aus bestehenden Previews sammeln
+            var usedNamesForProduct = new Set();
+            var usedTextsForProduct = new Set();
+            _previews.forEach(function(rv) {
+                if (rv.productId === p.id) {
+                    usedNamesForProduct.add(rv.username);
+                    usedTextsForProduct.add(rv.text.toLowerCase().trim());
+                }
+            });
+            // Auch bereits in diesem Batch generierte Reviews berücksichtigen
+            generated.forEach(function(rv) {
+                if (rv.productId === p.id) {
+                    usedNamesForProduct.add(rv.username);
+                    usedTextsForProduct.add(rv.text.toLowerCase().trim());
+                }
+            });
+
             var rows = [];
             try { rows = await callAI(p.name, cnt, tone, lang, stars); } catch(e) { rows = []; }
             for (var j = 0; j < cnt; j++) {
+                // Eindeutiger Name pro Produkt (darf bei anderen Produkten wieder vorkommen)
                 var name; var t = 0;
-                do { name = pickName(ns); t++; } while (used.has(name) && t < 50);
-                used.add(name);
+                do { name = pickName(ns); t++; } while (usedNamesForProduct.has(name) && t < 50);
+                usedNamesForProduct.add(name);
+
                 var ai = rows[j];
                 var rating = (ai && ai.rating && stars.indexOf(String(ai.rating)) >= 0) ? Number(ai.rating) : pickStars(stars);
                 var text = (ai && ai.text && ai.text.trim().length > 4) ? ai.text.trim() : localTxt(p.name, rating);
+
+                // Sicherstellen, dass der Text-Inhalt für dieses Produkt einmalig ist
+                var textTries = 0;
+                while (usedTextsForProduct.has(text.toLowerCase().trim()) && textTries < 15) {
+                    // KI-Texte aus dem nächsten ungenutzten Slot versuchen, sonst lokal generieren
+                    var nextAI = rows[cnt + textTries];
+                    text = (nextAI && nextAI.text && nextAI.text.trim().length > 4) ? nextAI.text.trim() : localTxt(p.name, rating);
+                    textTries++;
+                }
+                usedTextsForProduct.add(text.toLowerCase().trim());
+
                 generated.push({ id: 'frv_'+Date.now()+'_'+Math.random().toString(36).slice(2), productId: p.id, productName: p.name, username: name, rating: rating, text: text, date: randDate(days), selected: true });
             }
         }

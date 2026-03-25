@@ -10,9 +10,11 @@
       gtag('config', 'G-T44Y2PMQXF');
     </script>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5.0"/>
     <title>WaveVapes – Admin Panel Pro v2.0</title>
     <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#0a0a0a">
+    <meta name="color-scheme" content="dark">
     <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
@@ -4706,10 +4708,32 @@
                             <div class="sa-sec-row"><span class="sa-sec-label">Aktiv</span><label class="sa-switch"><input type="checkbox" id="sa-sec-geo-active"><span class="sa-switch-sl"></span></label></div>
                             <input type="text" id="sa-sec-geo-blocklist" placeholder="z.B. RU,CN,KP" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:8px 12px;color:#fff;font-size:12px;outline:none;box-sizing:border-box;margin-top:8px;font-family:'JetBrains Mono',monospace">
                         </div>
-                        <div class="sa-sec-card" style="border-color:rgba(248,113,113,.15)">
-                            <div class="sa-sec-card-title"><i class="fa-solid fa-envelope-circle-check" style="color:#34d399"></i> E-Mail-Verification</div>
-                            <div class="sa-sec-card-desc">Neue Nutzer müssen E-Mail-Adresse bestätigen bevor sie bestellen können.</div>
-                            <div class="sa-sec-row"><span class="sa-sec-label">Pflicht-Verification</span><label class="sa-switch"><input type="checkbox" id="sa-sec-email-verify" checked><span class="sa-switch-sl"></span></label></div>
+                        <div class="sa-sec-card" id="sa-ev-card" style="border-color:rgba(52,211,153,.2);grid-column:1/-1">
+                            <div class="sa-sec-card-title">
+                                <i class="fa-solid fa-envelope-circle-check" style="color:#34d399"></i>
+                                E-Mail-Verifizierung bei Registrierung
+                                <span id="sa-ev-status-badge" style="margin-left:auto;font-size:10px;font-weight:800;padding:3px 10px;border-radius:99px;background:rgba(52,211,153,.15);color:#34d399;border:1px solid rgba(52,211,153,.3)">
+                                    <i class="fa-solid fa-circle" style="font-size:7px;margin-right:4px"></i>AKTIV
+                                </span>
+                            </div>
+                            <div class="sa-sec-card-desc" style="margin-bottom:16px">
+                                Steuert ob neue Nutzer nach der Registrierung ihre E-Mail-Adresse bestätigen müssen, bevor sie sich einloggen können. Deaktivieren ermöglicht sofortigen Zugang ohne Bestätigung.
+                            </div>
+                            <div class="sa-sec-row" style="margin-bottom:12px">
+                                <span class="sa-sec-label" style="font-size:13px;font-weight:600;color:#fff">E-Mail-Bestätigung erforderlich</span>
+                                <label class="sa-switch" style="width:50px;height:28px">
+                                    <input type="checkbox" id="sa-sec-email-verify" checked onchange="saPreviewEmailVerifyChange(this.checked)">
+                                    <span class="sa-switch-sl" style="border-radius:99px"></span>
+                                </label>
+                            </div>
+                            <div id="sa-ev-preview" style="border-radius:14px;padding:12px 16px;display:flex;align-items:flex-start;gap:12px;font-size:12px;line-height:1.55;background:rgba(52,211,153,.06);border:1px solid rgba(52,211,153,.2);color:rgba(255,255,255,.7)">
+                                <i class="fa-solid fa-circle-info" style="color:#34d399;margin-top:1px;flex-shrink:0"></i>
+                                <span id="sa-ev-preview-text">Neue Nutzer erhalten nach der Registrierung eine Bestätigungs-E-Mail und müssen diese bestätigen bevor sie sich einloggen können.</span>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:8px;margin-top:14px">
+                                <i class="fa-solid fa-users" style="font-size:11px;color:rgba(255,255,255,.3)"></i>
+                                <span style="font-size:11px;color:rgba(255,255,255,.3)">Gilt nur für <strong style="color:rgba(255,255,255,.5)">neu registrierte</strong> Nutzer – bestehende Accounts sind nicht betroffen.</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -6138,8 +6162,8 @@ async function checkStockWarnings() {
                 ? `<img src="${p.image}" class="prd-warn-thumb" loading="lazy">`
                 : `<div class="prd-warn-thumb-ph">📦</div>`}
             <div style="flex:1;min-width:0">
-                <div class="prd-warn-name">${p.name}</div>
-                <div class="prd-warn-cat">${p.category || '—'}</div>
+                <div class="prd-warn-name">${escA(p.name)}</div>
+                <div class="prd-warn-cat">${escA(p.category || '—')}</div>
             </div>
             <span class="prd-warn-badge ${isCrit ? 'prd-warn-crit' : 'prd-warn-low'}">
                 ${isCrit ? '⚠ KRITISCH' : '⚠ NIEDRIG'} · ${p.stock || 0} Stk.
@@ -6377,7 +6401,7 @@ function renderProductTable() {
                         ? `<img src="${p.image}" class="prd-thumb" loading="lazy">`
                         : `<div class="prd-thumb-ph">📦</div>`}
                     <div>
-                        <div class="prd-name">${p.name}</div>
+                        <div class="prd-name">${escA(p.name)}</div>
                         ${chips.length ? `<div class="prd-name-chips">${chips.join('')}</div>` : ''}
                     </div>
                 </div>
@@ -6828,7 +6852,7 @@ function renderCategoryTable() {
         html += `<div class="cat-row" style="animation-delay:${Math.min(idx,10)*.025}s" id="cat-row-${c.id}">
             <div class="cat-rank ${rankClass}">${c.order}</div>
             <div class="cat-info">
-                <div class="cat-name">${c.name}</div>
+                <div class="cat-name">${escA(c.name)}</div>
                 <div class="cat-meta-row">
                     ${c.special ? `<span class="cat-pill cat-pill-special"><i class="fa-solid fa-bolt" style="margin-right:3px"></i>${c.specialText || (c.offerType === 'percent' ? c.offerN+'%' : c.offerType === 'fixed' ? '-'+c.offerN+'€' : (c.offerN||4)+' FÜR '+(c.offerM||3))}</span>` : ''}
                     <span class="cat-pill cat-pill-products">${pCount} Produkt${pCount!==1?'e':''}</span>
@@ -7430,25 +7454,25 @@ async function showOrderModal(orderId) {
             let flavorHTML = '';
             if (item.selectedFlavors && item.selectedFlavors.length) {
                 const tags = item.selectedFlavors.map(sf =>
-                    `<span style="font-size:10px;background:rgba(103,232,249,.1);color:#67e8f9;border:1px solid rgba(103,232,249,.22);border-radius:99px;padding:1px 7px">${sf.slot}. ${sf.flavor}${sf.nicotine ? ' · ' + sf.nicotine : ''}</span>`
+                    `<span style="font-size:10px;background:rgba(103,232,249,.1);color:#67e8f9;border:1px solid rgba(103,232,249,.22);border-radius:99px;padding:1px 7px">${sf.slot}. ${escA(sf.flavor)}${sf.nicotine ? ' · ' + escA(sf.nicotine) : ''}</span>`
                 ).join(' ');
                 flavorHTML = `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px">${tags}</div>`;
             } else if (item.bundleItems && item.bundleItems.length) {
                 const tags = item.bundleItems.slice(0,4).map(bi =>
-                    `<span style="font-size:10px;background:rgba(167,139,250,.1);color:#a78bfa;border:1px solid rgba(167,139,250,.2);border-radius:99px;padding:1px 7px">${bi.name} ×${bi.qty}</span>`
+                    `<span style="font-size:10px;background:rgba(167,139,250,.1);color:#a78bfa;border:1px solid rgba(167,139,250,.2);border-radius:99px;padding:1px 7px">${escA(bi.name)} ×${bi.qty}</span>`
                 ).join(' ');
                 flavorHTML = `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px">${tags}</div>`;
             }
             itemsHTML += `<div class="ord-d-item" style="flex-direction:column;align-items:flex-start;gap:4px">
                 <div style="display:flex;justify-content:space-between;width:100%">
-                    <span class="ord-d-item-name"><span style="font-size:10px;background:linear-gradient(135deg,#a78bfa,#7c3aed);color:#fff;border-radius:99px;padding:1px 7px;font-weight:800;margin-right:6px">🎁 BUNDLE</span>${item.name} × ${item.qty}</span>
+                    <span class="ord-d-item-name"><span style="font-size:10px;background:linear-gradient(135deg,#a78bfa,#7c3aed);color:#fff;border-radius:99px;padding:1px 7px;font-weight:800;margin-right:6px">🎁 BUNDLE</span>${escA(item.name)} × ${item.qty}</span>
                     <span class="ord-d-item-price">${((item.price||0) * (item.qty||1)).toFixed(2)} €</span>
                 </div>
                 ${flavorHTML}
             </div>`;
         } else {
             itemsHTML += `<div class="ord-d-item">
-                <span class="ord-d-item-name">${item.name} × ${item.qty}${item.nicotine ? ` <span style="color:var(--ord-muted)">(${item.nicotine})</span>` : ''}</span>
+                <span class="ord-d-item-name">${escA(item.name)} × ${item.qty}${item.nicotine ? ` <span style="color:var(--ord-muted)">(${escA(item.nicotine)})</span>` : ''}</span>
                 <span class="ord-d-item-price">${((item.price||0) * (item.qty||1)).toFixed(2)} €</span>
             </div>`;
         }
@@ -8902,8 +8926,8 @@ async function loadUnauthorizedLogs() {
             html += `<div class="lg-threat-entry">
                 <div class="lg-threat-icon">${isNotLoggedIn ? '🔓' : '🚫'}</div>
                 <div class="lg-threat-body">
-                    <div class="lg-threat-reason" style="${reasonColor}">${l.reason}</div>
-                    <div class="lg-threat-row"><i class="fa-solid fa-envelope" style="font-size:9px"></i><span class="lg-threat-val">${l.email||'—'}</span></div>
+                    <div class="lg-threat-reason" style="${reasonColor}">${escA(l.reason)}</div>
+                    <div class="lg-threat-row"><i class="fa-solid fa-envelope" style="font-size:9px"></i><span class="lg-threat-val">${escA(l.email||'—')}</span></div>
                     <div class="lg-threat-row">
                         <i class="fa-solid fa-network-wired" style="font-size:9px"></i>
                         <span class="lg-threat-val">${ip}</span>
@@ -9205,7 +9229,7 @@ async function loadBannedIPs() {
                     <i class="fa-solid fa-${g.isGuest ? 'user-secret' : 'user'}" style="color:${g.isGuest ? 'rgba(255,255,255,.3)' : '#67e8f9'};font-size:13px;flex-shrink:0"></i>
                     <div style="flex:1;min-width:0">
                         <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:rgba(255,255,255,.8)">${g.ip}${isBanned ? ' <span style="font-size:9px;background:rgba(239,68,68,.2);color:#f87171;padding:1px 6px;border-radius:4px;font-weight:700">GEBANNT</span>' : ''}</div>
-                        <div style="font-size:10px;color:rgba(255,255,255,.3);margin-top:1px">${g.email || g.username} · ${g.isGuest ? 'Gast' : 'Registriert'} · zuletzt ${lastSeenStr}</div>
+                        <div style="font-size:10px;color:rgba(255,255,255,.3);margin-top:1px">${escA(g.email || g.username)} · ${g.isGuest ? 'Gast' : 'Registriert'} · zuletzt ${lastSeenStr}</div>
                     </div>
                     ${!isBanned ? `<button onclick="quickBanIp('${g.ip}','${g.email || g.username}')" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);color:#f87171;border-radius:7px;padding:4px 10px;cursor:pointer;font-size:11px;font-weight:700;flex-shrink:0" onmouseover="this.style.background='rgba(239,68,68,.25)'" onmouseout="this.style.background='rgba(239,68,68,.12)'"><i class="fa-solid fa-ban"></i> Ban</button>`
                     : `<button onclick="unbanByIp('${g.ip}')" style="background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.25);color:#34d399;border-radius:7px;padding:4px 10px;cursor:pointer;font-size:11px;font-weight:700;flex-shrink:0" onmouseover="this.style.background='rgba(52,211,153,.2)'" onmouseout="this.style.background='rgba(52,211,153,.1)'"><i class="fa-solid fa-unlock"></i> Entban</button>`}
@@ -13419,18 +13443,32 @@ async function adminActivityLoad() {
 // ── Security Settings ─────────────────────────────────
 async function saLoadSecuritySettings() {
     try {
-        const snap = await db.collection('settings').doc('superadmin').get();
-        const d = snap.exists ? (snap.data().security || {}) : {};
+        const [saSnap, mainSnap] = await Promise.all([
+            db.collection('settings').doc('superadmin').get(),
+            db.collection('settings').doc('main').get()
+        ]);
+        const d = saSnap.exists ? (saSnap.data().security || {}) : {};
         if (d.timeout)     document.getElementById('sa-sec-timeout').value = d.timeout;
         if (d.maxAttempts) document.getElementById('sa-sec-maxattempts').value = d.maxAttempts;
         if (d.notify      !== undefined) document.getElementById('sa-sec-notify').checked     = d.notify;
         if (d.forceIP     !== undefined) document.getElementById('sa-sec-force-ip').checked   = d.forceIP;
         if (d.verboseLog  !== undefined) document.getElementById('sa-sec-verbose').checked    = d.verboseLog;
         if (d.autoLock    !== undefined) document.getElementById('sa-sec-auto-lock').checked  = d.autoLock;
+
+        // Load email verification setting from settings/main (shared with index.html)
+        const mainData = mainSnap.exists ? mainSnap.data() : {};
+        // Default: true (verification required) unless explicitly set to false
+        const emailVerify = mainData.require_email_verify !== false;
+        const cb = document.getElementById('sa-sec-email-verify');
+        if (cb) {
+            cb.checked = emailVerify;
+            saPreviewEmailVerifyChange(emailVerify);
+        }
     } catch(e) {}
 }
 
 async function saSaveSecuritySettings() {
+    const emailVerify = document.getElementById('sa-sec-email-verify').checked;
     const settings = {
         timeout:     parseInt(document.getElementById('sa-sec-timeout').value, 10) || 30,
         maxAttempts: parseInt(document.getElementById('sa-sec-maxattempts').value, 10) || 5,
@@ -13439,9 +13477,54 @@ async function saSaveSecuritySettings() {
         verboseLog:  document.getElementById('sa-sec-verbose').checked,
         autoLock:    document.getElementById('sa-sec-auto-lock').checked,
     };
-    await db.collection('settings').doc('superadmin').set({ security: settings }, { merge: true });
-    await logAction('sa_security_settings', 'superadmin', settings);
-    showToast('✅ Sicherheitseinstellungen gespeichert');
+
+    const btn = document.querySelector('[onclick="saSaveSecuritySettings()"]');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> &nbsp;Wird gespeichert…'; }
+
+    try {
+        // Save general SA security settings
+        await db.collection('settings').doc('superadmin').set({ security: settings }, { merge: true });
+        // Save email verification flag to settings/main so index.html can read it
+        await db.collection('settings').doc('main').set({ require_email_verify: emailVerify }, { merge: true });
+        await logAction('sa_security_settings', 'superadmin', { ...settings, require_email_verify: emailVerify });
+        showToast('✅ Sicherheitseinstellungen gespeichert');
+        saPreviewEmailVerifyChange(emailVerify);
+    } catch(e) {
+        showToast('❌ Fehler: ' + e.message, 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> &nbsp;Sicherheitseinstellungen speichern'; }
+    }
+}
+
+// Live-Preview-Feedback wenn Toggle geändert wird
+function saPreviewEmailVerifyChange(active) {
+    const badge   = document.getElementById('sa-ev-status-badge');
+    const preview = document.getElementById('sa-ev-preview');
+    const text    = document.getElementById('sa-ev-preview-text');
+    const card    = document.getElementById('sa-ev-card');
+    if (!badge || !preview || !text) return;
+
+    if (active) {
+        badge.style.background = 'rgba(52,211,153,.15)';
+        badge.style.color = '#34d399';
+        badge.style.border = '1px solid rgba(52,211,153,.3)';
+        badge.innerHTML = '<i class="fa-solid fa-circle" style="font-size:7px;margin-right:4px"></i>AKTIV';
+        preview.style.background = 'rgba(52,211,153,.06)';
+        preview.style.borderColor = 'rgba(52,211,153,.2)';
+        preview.querySelector('i').style.color = '#34d399';
+        text.textContent = 'Neue Nutzer erhalten nach der Registrierung eine Bestätigungs-E-Mail und müssen diese bestätigen bevor sie sich einloggen können.';
+        if (card) card.style.borderColor = 'rgba(52,211,153,.2)';
+    } else {
+        badge.style.background = 'rgba(248,113,113,.15)';
+        badge.style.color = '#f87171';
+        badge.style.border = '1px solid rgba(248,113,113,.3)';
+        badge.innerHTML = '<i class="fa-solid fa-circle-exclamation" style="font-size:9px;margin-right:4px"></i>DEAKTIVIERT';
+        preview.style.background = 'rgba(248,113,113,.06)';
+        preview.style.borderColor = 'rgba(248,113,113,.2)';
+        preview.querySelector('i').style.color = '#f87171';
+        text.textContent = '⚠️ Neue Nutzer können sich direkt nach der Registrierung einloggen – ohne E-Mail zu bestätigen. Nur deaktivieren wenn du das explizit erlauben möchtest.';
+        if (card) card.style.borderColor = 'rgba(248,113,113,.2)';
+    }
 }
 
 // ── Session Monitor ───────────────────────────────────
@@ -15205,7 +15288,7 @@ async function bkpCheckAndRunAuto() {
         if (diffH < _bkpConfig.intervalHours) return; // noch nicht fällig
     }
     // Fällig → automatisch ausführen
-    console.log('[WaveVapes Backup] Auto-Backup wird ausgeführt...');
+    console.info('[WaveVapes Backup] Auto-Backup wird ausgeführt...');
     // BUG-013 FIX: try/finally statt sequentiellem Aufruf — showToast wird
     // auch bei einem Fehler in bkpRunNow() korrekt wiederhergestellt.
     const origToast = window.showToast;
@@ -15375,7 +15458,7 @@ async function bkpCleanup() {
         for (const id of toDelete) {
             await db.collection(BKP_COLLECTION).doc(id).delete();
         }
-        if (toDelete.size > 0) console.log(`[WaveVapes Backup] ${toDelete.size} alte Backups gelöscht.`);
+        if (toDelete.size > 0) console.info(`[WaveVapes Backup] ${toDelete.size} alte Backups gelöscht.`);
     } catch(e) {
         console.warn('[WaveVapes Backup] Cleanup-Fehler:', e);
     }

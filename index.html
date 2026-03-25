@@ -5130,6 +5130,48 @@
                     return sum + item.qty * _effPrice;
                 }, 0);
 
+                // BUG FIX: Apply category offers (4-für-3, %-Kategorie, Fixed-Kategorie)
+                // server-side so that percent-based coupons/loyalty-codes are applied on
+                // the correct (already-discounted) base, not on a higher pre-offer subtotal.
+                // Logic mirrors getProductTotal() exactly.
+                if (_offerCatsReady) {
+                    for (const [_catName, _offer] of Object.entries(_offerCats)) {
+                        const _catItems = verifiedItems.filter(i => {
+                            const _p = _productMap.get(i.id);
+                            return _p && _p.category === _catName;
+                        });
+                        if (!_catItems.length) continue;
+
+                        if (_offer.offerType === 'nforn') {
+                            const _buyQty  = parseInt(_offer.offerN, 10) || 4;
+                            const _payQty  = parseInt(_offer.offerM, 10) || 3;
+                            const _totCatQty = _catItems.reduce((s, i) => s + i.qty, 0);
+                            const _freeCount = Math.floor(_totCatQty / _buyQty) * (_buyQty - _payQty);
+                            if (_freeCount > 0) {
+                                const _unitPrices = [];
+                                _catItems.forEach(i => {
+                                    const _p = _productMap.get(i.id);
+                                    const _effP = _p ? (getPromoPrice(_p) ?? i.price ?? 0) : (i.price || 0);
+                                    for (let _q = 0; _q < i.qty; _q++) _unitPrices.push(_effP);
+                                });
+                                _unitPrices.sort((a, b) => a - b);
+                                serverSubtotal -= _unitPrices.slice(0, _freeCount).reduce((s, p) => s + p, 0);
+                            }
+                        } else if (_offer.offerType === 'percent') {
+                            const _pct = parseFloat(_offer.offerN) || 0;
+                            _catItems.forEach(i => {
+                                const _p = _productMap.get(i.id);
+                                const _effPrice = _p ? (getPromoPrice(_p) ?? i.price ?? 0) : (i.price || 0);
+                                serverSubtotal -= i.qty * _effPrice * (_pct / 100);
+                            });
+                        } else if (_offer.offerType === 'fixed') {
+                            const _disc = parseFloat(_offer.offerN) || 0;
+                            _catItems.forEach(i => { serverSubtotal -= i.qty * _disc; });
+                        }
+                    }
+                    serverSubtotal = Math.max(0, serverSubtotal);
+                }
+
                 // ═══════════════════════════════════════════════════════
                 // SECURITY: Validate & apply discount server-side only.
                 // The client-side appliedDiscount object is NEVER trusted

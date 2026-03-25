@@ -5118,8 +5118,16 @@
                     console.warn('Stock-Dekrement übersprungen (Firestore Rules — /products/ Write-Berechtigung fehlt):', e.message);
                 }
                 // Server-side subtotal (mystery vape excluded from subtotal)
+                // BUG FIX: Use effective promo price (same logic as cart display).
+                // Without this, active promotions are ignored in verifiedTotal,
+                // causing the wrong (higher) amount to be stored and displayed.
                 let serverSubtotal = verifiedItems.reduce((sum, item) => {
-                    return item.id === MYSTERY_ID ? sum : sum + item.qty * item.price;
+                    if (item.id === MYSTERY_ID) return sum;
+                    if (item.isBundle) return sum + item.qty * item.price;
+                    const _prod = _productMap.get(item.id);
+                    const _promoP = _prod ? getPromoPrice(_prod) : null;
+                    const _effPrice = _promoP !== null ? _promoP : item.price;
+                    return sum + item.qty * _effPrice;
                 }, 0);
 
                 // ═══════════════════════════════════════════════════════
@@ -5201,9 +5209,8 @@
                 // ═══════════════════════════════════════════════════════
                 const verifiedProductTotal = Math.max(0, serverSubtotal - verifiedDiscountAmount);
                 // BUG FIX: Re-fetch freeShipping from Firestore at checkout time.
-                // The client-side userHasFreeShipping variable may be stale if the
-                // admin activated free shipping after the user loaded the page and
-                // before the Firestore listener fired. Always use the server value.
+                // The client-side userHasFreeShipping may be stale (e.g. admin activated
+                // free shipping after the page was loaded). Always verify server-side.
                 const _threshold = window._FREE_THRESHOLD !== undefined ? window._FREE_THRESHOLD : FREE_SHIPPING_THRESHOLD;
                 const _shippingRate = window._SHIPPING_COST !== undefined ? window._SHIPPING_COST : SHIPPING_COST;
                 let _serverFreeShipping = userHasFreeShipping;
@@ -5211,11 +5218,9 @@
                     const _userSnap = await db.collection('users').doc(currentUser.uid).get();
                     if (_userSnap.exists) {
                         _serverFreeShipping = _userSnap.data().freeShipping === true;
-                        // Keep client-side variable in sync
                         userHasFreeShipping = _serverFreeShipping;
                     }
                 } catch(_e) {
-                    // Non-blocking: fall back to cached client-side value
                     console.warn('freeShipping re-fetch failed, using cached value:', _e.message);
                 }
                 const shippingCost = _serverFreeShipping || verifiedProductTotal >= _threshold ? 0 : _shippingRate;

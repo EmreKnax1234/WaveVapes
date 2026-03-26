@@ -2997,6 +2997,20 @@
                             </label>
                         </div>
 
+                        <div class="cpn-toggle-row" style="background:rgba(251,191,36,.04);border:1px solid rgba(251,191,36,.12);border-radius:12px;padding:10px 14px;margin-top:-4px">
+                            <div>
+                                <div class="cpn-toggle-lbl" style="display:flex;align-items:center;gap:6px">
+                                    <i class="fa-solid fa-globe" style="font-size:11px;color:#fbbf24"></i>
+                                    Global nur 1× einlösbar
+                                </div>
+                                <div class="cpn-toggle-sub">Code kann insgesamt nur <strong style="color:rgba(255,255,255,.5)">einmal</strong> genutzt werden — egal von wem</div>
+                            </div>
+                            <label class="cpn-sw">
+                                <input type="checkbox" id="coupon-global-once">
+                                <span class="cpn-sw-sl"></span>
+                            </label>
+                        </div>
+
                         <!-- NEU-02 FIX: maxUsages-Feld — war bisher nur über Firestore direkt setzbar -->
                         <div class="cpn-field" style="margin-top:6px">
                             <label class="cpn-label" style="display:flex;justify-content:space-between;align-items:center">
@@ -7177,6 +7191,7 @@ function cpnRenderGrid(coupons) {
                     <div style="margin-top:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
                         <span class="cpn-pill ${expired ? 'cpn-pill-expired' : 'cpn-pill-active'}">${expired ? '⏱ ABGELAUFEN' : (daysLeft !== null && daysLeft <= 7) ? `⚠ ${daysLeft}T` : '● AKTIV'}</span>
                         <span class="cpn-pill ${c.oneTimeUse ? 'cpn-pill-once' : 'cpn-pill-multi'}">${c.oneTimeUse ? '1× einmalig' : '∞ mehrfach'}</span>
+                        ${c.globalOnce ? '<span class="cpn-pill" style="background:rgba(251,191,36,.15);border:1px solid rgba(251,191,36,.3);color:#fbbf24;font-size:10px"><i class="fa-solid fa-globe" style="margin-right:3px;font-size:9px"></i>Global 1×</span>' : ''}
                     </div>
                 </div>
                 <div style="text-align:right;flex-shrink:0">
@@ -7210,14 +7225,18 @@ document.getElementById('add-coupon-form').addEventListener('submit', async e =>
     const type    = document.getElementById('coupon-type').value;
     const value   = parseFloat(document.getElementById('coupon-value').value);
     const expiry  = new Date(document.getElementById('coupon-expiry').value);
-    const oneTime = document.getElementById('coupon-onetime').checked;
+    const oneTime    = document.getElementById('coupon-onetime').checked;
+    const globalOnce = document.getElementById('coupon-global-once').checked;
     // NEU-02 FIX: maxUsages aus neuem Formularfeld lesen
+    // globalOnce setzt maxUsages hart auf 1 (Code ist insgesamt nur 1× einlösbar)
     const maxUsagesRaw = document.getElementById('coupon-maxusages')?.value;
-    const maxUsages = maxUsagesRaw && parseInt(maxUsagesRaw, 10) > 0 ? parseInt(maxUsagesRaw, 10) : null;
+    const maxUsages = globalOnce ? 1
+        : (maxUsagesRaw && parseInt(maxUsagesRaw, 10) > 0 ? parseInt(maxUsagesRaw, 10) : null);
     await db.collection('coupons').add({
         code, type, value,
         expiresAt: firebase.firestore.Timestamp.fromDate(expiry),
         oneTimeUse: oneTime, usedBy: [], totalUsages: 0,
+        globalOnce,                                           // NEU: global nur 1× einlösbar
         ...(maxUsages !== null ? { maxUsages } : {}),
         active: true, // NEU-06 FIX: active explizit setzen statt undefined (semantisch korrekt)
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -7227,6 +7246,8 @@ document.getElementById('add-coupon-form').addEventListener('submit', async e =>
     // reset type toggle to percent
     document.querySelectorAll('.cpn-type-opt').forEach(o => o.classList.toggle('active', o.dataset.val === 'percent'));
     document.getElementById('coupon-type').value = 'percent';
+    // reset global-once toggle
+    document.getElementById('coupon-global-once').checked = false;
     showToast('✅ Gutschein erstellt!');
     loadCoupons();
 });

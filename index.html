@@ -7768,6 +7768,7 @@
             clearDiscountField();
             updatePresence();
             window._presenceInterval = setInterval(updatePresence, 30000);
+            checkCategoryUrl();
             checkProductUrl();
             updateWishlistBadge();
             renderRecentlyViewed();
@@ -7840,6 +7841,18 @@
         // reactive approach. A pending slug is stored and resolved the moment
         // allProducts is populated by the Firestore snapshot — zero artificial delay.
         let _pendingProductSlug = null;
+        // BUG-FIX: ?category= URL-Parameter beim Seitenstart lesen und Filter setzen
+        // Damit funktionieren CTA-Links von Landing Pages wie /?category=WaveVapes%20Tornado%2030000
+        function checkCategoryUrl() {
+            const params = new URLSearchParams(window.location.search);
+            const cat = params.get('category');
+            if (!cat) return;
+            // Setzt den Filter — setCategoryFilter wartet nicht auf Produkte,
+            // aber renderProducts() wird auch in loadProducts() aufgerufen,
+            // also greift der Filter sobald die Produkte geladen sind.
+            currentCategoryFilter = cat;
+        }
+
         function checkProductUrl() {
             const params = new URLSearchParams(window.location.search);
             const slug = params.get('product');

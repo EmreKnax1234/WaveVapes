@@ -2209,7 +2209,7 @@
                 <a href="https://www.instagram.com/wavevapesinternational" target="_blank" rel="noopener noreferrer" class="social-icon text-white hover:text-pink-400" aria-label="WaveVapes auf Instagram folgen"><i class="fa-brands fa-instagram" aria-hidden="true"></i></a>
             </div>
             <address class="not-italic mt-8">
-                <p class="text-[10px] text-gray-500">© 2026 WaveVapes • <span itemprop="streetAddress">Wennemannstraße 1a</span> • <span itemprop="postalCode">45475</span> <span itemprop="addressLocality">Mülheim an der Ruhr</span></p>
+                <p id="footer-address" class="text-[10px] text-gray-500">© 2026 WaveVapes</p>
             </address>
             <p class="text-[10px] text-gray-500 mt-1">Gesetzliche Altersbeschränkung: Nur für Personen ab 18 Jahren. Nikotinprodukte schädigen Ihre Gesundheit.</p>
             <p class="text-[10px] text-gray-500 mt-1">
@@ -3649,6 +3649,7 @@
             currentUser = user;
             updateAuthUI();
             updateUserDisplay();
+            updateFooterAddress();
             if (user) {
                 // FCM-Token mit User-ID verknüpfen (falls bereits subscribed)
                 setTimeout(linkFCMToUser, 2000);
@@ -7820,6 +7821,7 @@
 
         // ====================== AGB + WIDERRUFSBELEHRUNG ======================
         function showAgbModal() {
+            if (!currentUser) { showToast("🔒 Bitte einloggen, um die AGB einzusehen.", "error"); showAuthModal('login'); return; }
             const m = document.getElementById("agb-modal");
             m.classList.remove("hidden"); m.classList.add("flex");
         }
@@ -7828,12 +7830,22 @@
             m.classList.add("hidden"); m.classList.remove("flex");
         }
         function showWiderrufModal() {
+            if (!currentUser) { showToast("🔒 Bitte einloggen, um die Widerrufsbelehrung einzusehen.", "error"); showAuthModal('login'); return; }
             const m = document.getElementById("widerruf-modal");
             m.classList.remove("hidden"); m.classList.add("flex");
         }
         function closeWiderrufModal() {
             const m = document.getElementById("widerruf-modal");
             m.classList.add("hidden"); m.classList.remove("flex");
+        }
+        function updateFooterAddress() {
+            const el = document.getElementById("footer-address");
+            if (!el) return;
+            if (currentUser) {
+                el.innerHTML = '© 2026 WaveVapes • <span itemprop="streetAddress">Wennemannstraße 1a</span> • <span itemprop="postalCode">45475</span> <span itemprop="addressLocality">Mülheim an der Ruhr</span>';
+            } else {
+                el.innerHTML = '© 2026 WaveVapes';
+            }
         }
 
         // Open product from URL on page load (?product=slug)

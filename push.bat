@@ -3,6 +3,7 @@ setlocal EnableDelayedExpansion
 
 set PROJECT=C:\Users\Knax\Desktop\WaveVapes-main
 cd /d "%PROJECT%"
+git branch -M main 2>nul
 
 echo.
 echo ============================================================

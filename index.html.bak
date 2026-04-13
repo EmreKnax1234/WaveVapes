@@ -2406,7 +2406,7 @@
             </div>
             <div id="register-form" class="hidden">
                 <input id="register-email" type="email" inputmode="email" autocomplete="email" placeholder="E-Mail Adresse" onkeydown="if(event.key==='Enter')document.getElementById('register-password').focus()" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-4 outline-none mb-4">
-                <input id="register-password" type="password" autocomplete="new-password" placeholder="Passwort (min. 8 Zeichen)" onkeydown="if(event.key==='Enter')registerUser()" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-4 outline-none mb-6">
+                <input id="register-password" type="password" autocomplete="new-password" placeholder="Passwort (min. 6 Zeichen)" onkeydown="if(event.key==='Enter')registerUser()" class="w-full bg-zinc-800 border border-cyan-400/30 focus:border-cyan-400 rounded-3xl px-6 py-4 outline-none mb-6">
                 <button onclick="registerUser()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-5 rounded-3xl font-bold text-xl">Konto erstellen</button>
             </div>
 
@@ -3825,7 +3825,7 @@
         }
         async function registerUser() {
             const email = document.getElementById("register-email").value.trim();
-            const password = document.getElementById("register-password").value; // BUG-3 FIX: kein .trim() – Leerzeichen im Passwort sind gültig
+            const password = document.getElementById("register-password").value.trim();
             if (!email || password.length < 8) { showToast("❌ Bitte gültige E-Mail und Passwort (min. 8 Zeichen) eingeben", "error"); return; }
             try {
                 // Read email-verify setting from Firestore (set by Superadmin)
@@ -3860,14 +3860,14 @@
             } catch (e) {
                 const msg = e.code === 'auth/email-already-in-use' ? 'Diese E-Mail ist bereits registriert.'
                           : e.code === 'auth/invalid-email' ? 'Ungültige E-Mail-Adresse.'
-                          : e.code === 'auth/weak-password' ? 'Passwort zu schwach (min. 8 Zeichen).'
+                          : e.code === 'auth/weak-password' ? 'Passwort zu schwach (min. 6 Zeichen).'
                           : e.message;
                 showToast("❌ " + msg, "error");
             }
         }
         async function loginUser() {
             const email = document.getElementById("login-email").value.trim();
-            const password = document.getElementById("login-password").value; // BUG-3 FIX: kein .trim() – Leerzeichen im Passwort sind gültig
+            const password = document.getElementById("login-password").value.trim();
             if (!email || !password) { showToast("❌ Bitte E-Mail und Passwort eingeben", "error"); return; }
             try {
                 const cred = await auth.signInWithEmailAndPassword(email, password);
@@ -8533,7 +8533,7 @@
 
             try {
                 await auth.sendPasswordResetEmail(email);
-                status.innerHTML = '<div style="display:flex;gap:12px;align-items:flex-start"><i class="fa-solid fa-circle-check" style="color:#22d3ee;font-size:1.1rem;margin-top:2px;flex-shrink:0"></i><div><p style="font-weight:600;color:#fff;margin-bottom:4px">E-Mail wurde gesendet!</p><p>Wir haben einen Passwort-Reset-Link an <strong>' + esc(email) + '</strong> geschickt.</p><ul style="margin-top:8px;display:flex;flex-direction:column;gap:4px;color:#d1d5db;font-size:0.75rem;list-style:none;padding:0"><li>📬 Bitte prüfe dein Postfach (auch Spam/Junk).</li><li>⏱️ Der Link ist <strong>1 Stunde</strong> gültig.</li><li>🔒 Klicke den Link und vergib ein neues Passwort.</li></ul></div></div>';
+                status.innerHTML = '<div style="display:flex;gap:12px;align-items:flex-start"><i class="fa-solid fa-circle-check" style="color:#22d3ee;font-size:1.1rem;margin-top:2px;flex-shrink:0"></i><div><p style="font-weight:600;color:#fff;margin-bottom:4px">E-Mail wurde gesendet!</p><p>Wir haben einen Passwort-Reset-Link an <strong>' + email + '</strong> geschickt.</p><ul style="margin-top:8px;display:flex;flex-direction:column;gap:4px;color:#d1d5db;font-size:0.75rem;list-style:none;padding:0"><li>📬 Bitte prüfe dein Postfach (auch Spam/Junk).</li><li>⏱️ Der Link ist <strong>1 Stunde</strong> gültig.</li><li>🔒 Klicke den Link und vergib ein neues Passwort.</li></ul></div></div>';
                 status.className = 'mt-4 text-sm rounded-2xl px-4 py-3 bg-cyan-500/10 text-cyan-300 border border-cyan-500/30';
                 status.classList.remove('hidden');
                 btn.innerHTML = '<i class="fa-solid fa-check mr-2"></i>Gesendet';

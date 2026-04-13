@@ -3826,7 +3826,7 @@
         async function registerUser() {
             const email = document.getElementById("register-email").value.trim();
             const password = document.getElementById("register-password").value.trim();
-            if (!email || password.length < 6) { showToast("❌ Bitte gültige E-Mail und Passwort (min. 6 Zeichen) eingeben", "error"); return; }
+            if (!email || password.length < 8) { showToast("❌ Bitte gültige E-Mail und Passwort (min. 8 Zeichen) eingeben", "error"); return; }
             try {
                 // Read email-verify setting from Firestore (set by Superadmin)
                 let requireVerify = true; // secure default
@@ -4934,16 +4934,15 @@
             const spBar   = document.getElementById('cart-sp-bar');
             const _threshold  = window._FREE_THRESHOLD !== undefined ? window._FREE_THRESHOLD : FREE_SHIPPING_THRESHOLD;
             const _shipRate   = window._SHIPPING_COST   !== undefined ? window._SHIPPING_COST   : SHIPPING_COST;
-            const rawSubtotal = cart.filter(i => i.id != MYSTERY_ID)
-                .reduce((s, i) => {
-                    if (i.isBundle) return s + i.qty * (i.price || 0);
-                    const p = _productMap.get(i.id);
-                    return s + i.qty * (p ? (getPromoPrice(p) ?? i.price) : i.price);
-                }, 0);
+            // BUG FIX: Use getProductTotal() (includes coupon + all category offers) so the
+            // progress bar stays consistent with getShippingCost() which uses the same value.
+            // Previously rawSubtotal ignored applied coupons — bar showed "Gratisversand aktiviert!"
+            // even when a coupon brought the effective total below the threshold.
+            const effectiveSubtotal = getProductTotal();
 
             if (cart.length === 0 || userHasFreeShipping) {
                 spWrap.style.display = 'none';
-            } else if (rawSubtotal >= _threshold) {
+            } else if (effectiveSubtotal >= _threshold) {
                 // Gratisversand erreicht → grüner Zustand, kurz zeigen dann ausblenden
                 spWrap.style.display = 'block';
                 spBar.style.width = '100%';
@@ -4957,8 +4956,8 @@
                 spBadge.textContent = `− ${_shipRate.toFixed(2).replace('.',',')} € gespart`;
             } else {
                 // Noch nicht erreicht → zeige Fortschritt
-                const missing = _threshold - rawSubtotal;
-                const pct     = Math.min(100, Math.round((rawSubtotal / _threshold) * 100));
+                const missing = _threshold - effectiveSubtotal;
+                const pct     = Math.min(100, Math.round((effectiveSubtotal / _threshold) * 100));
                 spWrap.style.display = 'block';
                 spBar.style.width = pct + '%';
                 spBar.style.background = 'linear-gradient(90deg,#67e8f9,#a78bfa)';
@@ -6157,7 +6156,9 @@
         }
 
         function loadLeaderboard() {
-            db.collection('users')
+            // BUG FIX: vorherigen Listener aufräumen (z.B. bei Pull-to-Refresh)
+            if (window._leaderboardUnsub) { window._leaderboardUnsub(); window._leaderboardUnsub = null; }
+            window._leaderboardUnsub = db.collection('users')
                 .orderBy('totalBonusPoints', 'desc')
                 .limit(10)
                 .onSnapshot(snap => {
@@ -8366,6 +8367,7 @@
             if (productsUnsubscribe) productsUnsubscribe();
             if (_cartSyncUnsubscribe) _cartSyncUnsubscribe();
             if (_bundlesUnsub) _bundlesUnsub(); // BUG-25 FIX: Bundles-Listener sauber beenden
+            if (window._leaderboardUnsub) window._leaderboardUnsub(); // BUG FIX: Leaderboard-Listener sauber beenden
         });
 
         // ═══════════════════════════════════════════════════════════════

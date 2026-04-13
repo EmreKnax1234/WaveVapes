@@ -22,7 +22,8 @@
             align-items: center;
             justify-content: center;
             color: #fff;
-            overflow: hidden;
+            overflow-y: auto;
+            padding: 24px 0;
         }
         .orbitron { font-family: 'Orbitron', sans-serif; }
         .neon { color: var(--neon-cyan); }
@@ -70,6 +71,41 @@
             0%, 100% { opacity: .5; transform: scale(1); }
             50% { opacity: 1; transform: scale(1.04); }
         }
+        .bad-url {
+            font-family: monospace;
+            font-size: 12px;
+            color: rgba(103,232,249,.5);
+            background: rgba(103,232,249,.06);
+            border: 1px solid rgba(103,232,249,.12);
+            border-radius: 6px;
+            padding: 4px 10px;
+            display: inline-block;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            margin-bottom: 20px;
+        }
+        .progress-wrap {
+            height: 3px;
+            background: rgba(255,255,255,.06);
+            border-radius: 99px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        .progress-bar {
+            height: 100%;
+            background: var(--neon-cyan);
+            border-radius: 99px;
+            width: 100%;
+            transition: width 1s linear;
+        }
+        .redirect-hint {
+            font-size: 11px;
+            color: rgba(255,255,255,.25);
+            margin-bottom: 24px;
+        }
+        .redirect-hint span { color: rgba(103,232,249,.6); }
     </style>
 </head>
 <body>
@@ -77,10 +113,18 @@
     <div class="card">
         <div class="orbitron neon neon-glow pulse" style="font-size:88px;font-weight:700;line-height:1;margin-bottom:12px">404</div>
         <h1 class="orbitron" style="font-size:18px;font-weight:700;margin-bottom:10px">Seite nicht gefunden</h1>
-        <p style="color:rgba(255,255,255,.5);font-size:14px;margin-bottom:32px;line-height:1.7">
+        <p style="color:rgba(255,255,255,.5);font-size:14px;margin-bottom:16px;line-height:1.7">
             Diese Seite existiert nicht oder wurde verschoben.<br>
             Kein Problem — zurück zum Shop geht's hier entlang.
         </p>
+
+        <div id="bad-url" class="bad-url" style="display:none"></div>
+
+        <div class="progress-wrap">
+            <div class="progress-bar" id="progress"></div>
+        </div>
+        <div class="redirect-hint">Weiterleitung in <span id="countdown">10</span>s &middot; <a href="/" style="color:rgba(103,232,249,.6);text-decoration:none">jetzt</a></div>
+
         <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:24px">
             <a href="/" class="btn"><i class="fa-solid fa-house"></i> Zum Shop</a>
             <a href="/disposable-vapes-kaufen" class="btn btn-secondary"><i class="fa-solid fa-wind"></i> Vapes</a>
@@ -88,5 +132,33 @@
         </div>
         <div style="font-size:11px;color:rgba(255,255,255,.2)">© 2026 WaveVapes · <a href="/impressum" style="color:rgba(255,255,255,.2);text-decoration:none">Impressum</a></div>
     </div>
+    <script>
+        // Falsche URL anzeigen
+        const path = window.location.pathname;
+        if (path && path !== '/') {
+            const el = document.getElementById('bad-url');
+            el.textContent = path;
+            el.style.display = 'inline-block';
+        }
+
+        // Auto-Redirect mit Countdown
+        const SECONDS = 10;
+        let remaining = SECONDS;
+        const countdownEl = document.getElementById('countdown');
+        const progressEl  = document.getElementById('progress');
+
+        const tick = setInterval(() => {
+            remaining--;
+            countdownEl.textContent = remaining;
+            progressEl.style.width = (remaining / SECONDS * 100) + '%';
+            if (remaining <= 0) {
+                clearInterval(tick);
+                window.location.href = '/';
+            }
+        }, 1000);
+
+        // Countdown stoppen wenn User selbst klickt
+        document.querySelectorAll('a').forEach(a => a.addEventListener('click', () => clearInterval(tick)));
+    </script>
 </body>
 </html>

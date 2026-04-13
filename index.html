@@ -6048,7 +6048,25 @@
             _offerCatsReady = true;
         }
 
+        function _resolvePendingCategoryAlias(snap) {
+            if (!_pendingCategoryAlias) return;
+            const alias = _pendingCategoryAlias.toLowerCase();
+            _pendingCategoryAlias = null;
+            // Finde erste Kategorie die NICHT die Vape-Kategorie ist
+            let resolved = null;
+            snap.forEach(doc => {
+                if (!resolved && doc.data().name !== VAPE_CAT) {
+                    resolved = doc.data().name;
+                }
+            });
+            if (resolved) {
+                currentCategoryFilter = resolved;
+            }
+        }
+
         function _renderCategoryTabsDOM(snap) {
+            // Pending category alias (z.B. "Liquids" von 404-Seite) auflösen sobald Kategorien geladen sind
+            _resolvePendingCategoryAlias(snap);
             // OPT 2: Build a cheap hash — skip full DOM rebuild if nothing changed
             const catHash = snap.docs.map(d => {
                 const c = d.data();
@@ -7892,15 +7910,31 @@
         // reactive approach. A pending slug is stored and resolved the moment
         // allProducts is populated by the Firestore snapshot — zero artificial delay.
         let _pendingProductSlug = null;
+        let _pendingCategoryAlias = null; // gesetzt wenn ?category= ein Alias-Name ist (z.B. "Liquids")
+        // Alias-Map: kurze URL-Namen → echte Firestore-Kategorienamen
+        const CATEGORY_ALIASES = {
+            'vapes':   'WaveVapes Tornado 30000',
+            'Vapes':   'WaveVapes Tornado 30000',
+            'VAPES':   'WaveVapes Tornado 30000',
+        };
         // BUG-FIX: ?category= URL-Parameter beim Seitenstart lesen und Filter setzen
-        // Damit funktionieren CTA-Links von Landing Pages wie /?category=WaveVapes%20Tornado%2030000
+        // Unterstützt exakte Firestore-Namen UND Alias-Namen (Vapes, Liquids) von der 404-Seite.
         function checkCategoryUrl() {
             const params = new URLSearchParams(window.location.search);
             const cat = params.get('category');
             if (!cat) return;
-            // Setzt den Filter — setCategoryFilter wartet nicht auf Produkte,
-            // aber renderProducts() wird auch in loadProducts() aufgerufen,
-            // also greift der Filter sobald die Produkte geladen sind.
+            // Bekannter Alias → direkt auflösen
+            if (CATEGORY_ALIASES[cat]) {
+                currentCategoryFilter = CATEGORY_ALIASES[cat];
+                return;
+            }
+            // "Liquids" (oder andere unbekannte Aliasse) → nach Kategorie-Load auflösen
+            const catLower = cat.toLowerCase();
+            if (catLower === 'liquids' || catLower === 'liquid') {
+                _pendingCategoryAlias = cat;
+                return;
+            }
+            // Exakter Firestore-Name
             currentCategoryFilter = cat;
         }
 

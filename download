@@ -1,0 +1,13 @@
+Options -MultiViews
+RewriteEngine On
+
+# Wenn die Anfrage KEINE existierende Datei oder Ordner ist,
+# aber eine gleichnamige .html-Datei existiert → diese ausliefern
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME}.html -f
+RewriteRule ^(.+)$ $1.html [L]
+
+# Direktzugang zu .html-URLs auf die saubere URL umleiten (SEO)
+RewriteCond %{THE_REQUEST} \s/+(.+?)\.html[\s?] [NC]
+RewriteRule ^ /%1 [R=301,L]

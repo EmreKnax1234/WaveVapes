@@ -76,6 +76,12 @@ if not exist "%PROJECT%\.gitignore" (
     echo.
 )
 
+:: ── Sitemap lastmod aktualisieren ───────────────────────────
+for /f "usebackq delims=" %%d in (`powershell -NoProfile -Command "Get-Date -Format 'yyyy-MM-dd'"`) do set TODAY=%%d
+powershell -NoProfile -Command "(Get-Content '%PROJECT%\sitemap.xml') -replace '<lastmod>[0-9]{4}-[0-9]{2}-[0-9]{2}</lastmod>', '<lastmod>%TODAY%</lastmod>' | Set-Content '%PROJECT%\sitemap.xml' -Encoding UTF8"
+echo [INFO] Sitemap lastmod aktualisiert auf %TODAY%
+echo.
+
 :: ── Status nur fuer diesen Ordner ─────────────────────────────
 echo [1/5] Geaenderte Dateien in %PROJECT%:
 echo ------------------------------------------------------------

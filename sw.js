@@ -1,13 +1,15 @@
 // WaveVapes Service Worker — Web Push Notifications + Offline Caching
 // Wird unter https://wavevapes.de/sw.js gehostet
 
-const SW_VERSION = 'wv-push-v3';
+const SW_VERSION = 'wv-push-v4';
 const STATIC_CACHE  = `wv-static-${SW_VERSION}`;
 const RUNTIME_CACHE = `wv-runtime-${SW_VERSION}`;
 
 // Assets die sofort beim Install gecacht werden (Cache-First)
 const PRECACHE_ASSETS = [
+    '/',
     '/logo.png',
+    '/404.html',
 ];
 
 // Domains für Cache-First (statische Ressourcen von CDNs)
@@ -15,6 +17,7 @@ const CACHE_FIRST_ORIGINS = [
     'fonts.gstatic.com',
     'cdnjs.cloudflare.com',
     'cdn.jsdelivr.net',
+    'cdn.tailwindcss.com',
 ];
 
 // ── Install & Activate ────────────────────────────────────────
@@ -104,7 +107,7 @@ self.addEventListener('fetch', event => {
                     }
                     return response;
                 })
-                .catch(() => caches.match(request))
+                .catch(() => caches.match(request) || caches.match('/404.html'))
         );
         return;
     }

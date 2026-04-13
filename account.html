@@ -1147,9 +1147,10 @@ function loadOrders() {
             allOrders = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             renderOrders(allOrders);
 
-            // Stats
-            const total = allOrders.reduce((s, o) => s + (o.total || 0), 0);
-            document.getElementById('stat-orders').textContent = allOrders.length;
+            // Stats — stornierte Bestellungen ausschließen
+            const nonCancelled = allOrders.filter(o => o.status !== 'Storniert');
+            const total = nonCancelled.reduce((s, o) => s + (o.total || 0), 0);
+            document.getElementById('stat-orders').textContent = nonCancelled.length;
             document.getElementById('stat-spent').textContent = total.toFixed(0) + ' €';
 
             // Sidebar badge

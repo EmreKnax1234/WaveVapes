@@ -62,9 +62,15 @@ async function _dispatch(notifId, n) {
     const updated = await db.runTransaction(async tx => {
         const doc = await tx.get(docRef);
         const status = doc.data()?.status;
-        // Bereits gesendet oder in Bearbeitung → Abbruch
-        if (status === 'sending' || status === 'sent') return false;
-        tx.update(docRef, { status: 'sending' });
+        // Bereits gesendet, in Bearbeitung, oder steckengeblieben (>5 Min.) → Abbruch oder Retry
+        if (status === 'sent') return false;
+        if (status === 'sending') {
+            // Sicherheitsnetz: falls ein voriger Lauf abgestürzt ist (z.B. Cold-Start),
+            // erlauben wir nach 5 Minuten einen erneuten Versuch.
+            const updatedAt = doc.data()?.updatedAt?.toMillis?.() || 0;
+            if (Date.now() - updatedAt < 5 * 60 * 1000) return false; // noch frisch → wirklich in Arbeit
+        }
+        tx.update(docRef, { status: 'sending', updatedAt: admin.firestore.FieldValue.serverTimestamp() });
         return true;
     });
     if (!updated) {

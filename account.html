@@ -966,9 +966,16 @@ let _selectedAvatarIdx = 0;
 auth.onAuthStateChanged(async (user) => {
     if (!user) {
         // Nicht eingeloggt → zurück zum Shop
+        // Listener aufräumen bevor wir weiterleiten
+        if (userUnsub)   { userUnsub();   userUnsub   = null; }
+        if (ordersUnsub) { ordersUnsub(); ordersUnsub = null; }
         window.location.href = 'https://wavevapes.de';
         return;
     }
+    // Guard: bei Token-Refresh feuert onAuthStateChanged erneut —
+    // bestehende Listener beenden, bevor neue geöffnet werden
+    if (userUnsub)   { userUnsub();   userUnsub   = null; }
+    if (ordersUnsub) { ordersUnsub(); ordersUnsub = null; }
     currentUser = user;
     await initAccount();
 });
@@ -1007,6 +1014,10 @@ async function initAccount() {
 
     } catch(e) {
         console.error('initAccount error:', e);
+        // Lade-Screen ausblenden und Nutzer informieren damit die Seite nicht einfriert
+        const ls = document.getElementById('loading-screen');
+        if (ls) { ls.classList.add('fade'); setTimeout(() => ls.style.display = 'none', 400); }
+        showToast('❌ Fehler beim Laden des Accounts. Bitte Seite neu laden.', 'error');
     }
 }
 
@@ -1367,7 +1378,9 @@ async function saveProfile() {
 //  ADDRESS
 // ═══════════════════════════════════════════════════
 function prefillAddress() {
-    const saved = JSON.parse(localStorage.getItem('wavevapes_address') || '{}');
+    // BUG-FIX: localStorage wirft in Private-Mode / wenn blockiert eine Exception
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem('wavevapes_address') || '{}'); } catch(_) {}
     if (saved.street) document.getElementById('addr-street').value = saved.street;
     if (saved.zip)    document.getElementById('addr-zip').value    = saved.zip;
     if (saved.city)   document.getElementById('addr-city').value   = saved.city;
@@ -1408,7 +1421,8 @@ async function saveAddress() {
     if (!street || !zip || !city) { showToast('❌ Bitte alle Felder ausfüllen!', 'error'); return; }
     if (!/^\d{5}$/.test(zip)) { showToast('❌ Ungültige PLZ (5 Ziffern)', 'error'); return; }
     const addr = { street, zip, city };
-    localStorage.setItem('wavevapes_address', JSON.stringify(addr));
+    // BUG-FIX: localStorage.setItem wirft in Private-Mode / bei vollem Speicher
+    try { localStorage.setItem('wavevapes_address', JSON.stringify(addr)); } catch(_) {}
     try {
         await db.collection('users').doc(currentUser.uid).update({ address: addr });
         showToast('✅ Adresse gespeichert!');

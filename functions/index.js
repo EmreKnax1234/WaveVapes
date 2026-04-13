@@ -25,7 +25,13 @@ exports.sendPushOnCreate = functions
     .onCreate(async (snap, context) => {
         const n = snap.data();
         if (n.scheduledFor) return null; // geplant → später via Scheduler
-        return _dispatch(context.params.notifId, n);
+        try {
+            return await _dispatch(context.params.notifId, n);
+        } catch (err) {
+            console.error(`[sendPushOnCreate] Fehler bei ${context.params.notifId}:`, err);
+            await snap.ref.update({ status: 'error', errorMessage: String(err.message || err) }).catch(() => {});
+            return null;
+        }
     });
 
 // ── Trigger: Geplante Nachrichten stündlich prüfen ─────────────
@@ -37,7 +43,13 @@ exports.sendScheduledPush = functions
             .where('scheduledFor', '<=', admin.firestore.Timestamp.now())
             .where('status', '==', 'queued')
             .get();
-        await Promise.allSettled(snap.docs.map(d => _dispatch(d.id, d.data())));
+        const results = await Promise.allSettled(snap.docs.map(d => _dispatch(d.id, d.data())));
+        results.forEach((r, i) => {
+            if (r.status === 'rejected') {
+                console.error(`[sendScheduledPush] Fehler bei ${snap.docs[i].id}:`, r.reason);
+                snap.docs[i].ref.update({ status: 'error', errorMessage: String(r.reason?.message || r.reason) }).catch(() => {});
+            }
+        });
     });
 
 // ── Kern: FCM Tokens laden + Notifications senden ─────────────

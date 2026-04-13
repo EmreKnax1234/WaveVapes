@@ -1,7 +1,7 @@
 // WaveVapes Service Worker — Web Push Notifications + Offline Caching
 // Wird unter https://wavevapes.de/sw.js gehostet
 
-const SW_VERSION = 'wv-push-v4';
+const SW_VERSION = 'wv-push-v5';
 const STATIC_CACHE  = `wv-static-${SW_VERSION}`;
 const RUNTIME_CACHE = `wv-runtime-${SW_VERSION}`;
 
@@ -107,7 +107,11 @@ self.addEventListener('fetch', event => {
                     }
                     return response;
                 })
-                .catch(() => caches.match(request) || caches.match('/404.html'))
+                // BUG-FIX: `caches.match(a) || caches.match(b)` funktioniert nicht korrekt,
+                // da Promise-Objekte immer truthy sind. Stattdessen: .then(r => r || fallback)
+                .catch(() =>
+                    caches.match(request).then(r => r || caches.match('/404.html'))
+                )
         );
         return;
     }
@@ -162,9 +166,7 @@ self.addEventListener('notificationclick', event => {
 });
 
 // ── Push-Subscription geändert (Token-Rotation) ───────────────
-// BUG-FIX: Der alte Code versuchte direkt in die Firestore-REST-API zu schreiben
-// ohne Auth-Token — das schlägt immer mit 403 fehl.
-// Korrekte Lösung: Alle offenen Clients per postMessage benachrichtigen,
+// Alle offenen Clients per postMessage benachrichtigen,
 // damit der App-Code (mit Zugang zu Firebase Auth + SDK) das Token erneuert.
 self.addEventListener('pushsubscriptionchange', event => {
     event.waitUntil(
@@ -172,7 +174,6 @@ self.addEventListener('pushsubscriptionchange', event => {
             userVisibleOnly:      true,
             applicationServerKey: event.oldSubscription?.options?.applicationServerKey
         }).then(async newSub => {
-            // Alle offenen Tabs/Fenster über die neue Subscription informieren
             const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
             clients.forEach(client => {
                 client.postMessage({

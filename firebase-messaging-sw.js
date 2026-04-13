@@ -6,10 +6,10 @@ importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js
 importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js');
 
 firebase.initializeApp({
-    apiKey:            "AIzaSyDsIUl-iYwH42MPbusFLhGhj5oGLh01BzI",
+    apiKey:            "AIzaSyDsIUl-iYmH42MPbusFLhGhj5oGLh01BzI",
     authDomain:        "wavevapes-7a960.firebaseapp.com",
     projectId:         "wavevapes-7a960",
-    storageBucket:     "wavevapes-7a960.appspot.com",
+    storageBucket:     "wavevapes-7a960.firebasestorage.app",
     messagingSenderId: "1093624390275",
     appId:             "1:1093624390275:web:b1b8ae17bcf1b59dffb1b6",
 });
@@ -33,18 +33,19 @@ messaging.onBackgroundMessage(payload => {
 });
 
 // ── Notification-Klick ────────────────────────────────────────────────────────
+// BUG-FIX: `clients` → `self.clients` (im SW-Scope gibt es kein globales `clients`)
 self.addEventListener('notificationclick', event => {
     event.notification.close();
     const url = event.notification.data?.url || 'https://wavevapes.de';
     event.waitUntil(
-        clients.matchAll({ type: 'window', includeUncontrolled: true }).then(cls => {
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(cls => {
             for (const c of cls) {
                 if (c.url.includes('wavevapes.de') && 'focus' in c) {
                     c.navigate(url);
                     return c.focus();
                 }
             }
-            if (clients.openWindow) return clients.openWindow(url);
+            if (self.clients.openWindow) return self.clients.openWindow(url);
         })
     );
 });

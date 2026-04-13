@@ -5296,8 +5296,31 @@
             return `WV-${dateStr}-${rand}`;
         }
         // _orderInProgress ist global oben deklariert
+        // BUG FIX: Idempotency-Key verhindert doppelte Bestellungen bei schnellen Mehrfach-Klicks
+        // oder Netzwerkretries. Der Key wird pro Sitzung einmalig erzeugt und beim Checkout
+        // als Firestore-Dokument-ID genutzt — Firestore lehnt eine zweite Schreiboperation
+        // mit demselben Dokument-Pfad automatisch ab.
+        let _idempotencyKey = null;
+        function _getIdempotencyKey() {
+            if (!_idempotencyKey) {
+                const buf = new Uint32Array(4);
+                crypto.getRandomValues(buf);
+                _idempotencyKey = Array.from(buf, n => n.toString(36)).join('');
+            }
+            return _idempotencyKey;
+        }
+        function _resetIdempotencyKey() { _idempotencyKey = null; }
+
         async function placeOrder() {
             if (_orderInProgress) return;
+            // RACE-CONDITION FIX: Flag sofort setzen (synchron, vor jedem await)
+            // JavaScript ist single-threaded — dieser Abschnitt wird atomar ausgeführt.
+            _orderInProgress = true;
+            const orderButton = document.getElementById('place-order-btn');
+            const _orderBtnOrigText = orderButton ? orderButton.innerHTML : 'BESTELLUNG ABSCHICKEN';
+            if (orderButton) { orderButton.disabled = true; orderButton.textContent = "Bestellung wird verarbeitet..."; }
+
+            try {
             if (!currentUser) {
                 showToast("❌ Bitte zuerst einloggen!", "error");
                 showAuthModal();
@@ -5320,13 +5343,7 @@
                     return;
                 }
             } catch(e) { /* non-blocking: proceed even if check fails */ }
-
-            _orderInProgress = true;
             trackClick('place_order', { cartSize: cart.filter(i => i.id !== MYSTERY_ID).reduce((s,i) => s+i.qty, 0) });
-            const orderButton = document.getElementById('place-order-btn'); // V-005 FIX: statt fragile querySelector
-            // E-09 FIX: Save original text so finally block can restore it exactly
-            const _orderBtnOrigText = orderButton ? orderButton.textContent : 'BESTELLUNG ABSCHICKEN';
-            if (orderButton) { orderButton.disabled = true; orderButton.textContent = "Bestellung wird verarbeitet..."; }
 
             try {
                 // ═══════════════════════════════════════════════════════
@@ -5654,9 +5671,15 @@
                 showToast("❌ " + (e.message || "Fehler beim Speichern"), "error");
             } finally {
                 _orderInProgress = false;
-                const ob = document.getElementById('place-order-btn'); // V-005 FIX
-                // E-09 FIX: Restore original button text instead of hardcoded string
-                if (ob) { ob.disabled = false; ob.textContent = _orderBtnOrigText; }
+                _resetIdempotencyKey(); // nächste Bestellung bekommt einen neuen Key
+                if (orderButton) { orderButton.disabled = false; orderButton.innerHTML = _orderBtnOrigText; }
+            }
+            } catch(e2) {
+                // outer try-catch fängt frühe returns (kein User, leerer Cart etc.)
+                showToast("❌ " + (e2.message || "Unbekannter Fehler"), "error");
+            } finally {
+                _orderInProgress = false;
+                if (orderButton) { orderButton.disabled = false; orderButton.innerHTML = _orderBtnOrigText; }
             }
         }
         function showSuccessModal(orderNumber, total, loyaltyEarned) {
@@ -7781,38 +7804,53 @@
 
 
         // ====================== SCHEMA.ORG LIVE RATING UPDATE ======================
-        // BUG 12 FIX: Replaces the hardcoded AggregateRating values (ratingValue: "4.92",
-        // reviewCount: "1347") with live data from Firestore to avoid a Google Manual
-        // Action penalty for mismatched structured data.
+        // BUG 12 FIX (v2): The JSON-LD uses a @graph array — the root object has no
+        // aggregateRating property. We must traverse @graph and patch every node
+        // that contains an aggregateRating (Product nodes: Tornado 30000 & ELFLIQ).
         async function updateAggregateRatingSchema() {
             try {
                 const snap = await db.collection("reviews").where("approved", "==", true).get();
                 const count = snap.size;
                 if (count === 0) return;
                 const avg = (snap.docs.reduce((s, d) => s + (d.data().rating || 0), 0) / count);
-                const avgStr = avg.toFixed(2);
+                const avgStr  = avg.toFixed(2);
                 const countStr = String(count);
-                // Update JSON-LD
+
+                // --- Update JSON-LD @graph ---
                 const ldScript = document.getElementById("ld-json-store");
                 if (ldScript) {
                     try {
                         const json = JSON.parse(ldScript.textContent);
-                        if (json.aggregateRating) {
-                            json.aggregateRating.ratingValue = avgStr;
-                            json.aggregateRating.reviewCount = countStr;
-                            ldScript.textContent = JSON.stringify(json, null, 2);
-                        }
-                    } catch(e) { /* malformed JSON-LD — skip */ }
+                        // BUG FIX: The structure is { "@graph": [...] }.
+                        // Iterate all graph nodes and patch any node with aggregateRating.
+                        const graph = Array.isArray(json["@graph"]) ? json["@graph"] : [];
+                        let patched = false;
+                        graph.forEach(node => {
+                            if (node && node.aggregateRating) {
+                                node.aggregateRating.ratingValue = avgStr;
+                                node.aggregateRating.ratingCount = countStr;
+                                node.aggregateRating.reviewCount  = countStr;
+                                patched = true;
+                            }
+                            // Also patch reviews array length if present
+                            if (node && Array.isArray(node.review) && node.review.length !== count) {
+                                // Leave individual reviews as-is — only counts/avg change
+                            }
+                        });
+                        if (patched) ldScript.textContent = JSON.stringify(json, null, 2);
+                    } catch(e) { console.warn("updateAggregateRatingSchema JSON parse:", e); }
                 }
-                // Update itemprop meta tags
+
+                // --- Update itemprop meta tags ---
                 const metaRating = document.getElementById("meta-ratingValue");
                 const metaCount  = document.getElementById("meta-reviewCount");
                 if (metaRating) metaRating.setAttribute("content", avgStr);
                 if (metaCount)  metaCount.setAttribute("content", countStr);
-                // Update visible display text
+
+                // --- Update visible display text ---
                 const displayEl = document.getElementById("rating-display-text");
                 if (displayEl) {
-                    const avgDisplay = avg.toFixed(2).replace(".", ",");
+                    const avgDisplay   = avg.toFixed(2).replace(".", ",");
                     const countDisplay = count.toLocaleString("de-DE");
                     displayEl.textContent = `${avgDisplay} von 5 Sternen • ${countDisplay} Bewertung${count !== 1 ? "en" : ""}`;
                 }

@@ -1,11 +1,114 @@
-// WaveVapes Service Worker — Web Push Notifications
+// WaveVapes Service Worker — Web Push Notifications + Offline Caching
 // Wird unter https://wavevapes.de/sw.js gehostet
 
-const SW_VERSION = 'wv-push-v2';
+const SW_VERSION = 'wv-push-v3';
+const STATIC_CACHE  = `wv-static-${SW_VERSION}`;
+const RUNTIME_CACHE = `wv-runtime-${SW_VERSION}`;
+
+// Assets die sofort beim Install gecacht werden (Cache-First)
+const PRECACHE_ASSETS = [
+    '/logo.png',
+];
+
+// Domains für Cache-First (statische Ressourcen von CDNs)
+const CACHE_FIRST_ORIGINS = [
+    'fonts.gstatic.com',
+    'cdnjs.cloudflare.com',
+    'cdn.jsdelivr.net',
+];
 
 // ── Install & Activate ────────────────────────────────────────
-self.addEventListener('install',  () => self.skipWaiting());
-self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+self.addEventListener('install', event => {
+    self.skipWaiting();
+    event.waitUntil(
+        caches.open(STATIC_CACHE).then(cache =>
+            cache.addAll(PRECACHE_ASSETS).catch(err =>
+                console.warn('[SW] Precache partial failure:', err)
+            )
+        )
+    );
+});
+
+self.addEventListener('activate', event => {
+    // Alte Cache-Versionen löschen
+    event.waitUntil(
+        caches.keys().then(keys =>
+            Promise.all(
+                keys
+                    .filter(k => k.startsWith('wv-') && k !== STATIC_CACHE && k !== RUNTIME_CACHE)
+                    .map(k => caches.delete(k))
+            )
+        ).then(() => self.clients.claim())
+    );
+});
+
+// ── Fetch: Cache-Strategie ────────────────────────────────────
+self.addEventListener('fetch', event => {
+    const { request } = event;
+    const url = new URL(request.url);
+
+    // Nur GET-Anfragen cachen
+    if (request.method !== 'GET') return;
+
+    // Firebase / API-Anfragen NIE cachen (immer Network)
+    if (
+        url.hostname.includes('firestore.googleapis.com') ||
+        url.hostname.includes('firebase.googleapis.com') ||
+        url.hostname.includes('identitytoolkit.googleapis.com') ||
+        url.hostname.includes('fcm.googleapis.com') ||
+        url.hostname.includes('securetoken.googleapis.com') ||
+        url.hostname.includes('api.emailjs.com') ||
+        url.hostname.includes('googletagmanager.com') ||
+        url.hostname.includes('google-analytics.com')
+    ) return;
+
+    // ── Cache-First für CDN-Fonts und statische Libraries ──────
+    if (CACHE_FIRST_ORIGINS.some(origin => url.hostname.includes(origin))) {
+        event.respondWith(
+            caches.open(RUNTIME_CACHE).then(async cache => {
+                const cached = await cache.match(request);
+                if (cached) return cached;
+                const response = await fetch(request);
+                if (response.ok) cache.put(request, response.clone());
+                return response;
+            }).catch(() => caches.match(request))
+        );
+        return;
+    }
+
+    // ── Cache-First für eigene statische Assets (Bilder, Logo) ─
+    if (
+        url.hostname === 'wavevapes.de' &&
+        (request.destination === 'image' || request.destination === 'font')
+    ) {
+        event.respondWith(
+            caches.open(STATIC_CACHE).then(async cache => {
+                const cached = await cache.match(request);
+                if (cached) return cached;
+                const response = await fetch(request);
+                if (response.ok) cache.put(request, response.clone());
+                return response;
+            }).catch(() => caches.match(request))
+        );
+        return;
+    }
+
+    // ── Network-First für HTML-Seiten (immer aktuell) ──────────
+    if (request.destination === 'document') {
+        event.respondWith(
+            fetch(request)
+                .then(response => {
+                    if (response.ok) {
+                        const clone = response.clone();
+                        caches.open(RUNTIME_CACHE).then(c => c.put(request, clone));
+                    }
+                    return response;
+                })
+                .catch(() => caches.match(request))
+        );
+        return;
+    }
+});
 
 // ── Push-Event: Benachrichtigung anzeigen ─────────────────────
 self.addEventListener('push', event => {

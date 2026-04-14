@@ -10,6 +10,18 @@ echo ============================================================
 echo   WaveVapes - Git Push + GitHub Verify
 echo ============================================================
 echo.
+echo   [1] Normaler Push (nur Aenderungen)
+echo   [2] ALLE Dateien neu pushen (force replace all)
+echo.
+set /p "MODE=[WAHL] Modus waehlen (1/2, Enter = 1): "
+if "!MODE!"=="" set MODE=1
+if "!MODE!"=="2" (
+    echo.
+    echo [INFO] Modus: ALLE Dateien werden neu gestaged und gepusht.
+    echo [INFO] Der Git-Index wird zurueckgesetzt - alle Dateien gelten als neu.
+    echo.
+)
+echo.
 
 where git >nul 2>&1
 if errorlevel 1 (
@@ -93,8 +105,13 @@ set CHANGES=0
 for /f %%c in ('git status --short -- . 2^>nul ^| find /c /v ""') do set CHANGES=%%c
 
 if "!CHANGES!"=="0" (
-    echo [INFO] Keine Aenderungen - springe zu Verifikation.
-    goto :verify
+    if "!MODE!"=="2" (
+        echo [INFO] Keine lokalen Aenderungen - aber Modus 2 erzwingt neu-Stage.
+        echo [INFO] Alle Dateien werden neu committed.
+    ) else (
+        echo [INFO] Keine Aenderungen - springe zu Verifikation.
+        goto :verify
+    )
 )
 echo [INFO] !CHANGES! Datei(en) geaendert.
 echo.
@@ -108,8 +125,14 @@ if "!MSG!"=="" (
 echo.
 
 :: ── git add (NUR dieser Ordner) ────────────────────────────────
-echo [2/5] Stage Dateien in diesem Ordner...
-git add -- .
+if "!MODE!"=="2" (
+    echo [2/5] Index zuruecksetzen und ALLE Dateien neu stagen...
+    git rm -r --cached . >nul 2>&1
+    git add -A -- .
+) else (
+    echo [2/5] Stage Dateien in diesem Ordner...
+    git add -- .
+)
 if errorlevel 1 ( echo [FEHLER] git add fehlgeschlagen. & pause & exit /b 1 )
 
 echo [3/5] Commit: !MSG!

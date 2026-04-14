@@ -12413,20 +12413,28 @@ let saCoSuperadminUIDs = [];         // UIDs der Co-Superadmins
 
 // ── Fetch current IP ──────────────────────────────────
 async function saFetchIP() {
-    try {
-        const r = await fetch('https://api.ipify.org?format=json');
-        const d = await r.json();
-        currentIP = d.ip;
-        document.querySelectorAll('#sa-ip-display, #sa-current-ip-display').forEach(el => {
-            if (el) el.textContent = currentIP;
-        });
-        return currentIP;
-    } catch(e) {
-        document.querySelectorAll('#sa-ip-display, #sa-current-ip-display').forEach(el => {
-            if (el) el.textContent = 'Unbekannt';
-        });
-        return '';
+    // Try multiple services in case one is blocked or returns wrong format
+    const services = [
+        () => fetch('https://api.ipify.org?format=json').then(r => r.json()).then(d => d.ip),
+        () => fetch('https://api4.my-ip.io/ip.json').then(r => r.json()).then(d => d.ip),
+        () => fetch('https://api.my-ip.io/ip').then(r => r.text()),
+    ];
+    for (const svc of services) {
+        try {
+            const ip = (await svc()).trim();
+            if (ip && /^[\d.]+$|^[0-9a-f:]+$/i.test(ip)) {
+                currentIP = ip;
+                document.querySelectorAll('#sa-ip-display, #sa-current-ip-display').forEach(el => {
+                    if (el) el.textContent = currentIP;
+                });
+                return currentIP;
+            }
+        } catch(e) { /* try next */ }
     }
+    document.querySelectorAll('#sa-ip-display, #sa-current-ip-display').forEach(el => {
+        if (el) el.textContent = 'Unbekannt';
+    });
+    return '';
 }
 
 // ── Open Re-Auth Modal ────────────────────────────────
@@ -12450,13 +12458,17 @@ async function saCheckIPStatus(ip) {
     try {
         const snap = await db.collection('settings').doc('superadmin').get();
         const data = snap.exists ? snap.data() : {};
-        saIPWhitelist = data.allowedIPs || [];
-        const allowed = saIPWhitelist.includes(ip) || saIPWhitelist.length === 0;
-        if (allowed) {
+        saIPWhitelist = (data.allowedIPs || []).map(i => String(i).trim());
+        const cleanIP = (ip || '').trim();
+        const allowed = saIPWhitelist.length === 0 || saIPWhitelist.includes(cleanIP);
+        if (!cleanIP) {
+            statusEl.textContent = '⚠️ IP konnte nicht ermittelt werden';
+            statusEl.style.color = '#fbbf24';
+        } else if (allowed) {
             statusEl.textContent = '✅ IP-Adresse ist in der Whitelist';
             statusEl.style.color = '#34d399';
         } else {
-            statusEl.textContent = '⛔ Diese IP ist NICHT in der Whitelist';
+            statusEl.textContent = `⛔ IP ${cleanIP} ist NICHT in der Whitelist`;
             statusEl.style.color = '#f87171';
         }
         return allowed;
@@ -12486,8 +12498,8 @@ async function saSubmitReauth() {
         // Check IP whitelist (if entries exist)
         const snap = await db.collection('settings').doc('superadmin').get();
         const data = snap.exists ? snap.data() : {};
-        saIPWhitelist = data.allowedIPs || [];
-        const ip = currentIP || await saFetchIP();
+        saIPWhitelist = (data.allowedIPs || []).map(i => String(i).trim());
+        const ip = ((currentIP || await saFetchIP()) || '').trim();
 
         if (saIPWhitelist.length > 0 && !saIPWhitelist.includes(ip)) {
             errEl.textContent = '⛔ Deine IP-Adresse ist nicht in der Whitelist.';

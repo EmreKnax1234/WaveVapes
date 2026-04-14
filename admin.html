@@ -12469,8 +12469,9 @@ async function saCheckIPStatus(ip) {
         const snap = await db.collection('settings').doc('superadmin').get();
         const data = snap.exists ? snap.data() : {};
         saIPWhitelist = (data.allowedIPs || []).map(i => String(i).trim());
+        const forceIP = (data.security || {}).forceIP === true;
         const cleanIP = (ip || '').trim();
-        const allowed = saIPWhitelist.length === 0 || saIPWhitelist.includes(cleanIP);
+        const allowed = !(forceIP || saIPWhitelist.length > 0) || saIPWhitelist.includes(cleanIP);
         if (!cleanIP) {
             statusEl.textContent = '⚠️ IP konnte nicht ermittelt werden';
             statusEl.style.color = '#fbbf24';
@@ -12509,9 +12510,10 @@ async function saSubmitReauth() {
         const snap = await db.collection('settings').doc('superadmin').get();
         const data = snap.exists ? snap.data() : {};
         saIPWhitelist = (data.allowedIPs || []).map(i => String(i).trim());
+        const forceIP = (data.security || {}).forceIP === true;
         const ip = ((currentIP || await saFetchIP()) || '').trim();
 
-        if (saIPWhitelist.length > 0 && !saIPWhitelist.includes(ip)) {
+        if ((forceIP || saIPWhitelist.length > 0) && !saIPWhitelist.includes(ip)) {
             errEl.textContent = '⛔ Deine IP-Adresse ist nicht in der Whitelist.';
             btn.disabled = false;
             btn.innerHTML = '<i class="fa-solid fa-unlock"></i> &nbsp;Zugang bestätigen';
@@ -12823,7 +12825,7 @@ async function saDemoteSuperadmin(uid, email) {
 // ── IP Whitelist ──────────────────────────────────────
 async function saLoadIPWhitelist() {
     const snap = await db.collection('settings').doc('superadmin').get();
-    saIPWhitelist = snap.exists ? (snap.data().allowedIPs || []) : [];
+    saIPWhitelist = (snap.exists ? (snap.data().allowedIPs || []) : []).map(i => String(i).trim());
     renderIPList();
 }
 

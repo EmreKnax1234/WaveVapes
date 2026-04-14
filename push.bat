@@ -158,6 +158,24 @@ if errorlevel 1 (
 )
 echo.
 
+:: ── Firebase Deploy ────────────────────────────────────────────
+echo [4b/5] Firebase Deploy...
+where firebase >nul 2>&1
+if errorlevel 1 (
+    echo [WARNUNG] Firebase CLI nicht gefunden - Deploy uebersprungen.
+    echo           Installieren mit: npm install -g firebase-tools
+) else (
+    firebase deploy --only hosting --project wavevapes-de
+    if errorlevel 1 (
+        echo [FEHLER] Firebase Deploy fehlgeschlagen.
+        set /p "CONT=[FRAGE] Trotzdem weitermachen? (j/N): "
+        if /i not "!CONT!"=="j" pause & exit /b 1
+    ) else (
+        echo [OK] Firebase Deploy erfolgreich.
+    )
+)
+echo.
+
 :: ── Verifikation ───────────────────────────────────────────────
 :verify
 echo [5/5] GitHub Verifikation...

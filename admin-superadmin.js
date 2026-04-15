@@ -465,8 +465,9 @@ function renderIPList() {
 
 async function saAddIP() {
     const ip = document.getElementById('sa-ip-input').value.trim();
-    const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
-    if (!ip || !ipRegex.test(ip)) { showToast('Ungültige IP-Adresse', 'error'); return; }
+    const isIPv4 = /^(\d{1,3}\.){3}\d{1,3}$/.test(ip);
+    const isIPv6 = /^[0-9a-f:]{2,}$/i.test(ip) && ip.includes(':');
+    if (!ip || (!isIPv4 && !isIPv6)) { showToast('Ungültige IP-Adresse (IPv4 oder IPv6)', 'error'); return; }
     if (saIPWhitelist.includes(ip)) { showToast('IP bereits in der Liste', 'warning'); return; }
     saIPWhitelist.push(ip);
     await saUpdateIPWhitelist();

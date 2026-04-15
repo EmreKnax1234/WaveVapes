@@ -1,21 +1,103 @@
-// WaveVapes — Firebase Cloud Function: FCM Push Notifications
-// Datei: functions/index.js  ← muss in diesem Unterordner liegen!
-//
-// BUG-FIX: Datei lag im Root des Projekts (functions_index.js).
-// firebase.json erwartet sie unter functions/index.js.
+// WaveVapes — Firebase Cloud Functions
+// Datei: functions/index.js
 //
 // Setup:
 //   cd functions
 //   npm init -y
-//   npm install firebase-admin firebase-functions
+//   npm install firebase-admin firebase-functions node-fetch
 //   cd ..
 //   firebase deploy --only functions
+//
+// Secrets (einmalig setzen):
+//   firebase functions:secrets:set EMAIL_WORKER_URL
+//   firebase functions:secrets:set EMAIL_WORKER_KEY
 
 const functions = require('firebase-functions');
 const admin     = require('firebase-admin');
+const fetch     = require('node-fetch');
 
 admin.initializeApp();
 const db = admin.firestore();
+
+// ── Email Worker helpers ───────────────────────────────────────
+/**
+ * Sendet einen Email-Request an den Cloudflare Email Worker.
+ * URL + Key kommen aus Firebase Secrets (nie hardcoden!).
+ */
+async function emailWorker(type, data) {
+    const url = process.env.EMAIL_WORKER_URL;   // z.B. https://wavevapes-email.workers.dev/send
+    const key = process.env.EMAIL_WORKER_KEY;   // 32-char random key
+    if (!url || !key) {
+        console.warn('[emailWorker] EMAIL_WORKER_URL oder EMAIL_WORKER_KEY nicht gesetzt – E-Mail übersprungen');
+        return;
+    }
+    const res = await fetch(url, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', 'X-API-Key': key },
+        body:    JSON.stringify({ type, data }),
+    });
+    if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(`Email Worker ${res.status}: ${text}`);
+    }
+}
+
+// ── Trigger: Neue Bestellung → Bestätigung + Admin-Alert ──────
+exports.onOrderCreate = functions
+    .region('europe-west1')
+    .runWith({ secrets: ['EMAIL_WORKER_URL', 'EMAIL_WORKER_KEY'] })
+    .firestore
+    .document('orders/{orderId}')
+    .onCreate(async (snap, context) => {
+        const order = snap.data();
+        const orderId = context.params.orderId;
+
+        // Kundendaten aus order-Doc oder users-Collection
+        let customerEmail = order.email || order.customerEmail || '';
+        let customerName  = order.customerName || order.name || 'Kunde';
+
+        if (!customerEmail && order.userId) {
+            const userDoc = await db.collection('users').doc(order.userId).get();
+            if (userDoc.exists) {
+                customerEmail = userDoc.data().email || '';
+                if (!order.customerName) customerName = userDoc.data().displayName || userDoc.data().name || 'Kunde';
+            }
+        }
+
+        const items = (order.items || order.cart || []).map(i => ({
+            name:  i.name  || i.title || 'Produkt',
+            qty:   i.qty   || i.quantity || 1,
+            price: i.price || i.unitPrice || 0,
+        }));
+
+        try {
+            // Bestellbestätigung an Kunden
+            if (customerEmail) {
+                await emailWorker('order_confirmation', {
+                    orderId,
+                    customerEmail,
+                    customerName,
+                    items,
+                    total: order.total || order.totalAmount || 0,
+                });
+                console.log(`[onOrderCreate] Bestätigung an ${customerEmail} gesendet`);
+            }
+
+            // Admin-Alert
+            await emailWorker('admin_alert', {
+                orderId,
+                customerName,
+                customerEmail,
+                total: order.total || order.totalAmount || 0,
+                items,
+            });
+            console.log(`[onOrderCreate] Admin-Alert für Bestellung ${orderId} gesendet`);
+
+        } catch (err) {
+            // E-Mail-Fehler dürfen die Bestellung nicht blockieren
+            console.error(`[onOrderCreate] E-Mail fehlgeschlagen für ${orderId}:`, err);
+        }
+    });
 
 // ── Trigger: Neue push_notification → sofort versenden ────────
 exports.sendPushOnCreate = functions

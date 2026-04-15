@@ -33,21 +33,24 @@ let saCoSuperadminUIDs = [];         // UIDs der Co-Superadmins
 // ── Fetch current IP ──────────────────────────────────
 async function saFetchIP() {
     // Try multiple services in case one is blocked or returns wrong format
-    const isValidIP = s => /^\d{1,3}(\.\d{1,3}){3}$/.test(s) || /^[0-9a-f:]{3,}/i.test(s);
+    // IPv4-only: reject anything that looks like an IPv6 address
+    const isValidIPv4 = s => /^\d{1,3}(\.\d{1,3}){3}$/.test(s.trim());
     const services = [
-        // Cloudflare trace — most reliable, always CORS-ok
+        // ipify — api4 subdomain forces IPv4 response
+        () => fetch('https://api4.ipify.org?format=json').then(r => r.json()).then(d => d.ip),
+        // icanhazip IPv4-only endpoint
+        () => fetch('https://ipv4.icanhazip.com').then(r => r.text()).then(s => s.trim()),
+        // Cloudflare trace — filter out IPv6 results
         async () => {
             const t = await fetch('https://www.cloudflare.com/cdn-cgi/trace').then(r => r.text());
             const m = t.match(/^ip=(.+)$/m);
-            return m ? m[1].trim() : '';
+            const ip = m ? m[1].trim() : '';
+            return isValidIPv4(ip) ? ip : '';
         },
-        // ipify JSON
-        () => fetch('https://api.ipify.org?format=json').then(r => r.json()).then(d => d.ip),
-        // ipapi plain text
-        () => fetch('https://ipapi.co/ip/').then(r => r.text()),
         // seeip JSON
         () => fetch('https://ip.seeip.org/jsonip').then(r => r.json()).then(d => d.ip),
     ];
+    const isValidIP = isValidIPv4;
     for (const svc of services) {
         try {
             const ip = String(await svc()).trim();

@@ -1,0 +1,431 @@
+/**
+ * shop-improvements.js  — v1.2 (bugfixes)
+ * WaveVapes Shop – Erweiterungen
+ *
+ * BUGFIXES in v1.1:
+ * - BUG-FIX 1: typeof toggleCart !== 'undefined' → === 'function' (korrekte Guard-Bedingung)
+ * - BUG-FIX 2: Unused variable `remaining` entfernt; doppelte ID 'wv-ship-remaining' beseitigt
+ * - BUG-FIX 3: MutationObserver-Guard: verhindert mehrfache Observer-Registrierung
+ *
+ * BUGFIXES in v1.2:
+ * - BUG-FIX 4: patchRenderProducts: allProducts.splice(0, n, ...sorted) kann bei großen Arrays
+ *   einen "Maximum call stack size exceeded"-Fehler auslösen. Ersetzt durch splice + push.
+ */
+
+(function () {
+    'use strict';
+
+    /* ═══════════════════════════════════════════════
+       1. PRODUKT-SORTIERUNG
+    ═══════════════════════════════════════════ */
+    let _currentSort = 'default';
+
+    function injectSortUI() {
+        const filterBar = document.getElementById('product-filter-bar');
+        if (!filterBar || document.getElementById('wv-sort-wrap')) return;
+
+        const wrap = document.createElement('div');
+        wrap.id = 'wv-sort-wrap';
+        wrap.style.cssText = 'display:flex;align-items:center;gap:6px;margin-left:auto';
+
+        const label = document.createElement('span');
+        label.style.cssText = 'font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.28);white-space:nowrap';
+        label.textContent = 'Sort';
+
+        const sel = document.createElement('select');
+        sel.id = 'wv-sort-select';
+        sel.style.cssText = [
+            'background:rgba(255,255,255,.06)',
+            'border:1px solid rgba(255,255,255,.12)',
+            'border-radius:99px',
+            'padding:4px 28px 4px 12px',
+            'color:rgba(255,255,255,.75)',
+            'font-size:11px',
+            'font-weight:600',
+            'outline:none',
+            'cursor:pointer',
+            'appearance:none',
+            '-webkit-appearance:none',
+            'transition:border-color .18s, background .18s',
+            'background-image:url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'10\' height=\'6\'%3E%3Cpath d=\'M0 0l5 6 5-6z\' fill=\'rgba(255,255,255,.35)\'/%3E%3C/svg%3E")',
+            'background-repeat:no-repeat',
+            'background-position:right 10px center',
+            'color-scheme:dark',
+        ].join(';');
+
+        [
+            ['default',    '✦ Standard'],
+            ['price_asc',  '€ Preis ↑'],
+            ['price_desc', '€ Preis ↓'],
+            ['name_az',    'A-Z Name'],
+            ['newest',     '🆕 Neu zuerst'],
+        ].forEach(([val, txt]) => {
+            const o = document.createElement('option');
+            o.value = val; o.textContent = txt;
+            sel.appendChild(o);
+        });
+
+        sel.addEventListener('change', () => {
+            _currentSort = sel.value;
+            const active = _currentSort !== 'default';
+            sel.style.borderColor   = active ? 'rgba(103,232,249,.5)' : 'rgba(255,255,255,.12)';
+            sel.style.background    = active ? 'rgba(103,232,249,.12)' : 'rgba(255,255,255,.06)';
+            sel.style.color         = active ? '#67e8f9' : 'rgba(255,255,255,.75)';
+            if (typeof renderProducts === 'function') renderProducts();
+        });
+
+        const divider = document.createElement('div');
+        divider.style.cssText = 'width:1px;height:18px;background:rgba(255,255,255,.08);flex-shrink:0';
+
+        wrap.appendChild(divider);
+        wrap.appendChild(label);
+        wrap.appendChild(sel);
+        filterBar.appendChild(wrap);
+    }
+
+    function patchRenderProducts() {
+        if (typeof renderProducts !== 'function') {
+            setTimeout(patchRenderProducts, 100);
+            return;
+        }
+        // Guard: nicht doppelt patchen
+        if (renderProducts._wvSortPatched) return;
+
+        const _orig = renderProducts;
+        window.renderProducts = function (...args) {
+            // BUG-D FIX: allProducts über window.allProducts lesen (lokale Var in index.html)
+            if (window.allProducts && Array.isArray(window.allProducts) && _currentSort !== 'default') {
+                var allProducts = window.allProducts;
+                const sorted = [...allProducts];
+                if (_currentSort === 'price_asc')  sorted.sort((a, b) => (a.price || 0) - (b.price || 0));
+                if (_currentSort === 'price_desc') sorted.sort((a, b) => (b.price || 0) - (a.price || 0));
+                if (_currentSort === 'name_az')    sorted.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'de'));
+                if (_currentSort === 'newest')     sorted.sort((a, b) => {
+                    const ta = a.createdAt?.seconds || a.addedAt?.seconds || 0;
+                    const tb = b.createdAt?.seconds || b.addedAt?.seconds || 0;
+                    return tb - ta;
+                });
+                // BUG-FIX 4: splice(0, n, ...large_array) kann bei vielen Produkten einen
+                // "Maximum call stack size exceeded" auslösen, da spread-Argumente über den
+                // JS-Stack laufen. Stattdessen: backup speichern, Array leeren, neu befüllen.
+                const _backup = allProducts.slice(); // Kopie der Originalreihenfolge
+                allProducts.length = 0;
+                for (let i = 0; i < sorted.length; i++) allProducts.push(sorted[i]);
+                const result = _orig.apply(this, args);
+                // Originalreihenfolge wiederherstellen
+                allProducts.length = 0;
+                for (let i = 0; i < _backup.length; i++) allProducts.push(_backup[i]);
+                return result;
+            }
+            return _orig.apply(this, args);
+        };
+        window.renderProducts._wvSortPatched = true;
+        console.log('[wv-improvements] renderProducts mit Sort-Patch versehen');
+    }
+
+    /* ═══════════════════════════════════════════════
+       2. SCROLL-TO-TOP BUTTON
+    ═══════════════════════════════════════════ */
+    function injectScrollToTop() {
+        if (document.getElementById('wv-scroll-top')) return;
+
+        const btn = document.createElement('button');
+        btn.id = 'wv-scroll-top';
+        btn.setAttribute('aria-label', 'Zurück nach oben');
+        btn.title = 'Nach oben';
+        btn.innerHTML = '<i class="fa-solid fa-chevron-up"></i>';
+        btn.style.cssText = [
+            'position:fixed',
+            'bottom:88px',
+            'right:18px',
+            'width:44px',
+            'height:44px',
+            'border-radius:50%',
+            'background:linear-gradient(135deg,#1e1e2e,#27272a)',
+            'border:1px solid rgba(103,232,249,.35)',
+            'color:#67e8f9',
+            'font-size:15px',
+            'cursor:pointer',
+            'z-index:8000',
+            'display:flex',
+            'align-items:center',
+            'justify-content:center',
+            'box-shadow:0 4px 20px rgba(0,0,0,.5),0 0 12px rgba(103,232,249,.15)',
+            'opacity:0',
+            'transform:translateY(12px) scale(0.85)',
+            'transition:opacity .3s, transform .3s, box-shadow .2s, background .2s',
+            'pointer-events:none',
+        ].join(';');
+
+        btn.addEventListener('mouseenter', () => {
+            btn.style.background  = 'linear-gradient(135deg,#0f172a,rgba(103,232,249,.15))';
+            btn.style.boxShadow   = '0 4px 24px rgba(0,0,0,.6),0 0 20px rgba(103,232,249,.3)';
+        });
+        btn.addEventListener('mouseleave', () => {
+            btn.style.background  = 'linear-gradient(135deg,#1e1e2e,#27272a)';
+            btn.style.boxShadow   = '0 4px 20px rgba(0,0,0,.5),0 0 12px rgba(103,232,249,.15)';
+        });
+        btn.addEventListener('click', () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
+        document.body.appendChild(btn);
+
+        const show = () => {
+            const visible = window.scrollY > 320;
+            btn.style.opacity       = visible ? '1' : '0';
+            btn.style.transform     = visible ? 'translateY(0) scale(1)' : 'translateY(12px) scale(0.85)';
+            btn.style.pointerEvents = visible ? 'auto' : 'none';
+        };
+        window.addEventListener('scroll', show, { passive: true });
+        show();
+    }
+
+    /* ═══════════════════════════════════════════════
+       3. GRATIS-VERSAND FORTSCHRITTSBALKEN
+       BUG-FIX 2: Doppelte ID 'wv-ship-remaining' beseitigt;
+                  unused variable 'remaining' entfernt
+    ═══════════════════════════════════════════ */
+    const FREE_SHIPPING_THRESHOLD = 100;
+
+    function injectFreeShippingBar() {
+        const cartBody = document.querySelector('#cart-sidebar > div');
+        if (!cartBody || document.getElementById('wv-shipping-bar')) return;
+
+        const container = document.createElement('div');
+        container.id = 'wv-shipping-bar';
+        container.style.cssText = 'padding:10px 16px 0;';
+
+        container.innerHTML = `
+            <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:10px 14px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
+                    <span id="wv-ship-label" style="font-size:11px;font-weight:600;color:rgba(255,255,255,.55)">
+                        <i class="fa-solid fa-truck" style="color:#67e8f9;margin-right:5px"></i>
+                        Noch <b style="color:#fff">100,00 €</b> bis Gratis-Versand
+                    </span>
+                    <span id="wv-ship-pct" style="font-size:10px;font-weight:700;color:rgba(103,232,249,.6);font-family:'JetBrains Mono',monospace">0%</span>
+                </div>
+                <div style="height:5px;background:rgba(255,255,255,.07);border-radius:99px;overflow:hidden">
+                    <div id="wv-ship-fill" style="height:100%;width:0%;border-radius:99px;background:linear-gradient(90deg,#67e8f9,#a78bfa);transition:width .5s cubic-bezier(.4,0,.2,1)"></div>
+                </div>
+            </div>`;
+
+        if (cartBody.children.length > 1) {
+            cartBody.insertBefore(container, cartBody.children[1]);
+        } else {
+            cartBody.appendChild(container);
+        }
+    }
+
+    function updateFreeShippingBar() {
+        const fill  = document.getElementById('wv-ship-fill');
+        const pct   = document.getElementById('wv-ship-pct');
+        const label = document.getElementById('wv-ship-label');
+        if (!fill) return; // BUG-FIX 2: 'remaining' entfernt (war unused)
+
+        let total = 0;
+        if (typeof cart !== 'undefined' && Array.isArray(cart)) {
+            total = cart.reduce((s, item) => {
+                const price = item.discountedPrice !== undefined
+                    ? item.discountedPrice
+                    : (item.price || 0);
+                return s + price * (item.qty || item.quantity || 1);
+            }, 0);
+        } else if (typeof getCartTotal === 'function') {
+            total = getCartTotal();
+        }
+
+        const progress = Math.min(total / FREE_SHIPPING_THRESHOLD * 100, 100);
+        fill.style.width    = progress + '%';
+        pct.textContent     = Math.round(progress) + '%';
+
+        if (total >= FREE_SHIPPING_THRESHOLD) {
+            label.innerHTML         = '<i class="fa-solid fa-circle-check" style="color:#34d399;margin-right:5px"></i><b style="color:#34d399">Gratis-Versand & Mystery Vape freigeschaltet! 🎉</b>';
+            fill.style.background   = 'linear-gradient(90deg,#34d399,#67e8f9)';
+        } else {
+            // BUG-FIX 2: Kein id="wv-ship-remaining" im innerHTML (verhindert doppelte IDs)
+            const diff = (FREE_SHIPPING_THRESHOLD - total).toFixed(2).replace('.', ',');
+            label.innerHTML = `<i class="fa-solid fa-truck" style="color:#67e8f9;margin-right:5px"></i>Noch <b style="color:#fff">${diff} €</b> bis Gratis-Versand`;
+            fill.style.background   = 'linear-gradient(90deg,#67e8f9,#a78bfa)';
+        }
+    }
+
+    /* ═══════════════════════════════════════════════
+       4. "NEU"-BADGE
+       BUG-FIX 3: MutationObserver nur einmal registrieren
+    ═══════════════════════════════════════════ */
+    const NEW_BADGE_DAYS = 14;
+
+    function injectNewBadgeCSS() {
+        if (document.getElementById('wv-new-badge-css')) return;
+        const s = document.createElement('style');
+        s.id = 'wv-new-badge-css';
+        s.textContent = `
+            .wv-new-badge {
+                position:absolute; top:16px; right:44px;
+                background:linear-gradient(135deg,#22c55e,#16a34a);
+                color:#fff; font-size:9px; font-weight:900;
+                letter-spacing:.07em; text-transform:uppercase;
+                padding:2px 8px; border-radius:99px; z-index:10;
+                box-shadow:0 3px 10px rgba(34,197,94,.4);
+                animation:wvNewBadgePop .35s cubic-bezier(0.34,1.56,0.64,1) forwards;
+                pointer-events:none;
+            }
+            @keyframes wvNewBadgePop {
+                from { transform:scale(0.6); opacity:0; }
+                to   { transform:scale(1);   opacity:1; }
+            }
+            #wv-sort-select:hover { border-color:rgba(103,232,249,.35) !important; }
+            @media (max-width:639px) {
+                #wv-scroll-top { bottom:72px; right:14px; width:40px; height:40px; font-size:13px; }
+            }
+        `;
+        document.head.appendChild(s);
+    }
+
+    function patchProductCardForNewBadge() {
+        if (typeof renderProducts !== 'function') {
+            setTimeout(patchProductCardForNewBadge, 200);
+            return;
+        }
+        const grid = document.getElementById('products-grid');
+        if (!grid) return;
+
+        // BUG-FIX 3: Verhindere doppelte Observer-Registrierung
+        if (grid.dataset.wvObsPatched) return;
+        grid.dataset.wvObsPatched = '1';
+
+        const observer = new MutationObserver(() => {
+            if (typeof allProducts === 'undefined') return;
+            const now    = Date.now() / 1000;
+            const cutoff = now - NEW_BADGE_DAYS * 86400;
+
+            grid.querySelectorAll('[data-pid]').forEach(card => {
+                if (card.querySelector('.wv-new-badge')) return;
+                const pid = card.dataset.pid;
+                const product = allProducts.find(p => p.id === pid);
+                if (!product) return;
+
+                const ts = product.createdAt?.seconds
+                    || product.addedAt?.seconds
+                    || (product.createdAt instanceof Date ? product.createdAt.getTime() / 1000 : 0);
+
+                if (ts && ts > cutoff) {
+                    const badge = document.createElement('span');
+                    badge.className = 'wv-new-badge';
+                    badge.textContent = 'NEU';
+                    if (getComputedStyle(card).position === 'static') card.style.position = 'relative';
+                    card.appendChild(badge);
+                }
+            });
+        });
+        observer.observe(grid, { childList: true, subtree: false });
+    }
+
+    /* ═══════════════════════════════════════════════
+       5. KATEGORIE-PRODUKTANZAHL
+    ═══════════════════════════════════════════ */
+    function updateFilterCounts() {
+        // BUG-D FIX: allProducts via window lesen
+        if (typeof window.allProducts === 'undefined' || !Array.isArray(window.allProducts)) return;
+        var allProducts = window.allProducts;
+
+        // BUG-5 FIX: Nutze window.MYSTERY_ID statt hardcoded 999 — konsistent mit index.html
+        const _MYSTERY = (typeof MYSTERY_ID !== 'undefined' ? MYSTERY_ID : 999);
+        document.querySelectorAll('#category-tabs button[data-category]').forEach(btn => {
+            const cat = btn.dataset.category;
+            const count = (cat === '' || cat === 'Alle')
+                ? allProducts.filter(p => p.id !== _MYSTERY && !p.hidden).length
+                : allProducts.filter(p => p.category === cat && p.id !== _MYSTERY && !p.hidden).length;
+
+            let badge = btn.querySelector('.wv-cat-count');
+            if (!badge) {
+                badge = document.createElement('span');
+                badge.className = 'wv-cat-count';
+                badge.style.cssText = 'font-size:9px;font-weight:700;background:rgba(255,255,255,.12);border-radius:99px;padding:1px 6px;margin-left:4px;font-family:"JetBrains Mono",monospace;';
+                btn.appendChild(badge);
+            }
+            badge.textContent = count;
+        });
+    }
+
+    /* ═══════════════════════════════════════════════
+       6. WARENKORB – FORTSCHRITTSBALKEN
+       BUG-FIX 1: typeof === 'function' statt !== 'undefined'
+    ═══════════════════════════════════════════ */
+    function patchCartForShippingBar() {
+        const sidebar = document.getElementById('cart-sidebar');
+        if (!sidebar) return;
+        // BUG-6 FIX: Guard gegen mehrfache Observer-Registrierung
+        // (analog zu patchProductCardForNewBadge, das diesen Guard bereits hat)
+        if (sidebar.dataset.wvCartObsPatched) return;
+        sidebar.dataset.wvCartObsPatched = '1';
+
+        const observer = new MutationObserver(() => {
+            injectFreeShippingBar();
+            updateFreeShippingBar();
+        });
+        observer.observe(sidebar, { childList: true, subtree: true });
+
+        // BUG-FIX 1: Korrekte Typprüfung; Guard gegen Doppel-Patch
+        if (typeof toggleCart === 'function' && !toggleCart._wvShipPatched) {
+            const _origToggle = toggleCart;
+            window.toggleCart = function (...args) {
+                const result = _origToggle.apply(this, args);
+                setTimeout(() => {
+                    injectFreeShippingBar();
+                    updateFreeShippingBar();
+                }, 50);
+                return result;
+            };
+            window.toggleCart._wvShipPatched = true;
+        }
+    }
+
+    /* ═══════════════════════════════════════════════
+       7. KEYBOARD SHORTCUT: / für Suche
+    ═══════════════════════════════════════════ */
+    function initKeyboardShortcuts() {
+        document.addEventListener('keydown', e => {
+            if (e.key === '/' && !['INPUT','TEXTAREA'].includes(document.activeElement?.tagName)) {
+                e.preventDefault();
+                const searchInput = document.getElementById('search-input')
+                    || document.querySelector('input[placeholder*="Suche"], input[placeholder*="such"]');
+                if (searchInput) { searchInput.focus(); searchInput.select(); }
+            }
+            if (e.key === 'Escape') {
+                const dropdown = document.getElementById('search-dropdown');
+                if (dropdown) dropdown.classList.remove('open');
+            }
+        });
+    }
+
+    /* ═══════════════════════════════════════════════
+       INIT
+    ═══════════════════════════════════════════ */
+    function init() {
+        injectNewBadgeCSS();
+        injectScrollToTop();
+        initKeyboardShortcuts();
+
+        const waitForUI = () => {
+            if (document.getElementById('product-filter-bar')) {
+                injectSortUI();
+            }
+            patchRenderProducts();
+            patchProductCardForNewBadge();
+            patchCartForShippingBar();
+
+            setTimeout(updateFilterCounts, 1200);
+            setTimeout(updateFilterCounts, 3000);
+        };
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', waitForUI);
+        } else {
+            waitForUI();
+        }
+    }
+
+    init();
+})();

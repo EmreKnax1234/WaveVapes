@@ -1751,7 +1751,7 @@
             #auth-modal button[onclick="registerUser()"] {
                 min-height: 56px !important; font-size: 1rem !important;
             }
-            #auth-modal button[onclick="sendPasswordReset()"] {
+            #auth-modal button[onclick="openPasswordResetModal()"] { /* BUG-FIX: war sendPasswordReset() — nicht definiert */
                 min-height: 48px !important;
                 padding-top: 12px !important;
                 padding-bottom: 12px !important;
@@ -2864,7 +2864,7 @@
             if (currentUser) {
                 db.collection("users").doc(currentUser.uid).update({ recentlyViewed }).catch(() => {});
             } else {
-                localStorage.setItem("wavevapes_recently", JSON.stringify(recentlyViewed));
+                try { localStorage.setItem("wavevapes_recently", JSON.stringify(recentlyViewed)); } catch(e) { /* Private Mode */ }
             }
             renderRecentlyViewed();
 
@@ -2881,7 +2881,7 @@
             // Alle verfügbaren Elfliq-Sorten
             const elfliqProducts = allProducts.filter(p =>
                 p.available && p.stock > 0 && p.name.toLowerCase().startsWith('elfliq')
-            ).sort((a, b) => a.name.localeCompare(b.name));
+            ).sort((a, b) => (a.rawName || a.name).localeCompare(b.rawName || b.name, 'de'));
 
             // Liquid-Bundle = mindestens ein Item ist Elfliq → Sortenauswahl anbieten
             const bundleItems = b.items || [];
@@ -3245,16 +3245,19 @@
 
         let cart = [];
         let currentUser = null;
-        let userAddress = JSON.parse(localStorage.getItem("wavevapes_address")) || {};
+        // BUG-NEW-1 FIX: JSON.parse(localStorage.getItem(...)) ohne try/catch kann in Private-Mode
+        // oder bei korrumpierten Daten (z.B. durch Browser-Extensions) einen SyntaxError oder
+        // SecurityError werfen und den gesamten Shop-Start abbrechen. Alle drei Stellen abgesichert.
+        let userAddress = (function() { try { return JSON.parse(localStorage.getItem("wavevapes_address")) || {}; } catch(_) { return {}; } })();
         let loyaltyPoints = 0;
         let currentCategoryFilter = "Alle";
         let currentPriceSort   = "default"; // "default" | "price-asc" | "price-desc"
-        let wishlist = JSON.parse(localStorage.getItem("wavevapes_wishlist")) || [];
+        let wishlist = (function() { try { return JSON.parse(localStorage.getItem("wavevapes_wishlist")) || []; } catch(_) { return []; } })();
         let showWishlistOnly = false;
         let recentlyViewed = [];
         // ── Neu: Bewertungs-Cache, Suchhistorie, Wunschlisten-Sortierung ──
         const _productRatingCache = {}; // productId → { avg, count }
-        let _searchHistory = JSON.parse(localStorage.getItem("wavevapes_search_history") || "[]");
+        let _searchHistory = (function() { try { return JSON.parse(localStorage.getItem("wavevapes_search_history") || "[]"); } catch(_) { return []; } })();
         let _wishlistSort = "name"; // "name" | "price-asc" | "price-desc" | "newest"
 
         let appliedDiscount = null;
@@ -3288,13 +3291,16 @@
         let userHasFreeShipping = false;
         let productOrder = [];
         let pendingNicotine = {};
-        let sessionId = localStorage.getItem("wavevapes_sessionId");
+        // BUG-3 FIX: localStorage in try/catch — wirft in iOS Private Mode und Firefox strict
+        let sessionId = (function() {
+            try { return localStorage.getItem("wavevapes_sessionId"); } catch(e) { return null; }
+        })();
         if (!sessionId) {
             // E-02 FIX: Use crypto.getRandomValues instead of Math.random for unpredictable session IDs
             const arr = new Uint8Array(12);
             crypto.getRandomValues(arr);
             sessionId = "guest_" + Date.now() + "_" + Array.from(arr).map(b => b.toString(36)).join('').slice(0, 10);
-            localStorage.setItem("wavevapes_sessionId", sessionId);
+            try { localStorage.setItem("wavevapes_sessionId", sessionId); } catch(e) { /* Private Mode */ }
         }
         // ====================== FIREBASE ======================
         const firebaseConfig = {
@@ -3380,9 +3386,10 @@
                     email: orderData.userEmail,
                     orders: orderItems,
                     cost: {
-                        shipping: orderData.shipping.toFixed(2),
+                        // BUG-2 FIX: Null-Guard mit ||0 — verhindert TypeError wenn total/shipping undefined
+                        shipping: (orderData.shipping || 0).toFixed(2),
                         tax: "0.00",
-                        total: orderData.total.toFixed(2)
+                        total: (orderData.total || 0).toFixed(2)
                     },
                     loyalty_earned: orderData.loyaltyEarned || 0,
                     order_note: orderData.orderNote || ''
@@ -3698,7 +3705,7 @@
                         // Only update local if Firestore has a name and it's different
                         // (Firestore is source of truth after first save)
                         if (data.username !== localName) {
-                            localStorage.setItem("wavevapes_username", data.username);
+                            try { localStorage.setItem("wavevapes_username", data.username); } catch(e) { /* Private Mode */ }
                             updateUserDisplay();
                         }
                     }
@@ -3721,19 +3728,19 @@
                         if (local.length > 0) {
                             recentlyViewed = local;
                             db.collection("users").doc(user.uid).update({ recentlyViewed: local }).catch(() => {});
-                            localStorage.removeItem("wavevapes_recently");
+                            try { localStorage.removeItem("wavevapes_recently"); } catch(e) { /* Private Mode */ }
                         }
                     }
                     renderRecentlyViewed();
                     // K-05 FIX: Load address from Firestore (source of truth for cross-device)
                     if (data.address && data.address.street) {
                         userAddress = data.address;
-                        localStorage.setItem("wavevapes_address", JSON.stringify(userAddress));
+                        try { localStorage.setItem("wavevapes_address", JSON.stringify(userAddress)); } catch(e) { /* Private Mode */ }
                     }
                     // M-05 FIX: Merge guest wishlist with Firestore data instead of overwriting
                     // Previously the local guest wishlist was silently discarded on login
                     if (Array.isArray(data.wishlist)) {
-                        const guestWishlist = JSON.parse(localStorage.getItem("wavevapes_wishlist") || "[]");
+                        let guestWishlist; try { guestWishlist = JSON.parse(localStorage.getItem("wavevapes_wishlist") || "[]"); } catch(e) { guestWishlist = []; }
                         let merged = [...new Set([...guestWishlist, ...data.wishlist])];
                         // BUNDLE-FIX: Bundle-IDs ohne 'b_'-Prefix aus der Wunschliste entfernen.
                         // Wenn eine Bundle-ID (z.B. "abc123") ohne Prefix in der Wishlist liegt,
@@ -3750,7 +3757,7 @@
                             db.collection("users").doc(user.uid).update({ wishlist: merged }).catch(() => {});
                         }
                         wishlist = merged;
-                        localStorage.setItem("wavevapes_wishlist", JSON.stringify(wishlist));
+                        try { localStorage.setItem("wavevapes_wishlist", JSON.stringify(wishlist)); } catch(e) { /* Private Mode */ }
                         updateWishlistBadge();
                         renderProducts();
                     }
@@ -3781,7 +3788,7 @@
             } else {
                 cart = [];
                 _isAdmin = false; // Admin hat sich ausgeloggt — Wartungsmodus wieder aktiv wenn nötig
-                recentlyViewed = JSON.parse(localStorage.getItem("wavevapes_recently") || "[]");
+                try { recentlyViewed = JSON.parse(localStorage.getItem("wavevapes_recently") || "[]"); } catch(e) { recentlyViewed = []; }
                 if (userSnapshotUnsubscribe) userSnapshotUnsubscribe();
                 updateCartDisplay();
                 renderRecentlyViewed();
@@ -4233,7 +4240,7 @@
             if (!street || !zip || !city) { showToast("❌ Bitte alle Felder ausfüllen!", "error"); return; }
             if (!/^\d{5}$/.test(zip)) { showToast("❌ Ungültige PLZ (5 Ziffern erforderlich)", "error"); return; }
             userAddress = {street, zip, city};
-            localStorage.setItem("wavevapes_address", JSON.stringify(userAddress));
+            try { localStorage.setItem("wavevapes_address", JSON.stringify(userAddress)); } catch(e) { /* Private Mode */ }
             // K-05 FIX: Sync address to Firestore so it's available on all devices
             if (currentUser) {
                 db.collection("users").doc(currentUser.uid).update({ address: userAddress })
@@ -4389,7 +4396,12 @@
                     allProducts.push({
                         id: doc.id,
                         name: _esc(data.name),
+                        // BUG-SEARCH FIX: rawName speichert den originalen, nicht-escapeten Namen
+                        // für Suche und slugify(). Ohne rawName würde z.B. "Apple & Peach" als
+                        // "Apple &amp; Peach" gespeichert — die Suche nach "apple & peach" schlägt fehl.
+                        rawName: data.name || '',
                         category: _esc(data.category),
+                        rawCategory: data.category || '',
                         isNew: data.isNew || false,
                         available: data.available !== false,
                         price: data.price || 7.99,
@@ -4492,7 +4504,9 @@
             const searchTerm = document.getElementById("search-input").value.toLowerCase().trim();
             let filtered = allProducts.filter(p => {
                 const catMatch  = currentCategoryFilter === "Alle" || p.category === currentCategoryFilter;
-                const searchMatch = !searchTerm || p.name.toLowerCase().includes(searchTerm);
+                // BUG-SEARCH FIX: rawName statt name verwenden — name ist HTML-escaped
+                // (z.B. "Apple &amp; Peach"), rawName enthält den Originalwert.
+                const searchMatch = !searchTerm || (p.rawName || p.name).toLowerCase().includes(searchTerm);
                 const wishMatch = !showWishlistOnly || wishlist.includes(p.id);
                 return catMatch && searchMatch && wishMatch;
             });
@@ -4856,7 +4870,7 @@
             if (sessionStorage.getItem('upsell_dismissed') === '1') { banner.style.display = 'none'; return; }
 
             // Welche Kategorien sind aktuell im Cart?
-            const cartProductIds = cart.filter(i => i.id != MYSTERY_ID).map(i => i.id);
+            const cartProductIds = cart.filter(i => i.id !== MYSTERY_ID).map(i => i.id);
             if (cartProductIds.length === 0) { banner.style.display = 'none'; return; }
 
             const hasVape   = cartProductIds.some(id => { const p = _productMap.get(id); return p && p.category === VAPE_CAT; });
@@ -4940,7 +4954,7 @@
             const paymentInfoEl = document.getElementById("cart-payment-info");
             const totalSection = document.getElementById("cart-total-section");
             // BUG FIX: Use MYSTERY_ID constant instead of hardcoded 999 for consistency
-            const totalItems = cart.filter(i => i.id != MYSTERY_ID).reduce((sum, item) => sum + item.qty, 0);
+            const totalItems = cart.filter(i => i.id !== MYSTERY_ID).reduce((sum, item) => sum + item.qty, 0);
             countEl.textContent = totalItems;
 
             // ── Gratis-Versand Fortschrittsbalken ──────────────────────────
@@ -5125,7 +5139,7 @@
                             <div class="text-xs text-gray-500 mt-0.5">${priceSubline}</div>
                         </div>
                         <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-                            <input type="number" min="1" max="${_productMap.get(item.id)?.stock || 10}" value="${item.qty}"
+                            <input type="number" min="1" max="${_productMap.get(item.id)?.stock || 10}" value="${item.qty}" autocomplete="off"
                                 onchange="setCartQty('${item.id}', Math.min(${_productMap.get(item.id)?.stock || 10}, Math.max(1, parseInt(this.value)||1))); this.value=Math.min(${_productMap.get(item.id)?.stock || 10},Math.max(1,parseInt(this.value)||1))"
                                 onclick="event.stopImmediatePropagation()"
                                 onkeydown="event.stopImmediatePropagation()"
@@ -5224,7 +5238,7 @@
                 return;
             }
             // IDs vorher merken, damit wir alle Karten patchen können
-            const prevIds = cart.filter(i => i.id != MYSTERY_ID).map(i => i.id);
+            const prevIds = cart.filter(i => i.id !== MYSTERY_ID).map(i => i.id);
             cart = [];
             appliedDiscount = null;
             pendingNicotine = {};
@@ -5329,14 +5343,9 @@
 
         async function placeOrder() {
             if (_orderInProgress) return;
-            // RACE-CONDITION FIX: Flag sofort setzen (synchron, vor jedem await)
-            // JavaScript ist single-threaded — dieser Abschnitt wird atomar ausgeführt.
-            _orderInProgress = true;
-            const orderButton = document.getElementById('place-order-btn');
-            const _orderBtnOrigText = orderButton ? orderButton.innerHTML : 'BESTELLUNG ABSCHICKEN';
-            if (orderButton) { orderButton.disabled = true; orderButton.textContent = "Bestellung wird verarbeitet..."; }
-
-            try {
+            // BUG-1 FIX: Guard-Checks VOR dem Flag-Setzen und Button-Deaktivieren.
+            // Frühere returns ließen den Button dauerhaft disabled — Seiten-Reload nötig.
+            // JavaScript ist single-threaded: dieser Block läuft atomar (kein await).
             if (!currentUser) {
                 showToast("❌ Bitte zuerst einloggen!", "error");
                 showAuthModal();
@@ -5348,6 +5357,12 @@
                 showAddressModal();
                 return;
             }
+            _orderInProgress = true;
+            const orderButton = document.getElementById('place-order-btn');
+            const _orderBtnOrigText = orderButton ? orderButton.innerHTML : 'BESTELLUNG ABSCHICKEN';
+            if (orderButton) { orderButton.disabled = true; orderButton.textContent = "Bestellung wird verarbeitet..."; }
+
+            try {
             // Rate-limit: max. 1 offene Bestellung gleichzeitig
             try {
                 const openOrders = await db.collection("orders")
@@ -5369,7 +5384,7 @@
                 // Bundles are excluded from this check — their price is fixed on the bundle doc.
                 // ═══════════════════════════════════════════════════════
                 const cartProductIds = [...new Set(
-                    cart.filter(i => i.id != MYSTERY_ID && !i.isBundle).map(i => String(i.id))
+                    cart.filter(i => i.id !== MYSTERY_ID && !i.isBundle).map(i => String(i.id))
                 )];
                 const priceSnaps = await Promise.all(
                     cartProductIds.map(id => db.collection("products").doc(id).get())
@@ -5413,7 +5428,7 @@
                 // the same time — Firestore transactions are serialised.
                 // ═══════════════════════════════════════════════════════
                 const qtyMap = {};
-                cart.filter(i => i.id != MYSTERY_ID && !i.isBundle).forEach(i => {
+                cart.filter(i => i.id !== MYSTERY_ID && !i.isBundle).forEach(i => {
                     qtyMap[String(i.id)] = (qtyMap[String(i.id)] || 0) + i.qty;
                 });
                 // ── STOCK VALIDATION (read-only — public read erlaubt) ──────────────
@@ -6138,7 +6153,7 @@
             modal.classList.remove("hidden"); modal.classList.add("flex");
         }
         function confirmAge() {
-            localStorage.setItem("age_verified", "true");
+            try { localStorage.setItem("age_verified", "true"); } catch(e) { /* Private Mode */ }
             const modal = document.getElementById("age-modal");
             modal.classList.add("hidden"); modal.classList.remove("flex");
             // Guard: showToast kann noch nicht verfügbar sein wenn Firebase langsam lädt
@@ -6316,7 +6331,7 @@
 
         // ── WISHLIST ────────────────────────────────────────────────────────────
         function saveWishlist() {
-            localStorage.setItem("wavevapes_wishlist", JSON.stringify(wishlist));
+            try { localStorage.setItem("wavevapes_wishlist", JSON.stringify(wishlist)); } catch(e) { /* Private Mode */ }
             // Bug 4 fix: sync to Firestore so wishlist persists across devices
             if (currentUser) {
                 db.collection("users").doc(currentUser.uid)
@@ -6610,7 +6625,7 @@
                     ${_searchHistory.slice(0,5).map(h => `
                         <div class="sd-item" role="option" onclick="applySearchHistory('${h.replace(/'/g,'&#39;')}')">
                             <div class="sd-placeholder" style="font-size:14px">🕐</div>
-                            <span class="sd-name">${h}</span>
+                            <span class="sd-name">${esc(h)}</span><!-- BUG-B FIX: h aus localStorage/Firestore escapen -->
                         </div>`).join('')}`;
                 dd.classList.add("open");
                 return;
@@ -6618,11 +6633,14 @@
 
             const MAX = 7;
             const matches = allProducts
-                .filter(p => p.name.toLowerCase().includes(term) || (p.category||'').toLowerCase().includes(term))
+                // BUG-SEARCH FIX: rawName/rawCategory für Suche verwenden (nicht HTML-escaped)
+                .filter(p => (p.rawName || p.name).toLowerCase().includes(term) || (p.rawCategory || p.category||'').toLowerCase().includes(term))
                 .slice(0, MAX);
 
             if (matches.length === 0) {
-                dd.innerHTML = `<div class="sd-empty">Keine Produkte für „${term}" gefunden</div>`;
+                // BUG-A FIX: term kommt direkt aus input.value → muss vor innerHTML-Einfügung
+                // escaped werden, sonst ist XSS möglich (z.B. <img src=x onerror=alert(1)>).
+                dd.innerHTML = `<div class="sd-empty">Keine Produkte für „${esc(term)}" gefunden</div>`;
             } else {
                 _sdFocusIdx = -1;
                 dd.innerHTML = `<div class="sd-results-count">${matches.length} Treffer</div>` +
@@ -6652,7 +6670,7 @@
         function addSearchToHistory(term) {
             if (!term) return;
             _searchHistory = [term, ..._searchHistory.filter(h => h !== term)].slice(0, 8);
-            localStorage.setItem("wavevapes_search_history", JSON.stringify(_searchHistory));
+            try { localStorage.setItem("wavevapes_search_history", JSON.stringify(_searchHistory)); } catch(e) { /* Private Mode */ }
         }
 
         function applySearchHistory(term) {
@@ -6663,7 +6681,7 @@
 
         function clearSearchHistory() {
             _searchHistory = [];
-            localStorage.removeItem("wavevapes_search_history");
+            try { localStorage.removeItem("wavevapes_search_history"); } catch(e) { /* Private Mode */ }
             closeSearchDropdown();
         }
 
@@ -6825,7 +6843,7 @@
             if (currentUser) {
                 db.collection("users").doc(currentUser.uid).update({ recentlyViewed }).catch(() => {});
             } else {
-                localStorage.setItem("wavevapes_recently", JSON.stringify(recentlyViewed));
+                try { localStorage.setItem("wavevapes_recently", JSON.stringify(recentlyViewed)); } catch(e) { /* Private Mode */ }
             }
             renderRecentlyViewed();
             // Hintergrund-Scroll sperren (gleiche Logik wie Cart)
@@ -7598,13 +7616,14 @@
                 </a>`;
             document.body.prepend(banner);
             // Schiebt Inhalt nach unten damit Banner nicht überlappt
-            document.body.style.paddingTop = (parseInt(document.body.style.paddingTop || '0') + 44) + 'px';
+            // BUG-NEW-2 FIX: parseInt ohne Radix 10 — bei Strings wie "0px" kann Oktal-Parsing auftreten
+            document.body.style.paddingTop = (parseInt(document.body.style.paddingTop || '0', 10) + 44) + 'px';
         }
 
         function _hideAdminShopClosedBanner() {
             const banner = document.getElementById('admin-shop-closed-banner');
             if (!banner) return;
-            document.body.style.paddingTop = Math.max(0, parseInt(document.body.style.paddingTop || '0') - 44) + 'px';
+            document.body.style.paddingTop = Math.max(0, parseInt(document.body.style.paddingTop || '0', 10) - 44) + 'px'; // BUG-NEW-2 FIX: Radix 10
             banner.remove();
         }
 
@@ -7817,7 +7836,7 @@
 
         function initialize() {
             initEmailJS();
-            if (!localStorage.getItem("age_verified")) showAgeModal();
+            if (!(function(){ try { return localStorage.getItem("age_verified"); } catch(e) { return null; } })()) showAgeModal();
             updateAuthUI();
             updateUserDisplay();
             updateLoyaltyDisplay();
@@ -8159,10 +8178,9 @@
             const cpX = (startX + endX) / 2;
             const cpY = Math.min(startY, endY) - 120;
 
-            const frames = 40;
+            // BUG-FIX: `frames` und `frame` waren deklariert aber nie benutzt (dead code) → entfernt.
             const duration = 520; // ms
 
-            let frame = 0;
             const startTime = performance.now();
 
             function step(now) {
@@ -8297,9 +8315,12 @@
             }
 
             function showSwipeHint(direction, catName) {
-                hintText.textContent = direction === 'left'
-                    ? `${catName} →`
-                    : `← ${catName}`;
+                // BUG-FIX: hintText ist null wenn kein #swipe-hint-text Element im DOM
+                // vorhanden ist → TypeError. Fallback: Text direkt in #swipe-hint schreiben.
+                if (!hint) return;
+                const _swipeText = direction === 'left' ? `${catName} →` : `← ${catName}`;
+                if (hintText) hintText.textContent = _swipeText;
+                else hint.textContent = _swipeText;
                 hint.classList.add('swipe-hint-visible');
                 clearTimeout(hintTimer);
                 hintTimer = setTimeout(() => hint.classList.remove('swipe-hint-visible'), 1600);
@@ -8400,7 +8421,9 @@
         async function initFCM() {
             if (!('serviceWorker' in navigator)) return;
             if (Notification.permission === 'denied') return;
-            if (localStorage.getItem('push_dismissed') === 'true') return;
+            // BUG-NEW-3 FIX: localStorage.getItem() kann in Private-Mode einen SecurityError werfen.
+            // Wrap in try/catch damit initFCM() sauber beendet und der Shop nicht abstürzt.
+            try { if (localStorage.getItem('push_dismissed') === 'true') return; } catch(_) { return; }
 
             try {
                 _fcmMessaging = firebase.messaging();
@@ -8499,7 +8522,7 @@
         function pushDismiss() {
             const banner = document.getElementById('push-optin-banner');
             if (banner) banner.style.display = 'none';
-            localStorage.setItem('push_dismissed', 'true');
+            try { localStorage.setItem('push_dismissed', 'true'); } catch(e) { /* Private Mode */ }
         }
 
         // Push nach Load starten
@@ -8623,6 +8646,17 @@
             </p>
         </div>
     </div>
+<!-- ═══════════════════════════════════════
+     WaveVapes Shop Improvements v1.0
+     - Produkt-Sortierung (Preis ↑↓, Name A-Z, Neu zuerst)
+     - Scroll-to-Top Floating Button
+     - Gratis-Versand Fortschrittsbalken im Warenkorb
+     - NEU-Badge für neue Produkte (≤14 Tage)
+     - Kategorie-Produktanzahl in Filter-Pills
+     - Keyboard-Shortcut: / fokussiert Suche
+════════════════════════════════════════ -->
+<script src="shop-improvements.js" defer></script>
+
 <!--Start of Tawk.to Script-->
 <script type="text/javascript">
 var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();

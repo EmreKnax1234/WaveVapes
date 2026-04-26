@@ -1,0 +1,106 @@
+        <div class="usr-shell">
+
+            <!-- KPI Strip -->
+            <div class="usr-stats">
+                <div class="usr-stat" style="--glow:#67e8f9">
+                    <div class="usr-stat-glow" style="background:#67e8f9"></div>
+                    <div class="usr-stat-lbl">Gesamt</div>
+                    <div class="usr-stat-val" id="usr-kpi-total">—</div>
+                </div>
+                <div class="usr-stat">
+                    <div class="usr-stat-glow" style="background:#34d399"></div>
+                    <div class="usr-stat-lbl">Aktiv</div>
+                    <div class="usr-stat-val" style="color:var(--usr-green)" id="usr-kpi-active">—</div>
+                </div>
+                <div class="usr-stat">
+                    <div class="usr-stat-glow" style="background:#fbbf24"></div>
+                    <div class="usr-stat-lbl">Ø Punkte</div>
+                    <div class="usr-stat-val" style="color:var(--usr-amber)" id="usr-kpi-pts">—</div>
+                </div>
+                <div class="usr-stat">
+                    <div class="usr-stat-glow" style="background:#f87171"></div>
+                    <div class="usr-stat-lbl">Gesperrt</div>
+                    <div class="usr-stat-val" style="color:var(--usr-red)" id="usr-kpi-blocked">—</div>
+                </div>
+            </div>
+
+            <!-- Toolbar -->
+            <div class="usr-toolbar">
+                <div class="usr-search-wrap">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input class="usr-search" id="user-search" placeholder="E-Mail oder Username suchen... (Ctrl+F)">
+                </div>
+                <button class="usr-btn usr-btn-green"  onclick="exportUsersToCSV()"><i class="fa-solid fa-file-csv"></i> Export</button>
+                <button class="usr-btn usr-btn-amber"  onclick="document.getElementById('csv-upload-users').click()"><i class="fa-solid fa-file-import"></i> Import</button>
+                <button class="usr-btn" id="usr-ai-churn-btn" onclick="aiChurnAnalysis()" style="background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.3);color:#a78bfa"><i class="fa-solid fa-wand-magic-sparkles"></i> KI-Churn-Analyse</button>
+                <!-- Neu: Filter nach Registrierungsdatum -->
+                <select id="usr-date-filter" class="usr-btn" onchange="usrApplyDateFilter(this.value)" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.6);border-radius:12px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer" title="Registrierungsdatum filtern">
+                    <option value="">Alle User</option>
+                    <option value="today">Heute neu</option>
+                    <option value="7">Letzte 7 Tage</option>
+                    <option value="30">Letzte 30 Tage</option>
+                </select>
+                <button class="usr-btn usr-btn-ghost"  id="usr-count-badge" style="cursor:default;pointer-events:none">— User</button>
+            </div>
+            <script>
+            function usrApplyDateFilter(val) {
+                const tbody = document.getElementById('users-tbody');
+                if (!tbody) return;
+                const now = new Date();
+                const todayStr = now.toDateString(); // BUG-FIX: toDateString() prüft Tag+Monat+Jahr korrekt
+                tbody.querySelectorAll('tr').forEach(row => {
+                    if (!row.cells || row.cells.length < 2) { row.style.display = ''; return; }
+                    if (!val) { row.style.display = ''; return; }
+                    // Datum in Zellen suchen (Format dd.mm.yyyy)
+                    const allText = Array.from(row.cells).map(c => c.textContent).join(' ');
+                    const parts = allText.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+                    if (!parts) { row.style.display = val ? 'none' : ''; return; }
+                    const d = new Date(+parts[3], +parts[2]-1, +parts[1]);
+                    const diffDays = (now - d) / 86400000;
+                    let show = false;
+                    // BUG-FIX: Vorher getDate()-only check hatte Jahresgrenze-Bug
+                    if (val === 'today') show = d.toDateString() === todayStr;
+                    else show = diffDays <= +val;
+                    row.style.display = show ? '' : 'none';
+                });
+            }
+            </script>
+
+            <!-- KI Churn-Analyse Ergebnis -->
+            <div id="usr-ai-churn-result" style="display:none;background:rgba(167,139,250,.07);border:1px solid rgba(167,139,250,.2);border-radius:16px;padding:18px 20px;margin-bottom:4px"></div>
+
+            <!-- Table -->
+            <div class="usr-table-card">
+                <div class="usr-scroll">
+                    <table class="usr-table">
+                        <thead>
+                            <tr>
+                                <th style="text-align:left;padding-left:18px">Benutzer</th>
+                                <th style="text-align:center">Referral</th>
+                                <th style="text-align:center">Punkte</th>
+                                <th style="text-align:center">IP-Adresse</th>
+                                <th style="text-align:center">Gratis&shy;versand</th>
+                                <th style="text-align:center">Status</th>
+                                <th style="text-align:right;padding-right:18px">Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-tbody">
+                            <tr><td colspan="7"><div class="usr-empty"><span class="eu-spinner"></span><br><br>Lade Benutzer...</div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Danger Zone -->
+            <div class="usr-danger-zone">
+                <div>
+                    <div style="font-size:13px;font-weight:700;color:var(--usr-red);margin-bottom:3px"><i class="fa-solid fa-triangle-exclamation" style="margin-right:6px"></i>Danger Zone</div>
+                    <div class="usr-danger-label">Setzt alle Loyalty-Punkte aller User auf 0. Nicht rückgängig machbar.</div>
+                </div>
+                <button class="usr-btn usr-btn-red" onclick="resetAllLoyaltyPoints()" style="padding:10px 18px;font-size:12px">
+                    <i class="fa-solid fa-rotate-left"></i> Alle Punkte zurücksetzen
+                </button>
+            </div>
+
+        </div><!-- /usr-shell -->
+        <input type="file" id="csv-upload-users" accept=".csv" class="hidden" onchange="importUsersFromCSV(event)">

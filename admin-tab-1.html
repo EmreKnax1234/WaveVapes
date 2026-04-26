@@ -1,0 +1,127 @@
+<div class="ord-shell">
+
+            <!-- Page header -->
+            <div class="ord-page-hdr">
+                <div class="ord-page-title">
+                    <i class="fa-solid fa-receipt"></i> Bestellungen
+                    <span class="ord-live-dot" title="Live-Updates aktiv"></span>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                    <button class="ord-btn ord-btn-green" onclick="exportOrdersToCSV()"><i class="fa-solid fa-file-csv"></i> CSV</button>
+                    <button class="ord-btn ord-btn-cyan"  onclick="exportOrdersWithTracking()"><i class="fa-solid fa-link"></i> Tracking-Export</button>
+                    <button class="ord-btn ord-btn-amber" onclick="document.getElementById('csv-upload-orders').click()"><i class="fa-solid fa-file-import"></i> Import</button>
+                </div>
+            </div>
+
+                <div class="ord-kpi-strip">
+                <div class="ord-kpi active" id="ord-kpi-all" style="--ord-kpi-color:var(--ord-cyan);--ord-kpi-accent:rgba(103,232,249,.25)" onclick="ordSetFilter('')">
+                    <div class="ord-kpi-glow"></div>
+                    <div class="ord-kpi-lbl">Gesamt</div>
+                    <div class="ord-kpi-val" id="ord-cnt-all">—</div>
+                </div>
+                <div class="ord-kpi" id="ord-kpi-zahlung" style="--ord-kpi-color:#facc15;--ord-kpi-accent:rgba(250,204,21,.2)" onclick="ordSetFilter('Zahlung erwartet')">
+                    <div class="ord-kpi-glow" style="background:#facc15"></div>
+                    <div class="ord-kpi-lbl">Zahlung</div>
+                    <div class="ord-kpi-val" id="ord-cnt-zahlung">—</div>
+                </div>
+                <div class="ord-kpi" id="ord-kpi-wird" style="--ord-kpi-color:#60a5fa;--ord-kpi-accent:rgba(96,165,250,.2)" onclick="ordSetFilter('Wird bearbeitet')">
+                    <div class="ord-kpi-glow" style="background:#60a5fa"></div>
+                    <div class="ord-kpi-lbl">Bearbeitung</div>
+                    <div class="ord-kpi-val" id="ord-cnt-wird">—</div>
+                </div>
+                <div class="ord-kpi" id="ord-kpi-versendet" style="--ord-kpi-color:#a78bfa;--ord-kpi-accent:rgba(167,139,250,.2)" onclick="ordSetFilter('Versendet')">
+                    <div class="ord-kpi-glow" style="background:#a78bfa"></div>
+                    <div class="ord-kpi-lbl">Versendet</div>
+                    <div class="ord-kpi-val" id="ord-cnt-versendet">—</div>
+                </div>
+                <div class="ord-kpi" id="ord-kpi-zugestellt" style="--ord-kpi-color:#34d399;--ord-kpi-accent:rgba(52,211,153,.2)" onclick="ordSetFilter('Zugestellt')">
+                    <div class="ord-kpi-glow" style="background:#34d399"></div>
+                    <div class="ord-kpi-lbl">Zugestellt</div>
+                    <div class="ord-kpi-val" id="ord-cnt-zugestellt">—</div>
+                </div>
+                <div class="ord-kpi" id="ord-kpi-storniert" style="--ord-kpi-color:#ef4444;--ord-kpi-accent:rgba(239,68,68,.2)" onclick="ordSetFilter('Storniert')">
+                    <div class="ord-kpi-glow" style="background:#ef4444"></div>
+                    <div class="ord-kpi-lbl">Storniert</div>
+                    <div class="ord-kpi-val" id="ord-cnt-storniert">—</div>
+                </div>
+            </div>
+
+            <!-- Toolbar -->
+            <div class="ord-toolbar">
+                <div class="ord-search-wrap">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input id="order-search" class="ord-search" placeholder="Bestellnr. oder E-Mail... (Ctrl+F)">
+                </div>
+                <select id="status-filter" class="ord-fsel" onchange="ordSyncKpiFilter()">
+                    <option value="">Alle Status</option>
+                    <option value="Zahlung erwartet">Zahlung erwartet</option>
+                    <option value="Wird bearbeitet">Wird bearbeitet</option>
+                    <option value="Versendet">Versendet</option>
+                    <option value="Zugestellt">Zugestellt</option>
+                    <option value="Storniert">Storniert</option>
+                </select>
+                <!-- Zeitraum-Filter -->
+                <select id="ord-date-filter" class="ord-fsel" onchange="ordApplyDateFilter(this.value)" title="Zeitraum filtern" style="min-width:110px">
+                    <option value="">Alle Tage</option>
+                    <option value="today">Heute</option>
+                    <option value="7">Letzte 7 Tage</option>
+                    <option value="30">Letzte 30 Tage</option>
+                    <option value="90">Letzte 90 Tage</option>
+                </select>
+                <span style="font-size:11px;color:var(--ord-muted)" id="ord-result-count"></span>
+            </div>
+            <!-- Datumsfilter-Script -->
+            <script>
+            function ordApplyDateFilter(val) {
+                const tbody = document.getElementById('orders-tbody');
+                if (!tbody) return;
+                const now = new Date();
+                const todayStr = now.toDateString(); // BUG-FIX: toDateString() prüft Tag+Monat+Jahr
+                tbody.querySelectorAll('tr[data-order-date], tr').forEach(row => {
+                    if (!row.cells || row.cells.length < 2) return;
+                    if (!val) { row.style.display = ''; return; }
+                    const dateTd = row.cells[1];
+                    if (!dateTd) return;
+                    const txt = dateTd.textContent.trim();
+                    // Datum parsen (Format: dd.mm.yyyy oder dd.mm.yy)
+                    const parts = txt.match(/(\d{1,2})\.(\d{1,2})\.(\d{2,4})/);
+                    if (!parts) { row.style.display = val ? 'none' : ''; return; }
+                    const year = +parts[3] < 100 ? 2000 + +parts[3] : +parts[3];
+                    const d = new Date(year, +parts[2]-1, +parts[1]);
+                    const diffDays = (now - d) / 86400000;
+                    let show = false;
+                    // BUG-FIX: Vorher nur getDate() geprüft → Jahresgrenze-Bug (z.B. Jan 5 2026 = Jan 5 2025)
+                    if (val === 'today') show = d.toDateString() === todayStr;
+                    else show = diffDays <= +val;
+                    row.style.display = show ? '' : 'none';
+                });
+                const visible = tbody.querySelectorAll('tr:not([style*="none"])');
+                const cnt = document.getElementById('ord-result-count');
+                if (cnt && val) cnt.textContent = visible.length + ' Ergebnisse';
+                else if (cnt && !val) cnt.textContent = tbody.querySelectorAll('tr').length + ' Bestellungen';
+            }
+            </script>
+
+            <!-- Table -->
+            <div class="ord-table-card">
+                <div class="ord-scroll">
+                    <table class="ord-table">
+                        <thead>
+                            <tr>
+                                <th style="text-align:left;padding-left:18px">Bestellnr.</th>
+                                <th style="text-align:left">Datum</th>
+                                <th style="text-align:left">Kunde</th>
+                                <th style="text-align:right">Gesamt</th>
+                                <th style="text-align:center">Status</th>
+                                <th style="text-align:right;padding-right:18px">Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orders-tbody">
+                            <tr><td colspan="6"><div class="ord-empty"><span class="eu-spinner"></span><br><br>Lade Bestellungen...</div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div><!-- /ord-shell -->
+        <input type="file" id="csv-upload-orders" accept=".csv" class="hidden" onchange="importOrdersFromCSV(event)">

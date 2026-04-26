@@ -17425,13 +17425,14 @@ async function executeCatCostUpdate() {
 
     async function callAI(name, count, tone, lang, stars) {
         var prompt = 'Generiere ' + count + ' realistische Kundenbewertungen auf ' + (lang==='de'?'Deutsch':'Englisch') + ' für "' + name + '" (Vape-Produkt, wavevapes.de).\nStil: ' + (tone==='gemischt'?'abwechslungsreich':tone) + '. Erlaubte Sterne: ' + stars.join(',') + '.\nMenschlich, gelegentlich Emojis, manchmal kleine Kritik, unterschiedliche Längen.\nNUR JSON-Array: [{"rating":5,"text":"..."},...]';
-        var resp = await fetch('https://api.anthropic.com/v1/messages', {
+        var resp = await fetch('https://wavevapes.clever-selling-station.workers.dev', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'anthropic-dangerous-direct-browser-access': 'true' },
-            body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1500, messages: [{ role: 'user', content: prompt }] })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: prompt, max_tokens: 1500 })
         });
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         var data = await resp.json();
+        if (data.error) throw new Error(data.error.message || data.error);
         var raw = ((data.content || [])[0] || {}).text || '';
         var m = raw.replace(/```json|```/g, '').trim().match(/\[[\s\S]*\]/);
         if (!m) throw new Error('no array');

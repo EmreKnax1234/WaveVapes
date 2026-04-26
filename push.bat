@@ -165,7 +165,7 @@ if errorlevel 1 (
     echo [WARNUNG] Firebase CLI nicht gefunden - Deploy uebersprungen.
     echo           Installieren mit: npm install -g firebase-tools
 ) else (
-    firebase deploy --only hosting --project wavevapes-7a960
+    firebase deploy --only hosting
     if errorlevel 1 (
         echo [FEHLER] Firebase Deploy fehlgeschlagen.
         set /p "CONT=[FRAGE] Trotzdem weitermachen? (j/N): "

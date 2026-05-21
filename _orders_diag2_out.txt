@@ -1,0 +1,189 @@
+
+======================================================================
+  switchTab()  [Zeile 10597-10676]
+======================================================================
+  10597: function switchTab(n) {
+  10598:     // Block if no permission (non-superadmin) — ABER Nur-Lesen darf alle Tabs sehen
+  10599:     if (!saCurrentUserIsSuperadmin && !window._isReadOnly && n !== 12) {
+  10600:         const perm = SA_PERMISSIONS.find(p => p.tab === n);
+  10601:         if (perm) {
+  10602:             const userDoc_perms = window._currentAdminPerms;
+  10603:             if (userDoc_perms && !userDoc_perms.includes(perm.key)) {
+  10604:                 showToast('⛔ Keine Berechtigung für diesen Bereich', 'error');
+  10605:                 return;
+  10606:             }
+  10607:         }
+  10608:     }
+  10609:     // Tab 12 requires unlock
+  10610:     if (n === 12) { openSuperadminZone(); return; }
+  10611: 
+  10612:     document.querySelectorAll('.sidebar-item, .sidebar-item-locked').forEach(el => el.classList.remove('tab-active'));
+  10613:     const si = document.getElementById('sidebar-'+n);
+  10614:     if (si) si.classList.add('tab-active');
+  10615:     document.querySelectorAll('[id^="tab-content-"]').forEach(el => el.classList.add('hidden'));
+  10616:     const tc = document.getElementById('tab-content-'+n);
+  10617:     if (tc) tc.classList.remove('hidden');
+  10618:     // breadcrumb
+  10619:     const bc = document.getElementById('hdr-tab-name');
+  10620:     if (bc) bc.textContent = TAB_NAMES[n] || '';
+  10621:     // tab-specific loaders
+  10622:     if(n===4)loadCoupons();
+  10623:     if(n===5)loadAnalytics();
+  10624:     if(n===6){
+  10625:         // Tab 6 = IP-Sicherheit — nur Superadmin
+  10626:         if (!saCurrentUserIsSuperadmin) { showToast('⛔ Nur für Superadmins', 'error'); return; }
+  10627:         loadUnauthorizedLogs(); loadBannedIPs();
+  10628:     }
+  10629:     if(n===8){ (async()=>{ if(!_bundles.length) await loadBundles(); await loadProductOrder(); })(); }
+  10630:     if(n===11){ rvAdminLoad('pending'); rvAdminLoadStats(); }
+  10631:     if(n===9){
+  10632:         loadPresence();
+  10633:         if(presenceRefreshInterval)clearInterval(presenceRefreshInterval);
+  10634:         presenceRefreshInterval=setInterval(()=>{
+  10635:             if(!document.getElementById('tab-content-9').classList.contains('hidden'))loadPresence();
+  10636:         },15000);
+  10637:     }
+  10638:     if(n===10)loadExtendedUsers();
+  10639:     if(n===13)loadCustomerOverview();
+  10640:     if(n===14)loadPromos();
+  10641:     if(n===15) {
+  10642:         loadClickAnalytics();
+  10643:     } else {
+  10644:         // Tear down click-analytics live listener when leaving tab 15
+  10645:         if(_caUnsub) { _caUnsub(); _caUnsub = null; }
+  10646:     }
+  10647:     if(n===16) { if(!_promos.length) loadPromos(); loadBundles(); }
+  10648:     if(n===17) loadAdminLogs();
+  10649:     if(n===18) frvInit();
+  10650:     // Re-apply write button locks for dynamically rendered content
+  10651:     if (window._isReadOnly) setTimeout(markWriteButtons, 400);
+  10652: }
+  10653: function toggleSidebar(){
+  10654:     const s=document.getElementById('sidebar');
+  10655:     s.style.transform=s.style.transform==='translateX(-100%)'?'':'translateX(-100%)';
+  10656: }
+  10657: 
+  10658: 
+  10659: // ═══════════════════════════════════════════════════════
+  10660: //  AKTIONEN / PROMOTIONS (Tab 14)
+  10661: // ═══════════════════════════════════════════════════════
+  10662: let _promos = [];
+  10663: let _promoEditId = null;
+  10664: // M-NEW-01 FIX: Track listener to prevent stacking
+  10665: let _promosUnsub = null;
+  10666: 
+  10667: function loadPromos() {
+  10668:     // Timer-Einstellungen laden
+  10669:     db.collection('settings').doc('main').get().then(doc => {
+  10670:         if (!doc.exists) return;
+  10671:         const data = doc.data();
+  10672:         const el = document.getElementById('set-countdown-active');
+  10673:         if (el) el.checked = data.countdown_active || false;
+  10674:         const lbl = document.getElementById('set-countdown-label');
+  10675:         if (lbl) lbl.value = data.countdown_label || '🔥 Angebot endet in';
+  10676:         const end = document.getElementById('set-countdown-end');
+
+======================================================================
+  ordRenderTable()  [Zeile 7385-7444]
+======================================================================
+   7385: function ordRenderTable() {
+   7386:     const search = (document.getElementById('order-search')?.value || '').toLowerCase();
+   7387:     const statusF = document.getElementById('status-filter')?.value || '';
+   7388:     const docs = _ordAllDocs.filter(doc => {
+   7389:         const o = doc.data();
+   7390:         const status = o.status || 'Zahlung erwartet';
+   7391:         if (statusF && status !== statusF) return false;
+   7392:         if (search && !String(o.orderNumber||'').toLowerCase().includes(search) && !String(o.userEmail||'').toLowerCase().includes(search)) return false;
+   7393:         return true;
+   7394:     });
+   7395: 
+   7396:     // update counts
+   7397:     const counts = {};
+   7398:     _ordAllDocs.forEach(doc => {
+   7399:         const s = doc.data().status || 'Zahlung erwartet';
+   7400:         counts[s] = (counts[s]||0) + 1;
+   7401:     });
+   7402:     const total = _ordAllDocs.length;
+   7403:     const set = (id,v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
+   7404:     set('ord-cnt-all',       total);
+   7405:     set('ord-cnt-zahlung',   counts['Zahlung erwartet']||0);
+   7406:     set('ord-cnt-wird',      counts['Wird bearbeitet']||0);
+   7407:     set('ord-cnt-versendet', counts['Versendet']||0);
+   7408:     set('ord-cnt-zugestellt',counts['Zugestellt']||0);
+   7409: 
+   7410:     const rc = document.getElementById('ord-result-count');
+   7411:     if (rc) rc.textContent = docs.length !== total ? `${docs.length} von ${total}` : `${total} Bestellungen`;
+   7412: 
+   7413:     if (!docs.length) {
+   7414:         document.getElementById('orders-tbody').innerHTML =
+   7415:             `<tr><td colspan="6"><div class="ord-empty"><i class="fa-solid fa-receipt"></i>Keine Bestellungen gefunden</div></td></tr>`;
+   7416:         return;
+   7417:     }
+   7418: 
+   7419:     let html = '';
+   7420:     docs.forEach(doc => {
+   7421:         const o = doc.data();
+   7422:         const date   = o.date ? o.date.toDate().toLocaleDateString('de-DE', {day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+   7423:         const status = o.status || 'Zahlung erwartet';
+   7424:         const stCls  = ORD_STATUS_CLASS[status] || 'ord-st-zahlung';
+   7425:         const email  = o.userEmail || '—';
+   7426:         const initials = email.slice(0,2).toUpperCase();
+   7427:         const hasTracking = !!o.trackingNumber;
+   7428: 
+   7429:         html += `<tr onclick="showOrderModal('${doc.id}')">
+   7430:             <td style="padding-left:18px">
+   7431:                 <div class="ord-num">#${escA(String(o.orderNumber||'—'))}</div>
+   7432:                 ${hasTracking ? `<div style="font-size:9px;color:var(--ord-purple);margin-top:2px;font-family:'JetBrains Mono',monospace">${escA(o.carrier||'')} ${escA(o.trackingNumber)}</div>` : ''}
+   7433:                 ${o.orderNote ? `<div style="font-size:9px;color:#f59e0b;margin-top:2px" title="${(o.orderNote||'').replace(/"/g,'&quot;')}"><i class="fa-solid fa-comment-dots" style="margin-right:3px"></i>Wunsch</div>` : ''}
+   7434:             </td>
+   7435:             <td style="white-space:nowrap;color:var(--ord-muted);font-size:11px">${date}</td>
+   7436:             <td>
+   7437:                 <div class="ord-customer">
+   7438:                     <div class="ord-customer-av">${initials}</div>
+   7439:                     <div class="ord-customer-email">${email}</div>
+   7440:                 </div>
+   7441:             </td>
+   7442:             <td style="text-align:right;font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--ord-green)">${(o.total||0).toFixed(2)} €</td>
+   7443:             <td style="text-align:center"><span class="ord-status ${stCls}">${status}</span></td>
+   7444:             <td style="text-align:right;padding-right:18px">
+
+======================================================================
+  _ordAllDocs deklaration  [Zeile 7359-7363]
+======================================================================
+   7359: let _ordAllDocs = [];
+   7360: 
+   7361: function ordSetFilter(status) {
+   7362:     document.getElementById('status-filter').value = status;
+   7363:     // update active KPI
+
+======================================================================
+  _ordAllDocs deklaration  [Zeile 7388-7392]
+======================================================================
+   7388:     const docs = _ordAllDocs.filter(doc => {
+   7389:         const o = doc.data();
+   7390:         const status = o.status || 'Zahlung erwartet';
+   7391:         if (statusF && status !== statusF) return false;
+   7392:         if (search && !String(o.orderNumber||'').toLowerCase().includes(search) && !String(o.userEmail||'').toLowerCase().includes(search)) return false;
+
+======================================================================
+  _ordAllDocs deklaration  [Zeile 7402-7406]
+======================================================================
+   7402:     const total = _ordAllDocs.length;
+   7403:     const set = (id,v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
+   7404:     set('ord-cnt-all',       total);
+   7405:     set('ord-cnt-zahlung',   counts['Zahlung erwartet']||0);
+   7406:     set('ord-cnt-wird',      counts['Wird bearbeitet']||0);
+
+======================================================================
+  order-search element  [Zeile 2575-2577]
+======================================================================
+   2575:                     <input id="order-search" class="ord-search" placeholder="Bestellnr. oder E-Mail...">
+   2576:                 </div>
+   2577:                 <select id="status-filter" class="ord-fsel" onchange="ordSyncKpiFilter()">
+
+======================================================================
+  orders-tbody element  [Zeile 2602-2604]
+======================================================================
+   2602:                         <tbody id="orders-tbody">
+   2603:                             <tr><td colspan="6"><div class="ord-empty"><span class="eu-spinner"></span><br><br>Lade Bestellungen...</div></td></tr>
+   2604:                         </tbody>

@@ -17025,43 +17025,6 @@ Kein Markdown außer den Emoji-Überschriften.`, 500
 // closeCatCostModal, catCostUpdatePreview, executeCatCostUpdate, and
 // the Fake Review Generator IIFE already defined above.
 
-</script>
-
-        el.innerHTML = feasibilityWarning; // Warnung beibehalten, Spinner entfernen
-
-        // Preis extrahieren & Auto-Fill Button — nur wenn im gültigen Bereich
-        const m=text.match(/Bundle-Preis[:\s]+(\d+)[,.](\d+)\s*€/i);
-        if(m){
-            const suggested=parseFloat(m[1]+'.'+m[2]);
-            // Sicherheitsprüfung: vorgeschlagener Preis muss im erlaubten Bereich sein
-            const safePrice = Math.min(Math.max(suggested, cost + 0.01), maxBundlePrice);
-            const priceWasAdjusted = Math.abs(safePrice - suggested) > 0.01;
-            const applyBtn=document.createElement('button');
-            applyBtn.className='bnd-btn bnd-btn-green';
-            applyBtn.style.cssText='font-size:11px;padding:6px 14px;margin-bottom:12px';
-            applyBtn.innerHTML=`<i class="fa-solid fa-check"></i> Preis übernehmen: ${bndFmt(safePrice)}${priceWasAdjusted?' (korrigiert)':''}`;
-            applyBtn.onclick=()=>{
-                const inp=document.getElementById('bnd-f-price');
-                if(inp){inp.value=safePrice.toFixed(2);bndUpdateSummary();}
-                showToast('💡 Bundle-Preis auf '+bndFmt(safePrice)+' gesetzt');
-                applyBtn.innerHTML='<i class="fa-solid fa-check"></i> Übernommen!';
-                applyBtn.disabled=true;
-            };
-            el.appendChild(applyBtn);
-        }
-
-        const textDiv=document.createElement('div');
-        textDiv.className='bnd-ai-result';
-        textDiv.textContent=text;
-        el.appendChild(textDiv);
-
-    } catch(e) {
-        el.textContent='❌ KI-Fehler: '+e.message;
-    } finally {
-        btns.forEach(b=>{if(b)b.disabled=false;});
-    }
-}
-
 // ── Speichern ─────────────────────────────────────────────────────────────
 
 let _bndImageFile = null;

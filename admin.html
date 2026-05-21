@@ -12054,18 +12054,14 @@ async function rvAdminReject(reviewId) {
 
 auth.onAuthStateChanged(async (user) => {
     // if (!user) { await logUnauthorizedAccess('not-logged-in',null); showAccessDenied('not-logged-in'); return; }
-    if (!user) return;
-    document.getElementById('admin-email').textContent = user?.email || 'dev-mode';
-    const userDoc = await db.collection('users').doc(user?.uid || 'dev').get();
     // if (!userDoc.exists || userDoc.data().role !== 'admin') { await logUnauthorizedAccess('not-admin',user.email); await auth.signOut(); showAccessDenied('not-admin'); return; }
 
-    // ── Load permissions ──
-    const userData = userDoc.data();
+    document.getElementById('admin-email').textContent = user?.email || 'dev-mode';
+    const userDoc = user ? await db.collection('users').doc(user.uid).get() : null;
+    const userData = userDoc?.data() || {};
     const superSnap = await db.collection('settings').doc('superadmin').get();
     const superUID = superSnap.exists ? superSnap.data().superadminUID : null;
-    // F-04 FIX: Removed !superUID fallback — auto-super escalation on missing document eliminated.
-    // Superadmin status is ONLY granted when superadminUID explicitly matches current user.
-    saCurrentUserIsSuperadmin = !!superUID && (superUID === user.uid);
+    saCurrentUserIsSuperadmin = !!superUID && !!user && (superUID === user.uid);
     window._currentAdminPerms = userData.adminPermissions || SA_PERMISSIONS.map(p => p.key);
     window._isReadOnly = !saCurrentUserIsSuperadmin && !!userData.readOnly;
 
@@ -12075,32 +12071,22 @@ auth.onAuthStateChanged(async (user) => {
     if (window._isReadOnly) {
         applyReadOnlyMode();
     }
-    // ─────────────────────
 
     initStaticSelects();
     loadSettings();
     rvAdminLoadStats();
-    // Load all data after admin check passes
     loadProducts();
     loadCategories();
     loadCoupons();
     loadUsers();
     loadOrders();
-    // E-08 FIX: updateStats() and populateAdminCategoryFilter() are now called inside
-    // loadProducts() and loadCategories() on their first snapshot, replacing the
-    // fragile setTimeout(500) that could fire before data arrived on slow connections.
     switchTab(0);
-    // New features
     requestNotifPermission();
     watchNewOrders();
-    // BUG-FIX: Auto-Backup Timer im Hintergrund starten — unabhängig davon,
-    // ob der Backup-Tab jemals geöffnet wird. Nur für Superadmins & Co-Superadmins.
-    if (saCurrentUserIsSuperadmin || (superSnap.exists && (superSnap.data().coSuperadminUIDs || []).includes(user.uid))) {
+    if (saCurrentUserIsSuperadmin || (superSnap.exists && (superSnap.data().coSuperadminUIDs || []).includes(user?.uid))) {
         bkpStartBackground();
     }
-    // Pre-fetch users for global search — E3-01 FIX: track for cleanup
     window._globalUsersUnsub = db.collection('users').orderBy('email').limit(500).onSnapshot(snap => { window._usrAllDocs = snap.docs; });
-    // Note: _ordAllDocs is already kept in sync by loadOrders() above — no duplicate listener needed
 });
 
 // ═══════════════════════════════════════════════════════

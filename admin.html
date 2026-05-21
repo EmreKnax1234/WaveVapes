@@ -7343,6 +7343,24 @@ async function deleteCoupon(id) {
 }
 
 // ====================== BESTELLUNGEN v2 ======================
+// Hilfsfunktion: Firestore Timestamp, plain JS Date, oder Zahl → JS Date
+// Verhindert "toDate is not a function" wenn date als Date-Objekt gespeichert wurde (z.B. nach CSV-Import)
+function ordToDate(val) {
+    if (!val) return null;
+    if (typeof val.toDate === 'function') return val.toDate(); // Firestore Timestamp
+    if (val instanceof Date) return val;                        // plain JS Date
+    if (typeof val === 'number') return new Date(val);          // Unix ms
+    if (typeof val === 'string') { const d = new Date(val); return isNaN(d) ? null : d; }
+    return null;
+}
+function ordToMillis(val) {
+    if (!val) return 0;
+    if (typeof val.toMillis === 'function') return val.toMillis(); // Firestore Timestamp
+    if (typeof val.toDate === 'function') return val.toDate().getTime();
+    if (val instanceof Date) return val.getTime();
+    if (typeof val === 'number') return val;
+    return 0;
+}
 const ORD_STATUS_CLASS = {
     'Zahlung erwartet': 'ord-st-zahlung',
     'Wird bearbeitet':  'ord-st-wird',
@@ -7419,7 +7437,8 @@ function ordRenderTable() {
     let html = '';
     docs.forEach(doc => {
         const o = doc.data();
-        const date   = o.date ? o.date.toDate().toLocaleDateString('de-DE', {day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+        const _d     = ordToDate(o.date);
+        const date   = _d ? _d.toLocaleDateString('de-DE', {day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
         const status = o.status || 'Zahlung erwartet';
         const stCls  = ORD_STATUS_CLASS[status] || 'ord-st-zahlung';
         const email  = o.userEmail || '—';
@@ -7470,8 +7489,8 @@ function loadOrders() {
                 const snap = await db.collection('orders').get();
                 if (_ordAllDocs.length === 0) {
                     _ordAllDocs = snap.docs.slice().sort((a, b) => {
-                        const ta = a.data().date ? a.data().date.toMillis() : 0;
-                        const tb = b.data().date ? b.data().date.toMillis() : 0;
+                        const ta = ordToMillis(a.data().date);
+                        const tb = ordToMillis(b.data().date);
                         return tb - ta;
                     });
                     ordRenderTable();
@@ -7498,8 +7517,8 @@ function loadOrders() {
             _ordersUnsub = db.collection('orders').onSnapshot(snap => {
                 // Sort client-side by date desc
                 _ordAllDocs = snap.docs.slice().sort((a, b) => {
-                    const ta = a.data().date ? a.data().date.toMillis() : 0;
-                    const tb = b.data().date ? b.data().date.toMillis() : 0;
+                    const ta = ordToMillis(a.data().date);
+                    const tb = ordToMillis(b.data().date);
                     return tb - ta;
                 });
                 ordRenderTable();
@@ -7543,7 +7562,8 @@ async function showOrderModal(orderId) {
         const doc   = await db.collection('orders').doc(orderId).get();
         if (!doc.exists) return showToast('❌ Bestellung nicht gefunden', 'error');
         const order = doc.data();
-        const date  = order.date ? order.date.toDate().toLocaleString('de-DE') : '—';
+        const _od   = ordToDate(order.date);
+        const date  = _od ? _od.toLocaleString('de-DE') : '—';
 
     // header
     document.getElementById('ord-d-num').textContent = '#' + (order.orderNumber || '—');

@@ -6,12 +6,13 @@ importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js
 importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js');
 
 firebase.initializeApp({
-    apiKey:            "AIzaSyDsIUl-iYmH42MPbusFLhGhj5oGLh01BzI",
-    authDomain:        "wavevapes-7a960.firebaseapp.com",
-    projectId:         "wavevapes-7a960",
-    storageBucket:     "wavevapes-7a960.firebasestorage.app",
-    messagingSenderId: "1093624390275",
-    appId:             "1:1093624390275:web:b1b8ae17bcf1b59dffb1b6",
+    apiKey:            "AIzaSyC6KnU7vUJVQLXz3hTqPtLpv0irXcSU-Ac",
+    authDomain:        "wavevapes-22dce.firebaseapp.com",
+    projectId:         "wavevapes-22dce",
+    storageBucket:     "wavevapes-22dce.firebasestorage.app",
+    messagingSenderId: "469991790134",
+    appId:             "1:469991790134:web:1b96e5ba06367168436a97",
+    measurementId:     "G-MY07QG84Z0",
 });
 
 const messaging = firebase.messaging();

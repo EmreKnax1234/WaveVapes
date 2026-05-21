@@ -7459,10 +7459,38 @@ function loadOrders() {
     // BUG-ORD-01 FIX: Added error handler so a missing Firestore composite index
     // (required for orderBy('date','desc')) does not silently leave _ordAllDocs empty.
     // Fallback: fetch without orderBy and sort client-side so orders always appear.
+    // Timeout: Falls onSnapshot nach 8s noch nichts geliefert hat
+    // (z.B. fehlender Composite-Index blockt still ohne Error-Callback)
+    // → direkte .get()-Abfrage ohne orderBy als Notfall-Fallback
+    const _ordTimeoutId = setTimeout(async () => {
+        if (_ordAllDocs.length === 0) {
+            console.warn('loadOrders: onSnapshot-Timeout — versuche .get() ohne orderBy');
+            try {
+                // Kein orderBy → kein Index nötig
+                const snap = await db.collection('orders').get();
+                if (_ordAllDocs.length === 0) {
+                    _ordAllDocs = snap.docs.slice().sort((a, b) => {
+                        const ta = a.data().date ? a.data().date.toMillis() : 0;
+                        const tb = b.data().date ? b.data().date.toMillis() : 0;
+                        return tb - ta;
+                    });
+                    ordRenderTable();
+                    showToast('⚠️ Bestellungen geladen (Firestore-Index fehlt — bitte in Firebase Console erstellen)', 'warning');
+                }
+            } catch(e2) {
+                console.error('loadOrders timeout fallback error:', e2);
+                const tbody = document.getElementById('orders-tbody');
+                if (tbody) tbody.innerHTML = `<tr><td colspan="6"><div class="ord-empty"><i class="fa-solid fa-circle-exclamation" style="color:#f87171"></i><br>Bestellungen konnten nicht geladen werden.<br><span style="font-size:11px;color:#f87171">${e2.message}</span><br><span style="font-size:10px;color:rgba(255,255,255,.3)">Firestore-Sicherheitsregeln oder fehlender Index — Browser-Konsole prüfen</span></div></td></tr>`;
+            }
+        }
+    }, 8000);
+
     _ordersUnsub = db.collection('orders').orderBy('date','desc').onSnapshot(snap => {
+        clearTimeout(_ordTimeoutId);
         _ordAllDocs = snap.docs;
         ordRenderTable();
     }, async (err) => {
+        clearTimeout(_ordTimeoutId);
         console.error('loadOrders onSnapshot error:', err);
         // Fallback: no orderBy — avoids composite index requirement
         try {
@@ -7478,7 +7506,7 @@ function loadOrders() {
             }, (err2) => {
                 console.error('loadOrders fallback error:', err2);
                 const tbody = document.getElementById('orders-tbody');
-                if (tbody) tbody.innerHTML = `<tr><td colspan="6"><div class="ord-empty"><i class="fa-solid fa-circle-exclamation" style="color:#f87171"></i><br>Bestellungen konnten nicht geladen werden:<br><span style="font-size:11px;color:#f87171">${err2.message}</span></div></td></tr>`;
+                if (tbody) tbody.innerHTML = `<tr><td colspan="6"><div class="ord-empty"><i class="fa-solid fa-circle-exclamation" style="color:#f87171"></i><br>Bestellungen konnten nicht geladen werden:<br><span style="font-size:11px;color:#f87171">${err2.message}</span><br><span style="font-size:10px;color:rgba(255,255,255,.3)">Bitte Firestore-Regeln und Index prüfen</span></div></td></tr>`;
             });
         } catch(e) { console.error('loadOrders fallback setup error:', e); }
     });

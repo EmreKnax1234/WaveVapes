@@ -19,10 +19,7 @@
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap"></noscript>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
-    <!-- Firebase — defer verhindert Parser-Blockierung -->
-    <script defer src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
-    <script defer src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
-    <script defer src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+    <!-- Firebase wird am Body-Ende geladen (garantierte Reihenfolge) -->
 
     <style>
         :root {
@@ -472,10 +469,11 @@
     </div>
 </div>
 
-<script defer>
-// Firebase-Scripts laufen mit defer – dieser Script ebenfalls, damit
-// firebase.* garantiert verfügbar ist wenn dieser Code ausgeführt wird.
-document.addEventListener('DOMContentLoaded', function() {
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script>
+// Firebase-Scripts stehen direkt davor – sind hier garantiert verfügbar.
 
 const esc = s => String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -979,7 +977,6 @@ Object.assign(window, {
     checkPasswordStrength
 });
 
-}); // end DOMContentLoaded
 </script>
 <!--Start of Tawk.to Script-->
 <script type="text/javascript">

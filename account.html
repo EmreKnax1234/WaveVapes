@@ -766,9 +766,6 @@ async function loadReferrals() {
         const empty = document.getElementById('friends-empty');
         const badge = document.getElementById('ref-count-badge');
         badge.textContent = snap.size;
-        // BUG-FIX: stat-referrals in der Übersicht-Karte wird mit dem echten
-        // Query-Ergebnis (snap.size) synchronisiert, nicht mit dem ggf. veralteten
-        // d.referralCount-Feld aus dem Firestore-Userdokument.
         const statEl = document.getElementById('stat-referrals');
         if (statEl) statEl.textContent = snap.size;
         if (snap.empty) { list.innerHTML = ''; empty.style.display = ''; return; }
@@ -935,8 +932,6 @@ function fallbackCopy(text) {
 
 function copyPaymentInfo(orderNum, total) {
     if (!_bankOwner || !_bankIban) { showToast('⚠️ Bankdaten werden noch geladen. Bitte kurz warten.', 'error'); return; }
-    // BUG-FIX 4: _bankIban kann Leerzeichen von der UI-Formatierung enthalten →
-    // vor dem Kopieren immer strippen, damit keine fehlerhafte IBAN übermittelt wird.
     const cleanIban = _bankIban.replace(/\s/g, '');
     const info = `Empfänger: ${_bankOwner}\nIBAN: ${cleanIban}\nBIC: ${_bankBic}\nBank: ${_bankName}\nBetrag: ${(total||0).toFixed(2).replace('.',',')} €\nVerwendungszweck: ${orderNum}`;
     copyTextSilent(info);
@@ -954,27 +949,6 @@ function showToast(msg, type = 'success') {
 
 document.getElementById('logout-modal').addEventListener('click', e => {
     if (e.target === document.getElementById('logout-modal')) closeLogoutModal();
-});
-
-// Expose all onclick-referenced functions to global scope
-// (sie sind lokal im DOMContentLoaded-Callback definiert und daher sonst nicht erreichbar)
-Object.assign(window, {
-    switchSection,
-    confirmLogout,
-    closeLogoutModal,
-    doLogout,
-    copyReferralCode,
-    shareReferral,
-    copyText,
-    copyPaymentInfo,
-    filterOrders,
-    saveProfile,
-    selectAvatarColor,
-    saveAddress,
-    updateAddrPreview,
-    sendPasswordReset,
-    changePassword,
-    checkPasswordStrength
 });
 
 </script>

@@ -56,9 +56,10 @@
             display: flex; align-items: center; justify-content: center;
             flex-direction: column; gap: 16px; z-index: 9999;
             transition: opacity 0.4s;
+            pointer-events: all;
         }
-        #loading-screen.fade { opacity: 0; pointer-events: none; }
-        #loading-screen.hidden { display: none !important; pointer-events: none !important; }
+        #loading-screen.fade { opacity: 0; pointer-events: none !important; }
+        #loading-screen.hidden { display: none !important; pointer-events: none !important; visibility: hidden !important; }
         .loading-logo { font-family: 'Orbitron', sans-serif; font-size: 1.8rem; font-weight: 900; color: var(--cyan); text-shadow: 0 0 20px rgba(103,232,249,0.5); }
         .loading-spinner { width: 36px; height: 36px; border: 3px solid rgba(103,232,249,0.15); border-top-color: var(--cyan); border-radius: 50%; animation: spin 0.8s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
@@ -479,15 +480,27 @@
 <script>
 // Firebase-Scripts stehen direkt davor – sind hier garantiert verfügbar.
 
-// Fallback: Loading-Screen nach 5s zwangsweise verstecken
+// Hilfsfunktion: Loading-Screen sicher entfernen
+function hideLoadingScreen() {
+    const ls = document.getElementById('loading-screen');
+    if (!ls || ls.classList.contains('hidden')) return;
+    ls.classList.add('fade');
+    setTimeout(() => {
+        ls.classList.add('hidden');
+        ls.style.cssText = 'display:none!important;pointer-events:none!important;visibility:hidden!important;';
+    }, 400);
+}
+
+// Fallback: Loading-Screen nach 4s zwangsweise verstecken
 setTimeout(() => {
     const ls = document.getElementById('loading-screen');
     if (ls && !ls.classList.contains('hidden')) {
         ls.classList.add('hidden');
+        ls.style.cssText = 'display:none!important;pointer-events:none!important;visibility:hidden!important;';
         const app = document.getElementById('app');
         app.style.display = window.innerWidth >= 768 ? 'grid' : 'flex';
     }
-}, 5000);
+}, 4000);
 
 const esc = s => String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -602,16 +615,15 @@ async function initAccount() {
         document.getElementById('profile-email-display').value = currentUser.email || '';
         buildAvatarColors();
         setTimeout(() => {
-            const ls = document.getElementById('loading-screen');
-            ls.classList.add('fade');
-            setTimeout(() => { ls.classList.add('hidden'); }, 400);
+            hideLoadingScreen();
             const app = document.getElementById('app');
             app.style.display = window.innerWidth >= 768 ? 'grid' : 'flex';
         }, 500);
     } catch(e) {
         console.error('initAccount error:', e);
-        const ls = document.getElementById('loading-screen');
-        if (ls) { ls.classList.add('fade'); setTimeout(() => ls.style.display = 'none', 400); }
+        hideLoadingScreen();
+        const app = document.getElementById('app');
+        app.style.display = window.innerWidth >= 768 ? 'grid' : 'flex';
         showToast('❌ Fehler beim Laden des Accounts. Bitte Seite neu laden.', 'error');
     }
 }

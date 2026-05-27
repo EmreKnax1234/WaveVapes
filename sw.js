@@ -1,7 +1,7 @@
 // WaveVapes Service Worker — Web Push Notifications + Offline Caching
 // Wird unter https://wavevapes.de/sw.js gehostet
 
-const SW_VERSION = 'wv-push-v8';
+const SW_VERSION = 'wv-push-v9';
 const STATIC_CACHE  = `wv-static-${SW_VERSION}`;
 const RUNTIME_CACHE = `wv-runtime-${SW_VERSION}`;
 

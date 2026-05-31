@@ -8185,7 +8185,8 @@
                 'history-modal', 'payment-info-modal', 'referrals-modal',
                 'success-modal', 'agb-modal', 'widerruf-modal',
                 'impressum-modal', 'datenschutz-modal',
-                'bundle-detail-modal' // BUG-05 FIX: Bundle-Detail-Modal schließbar per Back-Taste
+                'bundle-detail-modal', // BUG-05 FIX: Bundle-Detail-Modal schließbar per Back-Taste
+                'pw-reset-modal' // BUG-FIX: Passwort-Reset-Modal per Back-Taste schließbar
             ];
             const MODAL_CLOSERS = {
                 'cart-sidebar':        () => { const s = document.getElementById('cart-sidebar'); if (s && !s.classList.contains('translate-x-full')) toggleCart(); },
@@ -8201,6 +8202,7 @@
                 'impressum-modal':     closeImpressumModal,
                 'datenschutz-modal':   closeDatenschutzModal,
                 'bundle-detail-modal': closeBundleDetail, // BUG-05 FIX
+                'pw-reset-modal':     closePasswordResetModal, // BUG-FIX
             };
             // Push a dummy history entry when a modal opens so back button has something to pop
             function pushModalHistory() {
@@ -8272,6 +8274,8 @@
         function flyToCart(ev, product) {
             const cartBtn = document.getElementById('cart-nav-btn');
             if (!cartBtn) return;
+            // BUG-FIX: ev.currentTarget kann null sein bei async/verzögerten Aufrufen
+            if (!ev || !ev.currentTarget) return;
 
             // Start: Mitte des geklickten Buttons
             const srcRect = ev.currentTarget.getBoundingClientRect();
@@ -8424,6 +8428,7 @@
             let tx = 0, ty = 0;
             let swiping = false;
             const grid     = document.getElementById('products-section');
+            if (!grid) return; // BUG-FIX: Absturz wenn #products-section nicht im DOM
             const hint     = document.getElementById('swipe-hint');
             const hintText = document.getElementById('swipe-hint-text');
             let hintTimer  = null;
@@ -8663,11 +8668,13 @@
             }
             const status = document.getElementById('pw-reset-status');
             if (status) { status.classList.add('hidden'); status.textContent = ''; }
+            // BUG-FIX: hidden entfernen UND flex setzen (Tailwind hidden überschreibt flex ohne das)
             modal.classList.remove('hidden');
+            modal.classList.add('flex');
         }
         function closePasswordResetModal() {
             const modal = document.getElementById('pw-reset-modal');
-            if (modal) modal.classList.add('hidden');
+            if (modal) { modal.classList.add('hidden'); modal.classList.remove('flex'); }
             const status = document.getElementById('pw-reset-status');
             if (status) { status.classList.add('hidden'); status.textContent = ''; }
             const btn = document.getElementById('pw-reset-send-btn');

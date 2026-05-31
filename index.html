@@ -5715,7 +5715,7 @@
                 } catch(_e) {
                     console.warn('freeShipping re-fetch failed, using cached value:', _e.message);
                 }
-                const shippingCost = _serverFreeShipping || verifiedProductTotal >= _threshold ? 0 : _shippingRate;
+                const shippingCost = (_serverFreeShipping || verifiedProductTotal >= _threshold) ? 0 : _shippingRate; // BUG-FIX: Klammern um ODER-Bedingung – ohne sie war die Operator-Precedenz falsch und shippingCost wurde boolean true statt 0
                 const verifiedTotal = Math.max(0, verifiedProductTotal + shippingCost);
                 const loyaltyEarned = Math.floor(verifiedProductTotal);
                 const orderNumber = generateOrderNumber();
@@ -5733,7 +5733,7 @@
                     shipping: shippingCost,
                     freeShipping: shippingCost === 0,
                     address: userAddress,
-                    date: new Date().toISOString(),
+                    date: firebase.firestore.FieldValue.serverTimestamp(), // BUG-FIX: war new Date().toISOString() – loadUserOrders() ruft order.date.toDate() auf, was nur auf Firestore-Timestamps funktioniert, nicht auf ISO-Strings
                     status: "Zahlung erwartet",
                     trackingNumber: null,
                     carrier: null,
@@ -7388,7 +7388,7 @@
                     rating,
                     text,
                     approved:  false,
-                    createdAt: new Date().toISOString()
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp() // BUG-FIX: war new Date().toISOString() – rvLoad() ruft .toMillis() und .toDate() auf, was nur auf Firestore-Timestamps verfügbar ist
                 });
                 showToast('✅ Bewertung eingereicht! Sie wird nach Prüfung veröffentlicht.');
                 document.getElementById(`rv-form-${productId}`)?.classList.remove('open');
@@ -8646,6 +8646,62 @@
 
         // Nach Login: Token mit User verknüpfen
         // (wird in onAuthStateChanged aufgerufen)
+
+        // ====================== PASSWORT VERGESSEN MODAL ======================
+        // BUG-FIX: submitPasswordReset, openPasswordResetModal und closePasswordResetModal
+        // wurden im HTML-Modal (onclick-Attribute) aufgerufen, waren aber nie definiert.
+        // Folge: ReferenceError beim Klick auf "Passwort vergessen?", "Reset-Link senden"
+        // und beim Schließen des Modals (✕-Button, Backdrop-Klick, Escape-Taste).
+        function openPasswordResetModal() {
+            const modal = document.getElementById('pw-reset-modal');
+            if (!modal) return;
+            // E-Mail aus Login-Feld vorausfüllen wenn vorhanden
+            const loginEmail = document.getElementById('login-email');
+            const resetInput = document.getElementById('pw-reset-email-input');
+            if (loginEmail && resetInput && loginEmail.value.trim()) {
+                resetInput.value = loginEmail.value.trim();
+            }
+            const status = document.getElementById('pw-reset-status');
+            if (status) { status.classList.add('hidden'); status.textContent = ''; }
+            modal.classList.remove('hidden');
+        }
+        function closePasswordResetModal() {
+            const modal = document.getElementById('pw-reset-modal');
+            if (modal) modal.classList.add('hidden');
+            const status = document.getElementById('pw-reset-status');
+            if (status) { status.classList.add('hidden'); status.textContent = ''; }
+            const btn = document.getElementById('pw-reset-send-btn');
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-paper-plane mr-2"></i>Reset-Link senden'; btn.style.background = '#22d3ee'; }
+        }
+        async function submitPasswordReset() {
+            const input = document.getElementById('pw-reset-email-input');
+            const status = document.getElementById('pw-reset-status');
+            const btn = document.getElementById('pw-reset-send-btn');
+            const email = input ? input.value.trim() : '';
+            if (!email) {
+                if (status) { status.textContent = '\u274c Bitte E-Mail-Adresse eingeben'; status.className = 'text-red-400 text-sm mt-3'; status.classList.remove('hidden'); }
+                return;
+            }
+            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Wird gesendet\u2026'; btn.style.background = '#0891b2'; }
+            if (status) status.classList.add('hidden');
+            try {
+                await auth.sendPasswordResetEmail(email);
+                if (status) {
+                    status.textContent = '\u2705 Reset-Link gesendet! Bitte pr\u00fcfe dein Postfach (auch Spam-Ordner).';
+                    status.className = 'text-emerald-400 text-sm mt-3';
+                    status.classList.remove('hidden');
+                }
+                if (btn) { btn.innerHTML = '\u2705 Gesendet'; btn.style.background = '#059669'; }
+                setTimeout(closePasswordResetModal, 3500);
+            } catch (e) {
+                const msg = e.code === 'auth/user-not-found' ? 'Kein Account mit dieser E-Mail gefunden.'
+                          : e.code === 'auth/invalid-email' ? 'Ung\u00fcltige E-Mail-Adresse.'
+                          : e.code === 'auth/too-many-requests' ? 'Zu viele Versuche. Bitte kurz warten.'
+                          : (e.message || 'Unbekannter Fehler');
+                if (status) { status.textContent = '\u274c ' + msg; status.className = 'text-red-400 text-sm mt-3'; status.classList.remove('hidden'); }
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-paper-plane mr-2"></i>Reset-Link senden'; btn.style.background = '#22d3ee'; }
+            }
+        }
     </script>
 
     <!-- ═══════════════════════════════════════════════════════════════

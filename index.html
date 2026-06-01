@@ -1035,6 +1035,30 @@
             /* BUG-19 FIX: Hover-Transform auf Mobile deaktivieren (Touch-Geräte: Karten konnten "hängen" bleiben) */
             .product-card:hover { transform: none; box-shadow: none; }
         }
+        /* ── iPad / Touch-Gerät FIX ─────────────────────────────────────────
+           @media (hover: none) trifft ALLE Touch-only Geräte: iPhone, iPad, Android.
+           Der max-width:767px Fix oben greift auf iPad (≥768px) NICHT.
+           Ohne diesen Block: Karten springen nach Tap hoch und bleiben dort kleben.
+        ── */
+        @media (hover: none) {
+            .product-card         { cursor: default; }
+            .product-card:hover   { transform: none !important; box-shadow: none !important; }
+            .bundle-card:hover    { transform: none !important; box-shadow: none !important; border-color: rgba(167,139,250,.3) !important; }
+            .similar-card:hover   { transform: none !important; background: rgba(255,255,255,.04) !important; border-color: rgba(255,255,255,.08) !important; }
+            .rv-mini-card:hover   { transform: none !important; border-color: rgba(255,255,255,0.08) !important; box-shadow: none !important; }
+            .wish-btn:hover       { transform: none !important; background: rgba(0,0,0,0.55) !important; border-color: rgba(255,255,255,0.12) !important; }
+            .filter-pill:hover    { border-color: rgba(255,255,255,.1); color: rgba(255,255,255,.6); }
+        }
+        /* ── iPad Tablet-Breakpoint (768–1024px) ────────────────────────────
+           Layout-Tweaks für iPad portrait & landscape.
+        ── */
+        @media (min-width: 768px) and (max-width: 1024px) {
+            /* Filter-Pills kompakter damit alles in eine Zeile passt */
+            .filter-pill { font-size: 10.5px; padding: 5px 10px; }
+            /* Produkt-Detail-Modal: mehr Platz nutzen */
+            #product-detail-modal .modal-inner { max-width: 900px; }
+            /* Swipe-to-close auch auf iPad ermöglichen */
+        }
         #products-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
         @media (min-width: 768px) { #products-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; } }
         @media (min-width: 1024px) { #products-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
@@ -7110,7 +7134,9 @@
         }
 
         function initSwipeToClose() {
-            if (window.innerWidth >= 640) return; // desktop only uses click
+            // Nur auf echten Touch-Geräten (iPhone, iPad, Android) — nicht für Maus-Nutzer
+            if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+            if (window.innerWidth >= 1024) return; // Desktop-Breite: Click-to-close reicht
             const inner = document.querySelector('#product-detail-modal .modal-inner');
             if (!inner) return;
             let startY = 0, isDragging = false;

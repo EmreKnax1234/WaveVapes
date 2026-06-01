@@ -1,6 +1,4 @@
 // WaveVapes — Firebase Cloud Messaging Service Worker
-// Pflicht-Datei für FCM Web Push (muss im Root unter /firebase-messaging-sw.js liegen)
-// Wird automatisch von Firebase Messaging beim Aufruf von getToken() registriert.
 
 importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js');
@@ -17,24 +15,23 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// ── Hintergrund-Nachrichten (Tab nicht aktiv / App im Hintergrund) ───────────
+// ── Hintergrund-Nachrichten ───────────────────────────────────────────────────
 messaging.onBackgroundMessage(payload => {
     const title   = payload.notification?.title || 'WaveVapes';
     const options = {
-        body:    payload.notification?.body || '',
-        icon:    '/logo.png',
-        badge:   '/logo.png',
-        data:    { url: payload.data?.url || payload.fcmOptions?.link || 'https://wavevapes.de' },
-        tag:     'wavevapes-push',
-        renotify: true,
+        body:             payload.notification?.body || '',
+        icon:             '/logo.png',
+        badge:            '/logo.png',
+        data:             { url: payload.data?.url || payload.fcmOptions?.link || 'https://wavevapes.de' },
+        tag:              'wavevapes-push',
+        renotify:         true,
         requireInteraction: false,
-        vibrate: [200, 100, 200],
+        vibrate:          [200, 100, 200],
     };
     return self.registration.showNotification(title, options);
 });
 
 // ── Notification-Klick ────────────────────────────────────────────────────────
-// BUG-FIX: `clients` → `self.clients` (im SW-Scope gibt es kein globales `clients`)
 self.addEventListener('notificationclick', event => {
     event.notification.close();
     const url = event.notification.data?.url || 'https://wavevapes.de';

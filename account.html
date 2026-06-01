@@ -787,7 +787,39 @@ function renderOrders(orders) {
     container.innerHTML = orders.map(buildOrderCard).join('');
     container.querySelectorAll('.reorder-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-            showToast('Artikel wurden in den Warenkorb gelegt!');
+            const card  = btn.closest('[data-order-id]');
+            const oId   = card ? card.dataset.orderId : null;
+            const order = oId ? allOrders.find(o => o.id === oId) : null;
+            if (order && order.items && order.items.length) {
+                try {
+                    const existing = JSON.parse(localStorage.getItem('wavevapes_cart') || '[]');
+                    const merged   = [...existing];
+                    order.items.forEach(item => {
+                        const idx = merged.findIndex(
+                            c => c.productId === (item.productId || item.id || null)
+                              && (c.nicotine || '') === (item.nicotine || '')
+                        );
+                        if (idx >= 0) {
+                            merged[idx].qty = (merged[idx].qty || 1) + (item.qty || 1);
+                        } else {
+                            merged.push({
+                                productId: item.productId || item.id || null,
+                                name:      item.name,
+                                price:     item.price  || 0,
+                                qty:       item.qty    || 1,
+                                nicotine:  item.nicotine || '',
+                                image:     item.image  || ''
+                            });
+                        }
+                    });
+                    localStorage.setItem('wavevapes_cart', JSON.stringify(merged));
+                    showToast('✅ Artikel in den Warenkorb gelegt!');
+                } catch(e) {
+                    showToast('Weiterleitung zum Shop…');
+                }
+            } else {
+                showToast('Weiterleitung zum Shop…');
+            }
             setTimeout(() => { window.location.href = 'https://wavevapes.de'; }, 1200);
         });
     });
@@ -835,10 +867,8 @@ function buildOrderCard(order) {
         : '';
 
     const loyaltyEarned = order.loyalty_earned || order.loyaltyEarned;
-    const safeOrderNum  = String(order.orderNumber||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
 
-    return `<div class="order-card">
-        <div class="order-header">
+    return `<div class="order-card" data-order-id="${esc(order.id||'')}"><div class="order-header">
             <div>
                 <div class="order-num">${esc(order.orderNumber||'—')}</div>
                 <div class="order-date">${dateStr}</div>
@@ -857,7 +887,12 @@ function buildOrderCard(order) {
         <div class="order-actions">
             ${trackBtn}
             <button class="btn btn-reorder reorder-btn"><i class="fa-solid fa-cart-plus"></i> Nochmal bestellen</button>
-            <button class="btn btn-secondary" style="font-size:13px;padding:10px 18px;" onclick="copyPaymentInfo('${safeOrderNum}',${order.total||0})"><i class="fa-solid fa-building-columns"></i> Überweisungsdaten</button>
+            <button class="btn btn-secondary" style="font-size:13px;padding:10px 18px;"
+                    data-action="copy-payment"
+                    data-order-num="${esc(order.orderNumber||'')}"
+                    data-total="${order.total||0}">
+                <i class="fa-solid fa-building-columns"></i> Überweisungsdaten
+            </button>
         </div>
     </div>`;
 }
@@ -1021,6 +1056,12 @@ function shareReferral(platform) {
 }
 
 // ─── PAYMENT INFO ────────────────────────────────────────────────
+document.getElementById('orders-container').addEventListener('click', e => {
+    const btn = e.target.closest('[data-action="copy-payment"]');
+    if (!btn) return;
+    copyPaymentInfo(btn.dataset.orderNum || '', parseFloat(btn.dataset.total) || 0);
+});
+
 function copyPaymentInfo(orderNum, total) {
     if (!_bankOwner || !_bankIban) { showToast('⚠️ Bankdaten werden noch geladen.', 'error'); return; }
     const info = `Empfänger: ${_bankOwner}\nIBAN: ${_bankIban.replace(/\s/g,'')}\nBIC: ${_bankBic}\nBank: ${_bankName}\nBetrag: ${Number(total).toFixed(2).replace('.',',')} €\nVerwendungszweck: ${orderNum}`;

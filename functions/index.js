@@ -1,15 +1,4 @@
 // WaveVapes — Firebase Cloud Function: FCM Push Notifications
-// Datei: functions/index.js  ← muss in diesem Unterordner liegen!
-//
-// BUG-FIX: Datei lag im Root des Projekts (functions_index.js).
-// firebase.json erwartet sie unter functions/index.js.
-//
-// Setup:
-//   cd functions
-//   npm init -y
-//   npm install firebase-admin firebase-functions
-//   cd ..
-//   firebase deploy --only functions
 
 const functions = require('firebase-functions');
 const admin     = require('firebase-admin');
@@ -56,8 +45,7 @@ exports.sendScheduledPush = functions
 async function _dispatch(notifId, n) {
     const { title, body, url = 'https://wavevapes.de', target = 'all' } = n;
 
-    // RATE-LIMIT-GUARD: verhindert Doppel-Dispatch bei gleichzeitigen Writes
-    // Wir setzen den Status atomar auf 'sending' und prüfen vorher ob schon gesendet
+    // RATE-LIMIT-GUARD: Status atomar auf 'sending' setzen, vorher prüfen ob schon gesendet
     const docRef = db.collection('push_notifications').doc(notifId);
     const updated = await db.runTransaction(async tx => {
         const doc = await tx.get(docRef);
@@ -65,8 +53,7 @@ async function _dispatch(notifId, n) {
         // Bereits gesendet, in Bearbeitung, oder steckengeblieben (>5 Min.) → Abbruch oder Retry
         if (status === 'sent') return false;
         if (status === 'sending') {
-            // Sicherheitsnetz: falls ein voriger Lauf abgestürzt ist (z.B. Cold-Start),
-            // erlauben wir nach 5 Minuten einen erneuten Versuch.
+            // Falls ein voriger Lauf abgestürzt ist, nach 5 Min. Retry erlauben
             const updatedAt = doc.data()?.updatedAt?.toMillis?.() || 0;
             if (Date.now() - updatedAt < 5 * 60 * 1000) return false; // noch frisch → wirklich in Arbeit
         }
@@ -134,10 +121,7 @@ async function _dispatch(notifId, n) {
         });
     }
 
-    // Ungültige Tokens aus Firestore löschen (Batch)
-    // BUG-FIX: Firestore-Batches erlauben max. 500 Operationen.
-    // Bei vielen ungültigen Tokens wuerde ein einzelner Batch mit einem Fehler
-    // abbrechen. Fix: Deletes in 500er-Chunks aufteilen.
+    // Ungültige Tokens aus Firestore löschen (max. 500 Ops pro Batch)
     if (toDelete.length) {
         const DELETE_CHUNK = 500;
         for (let di = 0; di < toDelete.length; di += DELETE_CHUNK) {
@@ -199,9 +183,6 @@ async function _filter(subs, n) {
         const o = orderData[s.userId] || { total: 0, last: 0 };
         switch (target) {
             case 'no-order-30':
-                // BUG-FIX: Nutzer die NIE bestellt haben haben o.last === 0, was immer < now - 30d ist.
-                // Damit landeten Neukunden ohne jede Bestellung in der "inaktiv seit 30 Tagen"-Gruppe.
-                // Fix: Zusätzliche Prüfung, dass mindestens eine Bestellung existiert (o.last > 0).
                 return o.last > 0 && o.last < now - 30 * 86400000;
             case 'no-order-60':
                 return o.last > 0 && o.last < now - 60 * 86400000;

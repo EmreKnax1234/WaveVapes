@@ -1,15 +1,10 @@
 // WaveVapes Service Worker — Web Push Notifications + Offline Caching
-// Wird unter https://wavevapes.de/sw.js gehostet
 
 const SW_VERSION = 'wv-push-v9';
 const STATIC_CACHE  = `wv-static-${SW_VERSION}`;
 const RUNTIME_CACHE = `wv-runtime-${SW_VERSION}`;
 
 // Assets die sofort beim Install gecacht werden (Cache-First)
-// HINWEIS: '/' (index.html) wurde entfernt — HTML-Seiten werden Network-First
-// behandelt (siehe fetch-Handler unten). Ein gecachtes '/' beim Install würde
-// bei Produkt-/Preisänderungen dazu führen, dass Nutzer mit aktivem SW
-// veraltete Inhalte sehen, bis der nächste SW-Update-Zyklus greift.
 const PRECACHE_ASSETS = [
     '/logo.png',
     '/404.html',
@@ -26,12 +21,9 @@ const CACHE_FIRST_ORIGINS = [
 // ── Install & Activate ────────────────────────────────────────
 self.addEventListener('install', event => {
     self.skipWaiting();
-    // BUG-FIX: addAll() ist atomar — eine einzige fehlende Datei bricht den
-    // gesamten Install ab (kein SW aktiv, kein Offline-Fallback).
-    // Fix: Dateien einzeln cachen damit ein Fehler (z.B. fehlende Favicon)
-    // den Rest nicht blockiert.
     event.waitUntil(
         caches.open(STATIC_CACHE).then(cache =>
+            // Einzeln cachen damit eine fehlende Datei nicht den gesamten Install abbricht
             Promise.allSettled(
                 PRECACHE_ASSETS.map(url =>
                     cache.add(url).catch(err =>
@@ -119,8 +111,6 @@ self.addEventListener('fetch', event => {
                     }
                     return response;
                 })
-                // BUG-FIX: `caches.match(a) || caches.match(b)` funktioniert nicht korrekt,
-                // da Promise-Objekte immer truthy sind. Stattdessen: .then(r => r || fallback)
                 .catch(() =>
                     caches.match(request).then(r => r || caches.match('/404.html'))
                 )
@@ -184,9 +174,6 @@ self.addEventListener('pushsubscriptionchange', event => {
     event.waitUntil(
         self.registration.pushManager.subscribe({
             userVisibleOnly:      true,
-            // BUG-FIX: applicationServerKey ist ein ArrayBuffer, kein String.
-            // pushManager.subscribe() erwartet einen Uint8Array — nicht den rohen ArrayBuffer.
-            // Ohne Konvertierung wirft Chrome/Firefox einen TypeError und das Re-Subscribe schlägt still fehl.
             applicationServerKey: event.oldSubscription?.options?.applicationServerKey
                 ? new Uint8Array(event.oldSubscription.options.applicationServerKey)
                 : undefined

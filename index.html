@@ -7992,6 +7992,8 @@
             // So verhindert man PERMISSION_DENIED-Fehler wenn die Rules Auth erfordern.
             checkAndAutoRedeemLoyalty();
             clearDiscountField();
+            // BUG-4 FIX: Vorherigen Interval clearen damit keine doppelten Intervals entstehen
+            if (window._presenceInterval) { clearInterval(window._presenceInterval); window._presenceInterval = null; }
             updatePresence();
             window._presenceInterval = setInterval(updatePresence, 30000);
             checkCategoryUrl();
@@ -8331,7 +8333,7 @@
 
             const duration = 520; // ms
 
-            let frame = 0;
+            // BUG-7 FIX: `frame`-Variable entfernt — war deklariert aber nie verwendet (Dead Code)
             const startTime = performance.now();
 
             function step(now) {
@@ -8386,6 +8388,8 @@
             const indicator = document.getElementById('ptr-indicator');
             const ptrText   = document.getElementById('ptr-text');
             const ptrArrow  = document.getElementById('ptr-arrow');
+            // BUG-5 FIX: Guard gegen null-DOM-Elemente — crasht sonst mit TypeError bei fehlendem #ptr-indicator
+            if (!indicator || !ptrText || !ptrArrow) return;
 
             document.addEventListener('touchstart', e => {
                 // Nur auslösen wenn Cart zu ist und ganz oben gescrollt

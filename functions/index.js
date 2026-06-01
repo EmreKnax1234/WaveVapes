@@ -1,19 +1,16 @@
-// WaveVapes — Firebase Cloud Function: FCM Push Notifications
-
 const functions = require('firebase-functions');
 const admin     = require('firebase-admin');
 
 admin.initializeApp();
 const db = admin.firestore();
 
-// ── Trigger: Neue push_notification → sofort versenden ────────
 exports.sendPushOnCreate = functions
     .region('europe-west1')
     .firestore
     .document('push_notifications/{notifId}')
     .onCreate(async (snap, context) => {
         const n = snap.data();
-        if (n.scheduledFor) return null; // geplant → später via Scheduler
+        if (n.scheduledFor) return null;
         try {
             return await _dispatch(context.params.notifId, n);
         } catch (err) {
@@ -23,7 +20,6 @@ exports.sendPushOnCreate = functions
         }
     });
 
-// ── Trigger: Geplante Nachrichten stündlich prüfen ─────────────
 exports.sendScheduledPush = functions
     .region('europe-west1')
     .pubsub.schedule('every 60 minutes')
@@ -41,37 +37,31 @@ exports.sendScheduledPush = functions
         });
     });
 
-// ── Kern: FCM Tokens laden + Notifications senden ─────────────
 async function _dispatch(notifId, n) {
     const { title, body, url = 'https://wavevapes.de', target = 'all' } = n;
 
-    // RATE-LIMIT-GUARD: Status atomar auf 'sending' setzen, vorher prüfen ob schon gesendet
     const docRef = db.collection('push_notifications').doc(notifId);
     const updated = await db.runTransaction(async tx => {
-        const doc = await tx.get(docRef);
+        const doc    = await tx.get(docRef);
         const status = doc.data()?.status;
-        // Bereits gesendet, in Bearbeitung, oder steckengeblieben (>5 Min.) → Abbruch oder Retry
         if (status === 'sent') return false;
         if (status === 'sending') {
-            // Falls ein voriger Lauf abgestürzt ist, nach 5 Min. Retry erlauben
             const updatedAt = doc.data()?.updatedAt?.toMillis?.() || 0;
-            if (Date.now() - updatedAt < 5 * 60 * 1000) return false; // noch frisch → wirklich in Arbeit
+            if (Date.now() - updatedAt < 5 * 60 * 1000) return false;
         }
         tx.update(docRef, { status: 'sending', updatedAt: admin.firestore.FieldValue.serverTimestamp() });
         return true;
     });
     if (!updated) {
-        console.log(`[skip] Notification ${notifId} bereits verarbeitet (Race-Condition verhindert)`);
+        console.log(`[skip] Notification ${notifId} bereits verarbeitet`);
         return;
     }
 
-    // FCM Tokens aus push_subscriptions laden
     const subsSnap = await db.collection('push_subscriptions').get();
     let subs = subsSnap.docs
         .map(d => ({ docId: d.id, ...d.data() }))
-        .filter(s => s.fcmToken);  // nur Docs mit gültigem FCM Token
+        .filter(s => s.fcmToken);
 
-    // Zielgruppen-Filter anwenden
     subs = await _filter(subs, n);
     console.log(`Sende "${title}" → ${subs.length} Tokens (target: ${target})`);
 
@@ -85,8 +75,8 @@ async function _dispatch(notifId, n) {
         webpush: {
             notification: {
                 title, body,
-                icon:  'https://wavevapes.de/logo.png',
-                badge: 'https://wavevapes.de/logo.png',
+                icon:               'https://wavevapes.de/logo.png',
+                badge:              'https://wavevapes.de/logo.png',
                 requireInteraction: false,
             },
             fcmOptions: { link: url }
@@ -96,13 +86,11 @@ async function _dispatch(notifId, n) {
 
     let delivered = 0;
     const toDelete = [];
+    const CHUNK    = 500;
 
-    // FCM erlaubt max. 500 Tokens pro sendEachForMulticast
-    const CHUNK = 500;
     for (let i = 0; i < subs.length; i += CHUNK) {
-        const chunk = subs.slice(i, i + CHUNK);
-        const tokens = chunk.map(s => s.fcmToken);
-
+        const chunk    = subs.slice(i, i + CHUNK);
+        const tokens   = chunk.map(s => s.fcmToken);
         const response = await admin.messaging().sendEachForMulticast({ tokens, ...message });
 
         response.responses.forEach((r, idx) => {
@@ -110,10 +98,11 @@ async function _dispatch(notifId, n) {
                 delivered++;
             } else {
                 const code = r.error?.code || '';
-                // Ungültige/abgelaufene Tokens entfernen
-                if (code.includes('registration-token-not-registered') ||
+                if (
+                    code.includes('registration-token-not-registered') ||
                     code.includes('invalid-registration-token') ||
-                    code.includes('invalid-argument')) {
+                    code.includes('invalid-argument')
+                ) {
                     toDelete.push(chunk[idx].docId);
                 }
                 console.warn(`Token fehlgeschlagen (${chunk[idx].docId}):`, code);
@@ -121,7 +110,6 @@ async function _dispatch(notifId, n) {
         });
     }
 
-    // Ungültige Tokens aus Firestore löschen (max. 500 Ops pro Batch)
     if (toDelete.length) {
         const DELETE_CHUNK = 500;
         for (let di = 0; di < toDelete.length; di += DELETE_CHUNK) {
@@ -145,7 +133,6 @@ async function _dispatch(notifId, n) {
     console.log(`✅ "${title}" — ${delivered}/${subs.length} zugestellt`);
 }
 
-// ── Zielgruppen-Filter ────────────────────────────────────────
 async function _filter(subs, n) {
     const target = n.target || 'all';
     if (target === 'all') return subs;
@@ -162,7 +149,7 @@ async function _filter(subs, n) {
     const usersSnap  = await db.collection('users').get();
     const ordersSnap = await db.collection('orders').get();
 
-    const userMap   = {};
+    const userMap = {};
     usersSnap.docs.forEach(d => { userMap[d.id] = d.data(); });
 
     const orderData = {};
@@ -179,18 +166,16 @@ async function _filter(subs, n) {
 
     return subs.filter(s => {
         if (!s.userId) return target === 'all';
-        const u = userMap[s.userId] || {};
+        const u = userMap[s.userId]   || {};
         const o = orderData[s.userId] || { total: 0, last: 0 };
         switch (target) {
-            case 'no-order-30':
-                return o.last > 0 && o.last < now - 30 * 86400000;
-            case 'no-order-60':
-                return o.last > 0 && o.last < now - 60 * 86400000;
-            case 'loyalty-high': return (u.totalBonusPoints || 0) > 500;
-            case 'loyalty-low':  return (u.totalBonusPoints || 0) < 100;
-            case 'new-users':    return (u.createdAt?.toMillis?.() || 0) > now - 7 * 86400000;
-            case 'vip':          return o.total >= 200;
-            default:             return true;
+            case 'no-order-30':   return o.last > 0 && o.last < now - 30 * 86400000;
+            case 'no-order-60':   return o.last > 0 && o.last < now - 60 * 86400000;
+            case 'loyalty-high':  return (u.totalBonusPoints || 0) > 500;
+            case 'loyalty-low':   return (u.totalBonusPoints || 0) < 100;
+            case 'new-users':     return (u.createdAt?.toMillis?.() || 0) > now - 7 * 86400000;
+            case 'vip':           return o.total >= 200;
+            default:              return true;
         }
     });
 }

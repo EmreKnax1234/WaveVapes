@@ -17321,23 +17321,45 @@ Kein Markdown außer den Emoji-Überschriften.`, 500
     }
 }
 
-// NOTE: bndAICalc, bndSave, bndToggleActive, bndDelete, openCatCostModal,
-// closeCatCostModal, catCostUpdatePreview, executeCatCostUpdate, and the
-// Fake Review Generator IIFE were duplicated here — duplicates removed.
-// All definitions remain in their original location above.
-// ── (All duplicated functions removed) ──
-// bndAICalc, bndSave, bndToggleActive, bndDelete, openCatCostModal,
-// closeCatCostModal, catCostUpdatePreview, executeCatCostUpdate, and
-// the Fake Review Generator IIFE already defined above.
+// BUG-FIX: Alle duplizierten Funktionsdefinitionen (Features 8–11, bndSave, bndToggleActive,
+// bndDelete, openCatCostModal, closeCatCostModal, catCostUpdatePreview, executeCatCostUpdate)
+// wurden hier entfernt. Alle Definitionen existieren genau einmal weiter oben in der Datei.
 
-// BUG-FIX: Duplizierte Funktionsdefinitionen entfernt — alle Definitionen
-// existieren nur noch einmal (in ihrem ursprünglichen Block weiter oben).
+</script>
+<!--Start of Tawk.to Script-->
+<script type="text/javascript">
+var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
+(function(){
+var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
+s1.async=true;
+s1.src='https://embed.tawk.to/69b5b6d21814f11c37088d1f/1jjmt49q6';
+s1.charset='UTF-8';
+s1.setAttribute('crossorigin','*');
+s0.parentNode.insertBefore(s1,s0);
+})();
+</script>
+<!--End of Tawk.to Script-->
+</body>
+</html>
+// BUG-FIX: Alle duplizierten Funktionsdefinitionen entfernt.
+// Alle Definitionen existieren genau einmal weiter oben in der Datei.
 
-async function bndSave() {
-    const name    = document.getElementById('bnd-f-name')?.value?.trim();
-    const price   = parseFloat(document.getElementById('bnd-f-price')?.value);
-    const desc    = document.getElementById('bnd-f-desc')?.value?.trim()||'';
-    const category= document.getElementById('bnd-f-category')?.value||'';
+</script>
+<!--Start of Tawk.to Script-->
+<script type="text/javascript">
+var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
+(function(){
+var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
+s1.async=true;
+s1.src='https://embed.tawk.to/69b5b6d21814f11c37088d1f/1jjmt49q6';
+s1.charset='UTF-8';
+s1.setAttribute('crossorigin','*');
+s0.parentNode.insertBefore(s1,s0);
+})();
+</script>
+<!--End of Tawk.to Script-->
+</body>
+</html>
     if(!name){showToast('⚠️ Bundle-Name fehlt','warning');return;}
     if(!price||price<=0){showToast('⚠️ Bitte einen gültigen Preis eingeben','warning');return;}
     if(!_bundleItems.length){showToast('⚠️ Mindestens ein Produkt hinzufügen','warning');return;}
@@ -17355,11 +17377,17 @@ async function bndSave() {
             const fd = new FormData();
             fd.append('file', _bndImageFile);
             fd.append('upload_preset', 'wavevapes');
-            const res = await fetch('https://api.cloudinary.com/v1_1/dbbkmjsr5/image/upload', { method:'POST', body:fd });
-            if (!res.ok) throw new Error('Bild-Upload fehlgeschlagen: HTTP ' + res.status); // BUG-FIX: HTTP-Fehler prüfen
-            const json = await res.json();
+            let json;
+            try {
+                const res = await fetch('https://api.cloudinary.com/v1_1/dbbkmjsr5/image/upload', { method:'POST', body:fd });
+                // BUG-FIX: HTTP-Fehler UND Cloudinary-API-Fehler prüfen
+                if (!res.ok) throw new Error('Bild-Upload HTTP-Fehler: ' + res.status);
+                json = await res.json();
+                if (json.error) throw new Error('Cloudinary: ' + json.error.message);
+            } catch(uploadErr) {
+                throw new Error('Bild-Upload fehlgeschlagen: ' + uploadErr.message);
+            }
             if (json.secure_url) payload.image = json.secure_url;
-            else if (json.error) throw new Error('Cloudinary: ' + json.error.message); // BUG-FIX: API-Fehler prüfen
         } else if (_bndRemoveImage) {
             payload.image = firebase.firestore.FieldValue.delete();
         }

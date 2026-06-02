@@ -669,8 +669,10 @@ function initAccount() {
 function renderUserData() {
     const d = userData;
     const pts = d.totalBonusPoints || 0;
-    const username = d.username || currentUser.email.split('@')[0];
-    const colorIdx = d.avatarColorIdx !== undefined ? d.avatarColorIdx : 0;
+    const username = d.username || currentUser?.email?.split('@')[0] || 'Nutzer';
+    // BUG-FIX: avatarColorIdx könnte außerhalb des gültigen Index-Bereichs liegen
+    const rawIdx = d.avatarColorIdx !== undefined ? d.avatarColorIdx : 0;
+    const colorIdx = (rawIdx >= 0 && rawIdx < AVATAR_COLORS.length) ? rawIdx : 0;
     selectedAvatarIdx = colorIdx;
     const [fg, bg] = AVATAR_COLORS[colorIdx] || AVATAR_COLORS[0];
     const initial = username.charAt(0).toUpperCase();
@@ -749,6 +751,9 @@ function renderRewardsGrid(pts) {
 // ─── ORDERS ──────────────────────────────────────────────────────
 function loadOrders() {
     if (ordersUnsub) { ordersUnsub(); ordersUnsub = null; }
+    // BUG-FIX: orderBy('date','desc') erfordert einen Firestore-Komposit-Index.
+    // Falls der Index fehlt, schlägt die Query mit einem Firestore-Fehler fehl.
+    // Fallback: client-seitig sortieren falls der Index noch nicht existiert.
     ordersUnsub = db.collection('orders')
         .where('userId','==', currentUser.uid)
         .orderBy('date','desc')
@@ -1019,12 +1024,20 @@ async function changePassword() {
         const cred = firebase.auth.EmailAuthProvider.credential(currentUser.email, current);
         await currentUser.reauthenticateWithCredential(cred);
         await currentUser.updatePassword(newPw);
-        ['pw-current','pw-new','pw-confirm'].forEach(id => document.getElementById(id).value = '');
-        document.getElementById('pw-strength-fill').style.width = '0%';
-        document.getElementById('pw-strength-text').textContent = '';
+        ['pw-current','pw-new','pw-confirm'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+        const fill = document.getElementById('pw-strength-fill');
+        const text = document.getElementById('pw-strength-text');
+        if (fill) fill.style.width = '0%';
+        if (text) text.textContent = '';
         showToast('✅ Passwort erfolgreich geändert!');
     } catch(e) {
-        const msg = e.code === 'auth/wrong-password'    ? '❌ Aktuelles Passwort ist falsch.'
+        // BUG-FIX: auth/invalid-credential ist der neue Fehlercode in Firebase SDK v10+
+        // (ersetzt auth/wrong-password)
+        const msg = (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential')
+                  ? '❌ Aktuelles Passwort ist falsch.'
                   : e.code === 'auth/too-many-requests' ? '❌ Zu viele Versuche. Bitte warten.'
                   : '❌ ' + e.message;
         showToast(msg, 'error');
@@ -1056,12 +1069,15 @@ function shareReferral(platform) {
 }
 
 // ─── PAYMENT INFO ────────────────────────────────────────────────
-document.getElementById('orders-container').addEventListener('click', e => {
-    const btn = e.target.closest('[data-action="copy-payment"]');
-    if (!btn) return;
-    // BUG-FIX: dataset.orderNum liest data-order-num korrekt (camelCase-Konvertierung durch browser)
-    copyPaymentInfo(btn.dataset.orderNum || '', parseFloat(btn.dataset.total) || 0);
-});
+// BUG-FIX: Guard gegen null — orders-container kann beim Script-Parse noch leer sein
+const _ordersContainer = document.getElementById('orders-container');
+if (_ordersContainer) {
+    _ordersContainer.addEventListener('click', e => {
+        const btn = e.target.closest('[data-action="copy-payment"]');
+        if (!btn) return;
+        copyPaymentInfo(btn.dataset.orderNum || '', parseFloat(btn.dataset.total) || 0);
+    });
+}
 
 function copyPaymentInfo(orderNum, total) {
     if (!_bankOwner || !_bankIban) { showToast('⚠️ Bankdaten werden noch geladen.', 'error'); return; }
@@ -1071,17 +1087,21 @@ function copyPaymentInfo(orderNum, total) {
 }
 
 // ─── LOGOUT ──────────────────────────────────────────────────────
-function confirmLogout()  { document.getElementById('logout-modal').style.display = 'flex'; }
-function closeLogoutModal() { document.getElementById('logout-modal').style.display = 'none'; }
+function confirmLogout()  { const m = document.getElementById('logout-modal'); if (m) m.style.display = 'flex'; }
+function closeLogoutModal() { const m = document.getElementById('logout-modal'); if (m) m.style.display = 'none'; }
 async function doLogout() {
-    if (ordersUnsub) ordersUnsub();
-    if (userUnsub)   userUnsub();
+    if (ordersUnsub) { ordersUnsub(); ordersUnsub = null; }
+    if (userUnsub)   { userUnsub();   userUnsub   = null; }
     try { await auth.signOut(); } catch(e) { console.warn('signOut error:', e); }
     window.location.href = 'https://wavevapes.de';
 }
-document.getElementById('logout-modal').addEventListener('click', e => {
-    if (e.target === document.getElementById('logout-modal')) closeLogoutModal();
-});
+// BUG-FIX: Guard gegen null — logout-modal muss existieren bevor Listener gesetzt wird
+const _logoutModal = document.getElementById('logout-modal');
+if (_logoutModal) {
+    _logoutModal.addEventListener('click', e => {
+        if (e.target === _logoutModal) closeLogoutModal();
+    });
+}
 </script>
 
 <!-- Tawk.to Live Chat -->

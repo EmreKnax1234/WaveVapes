@@ -15,12 +15,15 @@ const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage(payload => {
     const title   = payload.notification?.title || 'WaveVapes';
+    // BUG-FIX: Fehlende Felder aus payload.data als Fallback nutzen
+    const body    = payload.notification?.body  || payload.data?.body || '';
+    const iconUrl = payload.data?.icon  || '/logo.png';
     const options = {
-        body:               payload.notification?.body || '',
-        icon:               '/logo.png',
+        body,
+        icon:               iconUrl,
         badge:              '/logo.png',
         data:               { url: payload.data?.url || payload.fcmOptions?.link || 'https://wavevapes.de' },
-        tag:                'wavevapes-push',
+        tag:                payload.data?.tag || 'wavevapes-push',
         renotify:           true,
         requireInteraction: false,
         vibrate:            [200, 100, 200],
@@ -30,6 +33,8 @@ messaging.onBackgroundMessage(payload => {
 
 self.addEventListener('notificationclick', event => {
     event.notification.close();
+    // BUG-FIX: 'dismiss'-Action soll still schließen ohne Navigation
+    if (event.action === 'dismiss') return;
     const url = event.notification.data?.url || 'https://wavevapes.de';
     event.waitUntil(
         self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(cls => {

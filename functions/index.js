@@ -40,6 +40,14 @@ exports.sendScheduledPush = functions
 async function _dispatch(notifId, n) {
     const { title, body, url = 'https://wavevapes.de', target = 'all' } = n;
 
+    // BUG-FIX: title und body sind Pflichtfelder — ohne sie schickt FCM eine leere Notification
+    if (!title) {
+        console.warn(`[_dispatch] Notification ${notifId} hat keinen title — übersprungen`);
+        await db.collection('push_notifications').doc(notifId)
+            .update({ status: 'error', errorMessage: 'Kein title angegeben' }).catch(() => {});
+        return;
+    }
+
     const docRef = db.collection('push_notifications').doc(notifId);
     const updated = await db.runTransaction(async tx => {
         const doc    = await tx.get(docRef);
@@ -60,7 +68,9 @@ async function _dispatch(notifId, n) {
     const subsSnap = await db.collection('push_subscriptions').get();
     let subs = subsSnap.docs
         .map(d => ({ docId: d.id, ...d.data() }))
-        .filter(s => s.fcmToken);
+        // BUG-FIX: Tokens länger als 4096 Zeichen sind ungültig — FCM lehnt sie mit
+        // 'invalid-argument' ab und verschmutzen die toDelete-Liste
+        .filter(s => s.fcmToken && typeof s.fcmToken === 'string' && s.fcmToken.length < 4096);
 
     subs = await _filter(subs, n);
     console.log(`Sende "${title}" → ${subs.length} Tokens (target: ${target})`);
@@ -91,7 +101,14 @@ async function _dispatch(notifId, n) {
     for (let i = 0; i < subs.length; i += CHUNK) {
         const chunk    = subs.slice(i, i + CHUNK);
         const tokens   = chunk.map(s => s.fcmToken);
-        const response = await admin.messaging().sendEachForMulticast({ tokens, ...message });
+        // BUG-FIX: sendEachForMulticast erwartet tokens als separate Eigenschaft
+        // NICHT im spread — sonst wird tokens doppelt gesetzt und der zweite Wert überschreibt
+        const response = await admin.messaging().sendEachForMulticast({
+            tokens,
+            notification: message.notification,
+            webpush:      message.webpush,
+            data:         message.data,
+        });
 
         response.responses.forEach((r, idx) => {
             if (r.success) {

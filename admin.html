@@ -17179,18 +17179,32 @@ async function aiLogAnomalies() {
     aiSetLoading(result, 'KI prüft Logs auf Anomalien…');
 
     try {
-        // Collect log entries from DOM
+        // Collect log entries from DOM — BUG-FIX: gezielter Selektor statt generische div-Traversal
         const logEntries = [];
-        document.querySelectorAll('#logs-container .sa-log-entry, #logs-container [class*="lg-entry"], #logs-container > div').forEach(el => {
+        document.querySelectorAll('#logs-container .lg-log-action').forEach(el => {
             const text = el.textContent?.trim();
-            if (text && text.length > 5 && !text.includes('Lade')) logEntries.push(text.slice(0, 120));
+            if (text && text.length > 5) logEntries.push(text.slice(0, 120));
         });
+        // Fallback auf generische Einträge wenn spezifische Elemente fehlen
+        if (logEntries.length === 0) {
+            document.querySelectorAll('#logs-container .sa-log-entry').forEach(el => {
+                const text = el.textContent?.trim();
+                if (text && text.length > 5 && !text.includes('Lade')) logEntries.push(text.slice(0, 120));
+            });
+        }
 
         const unauthorized = [];
-        document.querySelectorAll('#unauthorized-logs-container > div').forEach(el => {
+        document.querySelectorAll('#unauthorized-logs-container .lg-threat-body, #unauthorized-logs-container .lg-threat-reason').forEach(el => {
             const text = el.textContent?.trim();
-            if (text && text.length > 5 && !text.includes('Lade')) unauthorized.push(text.slice(0, 100));
+            if (text && text.length > 5) unauthorized.push(text.slice(0, 100));
         });
+        // Fallback
+        if (unauthorized.length === 0) {
+            document.querySelectorAll('#unauthorized-logs-container .lg-threat-entry').forEach(el => {
+                const text = el.textContent?.trim();
+                if (text && text.length > 5 && !text.includes('Lade')) unauthorized.push(text.slice(0, 100));
+            });
+        }
 
         const bannedCount = document.getElementById('lg-ban-badge')?.textContent?.replace(/[^0-9]/g,'') || '0';
         const threatCount = document.getElementById('lg-threat-badge')?.textContent?.replace(/[^0-9]/g,'') || '0';
@@ -17361,8 +17375,10 @@ async function bndSave() {
             fd.append('file', _bndImageFile);
             fd.append('upload_preset', 'wavevapes');
             const res = await fetch('https://api.cloudinary.com/v1_1/dbbkmjsr5/image/upload', { method:'POST', body:fd });
+            if (!res.ok) throw new Error('Bild-Upload fehlgeschlagen: HTTP ' + res.status); // BUG-FIX: HTTP-Fehler prüfen
             const json = await res.json();
             if (json.secure_url) payload.image = json.secure_url;
+            else if (json.error) throw new Error('Cloudinary: ' + json.error.message); // BUG-FIX: API-Fehler prüfen
         } else if (_bndRemoveImage) {
             payload.image = firebase.firestore.FieldValue.delete();
         }
@@ -17404,7 +17420,8 @@ async function bndToggleActive(id,val) {
 
 async function bndDelete(id) {
     const b=_bundles.find(x=>x.id===id);
-    if(!confirm('Bundle "'+( b?.name||id)+'" wirklich löschen?'))return;
+    const safeName = (b?.name||id).replace(/[<>"'&]/g,''); // BUG-FIX: XSS-safe name für confirm
+    if(!confirm('Bundle "'+safeName+'" wirklich löschen?'))return;
     try {
         await db.collection(BND_COL).doc(id).delete();
         await logAction('bundle_deleted',id,{name:b?.name});

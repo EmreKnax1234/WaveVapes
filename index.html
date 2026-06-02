@@ -6322,7 +6322,7 @@
         // ── LEADERBOARD ─────────────────────────────────────────────────────────
         function lbAvatar(name, email, size) {
             const str = name || email || '?';
-            const initials = str.replace(/</g,'').slice(0, 2).toUpperCase(); // Bug 1 fix: strip tags before slicing
+            const initials = str.replace(/[<>&"']/g,'').slice(0, 2).toUpperCase(); // BUG-FIX: alle HTML-Sonderzeichen strippen, nicht nur <
             const hue = str.split('').reduce((h, c) => h + c.charCodeAt(0), 0) % 360;
             return { initials, bg: `hsl(${hue},50%,28%)`, color: `hsl(${hue},75%,72%)` };
         }
@@ -6710,7 +6710,7 @@
             const bundleItems = wishlist
                 .filter(id => String(id).startsWith('b_'))
                 .map(key => allBundles.find(b => b.id === key.slice(2)))
-                .filter(Boolean);
+                .filter(b => b && b.active); // BUG-FIX: inaktive Bundles ausschließen
             bundleItems.forEach(b => {
                 const existing = cart.find(i => i.bundleId === b.id);
                 if (!existing) cart.push({ id: 'bundle_' + b.id, bundleId: b.id, name: b.name, price: b.bundlePrice, qty: 1, isBundle: true });
@@ -7693,7 +7693,7 @@
         let _presenceFirstWriteDone = false;
         async function updatePresence() {
             const docId = currentUser ? currentUser.uid : sessionId;
-            const cartCount = cart.filter(i => i.id !== MYSTERY_ID).reduce((s,i)=>s+i.qty,0); // BUG FIX: use MYSTERY_ID constant
+            const cartCount = cart.filter(i => i.id !== MYSTERY_ID && !i.isMystery).reduce((s,i)=>s+i.qty,0); // BUG-FIX: MYSTERY_ID kann undefined sein; zusätzlich .isMystery als Fallback
             const ip = await fetchIp();
             const presenceData = {
                 uid: currentUser ? currentUser.uid : null,
@@ -8471,6 +8471,7 @@
             }
 
             function showSwipeHint(direction, catName) {
+                if (!hint || !hintText) return; // BUG-FIX: Guard gegen null-DOM (hint/hintText können fehlen)
                 hintText.textContent = direction === 'left'
                     ? `${catName} →`
                     : `← ${catName}`;

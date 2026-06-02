@@ -890,7 +890,7 @@ function buildOrderCard(order) {
             <button class="btn btn-secondary" style="font-size:13px;padding:10px 18px;"
                     data-action="copy-payment"
                     data-order-num="${esc(order.orderNumber||'')}"
-                    data-total="${order.total||0}">
+                    data-total="${(order.total||0).toFixed(2)}">
                 <i class="fa-solid fa-building-columns"></i> Überweisungsdaten
             </button>
         </div>
@@ -981,8 +981,8 @@ async function saveAddress() {
     const zip    = document.getElementById('addr-zip').value.trim();
     const city   = document.getElementById('addr-city').value.trim();
     if (!street || !zip || !city) { showToast('❌ Bitte alle Felder ausfüllen!', 'error'); return; }
-    if (!/^\d{5}$/.test(zip))     { showToast('❌ Ungültige PLZ (5 Ziffern)', 'error'); return; }
-    const addr = { street, zip, city };
+    if (!/^\d{5}$/.test(zip.replace(/\s/g,''))) { showToast('❌ Ungültige PLZ (5 Ziffern)', 'error'); return; }
+    const addr = { street, zip: zip.replace(/\s/g,''), city };
     try { localStorage.setItem('wavevapes_address', JSON.stringify(addr)); } catch(_) {}
     try {
         await db.collection('users').doc(currentUser.uid).update({ address: addr });
@@ -1059,6 +1059,7 @@ function shareReferral(platform) {
 document.getElementById('orders-container').addEventListener('click', e => {
     const btn = e.target.closest('[data-action="copy-payment"]');
     if (!btn) return;
+    // BUG-FIX: dataset.orderNum liest data-order-num korrekt (camelCase-Konvertierung durch browser)
     copyPaymentInfo(btn.dataset.orderNum || '', parseFloat(btn.dataset.total) || 0);
 });
 
@@ -1075,7 +1076,7 @@ function closeLogoutModal() { document.getElementById('logout-modal').style.disp
 async function doLogout() {
     if (ordersUnsub) ordersUnsub();
     if (userUnsub)   userUnsub();
-    await auth.signOut();
+    try { await auth.signOut(); } catch(e) { console.warn('signOut error:', e); }
     window.location.href = 'https://wavevapes.de';
 }
 document.getElementById('logout-modal').addEventListener('click', e => {

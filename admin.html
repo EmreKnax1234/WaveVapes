@@ -17330,27 +17330,8 @@ Kein Markdown außer den Emoji-Überschriften.`, 500
 // closeCatCostModal, catCostUpdatePreview, executeCatCostUpdate, and
 // the Fake Review Generator IIFE already defined above.
 
-// ── Speichern ─────────────────────────────────────────────────────────────
-
-let _bndImageFile = null;
-let _bndRemoveImage = false;
-
-function bndPreviewImage(input) {
-    const file = input.files[0];
-    if (!file) return;
-    _bndImageFile = file;
-    _bndRemoveImage = false;
-    const url = URL.createObjectURL(file);
-    const preview = document.getElementById('bnd-img-preview');
-    if (preview) preview.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:14px">`;
-}
-
-function bndRemoveImage() {
-    _bndImageFile = null;
-    _bndRemoveImage = true;
-    const preview = document.getElementById('bnd-img-preview');
-    if (preview) preview.innerHTML = `<i class="fa-solid fa-trash" style="font-size:20px;color:#f87171"></i>`;
-}
+// BUG-FIX: Duplizierte Funktionsdefinitionen entfernt — alle Definitionen
+// existieren nur noch einmal (in ihrem ursprünglichen Block weiter oben).
 
 async function bndSave() {
     const name    = document.getElementById('bnd-f-name')?.value?.trim();
